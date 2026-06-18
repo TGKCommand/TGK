@@ -624,6 +624,16 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #erp-toast{position:fixed;bottom:24px;right:24px;z-index:5000;background:#111827;border:1px solid rgba(42,191,170,.3);border-radius:10px;padding:14px 18px;font-size:13px;color:#fff;box-shadow:0 4px 24px rgba(0,0,0,.3);display:none;align-items:center;gap:12px;max-width:340px}
 #erp-toast.show{display:flex;animation:slide-in .3s ease}
 @keyframes slide-in{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ════ ERP INLINE VIEWER ════ */
+#erp-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#erp-viewer.active{display:flex}
+#erp-frame{width:100%;flex:1;border:none;background:#fff}
+#erp-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#erp-loading.hidden{display:none}
+.erp-spinner{width:36px;height:36px;border:3px solid #E4E7EC;border-top-color:#2ABFAA;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.erp-loading-text{font-size:13px;font-weight:600;color:#4B5563}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -792,8 +802,6 @@ window._sbBootPromise = (async function() {
   <span class="logo-sub">Command Center</span>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
     <span id="tllib-sync-status" style="font-size:10px;font-family:inherit;letter-spacing:.03em;display:flex;align-items:center;gap:5px;cursor:default" title=""></span>
-    <button onclick="tllibExportJSON()" style="font-size:10px;font-weight:700;padding:3px 12px;border-radius:4px;background:rgba(42,191,170,.12);border:1px solid #2ABFAA;color:#2ABFAA;cursor:pointer;font-family:inherit;letter-spacing:.04em;transition:all .15s" title="Download all saved templates as JSON">&#8659; Export Library</button>
-    <label style="font-size:10px;font-weight:700;padding:3px 12px;border-radius:4px;background:rgba(255,255,255,.05);border:1px solid #444;color:#aaa;cursor:pointer;font-family:inherit;letter-spacing:.04em;display:inline-flex;align-items:center;transition:all .15s" title="Load templates from JSON file">&#8657; Import Library<input type="file" accept=".json" onchange="tllibImportJSON(this)" style="display:none"/></label>
   </div>
   <button class="logout-btn" id="logout-btn" onclick="doLogout()" style="display:none">Sign out</button><span id="topbar-user" style="font-size:11px;color:#888"></span><span class="cc-pill" id="tllib-version-pill" style="margin-left:12px">v1.0</span>
   <button onclick="showView('launch');setTimeout(showKeyModal,50)" id="key-status" style="margin-left:12px;font-size:11px;padding:3px 12px;border-radius:20px;background:transparent;border:1px solid var(--orange);color:var(--orange);cursor:pointer;font-family:var(--font)" onclick="showKeyModal()">API Key</button>
@@ -810,6 +818,14 @@ window._sbBootPromise = (async function() {
 </div>
 
 <div id="cc-shell">
+
+  <div id="erp-viewer">
+    <div id="erp-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading TGK ERP&hellip;</div>
+    </div>
+    <iframe id="erp-frame" title="TGK ERP" allowfullscreen></iframe>
+  </div>
   <div id="cc-sidebar">
     <span class="cc-slbl">Tools</span>
     <button class="cc-navbtn active" id="cc-nav-home" onclick="showView('home')" draggable="true">
@@ -876,7 +892,7 @@ window._sbBootPromise = (async function() {
       </div>
     </div>
     <div class="erp-hero-actions">
-      <button class="erp-open-btn" onclick="openERP()">Open ERP &#8599;</button>
+      <button class="erp-open-btn" onclick="openERP()">Open ERP</button>
       <button class="erp-send-btn" id="erp-send-product-btn" onclick="sendProductToERP()" disabled>
         &#8594; Send current product to ERP
       </button>
@@ -9030,7 +9046,7 @@ window.addEventListener('resize', function(){
     </div>
     <div style="display:flex;gap:6px;width:calc(100% - 20px);margin:0 10px 10px;flex-shrink:0">
       <button class="fbg-new-car-btn" style="flex:1;margin:0;width:auto" onclick="fbgOpenNewCarModal()">＋ Add Car</button>
-      <button class="fbg-new-car-btn" style="flex:1;margin:0;width:auto;color:#2ABFAA;border-color:#2ABFAA;border-style:solid" onclick="tllibExportJSON()" title="Export full backup via header Export — includes FB groups, templates & scores">⬇ Export</button>
+      
     </div>
     <div class="fbg-car-list" id="fbg-car-list">
       <div class="fbg-lib-empty">
@@ -10010,13 +10026,96 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* ─── ERP ────────────────────────────────────────────── */
 function openERP() {
-  window.open(ERP_URL, '_blank', 'noopener');
+  // Show ERP inline instead of new tab
+  var shell = document.getElementById('cc-shell');
+  var main  = document.getElementById('cc-main');
+  var viewer= document.getElementById('erp-viewer');
+  var frame = document.getElementById('erp-frame');
+  var loading = document.getElementById('erp-loading');
+  if (!viewer || !frame) { window.open(ERP_URL, '_blank', 'noopener'); return; }
+
+  // Swap cc-main for erp-viewer
+  if (main)  main.style.display  = 'none';
+  if (viewer) viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+
+  // Breadcrumb
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'TGK ERP';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeERP()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close ERP</button>';
+  }
+
+  // Load ERP — pass auth token once iframe loads
+  if (frame.src !== ERP_URL) {
+    frame.onload = function() {
+      if (loading) loading.classList.add('hidden');
+      // Pass auth session to ERP so it skips its own login
+      var sess = _getSession();
+      if (sess && sess.access_token) {
+        setTimeout(function() {
+          try {
+            frame.contentWindow.postMessage({
+              source: 'TGK_CC',
+              type: 'AUTH_TOKEN',
+              access_token: sess.access_token,
+              refresh_token: sess.refresh_token || '',
+              email: sess.email || ''
+            }, 'https://tgkcommand.github.io');
+          } catch(e) {}
+        }, 300);
+      }
+    };
+    frame.src = ERP_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+  }
+}
+
+function closeERP() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('erp-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
 }
 
 var _currentProduct = null;
 
 async function sendProductToERP() {
   if (!_currentProduct) return;
+
+  // If ERP iframe is open, push via postMessage (real-time)
+  var frame = document.getElementById('erp-frame');
+  if (frame && frame.src && frame.src.indexOf('TGKErp') > -1) {
+    try {
+      frame.contentWindow.postMessage({
+        source: 'TGK_CC',
+        type: 'PRODUCT_DATA',
+        data: _currentProduct,
+        seo: {
+          meta_title: document.getElementById('o-metatitle') ? document.getElementById('o-metatitle').textContent : '',
+          meta_desc:  document.getElementById('o-metadesc')  ? document.getElementById('o-metadesc').textContent  : '',
+          url_handle: document.getElementById('o-url')       ? document.getElementById('o-url').textContent       : '',
+          tags:       document.getElementById('o-sptags')    ? document.getElementById('o-sptags').textContent    : ''
+        },
+        copy: {
+          h1:   document.getElementById('o-h1')   ? document.getElementById('o-h1').textContent   : '',
+          body: document.getElementById('o-body') ? document.getElementById('o-body').innerHTML   : ''
+        }
+      }, 'https://tgkcommand.github.io');
+      erpToast('Product sent to ERP', _currentProduct.name);
+      var btn = document.getElementById('erp-send-product-btn');
+      if (btn) { btn.innerHTML = '&#10003; Sent!'; setTimeout(function(){ btn.innerHTML='&#8594; Send current product to ERP'; btn.disabled=false; }, 3000); }
+      return;
+    } catch(ex) {}
+  }
   var btn = document.getElementById('erp-send-product-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Sending...'; }
   try {
@@ -10241,6 +10340,32 @@ function dashLoadExt(){
 
 /* ─── drag feedback CSS ──────────────────────────────── */
 (function(){var s=document.createElement('style');s.textContent='.mod-card.drag-over{outline:2px solid #2ABFAA;outline-offset:-2px}.pin-card{padding-top:24px!important}';document.head.appendChild(s);})();
+
+/* ─── Messages from ERP iframe ──────────────────────── */
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.source !== 'TGK_ERP') return;
+  var type = e.data.type;
+
+  if (type === 'ERP_READY') {
+    // ERP loaded and authenticated — hide spinner
+    var loading = document.getElementById('erp-loading');
+    if (loading) loading.classList.add('hidden');
+  }
+
+  if (type === 'SKU_CREATED') {
+    erpToast('SKU created in ERP', e.data.sku || '');
+    dashBridgeSet('sku', e.data.sku);
+  }
+
+  if (type === 'PRODUCT_IMPORTED') {
+    erpToast('Product imported to ERP', e.data.name || '');
+  }
+
+  if (type === 'REQUEST_PRODUCT') {
+    // ERP is asking for current product data
+    if (_currentProduct) sendProductToERP();
+  }
+});
 </script>
 
 
