@@ -798,7 +798,7 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .pw-det-tag-rm{background:none;border:none;cursor:pointer;color:#97A0AF;padding:0;font-size:12px;line-height:1}
 /* Full detail view */
 #pw-detail{display:none;flex-direction:column;height:100%;overflow:hidden}
-#pw-detail.open{display:flex}
+#pw-detail.open{display:flex;flex:1;flex-direction:column}
 /* Note textarea */
 
 /* ── SUBTASKS ────────────────────────────────────────────── */
@@ -978,23 +978,7 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .oo-veh-field label{font-size:10px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
 .oo-veh-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid #3a3d40;border-radius:6px;padding:7px 10px;font-size:13px;color:#ddd;font-family:var(--font);outline:none;box-sizing:border-box;transition:.12s}
 .oo-veh-inp:focus{border-color:#2ABFAA;background:rgba(42,191,170,.06);color:#fff}
-/* Edit panel override to use dark */
-#pw-ep{background:#282c2e}
-.pw-ep-ttl{color:#fff!important}.pw-ep-ttl:focus{background:rgba(255,255,255,.06)!important}
-.pw-ep-sel{background:rgba(255,255,255,.06)!important;border-color:#3a3d40!important;color:#ddd!important}
-.pw-ep-sel:focus{border-color:#2ABFAA!important}
-.pw-ep-lbl{color:#888!important}
-.pw-ep-desc{background:rgba(255,255,255,.05)!important;border-color:#3a3d40!important;color:#ddd!important}
-.pw-ep-desc:focus{border-color:#2ABFAA!important;background:rgba(255,255,255,.08)!important}
-.pw-ep-tag-in{background:rgba(255,255,255,.06)!important;border-color:#3a3d40!important;color:#ddd!important}
-.pw-ep-tag-in:focus{border-color:#2ABFAA!important}
-.pw-ep-title-sec{border-bottom-color:#3a3d40!important}
-.pw-ep-tags-sec{border-top-color:#3a3d40!important}
-.pw-ep-foot{border-top-color:#3a3d40!important;background:#1e2124!important}
-.pw-det-tag{background:rgba(255,255,255,.08)!important;color:#bbb!important}
-.pw-ep-pri-row .pw-pri{border:1px solid rgba(255,255,255,.1)!important}
-#pw-ep .pw-ep-id{color:#666}
-.pw-pipeline{background:#111315!important}
+/* edit panel stays light — dark overrides removed */
 
 .pw-note-ta{width:100%;min-height:90px;border:1.5px solid #2ABFAA;border-radius:7px;padding:11px 12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:none;outline:none;box-sizing:border-box;line-height:1.55}
 
@@ -11142,7 +11126,7 @@ function _renderDet(){
   avHtml+='<div class="oo-av-add" title="Add assignee" onclick="pwDetToggleAssignPicker()">+</div>';
 
   // ── Tags ──────────────────────────────────────────────────
-  var tagHtml=(t.tags||[]).map(function(tg){var ts=_ts?_ts(tg):{bg:'#333',color:'#aaa'};return'<span class="oo-tag-chip">'+_esc(tg)+'</span>';}).join('');
+  var tagHtml=(t.tags||[]).map(function(tg){var ts={bg:'rgba(255,255,255,.06)',color:'#bbb'};return'<span class="oo-tag-chip">'+_esc(tg)+'</span>';}).join('');
   tagHtml+='<button class="oo-tag-add" onclick="pwDetAddTagInput()" id="oo-tag-add-btn">+ Add tag</button>';
 
   // ── Priority options ──────────────────────────────────────
