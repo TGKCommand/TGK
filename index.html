@@ -773,6 +773,54 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .pw-tag-in{padding:5px 9px;border:1.5px solid #E4E7EC;border-radius:5px;font-size:12px;font-family:var(--font);outline:none;width:100%;box-sizing:border-box;color:#111827}
 .pw-tag-in:focus{border-color:#2ABFAA}
 /* Note overlay */
+
+/* ── CARD EDIT PANEL ───────────────────────────────────── */
+#pw-ep-ov{position:absolute;inset:0;z-index:150;display:none;pointer-events:none}
+#pw-ep-ov.open{display:block;pointer-events:all}
+#pw-ep-dim{position:absolute;inset:0;background:rgba(9,30,66,.3);opacity:0;transition:opacity .22s;pointer-events:none}
+#pw-ep-ov.open #pw-ep-dim{opacity:1;pointer-events:all}
+#pw-ep{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:100%;background:#fff;box-shadow:-6px 0 32px rgba(9,30,66,.18);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);z-index:10}
+#pw-ep-ov.open #pw-ep{transform:translateX(0)}
+.pw-ep-hdr{background:#1e2022;border-bottom:2px solid #2ABFAA;padding:0 16px;height:52px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.pw-ep-back{background:none;border:none;cursor:pointer;color:#2ABFAA;font-size:20px;padding:2px 4px;line-height:1;flex-shrink:0;transition:.12s;border-radius:4px}
+.pw-ep-back:hover{background:rgba(42,191,170,.12)}
+.pw-ep-id{font-size:10px;font-weight:700;color:#555;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.pw-ep-del{background:none;border:none;cursor:pointer;font-size:13px;color:#666;padding:4px 8px;border-radius:5px;font-family:var(--font);transition:.12s;margin-left:auto;flex-shrink:0}
+.pw-ep-del:hover{background:rgba(201,55,44,.1);color:#f87171}
+.pw-ep-body{flex:1;overflow-y:auto;padding:0}
+/* Title section */
+.pw-ep-title-section{padding:18px 18px 14px;border-bottom:1px solid #F0F2F5}
+.pw-ep-ttl{width:100%;font-size:18px;font-weight:700;color:#111827;border:none;outline:none;font-family:var(--font);background:transparent;padding:0;line-height:1.3;resize:none;overflow:hidden}
+.pw-ep-ttl:focus{background:#F8F9FB;border-radius:6px;padding:6px 9px;font-size:16px}
+/* Fields grid */
+.pw-ep-fields{padding:14px 18px 0}
+.pw-ep-field{margin-bottom:12px}
+.pw-ep-lbl{font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;display:block}
+.pw-ep-sel{width:100%;padding:8px 10px;border:1.5px solid #E4E7EC;border-radius:7px;font-size:13px;font-family:var(--font);color:#111827;outline:none;background:#fff;cursor:pointer;box-sizing:border-box;transition:border-color .12s}
+.pw-ep-sel:focus{border-color:#2ABFAA}
+.pw-ep-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pw-ep-prog-row{display:flex;align-items:center;gap:10px}
+.pw-ep-prog-val{font-size:13px;font-weight:700;color:#374151;min-width:34px;text-align:right;flex-shrink:0}
+/* Tags section */
+.pw-ep-tags-section{padding:0 18px 14px}
+.pw-ep-tag-pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
+.pw-ep-tag-add{display:flex;gap:6px}
+.pw-ep-tag-in{flex:1;padding:7px 10px;border:1.5px solid #E4E7EC;border-radius:7px;font-size:13px;font-family:var(--font);outline:none;color:#111827;min-width:0;transition:border-color .12s}
+.pw-ep-tag-in:focus{border-color:#2ABFAA}
+.pw-ep-tag-btn{padding:7px 12px;border:none;border-radius:7px;background:#2ABFAA;color:#fff;cursor:pointer;font-size:15px;font-weight:700;font-family:var(--font);flex-shrink:0;line-height:1;transition:.12s}
+.pw-ep-tag-btn:hover{background:#1a8f7d}
+/* Description */
+.pw-ep-desc-section{padding:0 18px 16px;border-top:1px solid #F0F2F5;padding-top:14px}
+.pw-ep-desc{width:100%;min-height:100px;border:1.5px solid #E4E7EC;border-radius:7px;padding:10px 12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:vertical;outline:none;box-sizing:border-box;line-height:1.6;transition:border-color .12s}
+.pw-ep-desc:focus{border-color:#2ABFAA}
+/* Footer */
+.pw-ep-foot{border-top:1px solid #E4E7EC;padding:12px 18px;display:flex;gap:8px;flex-shrink:0;background:#FAFBFC}
+.pw-ep-foot-full{padding:7px 14px;border:1.5px solid #E4E7EC;border-radius:7px;background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;color:#2ABFAA;border-color:#2ABFAA;font-family:var(--font);flex-shrink:0;transition:.12s}
+.pw-ep-foot-full:hover{background:rgba(42,191,170,.06)}
+.pw-ep-foot-save{flex:1;padding:8px 0;border:none;border-radius:7px;background:#2ABFAA;color:#fff;cursor:pointer;font-size:13.5px;font-weight:700;font-family:var(--font);transition:.15s}
+.pw-ep-foot-save:hover{background:#1a8f7d}
+/* Overdue badge on deadline field */
+.pw-ep-overdue{color:#C9372C}
 .pw-note-box{background:#fff;border-radius:12px;padding:24px;width:440px;max-width:calc(100% - 24px);box-shadow:0 20px 60px rgba(9,30,66,.28)}
 .pw-note-ta{width:100%;min-height:100px;border:1.5px solid #2ABFAA;border-radius:7px;padding:12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:none;outline:none;box-sizing:border-box;line-height:1.55}
 /* Team tab */
@@ -10534,6 +10582,167 @@ window.addEventListener('message', function(e) {
   }
 });
 
+/* ── CARD EDIT PANEL ─────────────────────────────────────────────── */
+var _epTags=[], _epId=null;
+
+window.pwEditCard=function(taskId){
+  var S=_gs(),task=S.tasks[taskId];if(!task)return;
+  _epId=taskId;_epTags=(task.tags||[]).slice();
+
+  // Find col
+  var curColId='';
+  S.cols.forEach(function(c){if(c.tasks.indexOf(taskId)>=0)curColId=c.id;});
+  var p=PRI[task.priority]||PRI.medium;
+
+  // Header
+  var idEl=document.getElementById('pw-ep-id');
+  if(idEl)idEl.textContent='TASK #'+taskId.toUpperCase();
+
+  // Priority badge in title area
+  var priRow=document.getElementById('pw-ep-pri-row');
+  if(priRow)priRow.innerHTML='<span class="pw-pri" style="background:'+p.bg+';color:'+p.color+'">'+p.label+'</span>'
+    +'<span style="font-size:11px;color:#97A0AF">'+_esc((S.cols.find(function(c){return c.id===curColId;})||{}).name||'')+'</span>';
+
+  // Title
+  var ttlEl=document.getElementById('pw-ep-ttl');
+  if(ttlEl){ttlEl.value=task.title;ttlEl.style.height='auto';setTimeout(function(){ttlEl.style.height=ttlEl.scrollHeight+'px';},0);}
+
+  // Stage
+  var colSel=document.getElementById('pw-ep-col');
+  if(colSel)colSel.innerHTML=S.cols.map(function(c){return'<option value="'+c.id+'"'+(c.id===curColId?' selected':'')+'>'+_esc(c.name)+'</option>';}).join('');
+
+  // Priority select
+  var priSel=document.getElementById('pw-ep-pri');
+  if(priSel){
+    priSel.innerHTML=Object.keys(PRI).map(function(k){return'<option value="'+k+'"'+(k===task.priority?' selected':'')+'>'+PRI[k].label+'</option>';}).join('');
+    priSel.onchange=function(){
+      var pv=PRI[this.value]||PRI.medium;
+      var pr=document.getElementById('pw-ep-pri-row');
+      if(pr){var badge=pr.querySelector('.pw-pri');if(badge){badge.textContent=pv.label;badge.style.background=pv.bg;badge.style.color=pv.color;}}
+    };
+  }
+
+  // Assignee
+  var asnSel=document.getElementById('pw-ep-asgn');
+  if(asnSel)asnSel.innerHTML='<option value="">Unassigned</option>'+_team.map(function(m){return'<option value="'+m.id+'"'+(m.id===task.assignee?' selected':'')+'>'+_esc(m.name)+'</option>';}).join('');
+
+  // Deadline
+  var dueEl=document.getElementById('pw-ep-due');
+  if(dueEl)dueEl.value=task.deadline||'';
+
+  // Progress
+  var progEl=document.getElementById('pw-ep-prog'),pvEl=document.getElementById('pw-ep-pv');
+  if(progEl)progEl.value=task.progress||0;
+  if(pvEl)pvEl.textContent=(task.progress||0)+'%';
+
+  // Tags
+  _renderEPTags();
+
+  // Description
+  var descEl=document.getElementById('pw-ep-desc');
+  if(descEl)descEl.value=task.description||'';
+
+  // Open
+  var ov=document.getElementById('pw-ep-ov');
+  if(ov)ov.classList.add('open');
+
+  // Focus title
+  setTimeout(function(){if(ttlEl){ttlEl.focus();var len=ttlEl.value.length;ttlEl.setSelectionRange(len,len);}},80);
+};
+
+function _renderEPTags(){
+  var row=document.getElementById('pw-ep-tags');if(!row)return;
+  row.innerHTML=_epTags.map(function(t,i){return'<span class="pw-det-tag">'+_esc(t)+'<button class="pw-det-tag-rm" onclick="_epTags.splice('+i+',1);_renderEPTags()">&#xd7;</button></span>';}).join('');
+}
+
+window.pwEPAddTag=function(){
+  var inp=document.getElementById('pw-ep-tin');if(!inp)return;
+  var tag=inp.value.trim();
+  if(!tag||_epTags.indexOf(tag)>=0){inp.value='';return;}
+  _epTags.push(tag);inp.value='';_renderEPTags();
+};
+
+window.pwCloseEP=function(){
+  var ov=document.getElementById('pw-ep-ov');if(ov)ov.classList.remove('open');
+  _epId=null;_epTags=[];
+};
+
+window.pwDelFromEP=function(){
+  if(!_epId||!confirm('Delete this task permanently?'))return;
+  pwCloseEP();
+  pwDelCard(_epId);
+};
+
+window.pwEPFullDetails=function(){
+  if(!_epId)return;
+  pwCloseEP();
+  pwOpenTask(_epId);
+};
+
+window.pwSaveEP=function(){
+  if(!_epId)return;
+  var S=_gs(),task=S.tasks[_epId];if(!task)return;
+
+  // Title
+  var ttl=((document.getElementById('pw-ep-ttl')||{}).value||'').trim();
+  if(ttl&&ttl!==task.title){
+    task.logs=task.logs||[];
+    task.logs.push({id:_uid(),type:'action',text:'Title: "'+task.title+'" \u2192 "'+ttl+'"',user:'',ts:_now()});
+    task.title=ttl;
+  }
+
+  // Stage
+  var newCol=(document.getElementById('pw-ep-col')||{}).value||'';
+  var oldCol='';S.cols.forEach(function(c){if(c.tasks.indexOf(_epId)>=0)oldCol=c.id;});
+  if(newCol&&newCol!==oldCol){
+    S.cols.forEach(function(c){c.tasks=c.tasks.filter(function(id){return id!==_epId;});});
+    var nc=S.cols.find(function(c){return c.id===newCol;});
+    if(nc)nc.tasks.push(_epId);
+    var ncName=(S.cols.find(function(c){return c.id===newCol;})||{}).name||'';
+    task.logs=task.logs||[];
+    task.logs.push({id:_uid(),type:'action',text:'Moved to '+ncName,user:'',ts:_now()});
+  }
+
+  // Priority
+  var newPri=(document.getElementById('pw-ep-pri')||{}).value||task.priority;
+  if(newPri!==task.priority){
+    task.logs=task.logs||[];
+    task.logs.push({id:_uid(),type:'action',text:'Priority: '+(PRI[task.priority]||{}).label+' \u2192 '+(PRI[newPri]||{}).label,user:'',ts:_now()});
+    task.priority=newPri;
+  }
+
+  // Assignee
+  var newAsgn=(document.getElementById('pw-ep-asgn')||{}).value;
+  if(newAsgn!==undefined&&newAsgn!==task.assignee){
+    var m=_mem(newAsgn);
+    task.logs=task.logs||[];
+    task.logs.push({id:_uid(),type:'action',text:'Assigned to '+(m?m.name:'Unassigned'),user:'',ts:_now()});
+    task.assignee=newAsgn;
+  }
+
+  // Deadline
+  var newDue=(document.getElementById('pw-ep-due')||{}).value;
+  if(newDue!==undefined)task.deadline=newDue;
+
+  // Progress
+  var newProg=parseInt((document.getElementById('pw-ep-prog')||{}).value||'0');
+  task.progress=newProg;
+
+  // Tags + description
+  task.tags=_epTags.slice();
+  task.description=((document.getElementById('pw-ep-desc')||{}).value||'');
+
+  _save();
+
+  // Flash save button
+  var btn=document.getElementById('pw-ep-save');
+  if(btn){var orig=btn.textContent;btn.textContent='\u2713 Saved';btn.style.background='#00875A';
+    setTimeout(function(){btn.textContent=orig;btn.style.background='';},1400);}
+
+  pwRenderBoard();
+};
+
+
 /* ═══ PROJECT WORKFLOW v2 ═══════════════════════════════════════════
    TGK Motorsport Command Center
    ═══════════════════════════════════════════════════════════════════ */
@@ -10729,13 +10938,13 @@ function _mkCard(task,colId){
   var fc=(task.files||[]).length;
   var counts=(nc+fc>0)?'<div class="pw-card-counts">'+(nc>0?'<span>💬 '+nc+'</span>':'')+(fc>0?'<span>📎 '+fc+'</span>':'')+'</div>':'';
   el.innerHTML='<div class="pw-card-toprow"><span class="pw-pri" style="background:'+p.bg+';color:'+p.color+'">'+p.label+'</span>'+tags
-    +'<button class="pw-card-del" onclick="event.stopPropagation();pwDelCard(\''+task.id+'\')" title="Delete">✕</button></div>'
-    +'<p class="pw-card-title" ondblclick="event.stopPropagation();pwRenameCard(\''+task.id+'\',this)">'+_esc(task.title)+'</p>'
+    +'<button class="pw-card-del" onclick="event.stopPropagation();pwDelCard(\''+task.id+'\')" title="Delete task">✕</button></div>'
+    +'<p class="pw-card-title">'+_esc(task.title)+'</p>'
     +prog
     +'<div class="pw-card-footer">'+av+'<span style="flex:1"></span>'+dl+counts+'</div>';
   el.addEventListener('dragstart',function(e){_dragId=task.id;this.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
   el.addEventListener('dragend',function(){this.classList.remove('dragging');document.querySelectorAll('.pw-col-body.dov').forEach(function(b){b.classList.remove('dov');});});
-  el.addEventListener('click',function(){pwOpenTask(task.id);});
+  el.addEventListener('click',function(e){if(!e.target.classList.contains('pw-card-del'))pwEditCard(task.id);});
   return el;
 }
 
@@ -11096,7 +11305,68 @@ window.pwDelTask=function(){
         <button class="pw-btn-primary" onclick="pwSubmitNote()">Post Note</button>
       </div>
     </div>
+
+  <!-- CARD EDIT PANEL -->
+  <div id="pw-ep-ov">
+    <div id="pw-ep-dim" onclick="pwCloseEP()"></div>
+    <div id="pw-ep">
+      <div class="pw-ep-hdr">
+        <button class="pw-ep-back" onclick="pwCloseEP()" title="Close">&#x2715;</button>
+        <span class="pw-ep-id" id="pw-ep-id"></span>
+        <button class="pw-ep-del" onclick="pwDelFromEP()" title="Delete task">&#128465; Delete</button>
+      </div>
+      <div class="pw-ep-body">
+        <div class="pw-ep-title-section">
+          <div id="pw-ep-pri-row" style="margin-bottom:8px;display:flex;align-items:center;gap:8px"></div>
+          <textarea class="pw-ep-ttl" id="pw-ep-ttl" rows="2" placeholder="Task title&hellip;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+        </div>
+        <div class="pw-ep-fields">
+          <div class="pw-ep-2col">
+            <div class="pw-ep-field">
+              <label class="pw-ep-lbl">Stage</label>
+              <select class="pw-ep-sel" id="pw-ep-col"></select>
+            </div>
+            <div class="pw-ep-field">
+              <label class="pw-ep-lbl">Priority</label>
+              <select class="pw-ep-sel" id="pw-ep-pri"></select>
+            </div>
+          </div>
+          <div class="pw-ep-2col">
+            <div class="pw-ep-field">
+              <label class="pw-ep-lbl">Assignee</label>
+              <select class="pw-ep-sel" id="pw-ep-asgn"></select>
+            </div>
+            <div class="pw-ep-field">
+              <label class="pw-ep-lbl">Deadline</label>
+              <input type="date" class="pw-ep-sel" id="pw-ep-due">
+            </div>
+          </div>
+          <div class="pw-ep-field">
+            <label class="pw-ep-lbl">Progress &nbsp;<span id="pw-ep-pv" style="font-weight:700;color:#374151;font-size:11px;text-transform:none;letter-spacing:0"></span></label>
+            <input type="range" min="0" max="100" id="pw-ep-prog" class="pw-prog-slider" style="width:100%" oninput="document.getElementById('pw-ep-pv').textContent=this.value+'%'">
+          </div>
+        </div>
+        <div class="pw-ep-tags-section">
+          <label class="pw-ep-lbl">Tags</label>
+          <div class="pw-ep-tag-pills" id="pw-ep-tags"></div>
+          <div class="pw-ep-tag-add">
+            <input class="pw-ep-tag-in" id="pw-ep-tin" placeholder="Add tag&hellip;" onkeydown="if(event.key==='Enter'){event.preventDefault();pwEPAddTag()}">
+            <button class="pw-ep-tag-btn" onclick="pwEPAddTag()">+</button>
+          </div>
+        </div>
+        <div class="pw-ep-desc-section">
+          <label class="pw-ep-lbl">Description</label>
+          <textarea class="pw-ep-desc" id="pw-ep-desc" placeholder="Add a description&hellip;"></textarea>
+        </div>
+      </div>
+      <div class="pw-ep-foot">
+        <button class="pw-ep-foot-full" onclick="pwEPFullDetails()">Full Details &#x2197;</button>
+        <button class="pw-ep-foot-save" id="pw-ep-save" onclick="pwSaveEP()">Save Changes</button>
+      </div>
+    </div>
   </div>
+
+</div>
 </div>
 
 <div id="filter-overlay" onclick="closeFilter()"></div>
