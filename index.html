@@ -11611,8 +11611,8 @@ function _renderChatter(){
       // Edit/delete buttons
       var canEdit=log.type==='note'||log.type==='message';
       h+='<div class="oo-entry-acts">';
-      if(canEdit)h+='<button class="oo-entry-btn" onclick="pwLogEdit(''+log.id+'')" title="Edit">&#9998;</button>';
-      h+='<button class="oo-entry-btn del" onclick="pwLogDel(''+log.id+'')" title="Delete">&#128465;</button>';
+      if(canEdit)h+='<button class="oo-entry-btn" data-lid="'+log.id+'" onclick="pwLogEdit(this.dataset.lid)" title="Edit">&#9998;</button>';
+      h+='<button class="oo-entry-btn del" data-lid="'+log.id+'" onclick="pwLogDel(this.dataset.lid)" title="Delete">&#128465;</button>';
       h+='</div>';
       h+='</div></div>';
     });
