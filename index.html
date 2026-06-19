@@ -821,6 +821,60 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .pw-ep-foot-save:hover{background:#1a8f7d}
 /* Overdue badge on deadline field */
 .pw-ep-overdue{color:#C9372C}
+
+/* ── STAGE PIPELINE ──────────────────────────────────────── */
+.pw-pipeline{display:flex;align-items:stretch;background:#0e1012;border-bottom:1px solid #252729;padding:0;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch}
+.pw-pipeline::-webkit-scrollbar{height:3px}.pw-pipeline::-webkit-scrollbar-track{background:#0e1012}.pw-pipeline::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+.pw-pipe-step{display:flex;align-items:center;gap:0;flex-shrink:0;position:relative}
+.pw-pipe-btn{display:flex;align-items:center;gap:8px;padding:12px 18px;background:none;border:none;cursor:pointer;font-family:var(--font);position:relative;transition:.15s;white-space:nowrap;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%,12px 50%)}
+.pw-pipe-btn:first-child{clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%)}
+.pw-pipe-step:first-child .pw-pipe-btn{padding-left:22px}
+.pw-pipe-btn.done{background:rgba(0,135,90,.13)}
+.pw-pipe-btn.active{background:var(--pc-bg,rgba(42,191,170,.18))}
+.pw-pipe-btn:not(.active):not(.done):hover{background:rgba(255,255,255,.05)}
+.pw-pipe-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#444;transition:.15s}
+.pw-pipe-btn.done .pw-pipe-dot,.pw-pipe-btn.active .pw-pipe-dot{background:var(--pc,#2ABFAA)}
+.pw-pipe-label{font-size:11.5px;font-weight:600;color:#888;transition:.15s;letter-spacing:.02em}
+.pw-pipe-btn.active .pw-pipe-label{color:var(--pc,#2ABFAA)}
+.pw-pipe-btn.done .pw-pipe-label{color:#555}
+.pw-pipe-responsible{width:20px;height:20px;border-radius:50%;font-size:8px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid #1e2022}
+.pw-pipe-btn.active .pw-pipe-responsible{border-color:rgba(42,191,170,.3)}
+.pw-pipe-check{font-size:11px;color:#00875A;flex-shrink:0}
+/* Column gear button */
+.pw-col-cfg{background:none;border:none;cursor:pointer;font-size:13px;color:#C1C7D0;padding:2px 4px;border-radius:4px;opacity:0;transition:.12s;flex-shrink:0;line-height:1}
+.pw-col-hdr:hover .pw-col-cfg{opacity:1}
+.pw-col-cfg:hover{color:#2ABFAA;background:rgba(42,191,170,.08)}
+/* Responsible avatar on column header */
+.pw-col-resp{width:20px;height:20px;border-radius:50%;font-size:8px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid #fff}
+/* Stage config popup */
+#pw-scfg-popup{position:absolute;background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(9,30,66,.2);border:1px solid #E4E7EC;z-index:400;padding:16px;width:240px;display:none}
+#pw-scfg-popup.open{display:block}
+.pw-scfg-title{font-size:12px;font-weight:700;color:#111827;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.pw-scfg-close{background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:16px;padding:0}
+/* Notification bell */
+.pw-bell-wrap{position:relative;flex-shrink:0}
+.pw-bell-btn{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:.15s}
+.pw-bell-btn:hover{background:rgba(255,255,255,.12)}
+.pw-bell-badge{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:99px;background:#E07B28;color:#fff;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 4px;border:2px solid #1e2022;pointer-events:none}
+.pw-bell-badge.show{display:flex}
+/* Notification dropdown */
+#pw-notif-dd{position:absolute;top:calc(100% + 8px);right:0;width:320px;background:#fff;border:1px solid #E4E7EC;border-radius:10px;box-shadow:0 12px 40px rgba(9,30,66,.16);z-index:400;display:none;max-height:400px;overflow:hidden;flex-direction:column}
+#pw-notif-dd.open{display:flex}
+.pw-notif-hdr{padding:12px 16px 10px;border-bottom:1px solid #F0F2F5;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pw-notif-title{font-size:13px;font-weight:700;color:#111827}
+.pw-notif-clear{font-size:11px;color:#2ABFAA;background:none;border:none;cursor:pointer;font-family:var(--font)}
+.pw-notif-list{overflow-y:auto;flex:1}
+.pw-notif-item{display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #F8F9FB;cursor:pointer;transition:background .1s}
+.pw-notif-item:hover{background:#F8F9FB}
+.pw-notif-item.unread{background:rgba(42,191,170,.04)}
+.pw-notif-item.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#2ABFAA}
+.pw-notif-item{position:relative}
+.pw-notif-ic{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:#F0F2F5}
+.pw-notif-body{flex:1;min-width:0}
+.pw-notif-msg{font-size:12.5px;color:#111827;line-height:1.4;margin-bottom:2px}
+.pw-notif-msg strong{font-weight:700}
+.pw-notif-time{font-size:10.5px;color:#9CA3AF}
+.pw-notif-empty{padding:24px 16px;text-align:center;color:#9CA3AF;font-size:13px;font-style:italic}
 .pw-note-box{background:#fff;border-radius:12px;padding:24px;width:440px;max-width:calc(100% - 24px);box-shadow:0 20px 60px rgba(9,30,66,.28)}
 .pw-note-ta{width:100%;min-height:100px;border:1.5px solid #2ABFAA;border-radius:7px;padding:12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:none;outline:none;box-sizing:border-box;line-height:1.55}
 /* Team tab */
@@ -10642,6 +10696,9 @@ window.pwEditCard=function(taskId){
   var descEl=document.getElementById('pw-ep-desc');
   if(descEl)descEl.value=task.description||'';
 
+  // Render pipeline
+  _renderPipeline(taskId,curColId);
+
   // Open
   var ov=document.getElementById('pw-ep-ov');
   if(ov)ov.classList.add('open');
@@ -10861,6 +10918,11 @@ window.pwInit=function(){
   // Load team then render
   _loadTeam().then(function(){pwRenderBoard();}).catch(function(){pwRenderBoard();});
 
+  // Update notification bell
+  _updateBell();
+  // Sync remote notifications
+  setTimeout(_syncRemoteNotifs, 1200);
+
   // Sync from Supabase
   if(typeof sbGet==='function'){
     sbGet('tgk_projects_data').then(function(r){
@@ -10907,9 +10969,13 @@ function _mkCol(col,tasks){
   el.className='pw-col';
   el.style.setProperty('--cc',col.color);
   el.dataset.colId=col.id;
+  var resp=_mem(col.responsible||'');
+  var respHtml=resp?'<div class="pw-col-resp" style="background:'+resp.color+'" title="Responsible: '+_esc(resp.name)+'">'+_esc(resp.initials)+'</div>':'';
   el.innerHTML='<div class="pw-col-hdr" style="border-color:'+col.color+'"><div class="pw-col-dot"></div>'
     +'<span class="pw-col-name">'+_esc(col.name)+'</span>'
+    +(respHtml?respHtml:'')
     +'<span class="pw-col-cnt">'+tasks.length+'</span>'
+    +'<button class="pw-col-cfg" onclick="event.stopPropagation();pwOpenStgCfg(\''+col.id+'\')" title="Stage settings">&#9881;</button>'
     +'<button class="pw-col-add" onclick="pwOpenModal(\''+col.id+'\')" title="Add task">+</button>'
     +'</div><div class="pw-col-body" data-col-id="'+col.id+'"></div>';
   var body=el.querySelector('.pw-col-body');
@@ -11219,6 +11285,264 @@ window.pwDelTask=function(){
   _save();pwCloseTask();pwRenderBoard();
 };
 
+/* ── STAGE PIPELINE ────────────────────────────────────────── */
+function _renderPipeline(taskId,curColId){
+  var S=_gs();
+  var pl=document.getElementById('pw-ep-pipeline');
+  if(!pl)return;
+  var curIdx=S.cols.findIndex(function(c){return c.id===curColId;});
+  var h='';
+  S.cols.forEach(function(col,i){
+    var isDone=i<curIdx;
+    var isActive=col.id===curColId;
+    var resp=_mem(col.responsible||'');
+    // darken bg slightly for done, highlight for active
+    var pc=col.color;
+    var pcBg=pc+'22';
+    h+='<div class="pw-pipe-step">'
+      +'<button class="pw-pipe-btn'+(isActive?' active':(isDone?' done':''))+'" style="--pc:'+pc+';--pc-bg:'+pcBg+'" onclick="pwPipeMove(\''+taskId+'\',\''+col.id+'\')" title="Move to '+_esc(col.name)+'">'
+      +'<div class="pw-pipe-dot"></div>'
+      +'<span class="pw-pipe-label">'+_esc(col.name)+'</span>'
+      +(resp?'<div class="pw-pipe-responsible" style="background:'+resp.color+'" title="'+_esc(resp.name)+'">'+_esc(resp.initials)+'</div>':'')
+      +(isDone?'<span class="pw-pipe-check">&#10003;</span>':'')
+      +'</button>'
+      +'</div>';
+  });
+  pl.innerHTML=h;
+}
+
+window.pwPipeMove=function(taskId,toColId){
+  var S=_gs();
+  var fromColId='';
+  S.cols.forEach(function(c){if(c.tasks.indexOf(taskId)>=0)fromColId=c.id;});
+  if(fromColId===toColId)return;
+
+  var fromName=(S.cols.find(function(c){return c.id===fromColId;})||{}).name||'';
+  var toCol=S.cols.find(function(c){return c.id===toColId;});
+  if(!toCol)return;
+  var toName=toCol.name;
+
+  // Move the task
+  S.cols.forEach(function(c){c.tasks=c.tasks.filter(function(id){return id!==taskId;});});
+  toCol.tasks.push(taskId);
+
+  // Log + notify
+  var task=S.tasks[taskId];
+  if(task){
+    task.logs=task.logs||[];
+    task.logs.push({id:_uid(),type:'action',text:'Stage: "'+fromName+'" \u2192 "'+toName+'"',user:'',ts:_now()});
+    _createNotification(taskId,task.title,toColId,toName,fromName);
+    // If stage has responsible, auto-assign
+    if(toCol.responsible&&!task.assignee){
+      task.assignee=toCol.responsible;
+      task.logs.push({id:_uid(),type:'action',text:'Auto-assigned to '+((_mem(toCol.responsible)||{}).name||''),user:'',ts:_now()});
+    }
+    // Update _epId if open
+    if(_epId===taskId){
+      _sd=JSON.parse(JSON.stringify(task));
+    }
+  }
+  _save();
+  _renderPipeline(taskId,toColId);
+  // Update the priority row to show new stage
+  var pr=document.getElementById('pw-ep-pri-row');
+  if(pr){
+    var stageSpan=pr.querySelector('span:not(.pw-pri)');
+    if(stageSpan)stageSpan.textContent=toName;
+  }
+  // Update stage select in fields
+  var colSel=document.getElementById('pw-ep-col');
+  if(colSel){Array.from(colSel.options).forEach(function(o){o.selected=(o.value===toColId);});}
+  pwRenderBoard();
+};
+
+/* ── STAGE CONFIGURATION ───────────────────────────────── */
+var _cfgColId=null;
+var _STAGE_COLORS=['#6B778C','#2ABFAA','#E07B28','#00875A','#6554C0','#E34935','#00B8D9','#FF991F'];
+
+window.pwOpenStgCfg=function(colId){
+  _cfgColId=colId;
+  var S=_gs();
+  var col=S.cols.find(function(c){return c.id===colId;});
+  if(!col)return;
+
+  document.getElementById('pw-scfg-name').textContent='\u2699\ufe0f '+col.name;
+
+  // User select
+  var uSel=document.getElementById('pw-scfg-user');
+  if(uSel)uSel.innerHTML='<option value="">No responsible person</option>'+_team.map(function(m){return'<option value="'+m.id+'"'+(m.id===(col.responsible||'')?' selected':'')+'>'+_esc(m.name)+'</option>';}).join('');
+
+  // Color swatches
+  var cc=document.getElementById('pw-scfg-colors');
+  if(cc)cc.innerHTML=_STAGE_COLORS.map(function(c2){return'<div onclick="pwScfgColor(\''+c2+'\')" style="width:22px;height:22px;border-radius:50%;background:'+c2+';cursor:pointer;border:2.5px solid '+(c2===col.color?'#111':'transparent')+';transition:.12s" title="'+c2+'"></div>';}).join('');
+
+  // Position the popup near the gear icon
+  var popup=document.getElementById('pw-scfg-popup');
+  if(!popup)return;
+  var colEl=document.getElementById('pwcol-'+colId)||document.querySelector('[data-col-id="'+colId+'"]');
+  if(colEl){
+    var r=colEl.getBoundingClientRect();
+    var vr=document.getElementById('view-projects').getBoundingClientRect();
+    popup.style.top=(r.top-vr.top+40)+'px';
+    popup.style.left=Math.min(r.left-vr.left,(vr.width-250))+'px';
+  }
+  popup.classList.add('open');
+
+  // Close on outside click
+  setTimeout(function(){
+    document.addEventListener('click',function _outsideScfg(e){
+      if(!popup.contains(e.target)&&!e.target.closest('.pw-col-cfg')){
+        popup.classList.remove('open');
+        document.removeEventListener('click',_outsideScfg);
+      }
+    });
+  },10);
+};
+
+window.pwScfgColor=function(color){
+  var cc=document.getElementById('pw-scfg-colors');
+  if(cc){cc.querySelectorAll('div').forEach(function(d){d.style.border='2.5px solid '+(d.style.background===color?'#111':'transparent');});}
+  var S=_gs();
+  var col=S.cols.find(function(c){return c.id===_cfgColId;});
+  if(col)col._pendingColor=color;
+};
+
+window.pwSaveStgCfg=function(){
+  var S=_gs();
+  var col=S.cols.find(function(c){return c.id===_cfgColId;});
+  if(!col)return;
+  var uSel=document.getElementById('pw-scfg-user');
+  if(uSel)col.responsible=uSel.value||'';
+  if(col._pendingColor){col.color=col._pendingColor;delete col._pendingColor;}
+  _save();
+  document.getElementById('pw-scfg-popup').classList.remove('open');
+  pwRenderBoard();
+};
+
+/* ── NOTIFICATION SYSTEM ──────────────────────────────── */
+var PW_NOTIF_KEY='tgk_pw_notifs';
+
+function _getNotifsAll(){try{return JSON.parse(localStorage.getItem(PW_NOTIF_KEY)||'[]');}catch(e){return[];}}
+function _saveNotifs(n){localStorage.setItem(PW_NOTIF_KEY,JSON.stringify(n));if(typeof sbSet==='function')sbSet('tgk_notifications',n).catch(function(){});}
+
+function _getMyId(){
+  var sess=_curUser();
+  if(!sess.email)return '';
+  var m=_team.find(function(mm){return mm.email===sess.email;});
+  return m?m.id:'';
+}
+
+function _createNotification(taskId,taskTitle,toColId,toColName,fromColName){
+  var S=_gs();
+  var col=S.cols.find(function(c){return c.id===toColId;});
+  if(!col)return;
+  var targets=[];
+  // Notify the stage's responsible person
+  if(col.responsible)targets.push(col.responsible);
+  // Also notify task assignee if different
+  var task=S.tasks[taskId];
+  if(task&&task.assignee&&task.assignee!==col.responsible)targets.push(task.assignee);
+  if(!targets.length)return;
+
+  var notifs=_getNotifsAll();
+  targets.forEach(function(uid){
+    notifs.unshift({id:_uid(),type:'stage_change',taskId:taskId,taskTitle:taskTitle,toStage:toColName,fromStage:fromColName||'',forUser:uid,read:false,ts:_now()});
+  });
+  if(notifs.length>100)notifs=notifs.slice(0,100);
+  _saveNotifs(notifs);
+
+  // Browser notification if it's for me
+  var myId=_getMyId();
+  if(myId&&targets.indexOf(myId)>=0){
+    _tryBrowserNotif('\uD83D\uDCCB Task moved to '+toColName,'"'+taskTitle+'" is now in '+toColName);
+  }
+  _updateBell();
+}
+
+function _tryBrowserNotif(title,body){
+  if(!('Notification'in window))return;
+  if(Notification.permission==='granted'){new Notification(title,{body:body,icon:''});}
+  else if(Notification.permission!=='denied'){Notification.requestPermission().then(function(p){if(p==='granted')new Notification(title,{body:body});});}
+}
+
+function _updateBell(){
+  var notifs=_getNotifsAll();
+  var myId=_getMyId();
+  var unread=myId?notifs.filter(function(n){return n.forUser===myId&&!n.read;}).length:0;
+  var badge=document.getElementById('pw-bell-badge');
+  if(badge){badge.textContent=unread||'';badge.className='pw-bell-badge'+(unread?' show':'');}
+}
+
+window.pwToggleNotifs=function(){
+  var dd=document.getElementById('pw-notif-dd');if(!dd)return;
+  var isOpen=dd.classList.contains('open');
+  if(isOpen){dd.classList.remove('open');return;}
+  _renderNotifList();
+  dd.classList.add('open');
+  setTimeout(function(){
+    document.addEventListener('click',function _outsideNotif(e){
+      if(!dd.contains(e.target)&&!e.target.closest('.pw-bell-btn')){
+        dd.classList.remove('open');
+        document.removeEventListener('click',_outsideNotif);
+      }
+    });
+  },10);
+};
+
+function _renderNotifList(){
+  var list=document.getElementById('pw-notif-list');if(!list)return;
+  var notifs=_getNotifsAll();
+  var myId=_getMyId();
+  var mine=myId?notifs.filter(function(n){return n.forUser===myId;}):notifs;
+  if(!mine.length){list.innerHTML='<div class="pw-notif-empty">No notifications yet</div>';return;}
+  list.innerHTML=mine.slice(0,20).map(function(n){
+    var ago=_fdt(n.ts);
+    return'<div class="pw-notif-item'+(n.read?'':' unread')+'" onclick="pwNotifClick(\''+n.id+'\',\''+n.taskId+'\')">'
+      +'<div class="pw-notif-ic">📋</div>'
+      +'<div class="pw-notif-body">'
+      +'<div class="pw-notif-msg"><strong>'+_esc(n.taskTitle)+'</strong> moved to <strong>'+_esc(n.toStage)+'</strong>'+(n.fromStage?' from '+_esc(n.fromStage):'')+'</div>'
+      +'<div class="pw-notif-time">'+ago+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+window.pwNotifClick=function(notifId,taskId){
+  // Mark read
+  var notifs=_getNotifsAll();
+  notifs.forEach(function(n){if(n.id===notifId)n.read=true;});
+  _saveNotifs(notifs);
+  _updateBell();
+  // Close dropdown and open the task
+  var dd=document.getElementById('pw-notif-dd');if(dd)dd.classList.remove('open');
+  var S=_gs();
+  if(S.tasks[taskId])pwEditCard(taskId);
+};
+
+window.pwClearNotifs=function(){
+  var notifs=_getNotifsAll();
+  var myId=_getMyId();
+  notifs.forEach(function(n){if(!myId||n.forUser===myId)n.read=true;});
+  _saveNotifs(notifs);
+  _updateBell();
+  _renderNotifList();
+};
+
+// Check for remote notifications on init
+function _syncRemoteNotifs(){
+  if(typeof sbGet!=='function')return;
+  sbGet('tgk_notifications').then(function(remote){
+    if(!Array.isArray(remote)||!remote.length)return;
+    var local=_getNotifsAll();
+    // Merge: keep local reads, add remote that aren't in local
+    var localIds=new Set(local.map(function(n){return n.id;}));
+    remote.forEach(function(n){if(!localIds.has(n.id))local.push(n);});
+    local.sort(function(a,b){return b.ts.localeCompare(a.ts);});
+    if(local.length>100)local=local.slice(0,100);
+    localStorage.setItem(PW_NOTIF_KEY,JSON.stringify(local));
+    _updateBell();
+  }).catch(function(){});
+}
+
 })();
 
 </script>
@@ -11234,6 +11558,17 @@ window.pwDelTask=function(){
       <div id="pw-hdr-stats" style="display:flex;gap:6px"></div>
       <div style="flex:1"></div>
       <input class="pw-hdr-search" id="pw-search" placeholder="Search tasks&hellip;" oninput="pwSearch(this.value)">
+      <div class="pw-bell-wrap" style="position:relative">
+        <button class="pw-bell-btn" id="pw-bell" onclick="pwToggleNotifs()" title="Notifications">🔔</button>
+        <div class="pw-bell-badge" id="pw-bell-badge"></div>
+        <div id="pw-notif-dd">
+          <div class="pw-notif-hdr">
+            <span class="pw-notif-title">Notifications</span>
+            <button class="pw-notif-clear" onclick="pwClearNotifs()">Mark all read</button>
+          </div>
+          <div class="pw-notif-list" id="pw-notif-list"></div>
+        </div>
+      </div>
       <button class="pw-hdr-btn" onclick="pwOpenModal(null)">+ New Task</button>
     </div>
     <div class="pw-kw">
@@ -11306,6 +11641,27 @@ window.pwDelTask=function(){
       </div>
     </div>
 
+  <!-- STAGE CONFIG POPUP -->
+  <div id="pw-scfg-popup">
+    <div class="pw-scfg-title">
+      <span id="pw-scfg-name">Stage Settings</span>
+      <button class="pw-scfg-close" onclick="document.getElementById('pw-scfg-popup').classList.remove('open')">&#x2715;</button>
+    </div>
+    <div class="pw-frow" style="margin-bottom:10px">
+      <label class="pw-flbl">Responsible person</label>
+      <select class="pw-inp" id="pw-scfg-user" style="font-size:13px"></select>
+    </div>
+    <div class="pw-frow" style="margin-bottom:0">
+      <label class="pw-flbl">Stage colour</label>
+      <div id="pw-scfg-colors" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="pw-btn-cancel" style="flex:1;font-size:12px;padding:7px 0" onclick="document.getElementById('pw-scfg-popup').classList.remove('open')">Cancel</button>
+      <button class="pw-btn-primary" style="flex:1;font-size:12px;padding:7px 0" onclick="pwSaveStgCfg()">Save</button>
+    </div>
+  </div>
+
+
   <!-- CARD EDIT PANEL -->
   <div id="pw-ep-ov">
     <div id="pw-ep-dim" onclick="pwCloseEP()"></div>
@@ -11315,6 +11671,8 @@ window.pwDelTask=function(){
         <span class="pw-ep-id" id="pw-ep-id"></span>
         <button class="pw-ep-del" onclick="pwDelFromEP()" title="Delete task">&#128465; Delete</button>
       </div>
+      <!-- Stage pipeline -->
+      <div class="pw-pipeline" id="pw-ep-pipeline"></div>
       <div class="pw-ep-body">
         <div class="pw-ep-title-section">
           <div id="pw-ep-pri-row" style="margin-bottom:8px;display:flex;align-items:center;gap:8px"></div>
