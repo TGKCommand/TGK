@@ -10856,7 +10856,7 @@ function _gs(){
   try{var s=localStorage.getItem(PW_KEY);_st=s?JSON.parse(s):_def();}catch(e){_st=_def();}
   return _st;
 }
-function _save(){
+function _save(){_pushUndo();
   try{localStorage.setItem(PW_KEY,JSON.stringify(_st));}catch(e){}
   if(typeof sbSet==='function'){
     var cp=JSON.parse(JSON.stringify(_st));
@@ -11431,7 +11431,7 @@ function _renderPane(){
         +(act.note?'<div class="act-note">'+_esc(act.note)+'</div>':'')
         +'</div>'
         +'<div class="act-actions">'
-        +(!isDone?'<button class="act-btn done-btn" onclick="pwActDone(\''+act.id+'\')" title="Mark done">&#10003;</button>':'')
+        +'<button class="act-btn done-btn" onclick="pwActDone(\''+act.id+'\')" title="'+(isDone?'Mark as pending':'Mark done')+'">'+(isDone?'&#8634;':'&#10003;')+'</button>'
         +'<button class="act-btn del-btn" onclick="pwActDel(\''+act.id+'\')" title="Delete">&#128465;</button>'
         +'</div>'
         +'</div>';
@@ -11794,8 +11794,13 @@ window.pwActDone=function(id){
   if(!_sd||!_sd.activities)return;
   var act=_sd.activities.find(function(a){return a.id===id;});
   if(!act)return;
-  act.status='done';act.doneAt=_now();
-  _la(_sd,'Activity completed: "'+act.title+'"');
+  if(act.status==='done'){
+    act.status='pending';delete act.doneAt;
+    _la(_sd,'Activity re-opened: "'+act.title+'"');
+  } else {
+    act.status='done';act.doneAt=_now();
+    _la(_sd,'Activity completed: "'+act.title+'"');
+  }
   _renderPane();_renderChatter();
 };
 window.pwActDel=function(id){
@@ -11981,6 +11986,7 @@ var _pwTpl=null;
 window.pwOpenTemplateModal=function(){
   var box=document.getElementById('pw-modal-box');
   if(!box)return;
+  var ov=document.getElementById('pw-modal-ov');if(ov)ov.classList.add('open');
   var S=_gs();
   var colOpts=S.cols.map(function(c){return'<option value="'+c.id+'">'+_esc(c.name)+'</option>';}).join('');
   var asnOpts='<option value="">Unassigned</option>'+_team.map(function(m){return'<option value="'+m.id+'">'+_esc(m.name)+'</option>';}).join('');
@@ -12104,6 +12110,43 @@ window.pwStartPolling=function(){
 };
 window.pwStopPolling=function(){if(_pollTimer){clearInterval(_pollTimer);_pollTimer=null;}};
 
+
+/* ── UNDO SYSTEM ─────────────────────────────────────────── */
+var _undoStack=[], _undoMax=20;
+function _pushUndo(){
+  try{
+    var snap=JSON.stringify(_gs());
+    if(_undoStack.length&&_undoStack[_undoStack.length-1]===snap)return;
+    _undoStack.push(snap);
+    if(_undoStack.length>_undoMax)_undoStack.shift();
+    _updateUndoBtn();
+  }catch(e){}
+}
+function _updateUndoBtn(){
+  var btn=document.getElementById('pw-undo-btn');
+  if(!btn)return;
+  var n=_undoStack.length;
+  btn.disabled=n===0;
+  btn.style.opacity=n===0?'0.35':'1';
+  btn.title=n>0?'Undo ('+n+' steps)':'Nothing to undo';
+}
+window.pwUndo=function(){
+  if(!_undoStack.length)return;
+  var snap=_undoStack.pop();
+  try{
+    _st=JSON.parse(snap);
+    localStorage.setItem('tgk_projects_data_cache',JSON.stringify(_st));
+    // Also push to Supabase
+    if(typeof sbSet==='function')sbSet('tgk_projects_data',_st).catch(function(){});
+  }catch(e){}
+  _updateUndoBtn();
+  pwRenderBoard();
+  if(typeof _sd!=='undefined'&&_sd&&_st.tasks&&_st.tasks[_sd.id]){
+    _sd=JSON.parse(JSON.stringify(_st.tasks[_sd.id]));
+    _renderDet();
+  }
+};
+
 })(); /* end PW IIFE */
 
 </script>
@@ -12116,6 +12159,7 @@ window.pwStopPolling=function(){if(_pollTimer){clearInterval(_pollTimer);_pollTi
       <div class="pw-hdr-div"></div>
       <div id="pw-hdr-stats" style="display:flex;gap:6px"></div>
       <div style="flex:1"></div>
+      <button id="pw-undo-btn" onclick="pwUndo()" disabled title="Nothing to undo" style="background:none;border:1.5px solid #3a3d40;border-radius:6px;padding:6px 12px;color:#aaa;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);transition:.15s;flex-shrink:0;opacity:.35" onmouseover="if(!this.disabled)this.style.borderColor='#2ABFAA'" onmouseout="this.style.borderColor='#3a3d40'">&#8630; Undo</button>
       <input class="pw-hdr-search" id="pw-search" placeholder="Search&hellip;" oninput="pwSearch(this.value)">
       <div class="pw-bell-wrap">
         <button class="pw-bell-btn" id="pw-bell" onclick="pwToggleNotifs()" title="Notifications">&#128276;</button>
@@ -12219,7 +12263,7 @@ window.pwStopPolling=function(){if(_pollTimer){clearInterval(_pollTimer);_pollTi
   </div>
   <!-- ADD TASK MODAL -->
   <div id="pw-modal-ov" onclick="if(event.target===this)pwCloseModal()">
-    <div class="pw-modal" onclick="event.stopPropagation()">
+    <div class="pw-modal" id="pw-modal-box" onclick="event.stopPropagation()">
       <div class="pw-modal-h"><span>New Task</span><button class="pw-modal-x" onclick="pwCloseModal()">&#x2715;</button></div>
       <div class="pw-frow"><label class="pw-flbl">Title *</label><input class="pw-inp" id="pwm-title" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')pwDoModal()"></div>
       <div class="pw-grid2">
