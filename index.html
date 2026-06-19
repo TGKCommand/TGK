@@ -11030,7 +11030,11 @@ window.pwAddStage=function(){var name=prompt('Stage name:');if(!name||!name.trim
 
 /* ── add task modal ──────────────────────────────────────────── */
 window.pwOpenModal=function(colId){
-  var S=_gs();
+  pwOpenTemplateModal();
+  // Pre-select the column after modal opens
+  setTimeout(function(){var cSel=document.getElementById('pwm-col');if(cSel&&colId)cSel.value=colId;},80);
+  return;
+  var _unused_S=_gs();
   var cSel=document.getElementById('pwm-col');if(cSel)cSel.innerHTML=S.cols.map(function(c){return'<option value="'+c.id+'"'+(c.id===colId?' selected':'')+'>'+_esc(c.name)+'</option>';}).join('');
   var aSel=document.getElementById('pwm-asgn');if(aSel)aSel.innerHTML='<option value="">Unassigned</option>'+_team.map(function(m){return'<option value="'+m.id+'">'+_esc(m.name)+'</option>';}).join('');
   ['pwm-title','pwm-tags'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
@@ -11038,7 +11042,7 @@ window.pwOpenModal=function(colId){
   var ov=document.getElementById('pw-modal-ov');if(ov)ov.classList.add('open');
   setTimeout(function(){var t=document.getElementById('pwm-title');if(t)t.focus();},60);
 };
-window.pwCloseModal=function(){var ov=document.getElementById('pw-modal-ov');if(ov)ov.classList.remove('open');};
+
 window.pwDoModal=function(){
   var title=((document.getElementById('pwm-title')||{}).value||'').trim();if(!title)return;
   var colId=(document.getElementById('pwm-col')||{}).value||'',pri=(document.getElementById('pwm-pri')||{}).value||'medium',asgn=(document.getElementById('pwm-asgn')||{}).value||'',
@@ -11986,7 +11990,9 @@ var _pwTpl=null;
 window.pwOpenTemplateModal=function(){
   var box=document.getElementById('pw-modal-box');
   if(!box)return;
-  var ov=document.getElementById('pw-modal-ov');if(ov)ov.classList.add('open');
+  var ov=document.getElementById('pw-modal-ov');
+  if(ov){ov.classList.add('open');ov.style.display='';}
+  _pwTpl='new_product';
   var S=_gs();
   var colOpts=S.cols.map(function(c){return'<option value="'+c.id+'">'+_esc(c.name)+'</option>';}).join('');
   var asnOpts='<option value="">Unassigned</option>'+_team.map(function(m){return'<option value="'+m.id+'">'+_esc(m.name)+'</option>';}).join('');
@@ -12147,6 +12153,14 @@ window.pwUndo=function(){
   }
 };
 
+
+window.pwCloseModal=function(){
+  var ov=document.getElementById('pw-modal-ov');
+  if(!ov)return;
+  ov.classList.remove('open');
+  ov.style.display='';
+};
+
 })(); /* end PW IIFE */
 
 </script>
@@ -12264,8 +12278,7 @@ window.pwUndo=function(){
   <!-- ADD TASK MODAL -->
   <div id="pw-modal-ov" onclick="if(event.target===this)pwCloseModal()">
     <div class="pw-modal" id="pw-modal-box" onclick="event.stopPropagation()">
-      <div class="pw-modal-h"><span>New Task</span><button class="pw-modal-x" onclick="pwCloseModal()">&#x2715;</button></div>
-      <div class="pw-frow"><label class="pw-flbl">Title *</label><input class="pw-inp" id="pwm-title" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')pwDoModal()"></div>
+      <!-- content populated by pwOpenTemplateModal / pwCloseModal -->
       <div class="pw-grid2">
         <div class="pw-frow"><label class="pw-flbl">Stage</label><select class="pw-inp" id="pwm-col"></select></div>
         <div class="pw-frow"><label class="pw-flbl">Priority</label><select class="pw-inp" id="pwm-pri"><option value="low">&#x1F7E2; Low</option><option value="medium" selected>&#x1F7E1; Medium</option><option value="high">&#x1F534; High</option><option value="urgent">&#x1F7E3; Urgent</option></select></div>
