@@ -3123,9 +3123,16 @@ function _finishLoadEdit(html) {
   wysiwyg.innerHTML = stripStyles(html);
   // Protect video sections so editor doesn't interfere with iframe
   wysiwyg.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-    wrap.setAttribute('contenteditable', 'false');
-    wrap.style.userSelect = 'none';
-    wrap.style.pointerEvents = 'none';
+    // Key into JS object (no HTML encoding issues vs. data attributes)
+    var _vid = ++window._wysiVidCtr;
+    window._wysiVids[_vid] = wrap.outerHTML; // raw outerHTML stored in JS, not DOM
+    wrap.setAttribute('data-vid', _vid);
+    // Static non-interactive placeholder
+    wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px">'
+      + '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit;text-align:center">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page — not shown in editor</span></span>'
+      + '</div>';
+    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none';
   });
   const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   editableSelectors.forEach(sel => {
@@ -3634,9 +3641,16 @@ function loadConvEdit(html) {
   wysiwyg.innerHTML = stripStyles(html);
   // Protect video sections
   wysiwyg.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-    wrap.setAttribute('contenteditable', 'false');
-    wrap.style.userSelect = 'none';
-    wrap.style.pointerEvents = 'none';
+    // Key into JS object (no HTML encoding issues vs. data attributes)
+    var _vid = ++window._wysiVidCtr;
+    window._wysiVids[_vid] = wrap.outerHTML; // raw outerHTML stored in JS, not DOM
+    wrap.setAttribute('data-vid', _vid);
+    // Static non-interactive placeholder
+    wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px">'
+      + '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit;text-align:center">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page — not shown in editor</span></span>'
+      + '</div>';
+    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none';
   });
   const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   editableSelectors.forEach(sel => {
@@ -7390,7 +7404,12 @@ function _cleanWysiwygHtml(wy) {
   var _vSlots = [], _liveWraps = null;
   try { _liveWraps = wy.querySelectorAll ? wy.querySelectorAll('.tgk-video-wrap') : []; } catch(e) {}
   clone.querySelectorAll('.tgk-video-wrap').forEach(function(wrap, i) {
-    var origHtml = (_liveWraps && _liveWraps[i]) ? _liveWraps[i].outerHTML : wrap.outerHTML;
+    var liveWrap = (_liveWraps && _liveWraps[i]) ? _liveWraps[i] : null;
+    // Look up original HTML from JS store (reliable — no HTML encoding issues)
+    var _vid = liveWrap ? liveWrap.getAttribute('data-vid') : null;
+    var origHtml = (_vid && window._wysiVids && window._wysiVids[_vid])
+      ? window._wysiVids[_vid]
+      : (liveWrap ? liveWrap.outerHTML : wrap.outerHTML);
     var slot = document.createElement('div');
     slot.setAttribute('data-vslot', String(i));
     if (wrap.parentNode) wrap.parentNode.replaceChild(slot, wrap);
@@ -12436,6 +12455,8 @@ function showLaunchSub(sub) {
 }
 
 /* ── buildVideoEmbed: convert a YouTube or Shopify CDN URL to TGK embed HTML ── */
+window._wysiVids = {};
+window._wysiVidCtr = 0;
 function buildVideoEmbed(url) {
   if (!url || !url.trim()) return '';
   url = url.trim();
