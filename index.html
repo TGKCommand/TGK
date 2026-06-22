@@ -1670,15 +1670,19 @@ window._sbBootPromise = (async function() {
       <div class="view-header"><div class="view-title">Edit existing description</div><div class="view-desc">Paste any description HTML — TGK format or Shopify/other. Non-TGK HTML is automatically converted to TGK format on Load. Then click directly into the preview to edit.</div></div>
       <div id="edit-step1">
         <div class="fg" style="margin-bottom:12px"><div class="flbl">Paste your existing description HTML</div><textarea id="edit-input" style="min-height:130px;font-family:var(--mono);font-size:11px;line-height:1.6" placeholder="Paste any description HTML — TGK format or Shopify/other. Non-TGK HTML is auto-converted to TGK format on Load."></textarea></div>
-          <div class="fg" style="margin-bottom:12px">
-        <div class="flbl">Product video URL <span class="flbl-hint">YouTube or Shopify CDN &mdash; optional</span></div>
-        <input id="edit-video" placeholder="https://www.youtube.com/watch?v=... or Shopify CDN .mp4 URL"/>
-        <div style="font-size:11px;color:#9CA3AF;margin-top:4px">A video embed section will be prepended when you load the description.</div>
-      </div>
-      <div style="display:flex;gap:10px"><button class="gbtn" onclick="loadEdit()">Load &amp; edit →</button><button onclick="openTplModal('edit')" style="padding:11px 18px;background:rgba(42,191,170,.08);border:1px solid #2ABFAA;border-radius:8px;color:#2ABFAA;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;font-family:var(--font);transition:all .15s" onmouseover="this.style.background='rgba(42,191,170,.18)'" onmouseout="this.style.background='rgba(42,191,170,.08)'">＋ Insert template</button><button class="gbtn sec" onclick="clearEdit()">Clear</button></div>
+        <div style="display:flex;gap:10px"><button class="gbtn" onclick="loadEdit()">Load &amp; edit →</button><button onclick="openTplModal('edit')" style="padding:11px 18px;background:rgba(42,191,170,.08);border:1px solid #2ABFAA;border-radius:8px;color:#2ABFAA;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;font-family:var(--font);transition:all .15s" onmouseover="this.style.background='rgba(42,191,170,.18)'" onmouseout="this.style.background='rgba(42,191,170,.08)'">＋ Insert template</button><button class="gbtn sec" onclick="clearEdit()">Clear</button></div>
       </div>
       <div id="edit-step2" style="display:none;margin-top:18px">
-        <style>.wysi .tgk,.tgk{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111;font-size:14px;line-height:1.6}.wysi{width:100%;box-sizing:border-box}.wysi .tgk,.wysi .tgk-section{width:100%!important;box-sizing:border-box!important;display:block}.wysi .tgk-section{margin-bottom:20px}.wysi .tgk-p{display:block!important;width:100%!important;box-sizing:border-box!important;margin-bottom:10px}.wysi .tgk-feat,.wysi .tgk-faq-item,.wysi .tgk-disc-card,.wysi .tgk-disc-nvh-box,.wysi .tgk-disc-fit-box,.wysi .tgk-disc-legal{width:100%!important;box-sizing:border-box!important;margin-bottom:8px}.wysi .tgk-feat{display:flex!important}.wysi .tgk-disc-card{display:flex!important}.wysi .tgk-feats{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%!important;box-sizing:border-box!important}.wysi .tgk-disc-grid{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%!important;box-sizing:border-box!important;margin-bottom:16px}.wysi .tgk-col-row{display:grid!important;width:100%!important;box-sizing:border-box!important;margin-bottom:8px}.wysi .tgk-col-row > *{min-width:0!important;box-sizing:border-box!important;margin-bottom:0!important}.wysi .tgk-sh{display:flex;align-items:center;gap:12px;background:#2a2d2f;border-radius:8px;padding:11px 16px;margin-bottom:16px}.wysi .tgk-sh-title{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#fff;border-radius:3px;padding:1px 4px}.wysi .tgk-sh-title:focus{outline:2px solid #2ABFAA;background:rgba(42,191,170,.15)}.wysi .tgk-ic{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center}.wysi .tgk-ic svg{width:20px;height:20px;fill:#2ABFAA}.wysi .tgk-p{font-size:14px;color:#aaa;line-height:1.85;margin-bottom:12px;border-radius:4px;padding:2px 4px}.wysi .tgk-p:focus{outline:2px solid #2ABFAA;color:#111;background:#fff}.wysi .tgk-specs{width:100%;border-collapse:collapse}.wysi .tgk-specs tr{border-bottom:1px solid #f0f0ea}.wysi .tgk-specs td{padding:10px 4px;font-size:13px;border-radius:3px}.wysi .tgk-specs td:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-specs td:first-child{color:#aaa;width:42%;padding-right:14px;font-weight:500}.wysi .tgk-specs td:last-child{color:#111;font-weight:600}.wysi .tgk-feats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wysi .tgk-feat{display:flex;gap:10px;align-items:flex-start;background:#f8f8f6;border:1px solid #eaeae4;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:12px 14px}.wysi .tgk-feat-chk{width:20px;height:20px;border-radius:50%;background:#2ABFAA;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;pointer-events:none}.wysi .tgk-feat-txt{font-size:13px;color:#aaa;line-height:1.55;border-radius:3px;padding:2px 3px}.wysi .tgk-feat-txt:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-feat-txt b{display:block;color:#111;font-weight:700;font-size:13px;margin-bottom:3px}.wysi .tgk-cmp{width:100%;border-collapse:collapse}.wysi .tgk-cmp th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:10px 12px;text-align:center}.wysi .tgk-cmp th:first-child{text-align:left;color:#aaa;font-weight:500;background:none}.wysi .tgk-cmp .th-teal{background:#2ABFAA;color:#fff;border-radius:6px 6px 0 0}.wysi .tgk-cmp .th-org{background:#E07B28;color:#fff;border-radius:6px 6px 0 0}.wysi .tgk-cmp td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f0f0ea;border-radius:3px}.wysi .tgk-cmp td:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-cmp td:first-child{color:#aaa;font-size:12px;font-weight:500}.wysi .tgk-cmp td:not(:first-child){text-align:center;font-weight:600}.wysi .ct{color:#1a8f7d}.wysi .co{color:#c46820}.wysi .tgk-faq-item{border-bottom:1px solid #f0f0ea;padding:14px 0}.wysi .tgk-faq-q{font-size:13px;font-weight:700;color:#111;margin-bottom:7px;display:flex;align-items:flex-start;gap:10px}.wysi .tgk-faq-q::before{content:'Q';min-width:22px;height:22px;border-radius:5px;background:#2a2d2f;color:#2ABFAA;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:.05em;pointer-events:none}.wysi .tgk-faq-a{font-size:13px;color:#aaa;line-height:1.8;padding-left:32px;border-radius:3px}.wysi .tgk-faq-a:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-stats{display:none!important}.wysi .tgk-disc-label{font-size:11px;font-weight:500;color:#aaa;text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px}.wysi .tgk-disc-nvh-box{background:#fff;border:.5px solid #dcdcd8;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:20px}.wysi .tgk-disc-nvh-box p{font-size:13px;color:#1a1a1a;line-height:1.75;margin:0;border-radius:3px;padding:2px 4px}.wysi .tgk-disc-nvh-box p:focus{outline:2px solid #2ABFAA;background:#f8fffe}.wysi .tgk-disc-nvh-box strong{color:#1a1a1a;font-weight:700}.wysi .tgk-disc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}.wysi .tgk-disc-card{background:#f5f5f3;border:.5px solid #dcdcd8;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:14px 16px;display:flex;gap:14px;align-items:flex-start}.wysi .tgk-disc-card.warn{border-left-color:#E07B28}.wysi .tgk-disc-icon{width:28px;height:28px;border-radius:50%;background:#2ABFAA;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;pointer-events:none}.wysi .tgk-disc-icon.wear{background:#E07B28}.wysi .tgk-disc-card-title{font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 5px;border-radius:3px;padding:1px 3px}.wysi .tgk-disc-card-title:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-disc-card-body{font-size:13px;color:#4a4a4a;line-height:1.65;margin:0;border-radius:3px;padding:2px 3px}.wysi .tgk-disc-card-body:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-disc-fit-box{background:#fff;border:.5px solid #dcdcd8;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:20px}.wysi .tgk-disc-fit-title{font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 6px;border-radius:3px;padding:1px 3px}.wysi .tgk-disc-fit-title:focus{outline:2px solid #2ABFAA;background:#f8fffe}.wysi .tgk-disc-fit-body{font-size:13px;color:#4a4a4a;line-height:1.7;margin:0;border-radius:3px;padding:2px 3px}.wysi .tgk-disc-fit-body:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-disc-legal{border-top:.5px solid #dcdcd8;padding-top:14px;font-size:11px;color:#aaa;line-height:1.75;border-radius:3px;padding:14px 3px 2px}.wysi .tgk-disc-legal:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-sh{cursor:pointer}.wysi .tgk-sh.sh-active{outline:2px solid #2ABFAA;outline-offset:3px;border-radius:9px}
+        <style>.wysi .tgk,.tgk{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111;font-size:14px;line-height:1.6}.wysi{width:100%;box-sizing:border-box}.wysi .tgk,.wysi .tgk-section{width:100%!important;box-sizing:border-box!important;display:block}.wysi .tgk-section{margin-bottom:20px}.wysi .tgk-p{display:block!important;width:100%!important;box-sizing:border-box!important;margin-bottom:10px}.wysi .tgk-feat,.wysi .tgk-faq-item,.wysi .tgk-disc-card,.wysi .tgk-disc-nvh-box,.wysi .tgk-disc-fit-box,.wysi .tgk-disc-legal{width:100%!important;box-sizing:border-box!important;margin-bottom:8px}.wysi .tgk-feat{display:flex!important}.wysi .tgk-disc-card{display:flex!important}.wysi .tgk-feats{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%!important;box-sizing:border-box!important}.wysi .tgk-disc-grid{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;width:100%!important;box-sizing:border-box!important;margin-bottom:16px}.wysi .tgk-col-row{display:grid!important;width:100%!important;box-sizing:border-box!important;margin-bottom:8px}.wysi .tgk-col-row > *{min-width:0!important;box-sizing:border-box!important;margin-bottom:0!important}.wysi .tgk-sh{display:flex;align-items:center;gap:12px;background:#2a2d2f;border-radius:8px;padding:11px 16px;margin-bottom:16px}.wysi .tgk-sh-title{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#fff;border-radius:3px;padding:1px 4px}.wysi .tgk-sh-title:focus{outline:2px solid #2ABFAA;background:rgba(42,191,170,.15)}.wysi .tgk-ic{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center}.wysi .tgk-ic svg{width:20px;height:20px;fill:#2ABFAA}.wysi .tgk-p{font-size:14px;color:#aaa;line-height:1.85;margin-bottom:12px;border-radius:4px;padding:2px 4px}.wysi .tgk-p:focus{outline:2px solid #2ABFAA;color:#111;background:#fff}.wysi .tgk-specs{width:100%;border-collapse:collapse}.wysi .tgk-specs tr{border-bottom:1px solid #f0f0ea}.wysi .tgk-specs td{padding:10px 4px;font-size:13px;border-radius:3px}.wysi .tgk-specs td:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-specs td:first-child{color:#aaa;width:42%;padding-right:14px;font-weight:500}.wysi .tgk-specs td:last-child{color:#111;font-weight:600}.wysi .tgk-feats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wysi .tgk-feat{display:flex;gap:10px;align-items:flex-start;background:#f8f8f6;border:1px solid #eaeae4;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:12px 14px}.wysi .tgk-feat-chk{width:20px;height:20px;border-radius:50%;background:#2ABFAA;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;pointer-events:none}.wysi .tgk-feat-txt{font-size:13px;color:#aaa;line-height:1.55;border-radius:3px;padding:2px 3px}.wysi .tgk-feat-txt:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-feat-txt b{display:block;color:#111;font-weight:700;font-size:13px;margin-bottom:3px}.wysi .tgk-cmp{width:100%;border-collapse:collapse}.wysi .tgk-cmp th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:10px 12px;text-align:center}.wysi .tgk-cmp th:first-child{text-align:left;color:#aaa;font-weight:500;background:none}.wysi .tgk-cmp .th-teal{background:#2ABFAA;color:#fff;border-radius:6px 6px 0 0}.wysi .tgk-cmp .th-org{background:#E07B28;color:#fff;border-radius:6px 6px 0 0}.wysi .tgk-cmp td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f0f0ea;border-radius:3px}.wysi .tgk-cmp td:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-cmp td:first-child{color:#aaa;font-size:12px;font-weight:500}.wysi .tgk-cmp td:not(:first-child){text-align:center;font-weight:600}.wysi .ct{color:#1a8f7d}.wysi .co{color:#c46820}.wysi .tgk-faq-item{border-bottom:1px solid #f0f0ea;padding:14px 0}.wysi .tgk-faq-q{font-size:13px;font-weight:700;color:#111;margin-bottom:7px;display:flex;align-items:flex-start;gap:10px}.wysi .tgk-faq-q::before{content:'Q';min-width:22px;height:22px;border-radius:5px;background:#2a2d2f;color:#2ABFAA;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:.05em;pointer-events:none}.wysi .tgk-faq-a{font-size:13px;color:#aaa;line-height:1.8;padding-left:32px;border-radius:3px}.wysi .tgk-faq-a:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-stats{display:none!important}.wysi .tgk-disc-label{font-size:11px;font-weight:500;color:#aaa;text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px}.wysi .tgk-disc-nvh-box{background:#fff;border:.5px solid #dcdcd8;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:20px}.wysi .tgk-disc-nvh-box p{font-size:13px;color:#1a1a1a;line-height:1.75;margin:0;border-radius:3px;padding:2px 4px}.wysi .tgk-disc-nvh-box p:focus{outline:2px solid #2ABFAA;background:#f8fffe}.wysi .tgk-disc-nvh-box strong{color:#1a1a1a;font-weight:700}.wysi .tgk-disc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}.wysi .tgk-disc-card{background:#f5f5f3;border:.5px solid #dcdcd8;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:14px 16px;display:flex;gap:14px;align-items:flex-start}.wysi .tgk-disc-card.warn{border-left-color:#E07B28}.wysi .tgk-disc-icon{width:28px;height:28px;border-radius:50%;background:#2ABFAA;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;pointer-events:none}.wysi .tgk-disc-icon.wear{background:#E07B28}.wysi .tgk-disc-card-title{font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 5px;border-radius:3px;padding:1px 3px}.wysi .tgk-disc-card-title:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-disc-card-body{font-size:13px;color:#4a4a4a;line-height:1.65;margin:0;border-radius:3px;padding:2px 3px}.wysi .tgk-disc-card-body:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-disc-fit-box{background:#fff;border:.5px solid #dcdcd8;border-left:3px solid #2ABFAA;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:20px}.wysi .tgk-disc-fit-title{font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 6px;border-radius:3px;padding:1px 3px}.wysi .tgk-disc-fit-title:focus{outline:2px solid #2ABFAA;background:#f8fffe}.wysi .tgk-disc-fit-body{font-size:13px;color:#4a4a4a;line-height:1.7;margin:0;border-radius:3px;padding:2px 3px}.wysi .tgk-disc-fit-body:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-disc-legal{border-top:.5px solid #dcdcd8;padding-top:14px;font-size:11px;color:#aaa;line-height:1.75;border-radius:3px;padding:14px 3px 2px}.wysi .tgk-disc-legal:focus{outline:2px solid #2ABFAA;background:#fff}.wysi .tgk-sh{cursor:pointer}
+/* ── Video embed section ── */
+.tgk-video-wrap{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px;background:#000;margin-top:10px}
+.tgk-video-wrap iframe,.tgk-video-wrap video{position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px;display:block}
+.tgk-video-embed{position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px;display:block}
+.wysi .tgk-video-wrap{position:relative!important;padding-bottom:56.25%!important;height:0!important;overflow:hidden!important;border-radius:6px!important;background:#000!important;margin-top:10px!important}
+.wysi .tgk-video-wrap iframe,.wysi .tgk-video-wrap video{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;border:0!important;border-radius:6px!important}
+/* Input fields for video URL */
+#p-video,#conv-video,#edit-video{font-family:var(--font);font-size:12px}
+.wysi .tgk-sh.sh-active{outline:2px solid #2ABFAA;outline-offset:3px;border-radius:9px}
           .sec-toolbar{position:fixed;display:flex;gap:4px;background:#1e2022;border:1px solid #2ABFAA;border-radius:6px;padding:5px 7px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.6);white-space:nowrap}
           .sec-toolbar button{font-size:10px;font-weight:700;padding:3px 9px;border-radius:4px;border:none;cursor:pointer;font-family:inherit;letter-spacing:.03em}
           .stb-move{background:#1a1a3a;color:#9a9aee}.stb-move:hover{background:#9a9aee;color:#000}
@@ -1936,11 +1940,6 @@ window._sbBootPromise = (async function() {
       <div class="row2" style="margin-bottom:16px">
         <div class="fg" style="margin:0"><div class="flbl">Voice &amp; tone</div><select id="conv-tone"><option>Technical + performance</option><option>Bold + aggressive</option><option>Clean + confident</option><option>Enthusiast + passionate</option></select></div>
         <div class="fg" style="margin:0"><div class="flbl">What to do</div><select id="conv-mode"><option value="reformat">Reformat into TGK template — keep all existing content</option><option value="rewrite">Rewrite + improve — enhance the copy while reformatting</option><option value="expand">Expand — add missing sections (FAQ, features, etc)</option></select></div>
-      </div>
-      <div class="fg" style="margin-bottom:14px">
-        <div class="flbl">Product video URL <span class="flbl-hint">YouTube or Shopify CDN &mdash; optional</span></div>
-        <input id="conv-video" placeholder="https://www.youtube.com/watch?v=... or Shopify CDN .mp4 URL"/>
-        <div style="font-size:11px;color:#9CA3AF;margin-top:4px">A video embed section will be prepended to the converted description.</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="gbtn" id="conv-btn" onclick="convertDesc()"><span id="conv-lbl">Convert to TGK format</span></button>
@@ -3012,10 +3011,7 @@ changes: 1-2 sentences describing what was restructured or improved.`;
     document.getElementById('oc-conv-h1').classList.add('on');
 
     S.gen.convHtml = d.descriptionHtml || '';
-    var _convVideoUrl = (document.getElementById('conv-video') || {}).value || '';
-    var _convVideoEmbed = (typeof buildVideoEmbed === 'function') ? buildVideoEmbed(_convVideoUrl) : '';
-    var _convHtmlToLoad = _convVideoEmbed ? _convVideoEmbed + S.gen.convHtml : S.gen.convHtml;
-    loadConvEdit(_convHtmlToLoad);
+    loadConvEdit(S.gen.convHtml);
     document.getElementById('oc-conv-body').classList.add('on');
 
     document.getElementById('o-conv-note').textContent = d.changes || '';
@@ -3096,9 +3092,6 @@ function stripStyles(html) {
 }
 
 function _finishLoadEdit(html) {
-  var _editVideoUrl = (document.getElementById('edit-video') || {}).value || '';
-  var _editVideoEmbed = (typeof buildVideoEmbed === 'function') ? buildVideoEmbed(_editVideoUrl) : '';
-  if (_editVideoEmbed) html = _editVideoEmbed + html;
   const wysiwyg = document.getElementById('edit-wysiwyg');
   wysiwyg.innerHTML = stripStyles(html);
   const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
@@ -3364,15 +3357,7 @@ function showSectionToolbar(sh) {
   }));
   document.body.appendChild(tb);
   const rect = sh.getBoundingClientRect();
-  tb.style.cssText = 'position:fixed;top:'+(rect.bottom+6)+'px;left:'+rect.left+'px;z-index:1001';
-  (function(){
-    var tr = tb.getBoundingClientRect();
-    var vw = window.innerWidth, vh = window.innerHeight;
-    var t = parseFloat(tb.style.top), l = parseFloat(tb.style.left);
-    if (l + tr.width > vw - 4) l = Math.max(4, vw - tr.width - 4);
-    if (t + tr.height > vh - 4) t = Math.max(4, rect.top - tr.height - 4);
-    tb.style.left = l + 'px'; tb.style.top = t + 'px';
-  })();
+  tb.style.cssText = 'position:fixed;top:'+(rect.bottom+6)+'px;left:'+rect.left+'px';
   _secToolbar = tb;
 }
 
@@ -5942,11 +5927,7 @@ function showBlkToolbar(blk, wysiwyg, syncFn) {
 
   document.body.appendChild(tb);
   const rect = blk.getBoundingClientRect();
-  var tbTop = rect.top - tb.offsetHeight - 6;
-  var tbLeft = Math.max(4, rect.right - tb.offsetWidth);
-  if (tbTop < 4) tbTop = rect.bottom + 4;
-  if (tbLeft + tb.offsetWidth > window.innerWidth - 4) tbLeft = Math.max(4, window.innerWidth - tb.offsetWidth - 4);
-  tb.style.cssText = 'position:fixed;top:'+tbTop+'px;left:'+tbLeft+'px;z-index:1001';
+  tb.style.cssText = 'position:fixed;top:'+(rect.top - tb.offsetHeight - 6)+'px;left:'+Math.max(4, rect.right - tb.offsetWidth)+'px';
   _blkToolbar = tb;
 }
 
@@ -6083,15 +6064,7 @@ function showAddMenu(anchorBtn, refEl, wysiwyg, syncFn){
   });
   document.body.appendChild(menu);
   const rect = anchorBtn.getBoundingClientRect();
-  menu.style.cssText = 'position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px;z-index:1001';
-  (function(){
-    var mr = menu.getBoundingClientRect();
-    var vw = window.innerWidth, vh = window.innerHeight;
-    var t = parseFloat(menu.style.top), l = parseFloat(menu.style.left);
-    if (l + mr.width > vw - 4) l = Math.max(4, vw - mr.width - 4);
-    if (t + mr.height > vh - 4) t = Math.max(4, rect.top - mr.height - 4);
-    menu.style.left = l + 'px'; menu.style.top = t + 'px';
-  })();
+  menu.style.cssText = 'position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px';
   _addMenu = menu;
   setTimeout(function(){
     if(_addMenu) document.addEventListener('click', closeAddMenuOutside, {once:true});
@@ -7327,7 +7300,7 @@ function _cleanWysiwygHtml(wy) {
   // Keep only inline styles that are meaningful to the TGK template output
   var KEEP_STYLE_CLASSES = [
     'tgk-col-row','tgk-disc-nvh-box','tgk-disc-fit-box',
-    'tgk-disc-card','tgk-disc-legal'
+    'tgk-disc-card','tgk-disc-legal','tgk-video-wrap','tgk-video-embed'
   ];
   clone.querySelectorAll('[style]').forEach(function(el) {
     var shouldKeep = KEEP_STYLE_CLASSES.some(function(c) {
@@ -12392,12 +12365,12 @@ function buildVideoEmbed(url) {
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
     var vid = ytMatch[1];
-    embedInner = '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:6px;border:0" allowfullscreen loading="lazy"></iframe>';
+    embedInner = '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1" class="tgk-video-embed" allowfullscreen loading="lazy"></iframe>';
   } else if (/\.mp4|\. mov|\.webm|\.m3u8/.test(url) || /cdn\.shopify\.com/.test(url)) {
-    embedInner = '<video src="' + url + '" controls style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:6px" preload="metadata"></video>';
+    embedInner = '<video src="' + url + '" class="tgk-video-embed" controls preload="metadata"></video>';
   }
   if (!embedInner) return '';
-  return '<div class="tgk-section"><div class="tgk-sh"><div class="tgk-ic">' + playIcon + '</div><div class="tgk-sh-title">Product Video</div></div><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px;background:#000;margin-top:10px">' + embedInner + '</div></div>';
+  return '<div class="tgk-section"><div class="tgk-sh"><div class="tgk-ic">' + playIcon + '</div><div class="tgk-sh-title">Product Video</div></div><div class="tgk-video-wrap">' + embedInner + '</div></div>';
 }
 </script>
 </body>
