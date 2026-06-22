@@ -1685,7 +1685,7 @@ window._sbBootPromise = (async function() {
 .tgk-video-embed{position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px;display:block}
 .wysi .tgk-video-wrap{position:relative!important;padding-bottom:56.25%!important;height:0!important;overflow:hidden!important;border-radius:6px!important;background:#000!important;margin-top:10px!important}
 /* Editor preview: cap video height so it does not fill the pane */
-#edit-wysiwyg .tgk-video-wrap,#o-conv-wysiwyg .tgk-video-wrap,#tllib-wysiwyg .tgk-video-wrap{max-height:320px!important;padding-bottom:0!important;height:220px!important}
+#edit-wysiwyg .tgk-video-wrap video,#o-conv-wysiwyg .tgk-video-wrap video,#tllib-wysiwyg .tgk-video-wrap video{max-height:220px!important;width:100%!important}
 .wysi .tgk-video-wrap iframe,.wysi .tgk-video-wrap video{position:absolute!important;top:0!important;left:0!important;width:100%!important;height:100%!important;border:0!important;border-radius:6px!important}
 /* Input fields for video URL */
 #p-video,#conv-video,#edit-video{font-family:var(--font);font-size:12px}
@@ -12467,31 +12467,21 @@ function buildVideoEmbed(url) {
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
     var vid = ytMatch[1];
-    // YouTube iframe needs aspect-ratio wrapper
-    embedInner = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px">'
-      + '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1"'
-      + ' frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"'
-      + ' allowfullscreen loading="lazy"'
-      + ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"></iframe>'
-      + '</div>';
+    embedInner = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden">'
+      + '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0"'
+      + ' style="position:absolute;inset:0;width:100%;height:100%;border:none"'
+      + ' allowfullscreen></iframe></div>';
   } else if (/\.mp4|\.mov|\.webm|\.m3u8/.test(url) || /cdn\.shopify\.com/.test(url)) {
-    // Native video: width:100% + height:auto maintains aspect ratio without abs-positioning
-    // No overflow:hidden needed — avoids any theme CSS clip/pointer-events interference
-    embedInner = '<video src="' + url + '" controls playsinline preload="metadata"'
-      + ' style="display:block;width:100%;height:auto;border-radius:6px;background:#000"></video>';
+    // Matches the bare <video controls style="width:100%"> that confirmed works
+    embedInner = '<video src="' + url + '" controls'
+      + ' style="width:100%;display:block;border-radius:4px"></video>';
   }
   if (!embedInner) return '';
-  // Outer wrapper and header use NO TGK CSS classes — purely inline-styled
-  // tgk-video-wrap kept on inner wrap only as editor JS hook (not used for layout)
-  return '<div style="margin:20px 0 24px">'
-    + '<div style="display:flex;align-items:center;gap:10px;background:#1c1f22;border-radius:8px 8px 0 0;padding:10px 14px;margin-bottom:0">'
-    + '<svg width="18" height="18" viewBox="0 0 24 24" fill="#2ABFAA" style="flex-shrink:0"><path d="M8 5v14l11-7z"/></svg>'
-    + '<span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#ffffff;font-family:inherit">Product Video</span>'
-    + '</div>'
-    + '<div class="tgk-video-wrap" style="border-radius:0 0 6px 6px;overflow:hidden;background:#000">'
-    + embedInner
-    + '</div></div>';
-}
-</script>
+  return '<div style="margin:16px 0 20px">'
+    + '<p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2ABFAA">'
+    + '&#9654; Product Video</p>'
+    + '<div class="tgk-video-wrap">' + embedInner + '</div>'
+    + '</div>';
+}</script>
 </body>
 </html>
