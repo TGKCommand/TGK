@@ -3123,16 +3123,28 @@ function _finishLoadEdit(html) {
   wysiwyg.innerHTML = stripStyles(html);
   // Protect video sections so editor doesn't interfere with iframe
   wysiwyg.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-    // Key into JS object (no HTML encoding issues vs. data attributes)
-    var _vid = ++window._wysiVidCtr;
-    window._wysiVids[_vid] = wrap.outerHTML; // raw outerHTML stored in JS, not DOM
-    wrap.setAttribute('data-vid', _vid);
-    // Static non-interactive placeholder
-    wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px">'
-      + '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
-      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit;text-align:center">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page — not shown in editor</span></span>'
-      + '</div>';
-    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none';
+    // Blank the video/iframe src so nothing loads in the editor
+    wrap.querySelectorAll('video').forEach(function(v) {
+      v.setAttribute('data-vsrc', v.getAttribute('src') || '');
+      v.removeAttribute('src');
+      try { v.load(); } catch(e) {}
+    });
+    wrap.querySelectorAll('iframe').forEach(function(f) {
+      f.setAttribute('data-ifsrc', f.getAttribute('src') || '');
+      f.setAttribute('src', 'about:blank');
+    });
+    // Store wrap's original inline style so we can restore on export
+    wrap.setAttribute('data-orig-style', wrap.getAttribute('style') || '');
+    // Resize wrap to show placeholder instead of height:0 box
+    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;box-sizing:border-box';
+    // Inject placeholder label (removed on export)
+    var ph = document.createElement('div');
+    ph.className = 'tgk-vid-ph';
+    ph.setAttribute('contenteditable', 'false');
+    ph.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center';
+    ph.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page</span></span>';
+    wrap.appendChild(ph);
   });
   const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   editableSelectors.forEach(sel => {
@@ -3641,16 +3653,28 @@ function loadConvEdit(html) {
   wysiwyg.innerHTML = stripStyles(html);
   // Protect video sections
   wysiwyg.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-    // Key into JS object (no HTML encoding issues vs. data attributes)
-    var _vid = ++window._wysiVidCtr;
-    window._wysiVids[_vid] = wrap.outerHTML; // raw outerHTML stored in JS, not DOM
-    wrap.setAttribute('data-vid', _vid);
-    // Static non-interactive placeholder
-    wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px">'
-      + '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
-      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit;text-align:center">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page — not shown in editor</span></span>'
-      + '</div>';
-    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none';
+    // Blank the video/iframe src so nothing loads in the editor
+    wrap.querySelectorAll('video').forEach(function(v) {
+      v.setAttribute('data-vsrc', v.getAttribute('src') || '');
+      v.removeAttribute('src');
+      try { v.load(); } catch(e) {}
+    });
+    wrap.querySelectorAll('iframe').forEach(function(f) {
+      f.setAttribute('data-ifsrc', f.getAttribute('src') || '');
+      f.setAttribute('src', 'about:blank');
+    });
+    // Store wrap's original inline style so we can restore on export
+    wrap.setAttribute('data-orig-style', wrap.getAttribute('style') || '');
+    // Resize wrap to show placeholder instead of height:0 box
+    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;box-sizing:border-box';
+    // Inject placeholder label (removed on export)
+    var ph = document.createElement('div');
+    ph.className = 'tgk-vid-ph';
+    ph.setAttribute('contenteditable', 'false');
+    ph.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center';
+    ph.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page</span></span>';
+    wrap.appendChild(ph);
   });
   const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   editableSelectors.forEach(sel => {
@@ -7401,29 +7425,27 @@ function _cleanWysiwygHtml(wy) {
 
   // Preserve video sections — swap out before innerHTML serialization to avoid
   // browser mangling iframe src (& -> &amp;) and other attribute encoding issues
-  var _vSlots = [], _liveWraps = null;
-  try { _liveWraps = wy.querySelectorAll ? wy.querySelectorAll('.tgk-video-wrap') : []; } catch(e) {}
-  clone.querySelectorAll('.tgk-video-wrap').forEach(function(wrap, i) {
-    var liveWrap = (_liveWraps && _liveWraps[i]) ? _liveWraps[i] : null;
-    // Look up original HTML from JS store (reliable — no HTML encoding issues)
-    var _vid = liveWrap ? liveWrap.getAttribute('data-vid') : null;
-    var origHtml = (_vid && window._wysiVids && window._wysiVids[_vid])
-      ? window._wysiVids[_vid]
-      : (liveWrap ? liveWrap.outerHTML : wrap.outerHTML);
-    var slot = document.createElement('div');
-    slot.setAttribute('data-vslot', String(i));
-    if (wrap.parentNode) wrap.parentNode.replaceChild(slot, wrap);
-    _vSlots.push({ i: i, html: origHtml });
+  // Restore video sections: remove placeholder, restore blanked src attrs
+  clone.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
+    wrap.querySelectorAll('.tgk-vid-ph').forEach(function(el) { el.remove(); });
+    wrap.querySelectorAll('[data-vsrc]').forEach(function(v) {
+      var s = v.getAttribute('data-vsrc');
+      if (s) v.setAttribute('src', s); else v.removeAttribute('src');
+      v.removeAttribute('data-vsrc');
+    });
+    wrap.querySelectorAll('[data-ifsrc]').forEach(function(f) {
+      var s = f.getAttribute('data-ifsrc');
+      if (s) f.setAttribute('src', s);
+      f.removeAttribute('data-ifsrc');
+    });
+    var orig = wrap.getAttribute('data-orig-style');
+    if (orig !== null) {
+      if (orig) wrap.setAttribute('style', orig); else wrap.removeAttribute('style');
+      wrap.removeAttribute('data-orig-style');
+    }
   });
 
-  var _out = clone.innerHTML.trim();
-
-  // Restore video HTML from live DOM (bypass serialization artifacts)
-  _vSlots.forEach(function(v) {
-    _out = _out.replace('<div data-vslot="' + v.i + '"></div>', v.html);
-  });
-
-  return _out;
+  return clone.innerHTML.trim();
 }
 
 function tplShowCreate() {
@@ -12464,24 +12486,28 @@ function buildVideoEmbed(url) {
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
     var vid = ytMatch[1];
-    embedInner = '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1"'
-      + ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px"'
-      + ' allowfullscreen loading="lazy"></iframe>';
+    // YouTube iframe needs aspect-ratio wrapper
+    embedInner = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px">'
+      + '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1"'
+      + ' frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"'
+      + ' allowfullscreen loading="lazy"'
+      + ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"></iframe>'
+      + '</div>';
   } else if (/\.mp4|\.mov|\.webm|\.m3u8/.test(url) || /cdn\.shopify\.com/.test(url)) {
-    embedInner = '<video src="' + url + '" controls preload="metadata"'
-      + ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px"></video>';
+    // Native video: width:100% + height:auto maintains aspect ratio without abs-positioning
+    // No overflow:hidden needed — avoids any theme CSS clip/pointer-events interference
+    embedInner = '<video src="' + url + '" controls playsinline preload="metadata"'
+      + ' style="display:block;width:100%;height:auto;border-radius:6px;background:#000"></video>';
   }
   if (!embedInner) return '';
-  // Fully self-contained: inline styles on every element so it works on any Shopify theme
-  // without needing custom CSS. Also keeps tgk-video-wrap class as a CSS hook.
-  return '<div class="tgk-section tgk-video-section" style="margin-bottom:20px">'
-    + '<div class="tgk-sh" style="display:flex;align-items:center;gap:12px;background:#2a2d2f;border-radius:8px;padding:11px 16px;margin-bottom:12px">'
-    + '<div class="tgk-ic" style="width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center">'
-    + '<svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+  // Outer wrapper and header use NO TGK CSS classes — purely inline-styled
+  // tgk-video-wrap kept on inner wrap only as editor JS hook (not used for layout)
+  return '<div style="margin:20px 0 24px">'
+    + '<div style="display:flex;align-items:center;gap:10px;background:#1c1f22;border-radius:8px 8px 0 0;padding:10px 14px;margin-bottom:0">'
+    + '<svg width="18" height="18" viewBox="0 0 24 24" fill="#2ABFAA" style="flex-shrink:0"><path d="M8 5v14l11-7z"/></svg>'
+    + '<span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#ffffff;font-family:inherit">Product Video</span>'
     + '</div>'
-    + '<div class="tgk-sh-title" style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#fff">Product Video</div>'
-    + '</div>'
-    + '<div class="tgk-video-wrap" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px;background:#000">'
+    + '<div class="tgk-video-wrap" style="border-radius:0 0 6px 6px;overflow:hidden;background:#000">'
     + embedInner
     + '</div></div>';
 }
