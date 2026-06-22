@@ -12440,16 +12440,29 @@ function buildVideoEmbed(url) {
   if (!url || !url.trim()) return '';
   url = url.trim();
   var embedInner = '';
-  var playIcon = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>';
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
     var vid = ytMatch[1];
-    embedInner = '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1" class="tgk-video-embed" allowfullscreen loading="lazy"></iframe>';
-  } else if (/\.mp4|\. mov|\.webm|\.m3u8/.test(url) || /cdn\.shopify\.com/.test(url)) {
-    embedInner = '<video src="' + url + '" class="tgk-video-embed" controls preload="metadata"></video>';
+    embedInner = '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0&modestbranding=1"'
+      + ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px"'
+      + ' allowfullscreen loading="lazy"></iframe>';
+  } else if (/\.mp4|\.mov|\.webm|\.m3u8/.test(url) || /cdn\.shopify\.com/.test(url)) {
+    embedInner = '<video src="' + url + '" controls preload="metadata"'
+      + ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px"></video>';
   }
   if (!embedInner) return '';
-  return '<div class="tgk-section"><div class="tgk-sh"><div class="tgk-ic">' + playIcon + '</div><div class="tgk-sh-title">Product Video</div></div><div class="tgk-video-wrap">' + embedInner + '</div></div>';
+  // Fully self-contained: inline styles on every element so it works on any Shopify theme
+  // without needing custom CSS. Also keeps tgk-video-wrap class as a CSS hook.
+  return '<div class="tgk-section tgk-video-section" style="margin-bottom:20px">'
+    + '<div class="tgk-sh" style="display:flex;align-items:center;gap:12px;background:#2a2d2f;border-radius:8px;padding:11px 16px;margin-bottom:12px">'
+    + '<div class="tgk-ic" style="width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center">'
+    + '<svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+    + '</div>'
+    + '<div class="tgk-sh-title" style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#fff">Product Video</div>'
+    + '</div>'
+    + '<div class="tgk-video-wrap" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px;background:#000">'
+    + embedInner
+    + '</div></div>';
 }
 </script>
 </body>
