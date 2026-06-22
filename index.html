@@ -12467,21 +12467,30 @@ function buildVideoEmbed(url) {
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
     var vid = ytMatch[1];
-    embedInner = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden">'
+    embedInner = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:0 0 6px 6px">'
       + '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0"'
       + ' style="position:absolute;inset:0;width:100%;height:100%;border:none"'
       + ' allowfullscreen></iframe></div>';
   } else if (/\.mp4|\.mov|\.webm|\.m3u8/.test(url) || /cdn\.shopify\.com/.test(url)) {
-    // Matches the bare <video controls style="width:100%"> that confirmed works
     embedInner = '<video src="' + url + '" controls'
-      + ' style="width:100%;display:block;border-radius:4px"></video>';
+      + ' style="display:block;width:100%;height:auto;position:static;border-radius:0 0 6px 6px"></video>';
   }
   if (!embedInner) return '';
-  return '<div style="margin:16px 0 20px">'
-    + '<p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2ABFAA">'
-    + '&#9654; Product Video</p>'
-    + '<div class="tgk-video-wrap">' + embedInner + '</div>'
+  // Fully inline-styled header — no TGK CSS class dependencies, matches other section headers visually
+  // tgk-video-wrap inline styles override the Shopify .tgk-video-wrap theme CSS (height:0 etc.)
+  var header = '<div style="display:flex;align-items:center;gap:10px;background:#1c2024;border-radius:6px 6px 0 0;padding:10px 14px">'
+    + '<div style="width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(42,191,170,.15);border-radius:5px">'
+    + '<svg width="14" height="14" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+    + '</div>'
+    + '<span style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#e0e0e0;font-family:inherit">Product Video</span>'
     + '</div>';
-}</script>
+  return '<div style="margin:20px 0">'
+    + header
+    + '<div class="tgk-video-wrap" style="height:auto;overflow:visible;padding:0;position:static;background:#000;border-radius:0 0 6px 6px">'
+    + embedInner
+    + '</div></div>';
+}
+
+</script>
 </body>
 </html>
