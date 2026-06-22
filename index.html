@@ -3122,30 +3122,24 @@ function _finishLoadEdit(html) {
   const wysiwyg = document.getElementById('edit-wysiwyg');
   wysiwyg.innerHTML = stripStyles(html);
   // Protect video sections so editor doesn't interfere with iframe
-  wysiwyg.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-    // Blank the video/iframe src so nothing loads in the editor
-    wrap.querySelectorAll('video').forEach(function(v) {
-      v.setAttribute('data-vsrc', v.getAttribute('src') || '');
-      v.removeAttribute('src');
-      try { v.load(); } catch(e) {}
+  (function(){
+    // Extract video sections from HTML string before it enters the editor DOM
+    // This way video/iframe elements NEVER load in the editor
+    var _tmp = document.createElement('div');
+    _tmp.innerHTML = wysiwyg.innerHTML;
+    _tmp.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
+      var id = 'tgkvid_' + (++window._tgkPhCtr);
+      window._tgkPhStore[id] = wrap.outerHTML; // store raw HTML string
+      var ph = document.createElement('div');
+      ph.className = 'tgk-video-ph';
+      ph.setAttribute('data-tgkvid', id);
+      ph.style.cssText = 'height:80px;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none;user-select:none;box-sizing:border-box';
+      ph.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+        + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit">Product Video — plays on published page</span>';
+      wrap.parentNode.replaceChild(ph, wrap);
     });
-    wrap.querySelectorAll('iframe').forEach(function(f) {
-      f.setAttribute('data-ifsrc', f.getAttribute('src') || '');
-      f.setAttribute('src', 'about:blank');
-    });
-    // Store wrap's original inline style so we can restore on export
-    wrap.setAttribute('data-orig-style', wrap.getAttribute('style') || '');
-    // Resize wrap to show placeholder instead of height:0 box
-    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;box-sizing:border-box';
-    // Inject placeholder label (removed on export)
-    var ph = document.createElement('div');
-    ph.className = 'tgk-vid-ph';
-    ph.setAttribute('contenteditable', 'false');
-    ph.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center';
-    ph.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
-      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page</span></span>';
-    wrap.appendChild(ph);
-  });
+    wysiwyg.innerHTML = _tmp.innerHTML;
+  })();
   const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   editableSelectors.forEach(sel => {
     wysiwyg.querySelectorAll(sel).forEach(el => {
@@ -3652,30 +3646,24 @@ function loadConvEdit(html) {
   const wysiwyg = document.getElementById('o-conv-wysiwyg');
   wysiwyg.innerHTML = stripStyles(html);
   // Protect video sections
-  wysiwyg.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-    // Blank the video/iframe src so nothing loads in the editor
-    wrap.querySelectorAll('video').forEach(function(v) {
-      v.setAttribute('data-vsrc', v.getAttribute('src') || '');
-      v.removeAttribute('src');
-      try { v.load(); } catch(e) {}
+  (function(){
+    // Extract video sections from HTML string before it enters the editor DOM
+    // This way video/iframe elements NEVER load in the editor
+    var _tmp = document.createElement('div');
+    _tmp.innerHTML = wysiwyg.innerHTML;
+    _tmp.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
+      var id = 'tgkvid_' + (++window._tgkPhCtr);
+      window._tgkPhStore[id] = wrap.outerHTML; // store raw HTML string
+      var ph = document.createElement('div');
+      ph.className = 'tgk-video-ph';
+      ph.setAttribute('data-tgkvid', id);
+      ph.style.cssText = 'height:80px;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none;user-select:none;box-sizing:border-box';
+      ph.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
+        + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit">Product Video — plays on published page</span>';
+      wrap.parentNode.replaceChild(ph, wrap);
     });
-    wrap.querySelectorAll('iframe').forEach(function(f) {
-      f.setAttribute('data-ifsrc', f.getAttribute('src') || '');
-      f.setAttribute('src', 'about:blank');
-    });
-    // Store wrap's original inline style so we can restore on export
-    wrap.setAttribute('data-orig-style', wrap.getAttribute('style') || '');
-    // Resize wrap to show placeholder instead of height:0 box
-    wrap.style.cssText = 'height:90px;padding-bottom:0;overflow:visible;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;box-sizing:border-box';
-    // Inject placeholder label (removed on export)
-    var ph = document.createElement('div');
-    ph.className = 'tgk-vid-ph';
-    ph.setAttribute('contenteditable', 'false');
-    ph.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center';
-    ph.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
-      + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit">Product Video<br><span style="font-weight:400;font-size:11px">Plays on published page</span></span>';
-    wrap.appendChild(ph);
-  });
+    wysiwyg.innerHTML = _tmp.innerHTML;
+  })();
   const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   editableSelectors.forEach(sel => {
     wysiwyg.querySelectorAll(sel).forEach(el => {
@@ -7425,27 +7413,20 @@ function _cleanWysiwygHtml(wy) {
 
   // Preserve video sections — swap out before innerHTML serialization to avoid
   // browser mangling iframe src (& -> &amp;) and other attribute encoding issues
-  // Restore video sections: remove placeholder, restore blanked src attrs
-  clone.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-    wrap.querySelectorAll('.tgk-vid-ph').forEach(function(el) { el.remove(); });
-    wrap.querySelectorAll('[data-vsrc]').forEach(function(v) {
-      var s = v.getAttribute('data-vsrc');
-      if (s) v.setAttribute('src', s); else v.removeAttribute('src');
-      v.removeAttribute('data-vsrc');
-    });
-    wrap.querySelectorAll('[data-ifsrc]').forEach(function(f) {
-      var s = f.getAttribute('data-ifsrc');
-      if (s) f.setAttribute('src', s);
-      f.removeAttribute('data-ifsrc');
-    });
-    var orig = wrap.getAttribute('data-orig-style');
-    if (orig !== null) {
-      if (orig) wrap.setAttribute('style', orig); else wrap.removeAttribute('style');
-      wrap.removeAttribute('data-orig-style');
+  // Restore video sections: find placeholder divs in clone and replace with stored HTML
+  var _phMap = {};
+  clone.querySelectorAll('[data-tgkvid]').forEach(function(ph) {
+    var id = ph.getAttribute('data-tgkvid');
+    if (id && window._tgkPhStore && window._tgkPhStore[id]) {
+      _phMap[ph.outerHTML] = window._tgkPhStore[id];
     }
   });
-
-  return clone.innerHTML.trim();
+  var _out = clone.innerHTML.trim();
+  Object.keys(_phMap).forEach(function(phHtml) {
+    // split/join avoids $ special-char issues in String.replace
+    _out = _out.split(phHtml).join(_phMap[phHtml]);
+  });
+  return _out;
 }
 
 function tplShowCreate() {
@@ -12477,8 +12458,8 @@ function showLaunchSub(sub) {
 }
 
 /* ── buildVideoEmbed: convert a YouTube or Shopify CDN URL to TGK embed HTML ── */
-window._wysiVids = {};
-window._wysiVidCtr = 0;
+window._tgkPhStore = {};
+window._tgkPhCtr = 0;
 function buildVideoEmbed(url) {
   if (!url || !url.trim()) return '';
   url = url.trim();
