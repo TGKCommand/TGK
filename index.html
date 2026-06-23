@@ -1074,6 +1074,14 @@ select,select option{background-color:#fff!important;color:#111827!important}
 .oo-bom-export:hover{border-color:#2ABFAA;color:#2ABFAA}
 /* File image preview */
 .pw-file-img{width:48px;height:48px;object-fit:cover;border-radius:5px;flex-shrink:0;border:1px solid #E4E7EC}
+
+/* ── Column drag-and-drop ───────────────────────────────── */
+.pw-col{transition:opacity .15s,transform .15s}
+.pw-col.col-dragging{opacity:.4;transform:scale(.98)}
+.pw-col.col-drag-over{outline:2.5px dashed #2ABFAA;outline-offset:-2px;background:rgba(42,191,170,.04)}
+.pw-col-drag-handle{cursor:grab;color:#9CA3AF;font-size:14px;padding:0 3px;flex-shrink:0;line-height:1;user-select:none;transition:color .12s;letter-spacing:-2px}
+.pw-col-drag-handle:hover{color:#2ABFAA}
+.pw-col-drag-handle:active{cursor:grabbing}
 .pw-note-ta{width:100%;min-height:90px;border:1.5px solid #2ABFAA;border-radius:7px;padding:11px 12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:none;outline:none;box-sizing:border-box;line-height:1.55}
 
 </style>
@@ -11085,8 +11093,9 @@ function _mkCol(col,tasks){
   var el=document.createElement('div');
   el.className='pw-col';el.style.setProperty('--cc',col.color);el.id='pwcol-'+col.id;
   var resp=_mem(col.responsible||'');
-  el.innerHTML='<div class="pw-col-hdr" style="border-color:'+col.color+'">'
-    +'<div class="pw-col-dot"></div>'
+  el.innerHTML='<div class="pw-col-hdr" style="border-color:'+col.color+'" id="pwchdr-'+col.id+'">'
+        +'<span class="pw-col-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>'
++'<div class="pw-col-dot"></div>'
     +'<span class="pw-col-name">'+_esc(col.name)+'</span>'
     +(resp?'<div class="pw-col-resp pw-av" style="background:'+resp.color+';width:20px;height:20px;font-size:8px" title="Responsible: '+_esc(resp.name)+'">'+_esc(resp.initials)+'</div>':'')
     +'<span class="pw-col-cnt">'+tasks.length+'</span>'
@@ -11099,6 +11108,49 @@ function _mkCol(col,tasks){
   body.addEventListener('dragenter',function(e){e.preventDefault();this.classList.add('dov');});
   body.addEventListener('dragleave',function(e){if(!this.contains(e.relatedTarget))this.classList.remove('dov');});
   tasks.forEach(function(t){body.appendChild(_mkCard(t,col.id));});
+
+  // ── Column drag-to-reorder ──────────────────────────────────
+  var hdr=el.querySelector('.pw-col-hdr');
+  if(hdr){
+    hdr.draggable=true;
+    hdr.addEventListener('dragstart',function(e){
+      e.stopPropagation();
+      _dragColId=col.id;
+      _dragId=null; // clear card drag
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain','col:'+col.id);
+      el.classList.add('col-dragging');
+    });
+    hdr.addEventListener('dragend',function(){
+      _dragColId=null;
+      document.querySelectorAll('.pw-col').forEach(function(c){c.classList.remove('col-dragging','col-drag-over');});
+    });
+  }
+  // Column as a drop target for other columns
+  el.addEventListener('dragover',function(e){
+    if(!_dragColId||_dragColId===col.id)return;
+    e.preventDefault();e.stopPropagation();
+    e.dataTransfer.dropEffect='move';
+    document.querySelectorAll('.pw-col').forEach(function(c){c.classList.remove('col-drag-over');});
+    el.classList.add('col-drag-over');
+  });
+  el.addEventListener('dragleave',function(e){
+    if(!this.contains(e.relatedTarget))this.classList.remove('col-drag-over');
+  });
+  el.addEventListener('drop',function(e){
+    if(!_dragColId||_dragColId===col.id)return;
+    e.preventDefault();e.stopPropagation();
+    this.classList.remove('col-drag-over');
+    var S=_gs();
+    var fromIdx=S.cols.findIndex(function(c){return c.id===_dragColId;});
+    var toIdx=S.cols.findIndex(function(c){return c.id===col.id;});
+    if(fromIdx<0||toIdx<0){_dragColId=null;return;}
+    var moved=S.cols.splice(fromIdx,1)[0];
+    S.cols.splice(toIdx,0,moved);
+    _dragColId=null;
+    _save();pwRenderBoard();
+  });
+
   return el;
 }
 function _mkCard(task,colId){
@@ -11139,10 +11191,10 @@ function _mkCard(task,colId){
 
 
 /* ── drag ────────────────────────────────────────────────────── */
-var _dragId=null;
+var _dragId=null,_dragColId=null;
 function _drop(e){
   e.preventDefault();var body=e.currentTarget;body.classList.remove('dov');
-  var toCol=body.dataset.colId;if(!_dragId||!toCol)return;
+  var toCol=body.dataset.colId;if(_dragColId||!_dragId||!toCol)return;
   var S=_gs(),fromCol='';
   S.cols.forEach(function(c){if(c.tasks.indexOf(_dragId)>=0)fromCol=c.id;});
   if(fromCol!==toCol){
