@@ -1104,6 +1104,23 @@ select,select option{background-color:#fff!important;color:#111827!important}
 .pw-export-btn:hover{border-color:#2ABFAA;color:#2ABFAA}
 /* ── Comment badge on card ────────────────────────────────── */
 .pw-card-msgs{display:flex;align-items:center;gap:3px;font-size:10px;color:#9CA3AF}
+
+/* ── Dashboard team widget ──────────────────────────────── */
+.dash-team-section{margin-top:32px}
+.dash-team-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.dash-team-title{font-size:16px;font-weight:800;color:#111827;letter-spacing:-.01em}
+.dash-team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.dash-team-card{background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;transition:.15s;cursor:default}
+.dash-team-card:hover{border-color:#2ABFAA;box-shadow:0 4px 12px rgba(42,191,170,.1)}
+.dash-team-av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.dash-team-online::after{content:'';position:absolute;bottom:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#00875A;border:2px solid #fff}
+.dash-team-info{flex:1;min-width:0}
+.dash-team-name{font-size:13.5px;font-weight:700;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-team-email{font-size:11px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.dash-team-role{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:#EEF2FF;color:#4338CA;margin-top:4px;display:inline-block}
+.dash-team-role.admin{background:#FEF3C7;color:#92400E}
+.dash-team-invite{background:#fff;border:1.5px dashed #C1C7D0;border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:.15s;color:#9CA3AF;font-size:13px;font-weight:600;min-height:76px}
+.dash-team-invite:hover{border-color:#2ABFAA;color:#2ABFAA;background:rgba(42,191,170,.03)}
 .pw-note-ta{width:100%;min-height:90px;border:1.5px solid #2ABFAA;border-radius:7px;padding:11px 12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:none;outline:none;box-sizing:border-box;line-height:1.55}
 
 </style>
@@ -1426,7 +1443,17 @@ window._sbBootPromise = (async function() {
     <div class="mod-grid" id="ext-grid"></div>
   </div>
 </div>
-</div>
+
+  <!-- Team Section -->
+  <div class="dash-team-section" id="dash-team-wrap">
+    <div class="dash-team-hdr">
+      <span class="dash-team-title">&#128101; Team</span>
+      <button onclick="dashSyncTeam()" style="padding:5px 12px;border:1.5px solid #E4E7EC;border-radius:7px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:#6B7280;font-family:var(--font);transition:.15s">&#8635; Refresh</button>
+    </div>
+    <div class="dash-team-grid" id="dash-team-grid">
+      <div style="color:#9CA3AF;font-size:13px;font-style:italic">Loading team...</div>
+    </div>
+  </div></div>
 <div id="view-launch" class="cc-view">
 
 <div class="layout">
@@ -2806,6 +2833,7 @@ function showView(name) {
   if (name === 'home') {
     if (bc) bc.classList.remove('visible');
     if (typeof dashLoadExt === 'function') dashLoadExt();
+    setTimeout(function(){if(typeof dashRenderTeam==='function')dashRenderTeam();},300);
   } else {
     if (bc) bc.classList.add('visible');
     const lbl = document.getElementById('cc-bc-label');
@@ -11110,7 +11138,7 @@ window.pwInit=function(){
   var logo=document.querySelector('#cc-topbar img');
   if(!_booted){
     _booted=true;
-    _loadTeam().then(function(){pwRenderBoard();_updateBell();}).catch(function(){pwRenderBoard();_updateBell();});
+    _syncMyProfile().then(function(){ return _loadTeam(); }).then(function(){pwRenderBoard();_updateBell();}).catch(function(){pwRenderBoard();_updateBell();});
     setTimeout(_syncRemoteNotifs,1500);
     if(typeof sbGet==='function')sbGet('tgk_projects_data').then(function(r){if(r&&r.cols&&r.tasks){_st=r;try{localStorage.setItem(PW_KEY,JSON.stringify(_st));}catch(e){}pwRenderBoard();}}).catch(function(){});
   }else{pwRenderBoard();_updateBell();}
@@ -12587,6 +12615,78 @@ window.pwChatSend=function(){
   _renderChatter();
 };
 
+
+/* ── Supabase user pool sync ────────────────────────────── */
+var PW_POOL_KEY = 'tgk_user_pool';
+var AVATAR_COLORS = ['#2ABFAA','#E07B28','#6554C0','#00B8D9','#00875A','#FF5630','#FF991F','#2684FF','#8777D9','#57D9A3'];
+
+function _makeProfile(email, idx) {
+  var words = email.split('@')[0].replace(/[._\-+]/g,' ').split(' ').filter(Boolean);
+  var name  = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
+  var ini   = (words[0]?words[0][0]:'?').toUpperCase() + (words[1]?words[1][0]:words[0]&&words[0][1]?words[0][1]:'').toUpperCase();
+  return {
+    id: 'u_' + email.replace(/[^a-z0-9]/gi,'').slice(0,12),
+    name: name, email: email, initials: ini,
+    color: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+    role: 'Member', joinedAt: _now(), lastSeen: _now()
+  };
+}
+
+function _syncMyProfile() {
+  var user = _curUser();
+  if (!user || !user.email || typeof sbGet !== 'function') return Promise.resolve();
+  return sbGet(PW_POOL_KEY).then(function(pool) {
+    pool = Array.isArray(pool) ? pool : [];
+    var existing = pool.find(function(m){ return m.email === user.email; });
+    if (existing) {
+      existing.lastSeen = _now();
+    } else {
+      pool.push(_makeProfile(user.email, pool.length));
+    }
+    return sbSet(PW_POOL_KEY, pool).then(function(){
+      _team = pool;
+      try{localStorage.setItem(PW_TEAM_KEY, JSON.stringify(_team));}catch(e){}
+    });
+  }).catch(function(){});
+}
+
+/* Override _loadTeam to use tgk_user_pool */
+function _loadTeam() {
+  try {
+    var c = JSON.parse(localStorage.getItem(PW_TEAM_KEY)||'null');
+    if (Array.isArray(c) && c.length) _team = c;
+  } catch(e) {}
+  if (typeof sbGet !== 'function') { _seedTeam(); return Promise.resolve(); }
+  return sbGet(PW_POOL_KEY).then(function(pool){
+    if (Array.isArray(pool) && pool.length) {
+      _team = pool;
+      try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
+    } else {
+      // Try legacy tgk_team
+      return sbGet('tgk_team').then(function(legacy){
+        if (Array.isArray(legacy) && legacy.length) {
+          _team = legacy;
+          // Migrate to pool
+          sbSet(PW_POOL_KEY, _team).catch(function(){});
+          try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
+        } else { _seedTeam(); }
+      }).catch(function(){ _seedTeam(); });
+    }
+  }).catch(function(){ _seedTeam(); });
+}
+
+/* expose for CC dashboard */
+window.pwGetTeam = function(){ return _team.slice(); };
+window.pwSyncProfile = _syncMyProfile;
+window.pwSetMemberRole = function(id, role){
+  var m = _team.find(function(x){return x.id===id;});
+  if (!m) return;
+  m.role = role;
+  if (typeof sbSet === 'function') sbSet(PW_POOL_KEY, _team).catch(function(){});
+  try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
+  if (typeof dashRenderTeam === 'function') dashRenderTeam();
+};
+
 })(); /* end PW IIFE */
 
 </script>
@@ -12828,6 +12928,78 @@ function buildVideoEmbed(url) {
     + embedInner
     + '</div></div>';
 }
+
+
+/* ── Dashboard team widget ──────────────────────────────── */
+function dashRenderTeam() {
+  var grid = document.getElementById('dash-team-grid');
+  if (!grid) return;
+  var team = typeof pwGetTeam === 'function' ? pwGetTeam() : [];
+  if (!team.length) {
+    grid.innerHTML = '<div style="color:#9CA3AF;font-size:13px;font-style:italic">No team members yet. Team members appear here after they log in.</div>';
+    return;
+  }
+  var now = Date.now();
+  var cards = team.map(function(m) {
+    var lastSeen = m.lastSeen ? new Date(m.lastSeen).getTime() : 0;
+    var isOnline = lastSeen && (now - lastSeen) < 10 * 60 * 1000; // 10 min
+    var roleClass = m.role === 'Admin' ? 'admin' : '';
+    return '<div class="dash-team-card">'
+      + '<div class="dash-team-av' + (isOnline ? ' dash-team-online' : '') + '" style="background:' + (m.color||'#2ABFAA') + '">' + (m.initials||'??') + '</div>'
+      + '<div class="dash-team-info">'
+      + '<div class="dash-team-name">' + _escDash(m.name||'Unknown') + '</div>'
+      + '<div class="dash-team-email">' + _escDash(m.email||'') + '</div>'
+      + '<span class="dash-team-role ' + roleClass + '">' + (m.role||'Member') + '</span>'
+      + '</div></div>';
+  });
+  // Add invite button
+  cards.push('<div class="dash-team-invite" onclick="dashInviteUser()"><div style="font-size:20px">+</div><div>Invite teammate</div></div>');
+  grid.innerHTML = cards.join('');
+}
+
+function _escDash(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function dashSyncTeam() {
+  if (typeof pwSyncProfile === 'function') {
+    pwSyncProfile().then(function(){ dashRenderTeam(); });
+  }
+}
+
+function dashInviteUser() {
+  var email = prompt('Enter the email address to invite to the team:');
+  if (!email || !email.includes('@')) return;
+  // Add them to the pool (they will update their own profile on first login)
+  if (typeof pwGetTeam === 'function') {
+    var team = pwGetTeam();
+    if (team.find(function(m){ return m.email === email; })) {
+      alert(email + ' is already on the team.');
+      return;
+    }
+    // Create a placeholder profile
+    var words = email.split('@')[0].replace(/[._-]/g,' ').split(' ').filter(Boolean);
+    var name = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
+    var ini = (words[0]?words[0][0]:'?').toUpperCase() + (words[1]?words[1][0]:words[0]&&words[0][1]?words[0][1]:'').toUpperCase();
+    var colors = ['#2ABFAA','#E07B28','#6554C0','#00B8D9','#00875A','#FF5630','#FF991F','#2684FF'];
+    var newMember = {
+      id: 'u_' + email.replace(/[^a-z0-9]/gi,'').slice(0,12),
+      name: name, email: email, initials: ini,
+      color: colors[team.length % colors.length],
+      role: 'Member', joinedAt: new Date().toISOString(), lastSeen: null
+    };
+    team.push(newMember);
+    if (typeof sbSet === 'function') {
+      sbSet('tgk_user_pool', team).then(function(){
+        dashSyncTeam();
+        alert('Added ' + name + ' to the team. They will be auto-synced when they log in.');
+      }).catch(function(){ alert('Could not save. Check your connection.'); });
+    }
+  }
+}
+
+// Load team when dashboard renders
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() { dashSyncTeam(); }, 1200);
+});
 
 </script>
 </body>
