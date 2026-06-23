@@ -12616,14 +12616,13 @@ window.pwChatSend=function(){
 };
 
 
-/* ── Supabase user pool sync ────────────────────────────── */
-var PW_POOL_KEY = 'tgk_user_pool';
+/* ── Auto-join team on login (uses existing tgk_team key) ── */
 var AVATAR_COLORS = ['#2ABFAA','#E07B28','#6554C0','#00B8D9','#00875A','#FF5630','#FF991F','#2684FF','#8777D9','#57D9A3'];
 
 function _makeProfile(email, idx) {
   var words = email.split('@')[0].replace(/[._\-+]/g,' ').split(' ').filter(Boolean);
   var name  = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
-  var ini   = (words[0]?words[0][0]:'?').toUpperCase() + (words[1]?words[1][0]:words[0]&&words[0][1]?words[0][1]:'').toUpperCase();
+  var ini   = ((words[0]?words[0][0]:'?') + (words[1]?words[1][0]:words[0]&&words[0][1]?words[0][1]:'')).toUpperCase();
   return {
     id: 'u_' + email.replace(/[^a-z0-9]/gi,'').slice(0,12),
     name: name, email: email, initials: ini,
@@ -12635,43 +12634,38 @@ function _makeProfile(email, idx) {
 function _syncMyProfile() {
   var user = _curUser();
   if (!user || !user.email || typeof sbGet !== 'function') return Promise.resolve();
-  return sbGet(PW_POOL_KEY).then(function(pool) {
-    pool = Array.isArray(pool) ? pool : [];
-    var existing = pool.find(function(m){ return m.email === user.email; });
+  // Use existing tgk_team key — safe, already has correct RLS permissions
+  return sbGet('tgk_team').then(function(team) {
+    team = Array.isArray(team) ? team : [];
+    var existing = team.find(function(m){ return m.email === user.email; });
     if (existing) {
       existing.lastSeen = _now();
     } else {
-      pool.push(_makeProfile(user.email, pool.length));
+      team.push(_makeProfile(user.email, team.length));
     }
-    return sbSet(PW_POOL_KEY, pool).then(function(){
-      _team = pool;
+    // Write back to tgk_team — same key that already works
+    return sbSet('tgk_team', team).then(function(){
+      _team = team;
       try{localStorage.setItem(PW_TEAM_KEY, JSON.stringify(_team));}catch(e){}
     });
-  }).catch(function(){});
+  }).catch(function(e){
+    // If write fails (RLS), still seed locally so the UI works
+    _seedTeam();
+  });
 }
 
-/* Override _loadTeam to use tgk_user_pool */
+/* _loadTeam — uses tgk_team (works with existing RLS) */
 function _loadTeam() {
   try {
     var c = JSON.parse(localStorage.getItem(PW_TEAM_KEY)||'null');
     if (Array.isArray(c) && c.length) _team = c;
   } catch(e) {}
   if (typeof sbGet !== 'function') { _seedTeam(); return Promise.resolve(); }
-  return sbGet(PW_POOL_KEY).then(function(pool){
-    if (Array.isArray(pool) && pool.length) {
-      _team = pool;
+  return sbGet('tgk_team').then(function(r){
+    if (Array.isArray(r) && r.length) {
+      _team = r;
       try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
-    } else {
-      // Try legacy tgk_team
-      return sbGet('tgk_team').then(function(legacy){
-        if (Array.isArray(legacy) && legacy.length) {
-          _team = legacy;
-          // Migrate to pool
-          sbSet(PW_POOL_KEY, _team).catch(function(){});
-          try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
-        } else { _seedTeam(); }
-      }).catch(function(){ _seedTeam(); });
-    }
+    } else { _seedTeam(); }
   }).catch(function(){ _seedTeam(); });
 }
 
@@ -12682,7 +12676,7 @@ window.pwSetMemberRole = function(id, role){
   var m = _team.find(function(x){return x.id===id;});
   if (!m) return;
   m.role = role;
-  if (typeof sbSet === 'function') sbSet(PW_POOL_KEY, _team).catch(function(){});
+  if (typeof sbSet === 'function') sbSet('tgk_team', _team).catch(function(){});
   try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
   if (typeof dashRenderTeam === 'function') dashRenderTeam();
 };
@@ -12988,7 +12982,7 @@ function dashInviteUser() {
     };
     team.push(newMember);
     if (typeof sbSet === 'function') {
-      sbSet('tgk_user_pool', team).then(function(){
+      sbSet('tgk_team', team).then(function(){
         dashSyncTeam();
         alert('Added ' + name + ' to the team. They will be auto-synced when they log in.');
       }).catch(function(){ alert('Could not save. Check your connection.'); });
