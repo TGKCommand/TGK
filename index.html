@@ -1082,6 +1082,28 @@ select,select option{background-color:#fff!important;color:#111827!important}
 .pw-col-drag-handle{cursor:grab;color:#9CA3AF;font-size:14px;padding:0 3px;flex-shrink:0;line-height:1;user-select:none;transition:color .12s;letter-spacing:-2px}
 .pw-col-drag-handle:hover{color:#2ABFAA}
 .pw-col-drag-handle:active{cursor:grabbing}
+
+/* ── Context menu ─────────────────────────────────────────── */
+#pw-ctx{position:fixed;background:#fff;border:1px solid #E4E7EC;border-radius:8px;box-shadow:0 8px 24px rgba(9,30,66,.18);z-index:9999;min-width:180px;overflow:hidden;display:none}
+#pw-ctx.show{display:block}
+.pw-ctx-item{display:flex;align-items:center;gap:9px;padding:9px 14px;font-size:13px;color:#374151;cursor:pointer;transition:background .1s;font-family:var(--font);border:none;background:none;width:100%;text-align:left}
+.pw-ctx-item:hover{background:#F0FBF9;color:#2ABFAA}
+.pw-ctx-sep{height:1px;background:#F0F2F5;margin:4px 0}
+.pw-ctx-sub{display:none;position:absolute;left:100%;top:0;background:#fff;border:1px solid #E4E7EC;border-radius:8px;box-shadow:0 8px 24px rgba(9,30,66,.18);min-width:160px;overflow:hidden;z-index:10000}
+.pw-ctx-has-sub:hover .pw-ctx-sub{display:block}
+.pw-ctx-has-sub{position:relative}
+/* ── Stage stats bar ──────────────────────────────────────── */
+.pw-col-stats{display:flex;gap:8px;padding:5px 12px 8px;flex-wrap:wrap}
+.pw-col-stat{font-size:10.5px;color:#9CA3AF;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.pw-col-stat.live{color:#00875A;font-weight:600}
+.pw-col-stat.cost{color:#92400E}
+/* ── Mention highlight ────────────────────────────────────── */
+.oo-mention{background:#EEF2FF;color:#4338CA;padding:0 4px;border-radius:3px;font-weight:600}
+/* ── Export board btn ─────────────────────────────────────── */
+.pw-export-btn{padding:6px 12px;border:1.5px solid #3a3d40;border-radius:6px;background:none;color:#aaa;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);transition:.15s;flex-shrink:0}
+.pw-export-btn:hover{border-color:#2ABFAA;color:#2ABFAA}
+/* ── Comment badge on card ────────────────────────────────── */
+.pw-card-msgs{display:flex;align-items:center;gap:3px;font-size:10px;color:#9CA3AF}
 .pw-note-ta{width:100%;min-height:90px;border:1.5px solid #2ABFAA;border-radius:7px;padding:11px 12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:none;outline:none;box-sizing:border-box;line-height:1.55}
 
 </style>
@@ -1258,7 +1280,7 @@ window._sbBootPromise = (async function() {
 </div>
 
 <div id="cc-breadcrumb">
-  <button class="cc-bc-home" onclick="closeERP()">
+  <button class="cc-bc-home" onclick="showView('home')">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
     All Tools
   </button>
@@ -10991,9 +11013,12 @@ function _gs(){
   try{var s=localStorage.getItem(PW_KEY);_st=s?JSON.parse(s):_def();}catch(e){_st=_def();}
   return _st;
 }
+var _isSaving=false,_saveQueued=false;
 function _save(){_pushUndo();
-  try{localStorage.setItem(PW_KEY,JSON.stringify(_st));}catch(e){}
+  try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(_st)));}catch(e){}
   if(typeof sbSet==='function'){
+    if(_isSaving){_saveQueued=true;return;}
+    _isSaving=true;
     var cp=JSON.parse(JSON.stringify(_st));
     Object.values(cp.tasks).forEach(function(t){if(t.files)t.files=t.files.map(function(f){return{id:f.id,name:f.name,type:f.type,size:f.size,uploadedAt:f.uploadedAt};});});
     sbSet('tgk_projects_data',cp).catch(function(){});
@@ -11078,11 +11103,30 @@ window.pwRenderBoard=function(){
   kb.innerHTML='';
   S.cols.forEach(function(col){
     var tasks=col.tasks.map(function(id){return S.tasks[id];}).filter(Boolean);
-    if(_srchQ)tasks=tasks.filter(function(t){return t.title.toLowerCase().indexOf(_srchQ)>=0||(t.tags||[]).some(function(g){return g.toLowerCase().indexOf(_srchQ)>=0;});});
+    if(_srchQ)tasks=tasks.filter(function(t){
+      var q=_srchQ;
+      if(t.title.toLowerCase().indexOf(q)>=0)return true;
+      if((t.tags||[]).some(function(g){return g.toLowerCase().indexOf(q)>=0;}))return true;
+      if((t.description||'').toLowerCase().indexOf(q)>=0)return true;
+      if(t.sku&&((t.sku.num||'').toLowerCase().indexOf(q)>=0||(t.sku.cat||'').toLowerCase().indexOf(q)>=0))return true;
+      if((t.bom||[]).some(function(b){return(b.comp||'').toLowerCase().indexOf(q)>=0||(b.pn||'').toLowerCase().indexOf(q)>=0||(b.supplier||'').toLowerCase().indexOf(q)>=0;}))return true;
+      if(t.vehicle){var v=t.vehicle;if([v.make,v.model,v.year,v.plate,v.vin].some(function(x){return(x||'').toLowerCase().indexOf(q)>=0;}))return true;}
+      return false;
+    });
     if(_filters.priority)tasks=tasks.filter(function(t){return t.priority===_filters.priority;});
     if(_filters.assignee)tasks=tasks.filter(function(t){return t.assignee===_filters.assignee;});
     if(_filters.tag)tasks=tasks.filter(function(t){return(t.tags||[]).indexOf(_filters.tag)>=0;});
-    kb.appendChild(_mkCol(col,tasks));
+    var _colEl=_mkCol(col,tasks);kb.appendChild(_colEl);
+    (function(){
+      var live=tasks.filter(function(t){return t.sku&&t.sku.status==='active';}).length;
+      var cost=tasks.reduce(function(s,t){return s+(t.bom||[]).reduce(function(bs,r){return bs+(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0);},0);},0);
+      if(!live&&!cost)return;
+      var _se=document.createElement('div');_se.className='pw-col-stats';
+      var _p=[];
+      if(live)_p.push('<span class="pw-col-stat live">● '+live+' live</span>');
+      if(cost>0)_p.push('<span class="pw-col-stat cost">$'+cost.toFixed(0)+' BOM</span>');
+      if(_p.length){_se.innerHTML=_p.join('');var _cb=_colEl.querySelector('.pw-col-body');if(_cb)_colEl.insertBefore(_se,_cb);}
+    })();
   });
   var btn=document.createElement('button');
   btn.className='pw-add-stage';btn.innerHTML='<span style="font-size:17px">+</span> Add Stage';
@@ -11175,7 +11219,7 @@ function _mkCard(task,colId){
   var daysBadge='';
   if(task.stageEnteredAt){var d=Math.floor((Date.now()-new Date(task.stageEnteredAt).getTime())/86400000);if(d>0)daysBadge='<span class="pw-days-badge">'+d+'d</span>';}
   // Note/file counts
-  var nc=(task.logs||[]).filter(function(l){return l.type==='note';}).length,fc=(task.files||[]).length;
+  var nc=(task.logs||[]).filter(function(l){return l.type==='note'||l.type==='message';}).length,fc=(task.files||[]).length;
   var counts=(nc+fc>0)?'<div class="pw-card-counts">'+(nc?'<span>💬 '+nc+'</span>':'')+(fc?'<span>📎 '+fc+'</span>':'')+'</div>':'';
   el.innerHTML='<div class="pw-card-top"><span class="pw-pri" style="background:'+p.bg+';color:'+p.color+'">'+p.label+'</span>'+(tags?tags:'')
     +'<button class="pw-card-dup" data-tid="'+task.id+'" onclick="event.stopPropagation();pwDupCard(this.dataset.tid)" title="Duplicate">⧉</button>'
@@ -11186,6 +11230,7 @@ function _mkCard(task,colId){
   el.addEventListener('dragstart',function(e){_dragId=task.id;this.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
   el.addEventListener('dragend',function(){this.classList.remove('dragging');document.querySelectorAll('.pw-col-body.dov').forEach(function(b){b.classList.remove('dov');});});
   el.addEventListener('click',function(e){if(!e.target.closest('.pw-card-del,.pw-card-dup'))pwEditCard(task.id);});
+  el.addEventListener('contextmenu',function(e){e.preventDefault();pwCtxMenu(e.clientX,e.clientY,task.id,colId);});
   return el;
 }
 
@@ -11835,9 +11880,9 @@ function _renderChatter(){
 
       if(isNote){
         h+='<div class="oo-feed-action">Log note</div>';
-        h+='<div class="oo-note-txt">'+_esc(log.text)+'</div>';
+        h+='<div class="oo-note-txt">'+_mentionHtml(log.text)+'</div>';
       } else if(isMsg){
-        h+='<div class="oo-msg-txt">'+_esc(log.text)+'</div>';
+        h+='<div class="oo-msg-txt">'+_mentionHtml(log.text)+'</div>';
       } else {
         // Parse the action text to render Odoo-style "Stage changed • A → B (Stage)"
         var txt=log.text||'';
@@ -12281,7 +12326,7 @@ window.pwStartPolling=function(){
       sbGet('tgk_projects_data').then(function(r){
         if(!r||!r.cols||!r.tasks)return;
         var sig=JSON.stringify({tasks:Object.keys(r.tasks),cols:r.cols.map(function(c){return c.id+':'+c.tasks.length;})});
-        if(_lastPollData&&_lastPollData!==sig){
+        if(_lastPollData&&_lastPollData!==sig&&!_isSaving){
           _st=r;
           try{localStorage.setItem('tgk_projects_data_cache',JSON.stringify(_st));}catch(e){}
           pwRenderBoard();
@@ -12298,9 +12343,19 @@ window.pwStopPolling=function(){if(_pollTimer){clearInterval(_pollTimer);_pollTi
 
 /* ── UNDO SYSTEM ─────────────────────────────────────────── */
 var _undoStack=[], _undoMax=20;
+function _stripFiles(state){
+  // Remove dataUrl from file objects before saving/snapshotting
+  var cp=JSON.parse(JSON.stringify(state));
+  Object.values(cp.tasks||{}).forEach(function(t){
+    if(t.files)t.files=t.files.map(function(f){
+      return{id:f.id,name:f.name,type:f.type,size:f.size,uploadedAt:f.uploadedAt};
+    });
+  });
+  return cp;
+}
 function _pushUndo(){
   try{
-    var snap=JSON.stringify(_gs());
+    var snap=JSON.stringify(_stripFiles(_gs()));
     if(_undoStack.length&&_undoStack[_undoStack.length-1]===snap)return;
     _undoStack.push(snap);
     if(_undoStack.length>_undoMax)_undoStack.shift();
@@ -12340,6 +12395,145 @@ window.pwCloseModal=function(){
   ov.style.display='';
 };
 
+
+/* ── CONTEXT MENU (#6) ──────────────────────────────────── */
+var _ctxTaskId=null,_ctxColId=null;
+function _closeCtx(){var m=document.getElementById('pw-ctx');if(m)m.classList.remove('show');}
+document.addEventListener('click',_closeCtx);
+document.addEventListener('keydown',function(e){if(e.key==='Escape')_closeCtx();});
+
+window.pwCtxMenu=function(x,y,taskId,colId){
+  var S=_gs(),task=S.tasks[taskId];if(!task)return;
+  _ctxTaskId=taskId;_ctxColId=colId;
+  var m=document.getElementById('pw-ctx');if(!m)return;
+  var p=PRI[task.priority]||PRI.medium;
+
+  // Stage submenu
+  var stageItems=S.cols.map(function(c){
+    var cur=c.tasks.indexOf(taskId)>=0;
+    return'<button class="pw-ctx-item" onclick="_ctxStage(\''+c.id+'\')">'+(cur?'✓ ':'')+_esc(c.name)+'</button>';
+  }).join('');
+
+  // Priority submenu
+  var priItems=Object.keys(PRI).map(function(k){
+    var pp=PRI[k];
+    return'<button class="pw-ctx-item" onclick="_ctxPri(\''+k+'\')">'
+      +'<span style="color:'+pp.color+'">●</span> '+pp.label+(k===task.priority?' ✓':'')+'</button>';
+  }).join('');
+
+  // Assignee submenu
+  var asnItems='<button class="pw-ctx-item" onclick="_ctxAsgn(\'\')">— Unassigned'+(task.assignee?'':' ✓')+'</button>'
+    +_team.map(function(mem){return'<button class="pw-ctx-item" onclick="_ctxAsgn(\''+mem.id+'\')">'
+      +'<span class="pw-av" style="background:'+mem.color+';width:18px;height:18px;font-size:7px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff">'+_esc(mem.initials)+'</span> '
+      +_esc(mem.name)+(mem.id===task.assignee?' ✓':'')+'</button>';}).join('');
+
+  m.innerHTML=
+    '<button class="pw-ctx-item pw-ctx-has-sub">📋 Move to stage <span style="margin-left:auto;opacity:.5">›</span><div class="pw-ctx-sub">'+stageItems+'</div></button>'
+    +'<button class="pw-ctx-item pw-ctx-has-sub">🎯 Set priority <span style="margin-left:auto;opacity:.5">›</span><div class="pw-ctx-sub">'+priItems+'</div></button>'
+    +'<button class="pw-ctx-item pw-ctx-has-sub">👤 Assign to <span style="margin-left:auto;opacity:.5">›</span><div class="pw-ctx-sub">'+asnItems+'</div></button>'
+    +'<div class="pw-ctx-sep"></div>'
+    +'<button class="pw-ctx-item" onclick="pwOpenTask(\''+taskId+'\');_closeCtx()">↗ Full Details</button>'
+    +'<button class="pw-ctx-item" onclick="pwDupCard(\''+taskId+'\');_closeCtx()">⧉ Duplicate</button>'
+    +'<div class="pw-ctx-sep"></div>'
+    +'<button class="pw-ctx-item" style="color:#C9372C" onclick="pwDelCard(\''+taskId+'\');_closeCtx()">🗑 Delete</button>';
+
+  // Position menu
+  m.style.left=Math.min(x,window.innerWidth-200)+'px';
+  m.style.top=Math.min(y,window.innerHeight-300)+'px';
+  m.classList.add('show');
+};
+window._ctxStage=function(toColId){
+  if(!_ctxTaskId)return;
+  var S=_gs();
+  S.cols.forEach(function(c){c.tasks=c.tasks.filter(function(id){return id!==_ctxTaskId;});});
+  var toCol=S.cols.find(function(c){return c.id===toColId;});
+  if(toCol)toCol.tasks.push(_ctxTaskId);
+  var task=S.tasks[_ctxTaskId];
+  if(task){task.stageEnteredAt=_now();_la(task,'Moved to '+toCol.name+' via context menu');}
+  _save();pwRenderBoard();_closeCtx();
+};
+window._ctxPri=function(pri){
+  if(!_ctxTaskId)return;
+  var task=_gs().tasks[_ctxTaskId];
+  if(task){_la(task,'Priority: '+(PRI[task.priority]||{}).label+' → '+(PRI[pri]||{}).label);task.priority=pri;}
+  _save();pwRenderBoard();_closeCtx();
+};
+window._ctxAsgn=function(uid){
+  if(!_ctxTaskId)return;
+  var task=_gs().tasks[_ctxTaskId];
+  if(task){task.assignee=uid;_la(task,'Assigned to '+(_mem(uid)||{name:'Unassigned'}).name);}
+  _save();pwRenderBoard();_closeCtx();
+};
+
+/* ── BOARD EXPORT (#8) ──────────────────────────────────── */
+window.pwExportBoard=function(){
+  var S=_gs();
+  var rows=[['Task','Stage','Priority','Assignee','Deadline','Progress %','BOM Cost','SKU#','SKU Status','Activities Done/Total','Tags','Description']];
+  S.cols.forEach(function(col){
+    col.tasks.forEach(function(tid){
+      var t=S.tasks[tid];if(!t)return;
+      var m=_mem(t.assignee||'');
+      var bomCost=(t.bom||[]).reduce(function(s,r){return s+(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0);},0);
+      var actsDone=(t.activities||[]).filter(function(a){return a.status==='done';}).length;
+      var actsTotal=(t.activities||[]).length;
+      rows.push([
+        t.title||'', col.name, (PRI[t.priority]||{}).label||t.priority||'',
+        m?m.name:'', t.deadline||'', (t.progress||0),
+        bomCost.toFixed(2), t.sku?t.sku.num||'':'', t.sku?t.sku.status||'draft':'draft',
+        actsDone+'/'+actsTotal, (t.tags||[]).join('; '),
+        (t.description||'').replace(/\n/g,' ')
+      ]);
+    });
+  });
+  var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='TGK_Projects_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+};
+
+/* ── @MENTION HELPERS (#9) ──────────────────────────────── */
+function _mentionHtml(text){
+  if(!text)return'';
+  var safe=_esc(text);
+  // Replace @Name with highlighted span
+  return safe.replace(/@(\w[\w\s]{0,20}?\w|\w)/g,function(match,name){
+    var found=_team.find(function(m){return m.name.toLowerCase().startsWith(name.toLowerCase());});
+    return found?'<span class="oo-mention">@'+_esc(found.name)+'</span>':match;
+  });
+}
+function _parseMentions(text){
+  var mentioned=[];
+  var re=/@(\w[\w\s]{0,20}?\w|\w)/g;
+  var m;
+  while((m=re.exec(text))!==null){
+    var found=_team.find(function(t){return t.name.toLowerCase().startsWith(m[1].toLowerCase());});
+    if(found&&mentioned.indexOf(found.id)<0)mentioned.push(found.id);
+  }
+  return mentioned;
+}
+
+/* Update pwChatSend to parse @mentions */
+var _origChatSend=window.pwChatSend;
+window.pwChatSend=function(){
+  var ta=document.getElementById('pw-chat-ta');
+  if(!ta||!ta.value.trim()||!_sd)return;
+  var text=ta.value.trim();
+  _sd.logs=_sd.logs||[];
+  var logEntry={id:_uid(),type:_chatMode==='msg'?'message':'note',text:text,user:_myId(),ts:_now()};
+  _sd.logs.push(logEntry);
+  // Notify mentions
+  var mentioned=_parseMentions(text);
+  mentioned.forEach(function(uid){
+    if(uid!==_myId())_createNotif(_sd.id,_sd.title,'mention',(_mem(_myId())||{name:'Someone'}).name+' mentioned you');
+  });
+  ta.value='';
+  var comp=document.getElementById('pw-chat-compose');if(comp)comp.classList.remove('show');
+  _chatMode='';
+  document.querySelectorAll('.pw-chat-btn').forEach(function(b){b.classList.remove('sel');});
+  _renderChatter();
+};
+
 })(); /* end PW IIFE */
 
 </script>
@@ -12352,6 +12546,7 @@ window.pwCloseModal=function(){
       <div class="pw-hdr-div"></div>
       <div id="pw-hdr-stats" style="display:flex;gap:6px"></div>
       <div style="flex:1"></div>
+      <button class="pw-export-btn" onclick="pwExportBoard()" title="Export board to CSV">&#8659; Export</button>
       <button id="pw-undo-btn" onclick="pwUndo()" disabled title="Nothing to undo" style="background:none;border:1.5px solid #3a3d40;border-radius:6px;padding:6px 12px;color:#aaa;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);transition:.15s;flex-shrink:0;opacity:.35" onmouseover="if(!this.disabled)this.style.borderColor='#2ABFAA'" onmouseout="this.style.borderColor='#3a3d40'">&#8630; Undo</button>
       <input class="pw-hdr-search" id="pw-search" placeholder="Search&hellip;" oninput="pwSearch(this.value)">
       <div class="pw-bell-wrap">
@@ -12374,6 +12569,8 @@ window.pwCloseModal=function(){
     </div>
   </div>
   <div id="pw-detail"></div>
+  <!-- Context menu -->
+  <div id="pw-ctx"></div>
   <!-- EDIT PANEL -->
   <div id="pw-ep-ov">
     <div id="pw-ep-dim" onclick="pwCloseEP()"></div>
