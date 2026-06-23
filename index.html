@@ -2780,6 +2780,15 @@ Lowering Links — C7/D4, B9 SQ5, Tesla S/X, Porsche, BMW</textarea>
 <script>
 /* ── COMMAND CENTER ── */
 function showView(name) {
+  // If ERP viewer is open, close it first so cc-main becomes visible again
+  var _erv = document.getElementById('erp-viewer');
+  var _ccm = document.getElementById('cc-main');
+  if (_erv && _erv.classList.contains('active')) {
+    _erv.classList.remove('active');
+    if (_ccm) _ccm.style.display = '';
+    var _bc = document.getElementById('cc-breadcrumb');
+    if (_bc) _bc.classList.remove('visible');
+  }
   document.querySelectorAll('.cc-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.cc-navbtn').forEach(b => b.classList.remove('active'));
   const view = document.getElementById('view-' + name);
