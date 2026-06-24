@@ -13606,14 +13606,26 @@ function dashRenderTeam() {
   var now = Date.now();
   var cards = team.map(function(m) {
     var lastSeen = m.lastSeen ? new Date(m.lastSeen).getTime() : 0;
-    var isOnline = lastSeen && (now - lastSeen) < 10 * 60 * 1000; // 10 min
+    var isOnline = lastSeen && (now - lastSeen) < 30 * 60 * 1000; // 30 min
     var roleClass = m.role === 'Admin' ? 'admin' : '';
+    var seenLabel = '';
+    if (!isOnline && lastSeen) {
+      var minsAgo = Math.floor((now - lastSeen) / 60000);
+      var hoursAgo = Math.floor(minsAgo / 60);
+      if (minsAgo < 60)  seenLabel = minsAgo + 'm ago';
+      else if (hoursAgo < 24) seenLabel = hoursAgo + 'h ago';
+      else seenLabel = Math.floor(hoursAgo / 24) + 'd ago';
+    }
     return '<div class="dash-team-card">'
       + '<div class="dash-team-av' + (isOnline ? ' dash-team-online' : '') + '" style="background:' + (m.color||'#2ABFAA') + '">' + (m.initials||'??') + '</div>'
       + '<div class="dash-team-info">'
       + '<div class="dash-team-name">' + _escDash(m.name||'Unknown') + '</div>'
       + '<div class="dash-team-email">' + _escDash(m.email||'') + '</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-top:3px">'
       + '<span class="dash-team-role ' + roleClass + '">' + (m.role||'Member') + '</span>'
+      + (seenLabel ? '<span style="font-size:9px;color:#9CA3AF">' + seenLabel + '</span>' : '')
+      + (isOnline ? '<span style="font-size:9px;color:#00875A;font-weight:600">&#9679; Active</span>' : '')
+      + '</div>'
       + '</div></div>';
   });
   // Add invite button
@@ -13657,7 +13669,24 @@ function dashInviteUser() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Initial sync
   setTimeout(function() { dashSyncTeam(); }, 1200);
+
+  // Heartbeat: keep last_seen fresh every 5 min so teammates see us as active
+  setInterval(function() {
+    if (typeof pwSyncProfile === 'function') {
+      pwSyncProfile().catch(function(){});
+    }
+  }, 5 * 60 * 1000);
+
+  // Auto-refresh team panel every 5 min to pick up others coming online
+  setInterval(function() {
+    if (typeof pwLoadTeam === 'function') {
+      pwLoadTeam().then(function() {
+        if (typeof dashRenderTeam === 'function') dashRenderTeam();
+      }).catch(function(){});
+    }
+  }, 5 * 60 * 1000);
 });
 
 </script>
