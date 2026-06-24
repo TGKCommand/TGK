@@ -231,7 +231,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:#F0F2F5;color:#111827
   .modal-err { font-size: 11px; color: #f87171; margin-top: 6px; min-height: 16px; }
   .modal-btns { display: flex; gap: 10px; margin-top: 16px; }
   /* TURBO WIDGET */
-  #tw{position:fixed;bottom:18px;right:18px;z-index:9999;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;user-select:none}
+  #tw{position:fixed;bottom:18px;right:18px;z-index:9999;display:none;flex-direction:column;align-items:center;gap:5px;cursor:pointer;user-select:none}
+  #tw.tw-visible{display:flex}
   #tw-canvas{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#2e3235 0%,#1a1c1e 60%,#111 100%);box-shadow:0 4px 24px rgba(0,0,0,.7),0 0 0 2px #2a2d2f;transition:box-shadow .25s}
   #tw:hover #tw-canvas{box-shadow:0 4px 32px rgba(42,191,170,.3),0 0 0 2px #2ABFAA}
   #tw.on #tw-canvas{box-shadow:0 6px 48px rgba(42,191,170,.65),0 0 0 2px #2ABFAA,0 0 80px rgba(42,191,170,.18)}
@@ -2798,7 +2799,7 @@ Lowering Links — C7/D4, B9 SQ5, Tesla S/X, Porsche, BMW</textarea>
 </div><!-- end soc-shell -->
     </div><!-- end view-social -->
 
-<div id="tw" onclick="turboClick()" title="Big turbo — click to spool">
+<div id="tw" class="tw-visible" onclick="turboClick()" title="Big turbo — click to spool">
   <div id="tw-bov">PSSHH!</div>
   <canvas id="tw-canvas" width="96" height="96"></canvas>
   <div id="tw-psi">0.0 PSI</div>
@@ -2834,10 +2835,14 @@ function showView(name) {
     if (bc) bc.classList.remove('visible');
     if (typeof dashLoadExt === 'function') dashLoadExt();
     setTimeout(function(){if(typeof dashRenderTeam==='function')dashRenderTeam();},300);
+    var tw = document.getElementById('tw');
+    if (tw) tw.classList.add('tw-visible');
   } else {
     if (bc) bc.classList.add('visible');
     const lbl = document.getElementById('cc-bc-label');
     if (lbl) lbl.textContent = TOOL_NAMES[name] || name;
+    var tw = document.getElementById('tw');
+    if (tw) tw.classList.remove('tw-visible');
   }
 }
 
