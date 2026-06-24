@@ -1774,6 +1774,10 @@ window._sbBootPromise = (async function() {
 .tgk-video-ph { user-select:auto; }
 .tgk-url-focused{border-color:#2ABFAA !important;}
 .tgk-vid-url-inp:focus { border-color:#2ABFAA !important; }
+.tgk-video-section { display:block }
+.tgk-video-sh { cursor:pointer; transition:background .15s; }
+.tgk-video-sh:hover { filter:brightness(1.18); }
+.wysi .tgk-video-sh.sh-active { outline:2px solid #2ABFAA; outline-offset:3px; border-radius:6px 6px 0 0; }
 .tgk-video-title { cursor:text !important; }
 .tgk-video-title[contenteditable="true"]:focus { outline:1px solid rgba(42,191,170,.5); border-radius:3px; padding:0 3px; }
 .tgk-video-wrap{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px;background:#000;margin-top:10px}
@@ -3231,35 +3235,11 @@ function _finishLoadEdit(html) {
   }
   const wysiwyg = document.getElementById('edit-wysiwyg');
   wysiwyg.innerHTML = stripStyles(html);
-  // Protect video sections so editor doesn't interfere with iframe
+  // Protect video sections — replace .tgk-video-wrap with editable placeholders
   (function(){
-    // Extract video sections from HTML string before it enters the editor DOM
-    // This way video/iframe elements NEVER load in the editor
     var _tmp = document.createElement('div');
     _tmp.innerHTML = wysiwyg.innerHTML;
-    _tmp.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-      var id = 'tgkvid_' + (++window._tgkPhCtr);
-      window._tgkPhStore[id] = wrap.outerHTML;
-      // Extract the current video URL from the wrap's data attribute
-      var currentUrl = wrap.getAttribute('data-video-url') || '';
-      var ph = document.createElement('div');
-      ph.className = 'tgk-video-ph';
-      ph.setAttribute('data-tgkvid', id);
-      ph.style.cssText = 'border-radius:0 0 6px 6px;border:1.5px dashed #2ABFAA;border-top:none;background:rgba(42,191,170,.04);padding:10px 14px;box-sizing:border-box';
-      ph.innerHTML = '<div style="display:flex;align-items:center;gap:8px">'
-        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="#2ABFAA" style="flex-shrink:0"><path d="M8 5v14l11-7z"/></svg>'
-        + '<input class="tgk-vid-url-inp" data-tgkvid="' + id + '" value="' + currentUrl.replace(/"/g,'&quot;') + '"'
-        + ' placeholder="YouTube or Shopify CDN URL..."'
-        + ' style="flex:1;padding:6px 10px;border:1.5px solid rgba(42,191,170,.4);border-radius:6px;background:rgba(42,191,170,.06);'
-        + 'color:#ddd;font-size:12px;font-family:inherit;outline:none;min-width:0"'
-        + ' style="border-color:rgba(42,191,170,.4)">'
-        + '<button onclick="tgkVidUpdate(this.previousElementSibling)" title="Update video"'
-        + ' style="padding:5px 12px;background:#2ABFAA;border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit">Update</button>'
-        + '<span class="tgk-vid-feedback" style="font-size:11px;color:#2ABFAA;flex-shrink:0;min-width:40px"></span>'
-        + '</div>'
-        + '<div style="font-size:10px;color:#9CA3AF;margin-top:5px">Video embed — edit URL above then click Update. Edit header title above.</div>';
-      wrap.parentNode.replaceChild(ph, wrap);
-    });
+    _applyVideoPlaceholders(_tmp);
     wysiwyg.innerHTML = _tmp.innerHTML;
   })();
   const editableSelectors = ['.tgk-video-title','.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
@@ -3278,7 +3258,7 @@ function _finishLoadEdit(html) {
   enableBlockEditing(wysiwyg, syncHtml);
   wysiwyg.addEventListener('click', function(e) {
     if (!e.target.closest('table')) hideTableToolbar();
-    if (!e.target.closest('.tgk-sh') && !e.target.closest('.sec-toolbar')) hideSectionToolbar();
+    if (!e.target.closest('.tgk-sh') && !e.target.closest('.tgk-video-sh') && !e.target.closest('.sec-toolbar')) hideSectionToolbar();
     if (!e.target.closest(BLOCK_SELS) && !e.target.closest('.blk-toolbar') && !e.target.closest('.clr-picker-panel') && !e.target.closest('.txt-panel') && !(_activeBlk && _activeBlk.contains(e.target))) hideBlkToolbar();
   });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { hideTableToolbar(); hideSectionToolbar(); } });
@@ -3483,24 +3463,29 @@ function showSectionToolbar(sh) {
     b.addEventListener('mousedown', function(e){ e.preventDefault(); fn(); });
     return b;
   };
-  tb.appendChild(mk('🎨 Icon','stb-icon',function(){
-    _iconTargetSh = sh; hideSectionToolbar();
-    document.getElementById('icon-picker-modal').classList.add('open');
-  }));
-  tb.appendChild(mk('↑ Insert before','stb-add',function(){
-    const sec = _activeSec;
-    const tgt = _getWyCtx(sec);
-    hideSectionToolbar();
-    _tplTarget = tgt; _tplInsertRef = sec; _tplInsertPos = 'before';
-    setTimeout(function(){ openTplModal(tgt); }, 150);
-  }));
-  tb.appendChild(mk('↓ Insert after','stb-add',function(){
-    const sec = _activeSec;
-    const tgt = _getWyCtx(sec);
-    hideSectionToolbar();
-    _tplTarget = tgt; _tplInsertRef = sec; _tplInsertPos = 'after';
-    setTimeout(function(){ openTplModal(tgt); }, 150);
-  }));
+  var _isVidSec = _activeSec.classList.contains('tgk-video-section');
+  if (!_isVidSec) {
+    tb.appendChild(mk('🎨 Icon','stb-icon',function(){
+      _iconTargetSh = sh; hideSectionToolbar();
+      document.getElementById('icon-picker-modal').classList.add('open');
+    }));
+  }
+  if (!_isVidSec) {
+    tb.appendChild(mk('↑ Insert before','stb-add',function(){
+      const sec = _activeSec;
+      const tgt = _getWyCtx(sec);
+      hideSectionToolbar();
+      _tplTarget = tgt; _tplInsertRef = sec; _tplInsertPos = 'before';
+      setTimeout(function(){ openTplModal(tgt); }, 150);
+    }));
+    tb.appendChild(mk('↓ Insert after','stb-add',function(){
+      const sec = _activeSec;
+      const tgt = _getWyCtx(sec);
+      hideSectionToolbar();
+      _tplTarget = tgt; _tplInsertRef = sec; _tplInsertPos = 'after';
+      setTimeout(function(){ openTplModal(tgt); }, 150);
+    }));
+  }
   tb.appendChild(mk('+ Blank section','stb-add',function(){
     const sec = _activeSec;
     const ctx = _getWyCtx(sec);
@@ -3511,11 +3496,13 @@ function showSectionToolbar(sh) {
     _wySyncFn(ctx);
     ns.querySelector('.tgk-sh-title').focus();
   }));
-  tb.appendChild(mk('⭐ Save','stb-save',function(){
-    const sec = _activeSec;
-    hideSectionToolbar();
-    _saveElementAsTemplate(sec);
-  }));
+  if (!_isVidSec) {
+    tb.appendChild(mk('⭐ Save','stb-save',function(){
+      const sec = _activeSec;
+      hideSectionToolbar();
+      _saveElementAsTemplate(sec);
+    }));
+  }
   tb.appendChild(mk('✕ Delete','stb-del',function(){
     const sec = _activeSec;
     const ctx = _getWyCtx(sec);
@@ -3610,7 +3597,7 @@ function _secDragMove(e){
   if(!_secDragSrc) return;
   var wysiwyg = _secDragWy;
   if(!wysiwyg) return;
-  var sections = Array.from(wysiwyg.querySelectorAll('.tgk-section')).filter(function(s){ return s !== _secDragSrc; });
+  var sections = Array.from(wysiwyg.querySelectorAll('.tgk-section')).filter(function(s){ return s !== _secDragSrc && !s.classList.contains('tgk-video-ph'); });
   var best = null, bestDist = Infinity, bestZone = 'bottom';
   sections.forEach(function(sec){
     // Use the section header as the snap target for precision
@@ -3653,8 +3640,7 @@ function _secDragEnd(e){
   if(zone === 'top'){ over.parentNode.insertBefore(src, over); }
   else { over.parentNode.insertBefore(src, over.nextSibling); }
 
-  var inConv = wysiwyg.id === 'o-conv-wysiwyg';
-  var syncFn = inConv ? syncConvHtml : syncHtml;
+  var syncFn = wysiwyg.id === 'o-conv-wysiwyg' ? syncConvHtml : wysiwyg.id === 'tllib-wysiwyg' ? tllibSyncOut : syncHtml;
   if(typeof syncFn === 'function') syncFn();
   if(typeof injectAddButtons === 'function') injectAddButtons(wysiwyg, syncFn);
 }
@@ -3767,26 +3753,14 @@ function cpConvHtml() {
 function loadConvEdit(html) {
   const wysiwyg = document.getElementById('o-conv-wysiwyg');
   wysiwyg.innerHTML = stripStyles(html);
-  // Protect video sections
+  // Protect video sections — replace .tgk-video-wrap with editable placeholders
   (function(){
-    // Extract video sections from HTML string before it enters the editor DOM
-    // This way video/iframe elements NEVER load in the editor
     var _tmp = document.createElement('div');
     _tmp.innerHTML = wysiwyg.innerHTML;
-    _tmp.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
-      var id = 'tgkvid_' + (++window._tgkPhCtr);
-      window._tgkPhStore[id] = wrap.outerHTML; // store raw HTML string
-      var ph = document.createElement('div');
-      ph.className = 'tgk-video-ph';
-      ph.setAttribute('data-tgkvid', id);
-      ph.style.cssText = 'height:80px;border-radius:6px;background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none;user-select:none;box-sizing:border-box';
-      ph.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
-        + '<span style="font-size:12px;font-weight:600;color:#9CA3AF;font-family:inherit">Product Video — plays on published page</span>';
-      wrap.parentNode.replaceChild(ph, wrap);
-    });
+    _applyVideoPlaceholders(_tmp);
     wysiwyg.innerHTML = _tmp.innerHTML;
   })();
-  const editableSelectors = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
+  const editableSelectors = ['.tgk-video-title','.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   editableSelectors.forEach(sel => {
     wysiwyg.querySelectorAll(sel).forEach(el => {
       if (el.classList.contains('tgk-feat-chk')) return;
@@ -3794,7 +3768,7 @@ function loadConvEdit(html) {
       el.setAttribute('spellcheck','true');
     });
   });
-  // Wire sections for Up/Down/Delete toolbar
+  // Wire sections for toolbar and drag
   wysiwyg.querySelectorAll('.tgk-section').forEach(function(sec){ wireSection(sec); });
   // Wire block editing (drag, move, delete, add buttons)
   enableBlockEditing(wysiwyg, syncConvHtml);
@@ -3810,7 +3784,7 @@ function loadConvEdit(html) {
 
 function _convWysiwygClick(e) {
   if (!e.target.closest('table')) hideTableToolbar();
-  if (!e.target.closest('.tgk-sh') && !e.target.closest('.sec-toolbar')) hideSectionToolbar();
+  if (!e.target.closest('.tgk-sh') && !e.target.closest('.tgk-video-sh') && !e.target.closest('.sec-toolbar')) hideSectionToolbar();
   if (!e.target.closest(BLOCK_SELS) && !e.target.closest('.blk-toolbar') && !e.target.closest('.clr-picker-panel') && !e.target.closest('.txt-panel') && !(_activeBlk && _activeBlk.contains(e.target))) hideBlkToolbar();
 }
 
@@ -7523,6 +7497,16 @@ function _cleanWysiwygHtml(wy) {
     }
   });
 
+  // Strip editor-only classes from video section wrappers
+  clone.querySelectorAll('.tgk-video-section').forEach(function(el) {
+    el.classList.remove('tgk-section', 'tgk-video-section');
+    if (!el.className.trim()) el.removeAttribute('class');
+  });
+  clone.querySelectorAll('.tgk-video-sh').forEach(function(el) {
+    el.classList.remove('tgk-sh', 'tgk-video-sh');
+    if (!el.className.trim()) el.removeAttribute('class');
+  });
+
   // Rebuild col-row inline styles cleanly
   clone.querySelectorAll('.tgk-col-row').forEach(function(row) {
     var count = Array.from(row.children).filter(function(c) {
@@ -8149,11 +8133,13 @@ function _tlUndo(){
 function tllibSyncOut(){
   var wy = document.getElementById('tllib-wysiwyg');
   if (!wy) return;
-  var clone = wy.cloneNode(true);
-  clone.querySelectorAll('[contenteditable],[spellcheck]').forEach(function(n){
-    n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck');
-  });
-  var clean = clone.innerHTML;
+  var clean = (typeof _cleanWysiwygHtml === 'function') ? _cleanWysiwygHtml(wy) : (function(){
+    var clone = wy.cloneNode(true);
+    clone.querySelectorAll('[contenteditable],[spellcheck]').forEach(function(n){
+      n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck');
+    });
+    return clone.innerHTML;
+  })();
   var src = document.getElementById('tllib-ed-html');
   if (src) src.value = clean;
   var out = document.getElementById('tllib-html-out');
@@ -8166,7 +8152,14 @@ function tllibLoadWysiwyg(){
   if (!html) { document.getElementById('tllib-ed-html').focus(); return; }
   var wy = document.getElementById('tllib-wysiwyg');
   wy.innerHTML = stripStyles(html);
-  var sels = ['.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
+  // Protect video sections
+  (function(){
+    var _tmp = document.createElement('div');
+    _tmp.innerHTML = wy.innerHTML;
+    _applyVideoPlaceholders(_tmp);
+    wy.innerHTML = _tmp.innerHTML;
+  })();
+  var sels = ['.tgk-video-title','.tgk-p','.tgk-sh-title','.tgk-specs td','.tgk-feat-txt','.tgk-faq-q','.tgk-faq-a','.tgk-cmp td','.tgk-cmp th','.tgk-disc-card-title','.tgk-disc-card-body','.tgk-disc-nvh-box p','.tgk-disc-fit-title','.tgk-disc-fit-body','.tgk-disc-legal'];
   sels.forEach(function(sel){
     wy.querySelectorAll(sel).forEach(function(el){
       if (el.classList.contains('tgk-feat-chk')) return;
@@ -8177,7 +8170,7 @@ function tllibLoadWysiwyg(){
   wy.querySelectorAll('.tgk-section').forEach(function(sec){ wireSection(sec); });
   wy.addEventListener('click', function(e){
     if (!e.target.closest('table')) hideTableToolbar();
-    if (!e.target.closest('.tgk-sh') && !e.target.closest('.sec-toolbar')) hideSectionToolbar();
+    if (!e.target.closest('.tgk-sh') && !e.target.closest('.tgk-video-sh') && !e.target.closest('.sec-toolbar')) hideSectionToolbar();
     if (!e.target.closest(BLOCK_SELS) && !e.target.closest('.blk-toolbar') && !e.target.closest('.clr-picker-panel') && !e.target.closest('.txt-panel') && !(_activeBlk && _activeBlk.contains(e.target))) hideBlkToolbar();
   });
   wy.addEventListener('input', function(){ tllibSyncOut(); });
@@ -12961,6 +12954,71 @@ window.pwSetMemberRole = function(id, role){
 
 <script>
 
+/* ── _applyVideoPlaceholders: shared placeholder builder for all three editors ── */
+function _applyVideoPlaceholders(container) {
+  container.querySelectorAll('.tgk-video-wrap').forEach(function(wrap) {
+    var parent = wrap.parentElement;
+    if (!parent) return;
+    // Ensure parent has tgk-section + tgk-video-section for drag and toolbar
+    if (!parent.classList.contains('tgk-video-section')) {
+      parent.classList.add('tgk-section', 'tgk-video-section');
+    }
+    // Find the header sibling and give it tgk-sh tgk-video-sh
+    var header = null;
+    Array.from(parent.children).forEach(function(c) {
+      if (c !== wrap && (c.classList.contains('tgk-video-sh') || c.querySelector('.tgk-video-title'))) header = c;
+    });
+    if (header && !header.classList.contains('tgk-sh')) {
+      header.classList.add('tgk-sh', 'tgk-video-sh');
+    }
+    // Extract video URL — from data attr, or directly from video/iframe src
+    var currentUrl = wrap.getAttribute('data-video-url') || '';
+    if (!currentUrl) {
+      var vEl = wrap.querySelector('video');
+      var iEl = wrap.querySelector('iframe');
+      if (vEl) {
+        currentUrl = vEl.getAttribute('src') || '';
+      } else if (iEl) {
+        var isrc = iEl.getAttribute('src') || '';
+        var ytM = isrc.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+        currentUrl = ytM ? 'https://www.youtube.com/watch?v=' + ytM[1] : isrc;
+      }
+    }
+    // Extract autoplay
+    var autoplay = wrap.getAttribute('data-autoplay') === '1';
+    if (!autoplay) {
+      var vEl2 = wrap.querySelector('video');
+      if (vEl2 && vEl2.hasAttribute('autoplay')) autoplay = true;
+    }
+    // Make title span editable
+    var titleSpan = header ? header.querySelector('.tgk-video-title') : null;
+    if (titleSpan) titleSpan.contentEditable = 'true';
+    // Store original wrap HTML
+    var id = 'tgkvid_' + (++window._tgkPhCtr);
+    window._tgkPhStore[id] = wrap.outerHTML;
+    // Build placeholder
+    var ph = document.createElement('div');
+    ph.className = 'tgk-video-ph';
+    ph.setAttribute('data-tgkvid', id);
+    ph.style.cssText = 'border-radius:0 0 6px 6px;border:1.5px dashed #2ABFAA;border-top:none;background:rgba(42,191,170,.04);padding:10px 14px;box-sizing:border-box';
+    ph.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      + '<svg width="16" height="16" viewBox="0 0 24 24" fill="#2ABFAA" style="flex-shrink:0"><path d="M8 5v14l11-7z"/></svg>'
+      + '<input class="tgk-vid-url-inp" data-tgkvid="' + id + '" value="' + currentUrl.replace(/"/g, '&quot;') + '"'
+      + ' placeholder="YouTube or Shopify CDN URL..."'
+      + ' style="flex:1;padding:6px 10px;border:1.5px solid rgba(42,191,170,.4);border-radius:6px;background:rgba(42,191,170,.06);'
+      + 'color:#ddd;font-size:12px;font-family:inherit;outline:none;min-width:0">'
+      + '<button onclick="tgkVidUpdate(this.previousElementSibling)" title="Update video"'
+      + ' style="padding:5px 12px;background:#2ABFAA;border:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit">Update</button>'
+      + '<span class="tgk-vid-feedback" style="font-size:11px;color:#2ABFAA;flex-shrink:0;min-width:46px"></span>'
+      + '</div>'
+      + '<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:11px;color:#9CA3AF;user-select:none">'
+      + '<input type="checkbox" class="tgk-vid-autoplay" data-tgkvid="' + id + '"' + (autoplay ? ' checked' : '') + ' style="width:14px;height:14px;accent-color:#2ABFAA;cursor:pointer">'
+      + '<span>Autoplay (muted) &mdash; plays automatically on page load</span>'
+      + '</label>';
+    wrap.parentNode.replaceChild(ph, wrap);
+  });
+}
+
 /* ── Video placeholder editor ──────────────────────────── */
 window.tgkVidUpdate = function(inp) {
   var id = inp.dataset.tgkvid;
@@ -12968,31 +13026,34 @@ window.tgkVidUpdate = function(inp) {
   var url = inp.value.trim();
   if (!url) { inp.style.borderColor = '#f87171'; return; }
   inp.style.borderColor = 'rgba(42,191,170,.4)';
-  var newEmbed = buildVideoEmbed(url);
+  var ph = inp.closest('.tgk-video-ph');
+  // Read autoplay from checkbox
+  var autoplayCb = ph ? ph.querySelector('.tgk-vid-autoplay') : null;
+  var autoplay = autoplayCb ? autoplayCb.checked : false;
+  // Read current title from header span
+  var titleSpan = (ph && ph.parentElement) ? ph.parentElement.querySelector('.tgk-video-title') : null;
+  var title = titleSpan ? titleSpan.textContent.trim() : 'Product Video';
+  var newEmbed = buildVideoEmbed(url, {autoplay: autoplay, title: title});
   if (!newEmbed) {
     inp.style.borderColor = '#f87171';
-    var fb = inp.parentElement.querySelector('.tgk-vid-feedback');
-    if (fb) { fb.style.color = '#f87171'; fb.textContent = '✗ Invalid URL'; setTimeout(function(){fb.textContent='';fb.style.color='#2ABFAA';},2500); }
+    var fb = ph ? ph.querySelector('.tgk-vid-feedback') : inp.parentElement.querySelector('.tgk-vid-feedback');
+    if (fb) { fb.style.color = '#f87171'; fb.textContent = 'Invalid URL'; setTimeout(function(){fb.textContent='';fb.style.color='#2ABFAA';},2500); }
     return;
   }
-  // Extract just the tgk-video-wrap from the new embed
   var tmp = document.createElement('div');
   tmp.innerHTML = newEmbed;
   var wrap = tmp.querySelector('.tgk-video-wrap');
   if (wrap) {
     window._tgkPhStore[id] = wrap.outerHTML;
-    inp.setAttribute('value', url); // persist to DOM attr
-    var fb = inp.parentElement.querySelector('.tgk-vid-feedback');
-    if (fb) { fb.textContent = '✓ Updated'; setTimeout(function(){fb.textContent='';},2000); }
-    // Also update the parent header title span if its text was the default
-    var ph = inp.closest('.tgk-video-ph');
-    if (ph && ph.parentElement) {
-      var titleSpan = ph.parentElement.querySelector('.tgk-video-title');
-      if (titleSpan && titleSpan.textContent === 'Product Video') {
-        // keep default title, just confirm it's editable
-        titleSpan.contentEditable = 'true';
-      }
-    }
+    inp.setAttribute('value', url);
+    // Update data-autoplay on outer section wrapper
+    var outerSec = ph ? ph.closest('.tgk-video-section') : null;
+    if (outerSec) outerSec.setAttribute('data-autoplay', autoplay ? '1' : '0');
+    if (titleSpan) titleSpan.contentEditable = 'true';
+    var fb = ph ? ph.querySelector('.tgk-vid-feedback') : null;
+    if (fb) { fb.textContent = 'Updated'; setTimeout(function(){fb.textContent='';},2000); }
+    // Trigger sync on the containing wysiwyg
+    if (ph) { var ctx = (typeof _getWyCtx === 'function') ? _getWyCtx(ph) : 'edit'; if (typeof _wySyncFn === 'function') _wySyncFn(ctx); }
   }
 };
 
@@ -13007,31 +13068,35 @@ function showLaunchSub(sub) {
 /* ── buildVideoEmbed: convert a YouTube or Shopify CDN URL to TGK embed HTML ── */
 window._tgkPhStore = {};
 window._tgkPhCtr = 0;
-function buildVideoEmbed(url) {
+function buildVideoEmbed(url, opts) {
   if (!url || !url.trim()) return '';
   url = url.trim();
+  opts = opts || {};
+  var title = opts.title || 'Product Video';
+  var autoplay = !!opts.autoplay;
   var embedInner = '';
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
     var vid = ytMatch[1];
+    var ytSrc = 'https://www.youtube.com/embed/' + vid + '?rel=0' + (autoplay ? '&autoplay=1&mute=1' : '');
     embedInner = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:0 0 6px 6px">'
-      + '<iframe src="https://www.youtube.com/embed/' + vid + '?rel=0"'
+      + '<iframe src="' + ytSrc + '"'
       + ' style="position:absolute;inset:0;width:100%;height:100%;border:none"'
+      + (autoplay ? ' allow="autoplay; encrypted-media"' : '')
       + ' allowfullscreen></iframe></div>';
   } else if (/\.mp4|\.mov|\.webm|\.m3u8/.test(url) || /cdn\.shopify\.com/.test(url)) {
     embedInner = '<video src="' + url + '" controls'
+      + (autoplay ? ' autoplay muted playsinline' : '')
       + ' style="display:block;width:100%;height:auto;position:static;border-radius:0 0 6px 6px"></video>';
   }
   if (!embedInner) return '';
-  // Fully inline-styled header — no TGK CSS class dependencies, matches other section headers visually
-  // tgk-video-wrap inline styles override the Shopify .tgk-video-wrap theme CSS (height:0 etc.)
-  var header = '<div style="display:flex;align-items:center;gap:10px;background:#1c2024;border-radius:6px 6px 0 0;padding:10px 14px">'
+  var header = '<div class="tgk-sh tgk-video-sh" style="display:flex;align-items:center;gap:10px;background:#1c2024;border-radius:6px 6px 0 0;padding:10px 14px">'
     + '<div style="width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(42,191,170,.15);border-radius:5px">'
     + '<svg width="14" height="14" viewBox="0 0 24 24" fill="#2ABFAA"><path d="M8 5v14l11-7z"/></svg>'
     + '</div>'
-    + '<span class="tgk-video-title" contenteditable="false" style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#e0e0e0;font-family:inherit;outline:none;min-width:40px;cursor:text" title="Click to edit video title">Product Video</span>'
+    + '<span class="tgk-video-title" contenteditable="false" style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#e0e0e0;font-family:inherit;outline:none;min-width:40px;cursor:text" title="Click to edit title">' + title + '</span>'
     + '</div>';
-  return '<div style="margin:20px 0">'
+  return '<div class="tgk-section tgk-video-section" data-autoplay="' + (autoplay ? '1' : '0') + '" style="margin:20px 0">'
     + header
     + '<div class="tgk-video-wrap" data-video-url="' + url + '" style="height:auto;overflow:visible;padding:0;position:static;background:#000;border-radius:0 0 6px 6px">'
     + embedInner
