@@ -13661,12 +13661,34 @@ function dashInviteUser() {
 
 /* ── CC Authenticated Fetch (outside IIFE — used by dashboard) ─────────── */
 function _ccAuthFetch(path) {
-  var sess = {};
-  try { sess = JSON.parse(localStorage.getItem('tgk_cc_session') || '{}'); } catch(e) {}
-  // Use proper anon JWT as apikey (publishable key not accepted by REST API)
-  // Use user session JWT as Authorization when available
-  var apiKey = (typeof TGK_SB_JWT !== 'undefined') ? TGK_SB_JWT : TGK_SB_KEY;
-  var bearer = sess.access_token || apiKey;
+  // Try session sources in order of preference
+  var token = null;
+
+  // 1. Command Center own session
+  try {
+    var ccSess = JSON.parse(localStorage.getItem('tgk_cc_session') || '{}');
+    if (ccSess && ccSess.access_token) token = ccSess.access_token;
+  } catch(e) {}
+
+  // 2. ERP Supabase JS v2 session (same domain = shared localStorage)
+  if (!token) {
+    try {
+      var erpSess = JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token') || 'null');
+      if (erpSess && erpSess.access_token) token = erpSess.access_token;
+    } catch(e) {}
+  }
+
+  // 3. ERP Supabase JS v1 session key (older format)
+  if (!token) {
+    try {
+      var v1 = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
+      if (v1 && v1.currentSession && v1.currentSession.access_token) token = v1.currentSession.access_token;
+    } catch(e) {}
+  }
+
+  var apiKey = TGK_SB_KEY;
+  var bearer = token || apiKey;
+
   return fetch(TGK_SB_URL + path, {
     headers: {
       'apikey': apiKey,
@@ -13676,8 +13698,8 @@ function _ccAuthFetch(path) {
   }).then(function(r) {
     return r.text().then(function(t) {
       if (!r.ok) {
-        console.warn('[pulse] fetch failed:', r.status, path.slice(0, 60));
-        throw new Error('SB ' + r.status);
+        console.warn('[pulse] fetch failed', r.status, path.slice(0, 60), t.slice(0, 120));
+        throw new Error('HTTP ' + r.status);
       }
       return t ? JSON.parse(t) : null;
     });
@@ -13703,7 +13725,15 @@ function dashLoadPulse(force) {
     })
     .catch(function(err) {
       console.warn('[pulse] sales fetch failed:', err && err.message);
-      var msg = '<div style="font-size:11px;color:#9CA3AF;padding-top:8px">Log into the ERP to enable live data</div>';
+      var errCode = (err && err.message) || '';
+      var msg = '<div style="margin-top:10px">'
+        + '<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">'
+        + (errCode.indexOf('401') > -1 || errCode.indexOf('403') > -1
+            ? 'Sign into the ERP to authorise data access.'
+            : 'Could not load data (' + errCode + ').')
+        + '</div>'
+        + '<button onclick="openERP()" style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:6px;border:1px solid #2ABFAA;background:transparent;color:#2ABFAA;cursor:pointer;font-family:inherit">Open ERP &#8594;</button>'
+        + '</div>';
       var r = document.getElementById('pulse-rev');
       var o = document.getElementById('pulse-orders');
       if (r) r.innerHTML = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF">Revenue</div>' + msg;
@@ -13718,7 +13748,8 @@ function dashLoadPulse(force) {
     .catch(function() {
       var s = document.getElementById('pulse-stock');
       if (s) s.innerHTML = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF">Stock</div>'
-        + '<div style="font-size:11px;color:#9CA3AF;padding-top:8px">Open ERP once to enable data</div>';
+        + '<div style="margin-top:10px"><div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">Open ERP to authorise access.</div>'
+        + '<button onclick="openERP()" style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:6px;border:1px solid #2ABFAA;background:transparent;color:#2ABFAA;cursor:pointer;font-family:inherit">Open ERP &#8594;</button></div>';
     });
 }
 
