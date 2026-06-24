@@ -6116,6 +6116,7 @@ function injectAddButtons(wysiwyg, syncFn){
 
   // After each section header (tgk-sh), inject an add button for adding blocks inside the section
   wysiwyg.querySelectorAll('.tgk-section').forEach(function(sec){
+    if(sec.classList.contains('tgk-video-section')) return; // video sections are self-contained — skip
     // After each direct child block (not inside col-rows), add a button
     Array.from(sec.children).forEach(function(child){
       if(child.classList.contains('tgk-sh')) return; // skip header
@@ -12968,6 +12969,20 @@ function _applyVideoPlaceholders(container) {
     Array.from(parent.children).forEach(function(c) {
       if (c !== wrap && (c.classList.contains('tgk-video-sh') || c.querySelector('.tgk-video-title'))) header = c;
     });
+    // Fallback: if no class-based match, take the first non-wrap sibling as the header
+    // (handles legacy output where the header div has no class)
+    if (!header) {
+      Array.from(parent.children).forEach(function(c) {
+        if (!header && c !== wrap && !c.classList.contains('tgk-video-ph')) header = c;
+      });
+      // If we found a fallback header, try to also stamp tgk-video-title on its title span
+      if (header) {
+        var spans = header.querySelectorAll('span');
+        spans.forEach(function(s) {
+          if (!s.className && s.textContent.trim()) s.classList.add('tgk-video-title');
+        });
+      }
+    }
     if (header && !header.classList.contains('tgk-sh')) {
       header.classList.add('tgk-sh', 'tgk-video-sh');
     }
