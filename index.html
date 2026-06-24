@@ -11108,12 +11108,9 @@ function _def(){
 /* ── team ────────────────────────────────────────────────────── */
 var _team=[];
 function _loadTeam(){
+  /* canonical definition below — this early stub just primes from cache */
   try{var c=JSON.parse(localStorage.getItem(PW_TEAM_KEY)||'null');if(Array.isArray(c)&&c.length)_team=c;}catch(e){}
-  if(typeof sbGet!=='function')return Promise.resolve(_seedTeam());
-  return sbGet('tgk_team').then(function(r){
-    if(Array.isArray(r)&&r.length){_team=r;localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}
-    else _seedTeam();
-  }).catch(function(){_seedTeam();});
+  return Promise.resolve();
 }
 function _seedTeam(){
   if(_team.length)return;
@@ -11783,8 +11780,24 @@ window.pwDetSubmitSub=function(){var inp=document.getElementById('oo-sub-inp');i
 window.pwSaveTask=function(){if(!_dtid||!_sd)return;var t=_sd,S=_gs();var ttl=document.getElementById('pw-dttl');if(ttl&&ttl.value.trim())t.title=ttl.value.trim();var taskCopy=JSON.parse(JSON.stringify(t));if(taskCopy._sc){S.cols.forEach(function(c){c.tasks=c.tasks.filter(function(id){return id!==t.id;});});var col=S.cols.find(function(c){return c.id===taskCopy._sc;});if(col)col.tasks.push(t.id);delete taskCopy._sc;}(taskCopy.files||[]).forEach(function(f){delete f.dataUrl;});S.tasks[t.id]=taskCopy;_save();var btn=document.getElementById('pw-det-sv');if(btn){var o=btn.textContent;btn.textContent='\u2713 Saved';btn.style.background='#00875A';setTimeout(function(){btn.textContent=o;btn.style.background='';},1400);}};
 window.pwDelTask=function(){if(!_dtid||!confirm('Delete permanently?'))return;var S=_gs();delete S.tasks[_dtid];S.cols.forEach(function(c){c.tasks=c.tasks.filter(function(id){return id!==_dtid;});});_save();pwCloseTask();pwRenderBoard();};
 /* ── team management (in full detail view team tab) ─────── */
-window.pwAddMember=function(){var n=((document.getElementById('pw-m-name')||{}).value||'').trim(),e=((document.getElementById('pw-m-email')||{}).value||'').trim();if(!n)return;var parts=n.split(' ').filter(Boolean),ini=(parts[0][0]+(parts[1]?parts[1][0]:parts[0][1]||'')).toUpperCase(),c=STG_COLORS[_team.length%STG_COLORS.length];_team.push({id:_uid(),name:n,email:e,color:c,initials:ini});localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));if(typeof sbSet==='function')sbSet('tgk_team',_team).catch(function(){});_renderDet();};
-window.pwDelMember=function(id){if(!confirm('Remove?'))return;_team=_team.filter(function(m){return m.id!==id;});localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));if(typeof sbSet==='function')sbSet('tgk_team',_team).catch(function(){});_renderDet();};
+window.pwAddMember=function(){
+  var n=((document.getElementById('pw-m-name')||{}).value||'').trim();
+  var e=((document.getElementById('pw-m-email')||{}).value||'').trim();
+  if(!n)return;
+  var parts=n.split(' ').filter(Boolean);
+  var ini=(parts[0][0]+(parts[1]?parts[1][0]:parts[0][1]||'')).toUpperCase();
+  var c=STG_COLORS[_team.length%STG_COLORS.length];
+  _team.push({id:_uid(),name:n,email:e,color:c,initials:ini,role:'Member'});
+  localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));
+  if(e)_sbTeamFetch('/rest/v1/team_members','POST',{email:e,display_name:n,last_seen:null}).catch(function(){});
+  _renderDet();
+};
+window.pwDelMember=function(id){
+  if(!confirm('Remove?'))return;
+  _team=_team.filter(function(m){return m.id!==id;});
+  localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));
+  _renderDet();
+};
 
 /* ── SUBTASK FUNCTIONS ─────────────────────────────────── */
 var _epSubs=[];
@@ -12621,67 +12634,110 @@ window.pwChatSend=function(){
 };
 
 
-/* ── Auto-join team on login (uses existing tgk_team key) ── */
+/* ── Shared team helpers (team_members table — same as ERP) ── */
 var AVATAR_COLORS = ['#2ABFAA','#E07B28','#6554C0','#00B8D9','#00875A','#FF5630','#FF991F','#2684FF','#8777D9','#57D9A3'];
+
+/* Authenticated REST fetch using CC session JWT (same project as ERP) */
+function _sbTeamFetch(path, method, body) {
+  var user = _curUser();
+  var token = (user && user.access_token) ? user.access_token : TGK_SB_KEY;
+  var headers = {
+    'apikey': TGK_SB_KEY,
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': 'application/json'
+  };
+  if (method === 'POST') headers['Prefer'] = 'resolution=merge-duplicates,return=minimal';
+  return fetch(TGK_SB_URL + path, {
+    method: method || 'GET',
+    headers: headers,
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function(res) {
+    return res.text().then(function(t) {
+      if (!res.ok) throw new Error('SB ' + res.status);
+      return t ? JSON.parse(t) : null;
+    });
+  });
+}
+
+function _makeInitials(displayName) {
+  var words = (displayName || '').split(' ').filter(Boolean);
+  return ((words[0] ? words[0][0] : '?') + (words[1] ? words[1][0] : words[0] && words[0][1] ? words[0][1] : '')).toUpperCase();
+}
 
 function _makeProfile(email, idx) {
   var words = email.split('@')[0].replace(/[._\-+]/g,' ').split(' ').filter(Boolean);
   var name  = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
-  var ini   = ((words[0]?words[0][0]:'?') + (words[1]?words[1][0]:words[0]&&words[0][1]?words[0][1]:'')).toUpperCase();
   return {
     id: 'u_' + email.replace(/[^a-z0-9]/gi,'').slice(0,12),
-    name: name, email: email, initials: ini,
+    name: name, email: email,
+    initials: _makeInitials(name),
     color: AVATAR_COLORS[idx % AVATAR_COLORS.length],
-    role: 'Member', joinedAt: _now(), lastSeen: _now()
+    role: 'Member', joinedAt: _now(), lastSeen: null
   };
 }
 
+/* Upsert logged-in user into team_members — shared with ERP chat */
 function _syncMyProfile() {
   var user = _curUser();
-  if (!user || !user.email || typeof sbGet !== 'function') return Promise.resolve();
-  // Use existing tgk_team key — safe, already has correct RLS permissions
-  return sbGet('tgk_team').then(function(team) {
-    team = Array.isArray(team) ? team : [];
-    var existing = team.find(function(m){ return m.email === user.email; });
-    if (existing) {
-      existing.lastSeen = _now();
-    } else {
-      team.push(_makeProfile(user.email, team.length));
-    }
-    // Write back to tgk_team — same key that already works
-    return sbSet('tgk_team', team).then(function(){
-      _team = team;
-      try{localStorage.setItem(PW_TEAM_KEY, JSON.stringify(_team));}catch(e){}
-    });
-  }).catch(function(e){
-    // If write fails (RLS), still seed locally so the UI works
+  if (!user || !user.email) return Promise.resolve();
+  var words = user.email.split('@')[0].replace(/[._\-+]/g,' ').split(' ').filter(Boolean);
+  var displayName = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
+  return _sbTeamFetch('/rest/v1/team_members', 'POST',
+    { email: user.email, display_name: displayName, last_seen: _now() }
+  ).then(function() {
+    return _loadTeam();
+  }).catch(function(e) {
+    console.warn('[CC] team sync:', e);
     _seedTeam();
   });
 }
 
-/* _loadTeam — uses tgk_team (works with existing RLS) */
+/* Load team from team_members + profiles (canonical source shared with ERP) */
 function _loadTeam() {
   try {
     var c = JSON.parse(localStorage.getItem(PW_TEAM_KEY)||'null');
     if (Array.isArray(c) && c.length) _team = c;
   } catch(e) {}
-  if (typeof sbGet !== 'function') { _seedTeam(); return Promise.resolve(); }
-  return sbGet('tgk_team').then(function(r){
-    if (Array.isArray(r) && r.length) {
-      _team = r;
-      try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
-    } else { _seedTeam(); }
-  }).catch(function(){ _seedTeam(); });
+  return _sbTeamFetch('/rest/v1/team_members?select=*&order=display_name')
+    .then(function(rows) {
+      if (!Array.isArray(rows) || !rows.length) { _seedTeam(); return; }
+      /* also fetch roles from profiles table */
+      return _sbTeamFetch('/rest/v1/profiles?select=email,role')
+        .then(function(profs) {
+          var roleMap = {};
+          if (Array.isArray(profs)) {
+            profs.forEach(function(p) {
+              roleMap[p.email] = (p.role === 'admin') ? 'Admin' : 'Member';
+            });
+          }
+          return _applyTeamRows(rows, roleMap);
+        })
+        .catch(function() {
+          return _applyTeamRows(rows, {});
+        });
+    })
+    .catch(function() { _seedTeam(); });
 }
 
-/* expose for CC dashboard */
+function _applyTeamRows(rows, roleMap) {
+  _team = rows.map(function(r, i) {
+    var p = _makeProfile(r.email, i);
+    if (r.display_name) { p.name = r.display_name; p.initials = _makeInitials(r.display_name); }
+    p.lastSeen = r.last_seen || null;
+    p.role = roleMap[r.email] || 'Member';
+    return p;
+  });
+  try { localStorage.setItem(PW_TEAM_KEY, JSON.stringify(_team)); } catch(e) {}
+}
+
 window.pwGetTeam = function(){ return _team.slice(); };
 window.pwSyncProfile = _syncMyProfile;
+window.pwLoadTeam = _loadTeam;
+window._sbTeamFetch = _sbTeamFetch;
 window.pwSetMemberRole = function(id, role){
   var m = _team.find(function(x){return x.id===id;});
   if (!m) return;
   m.role = role;
-  if (typeof sbSet === 'function') sbSet('tgk_team', _team).catch(function(){});
   try{localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));}catch(e){}
   if (typeof dashRenderTeam === 'function') dashRenderTeam();
 };
@@ -12961,37 +13017,33 @@ function _escDash(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 function dashSyncTeam() {
   if (typeof pwSyncProfile === 'function') {
     pwSyncProfile().then(function(){ dashRenderTeam(); });
+  } else if (typeof pwLoadTeam === 'function') {
+    pwLoadTeam().then(function(){ dashRenderTeam(); });
   }
 }
 
 function dashInviteUser() {
   var email = prompt('Enter the email address to invite to the team:');
   if (!email || !email.includes('@')) return;
-  // Add them to the pool (they will update their own profile on first login)
-  if (typeof pwGetTeam === 'function') {
-    var team = pwGetTeam();
-    if (team.find(function(m){ return m.email === email; })) {
-      alert(email + ' is already on the team.');
-      return;
-    }
-    // Create a placeholder profile
-    var words = email.split('@')[0].replace(/[._-]/g,' ').split(' ').filter(Boolean);
-    var name = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
-    var ini = (words[0]?words[0][0]:'?').toUpperCase() + (words[1]?words[1][0]:words[0]&&words[0][1]?words[0][1]:'').toUpperCase();
-    var colors = ['#2ABFAA','#E07B28','#6554C0','#00B8D9','#00875A','#FF5630','#FF991F','#2684FF'];
-    var newMember = {
-      id: 'u_' + email.replace(/[^a-z0-9]/gi,'').slice(0,12),
-      name: name, email: email, initials: ini,
-      color: colors[team.length % colors.length],
-      role: 'Member', joinedAt: new Date().toISOString(), lastSeen: null
-    };
-    team.push(newMember);
-    if (typeof sbSet === 'function') {
-      sbSet('tgk_team', team).then(function(){
-        dashSyncTeam();
-        alert('Added ' + name + ' to the team. They will be auto-synced when they log in.');
-      }).catch(function(){ alert('Could not save. Check your connection.'); });
-    }
+  var team = typeof pwGetTeam === 'function' ? pwGetTeam() : [];
+  if (team.find(function(m){ return m.email === email; })) {
+    alert(email + ' is already on the team.');
+    return;
+  }
+  var words = email.split('@')[0].replace(/[._\-+]/g,' ').split(' ').filter(Boolean);
+  var displayName = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
+  /* Write placeholder into team_members — same table as ERP */
+  if (typeof window._sbTeamFetch === 'function') {
+    window._sbTeamFetch('/rest/v1/team_members', 'POST',
+      { email: email, display_name: displayName, last_seen: null }
+    ).then(function(){
+      return typeof window.pwLoadTeam === 'function' ? window.pwLoadTeam() : Promise.resolve();
+    }).then(function(){
+      dashRenderTeam();
+      alert('Added ' + displayName + ' to the team. They will be synced when they log in to the ERP or Command Center.');
+    }).catch(function(e){
+      alert('Could not save: ' + e.message);
+    });
   }
 }
 
