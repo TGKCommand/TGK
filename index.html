@@ -1142,6 +1142,8 @@ select,select option{background-color:#fff!important;color:#111827!important}
 // ════════════════════════════════════════════════════════════════
 var TGK_SB_URL = 'https://piamamighqiielfztgic.supabase.co';
 var TGK_SB_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
+// Supabase anon JWT — required as apikey for REST table queries
+var TGK_SB_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA';
 
 // ── Low-level fetch wrapper ───────────────────────────────────
 async function sbFetch(path, opts) {
@@ -13101,18 +13103,27 @@ function dashInviteUser() {
 
 /* ── CC Authenticated Fetch (outside IIFE — used by dashboard) ─────────── */
 function _ccAuthFetch(path) {
-  try {
-    var sess = JSON.parse(localStorage.getItem('tgk_cc_session') || '{}');
-    var token = sess.access_token || TGK_SB_KEY;
-    return fetch(TGK_SB_URL + path, {
-      headers: { 'apikey': TGK_SB_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-    }).then(function(r) {
-      return r.text().then(function(t) {
-        if (!r.ok) throw new Error('SB ' + r.status);
-        return t ? JSON.parse(t) : null;
-      });
+  var sess = {};
+  try { sess = JSON.parse(localStorage.getItem('tgk_cc_session') || '{}'); } catch(e) {}
+  // Use proper anon JWT as apikey (publishable key not accepted by REST API)
+  // Use user session JWT as Authorization when available
+  var apiKey = (typeof TGK_SB_JWT !== 'undefined') ? TGK_SB_JWT : TGK_SB_KEY;
+  var bearer = sess.access_token || apiKey;
+  return fetch(TGK_SB_URL + path, {
+    headers: {
+      'apikey': apiKey,
+      'Authorization': 'Bearer ' + bearer,
+      'Content-Type': 'application/json'
+    }
+  }).then(function(r) {
+    return r.text().then(function(t) {
+      if (!r.ok) {
+        console.warn('[pulse] fetch failed:', r.status, path.slice(0, 60));
+        throw new Error('SB ' + r.status);
+      }
+      return t ? JSON.parse(t) : null;
     });
-  } catch(e) { return Promise.reject(e); }
+  });
 }
 
 /* ── Business Pulse ─────────────────────────────────────────────────────── */
@@ -13132,8 +13143,9 @@ function dashLoadPulse(force) {
       _pulseRevChart(document.getElementById('pulse-rev'), sales || []);
       _pulseOrderChart(document.getElementById('pulse-orders'), sales || []);
     })
-    .catch(function() {
-      var msg = '<div style="font-size:11px;color:#9CA3AF;padding-top:8px">Open ERP once to enable data</div>';
+    .catch(function(err) {
+      console.warn('[pulse] sales fetch failed:', err && err.message);
+      var msg = '<div style="font-size:11px;color:#9CA3AF;padding-top:8px">Log into the ERP to enable live data</div>';
       var r = document.getElementById('pulse-rev');
       var o = document.getElementById('pulse-orders');
       if (r) r.innerHTML = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF">Revenue</div>' + msg;
@@ -13196,12 +13208,13 @@ function _pulseRevChart(el, sales) {
 function _pulseOrderChart(el, sales) {
   if (!el) return;
   var counts = {}, seen = {};
+  var _skip = {Cancelled:1, Delivered:1, Refunded:1};
   sales.forEach(function(s) {
-    var key = s.order_number || ('__' + Math.random());
     var fs = s.fulfillment_status || 'Open';
-    if (['Cancelled', 'Delivered', 'Refunded'].includes(fs)) return;
-    if (seen[s.order_number || s.id]) return;
-    seen[s.order_number || s.id] = true;
+    if (_skip[fs]) return;
+    var k = s.order_number || s.id || ('__' + Math.random());
+    if (seen[k]) return;
+    seen[k] = true;
     counts[fs] = (counts[fs] || 0) + 1;
   });
   var stats = [
@@ -13231,8 +13244,8 @@ function _pulseOrderChart(el, sales) {
 
 function _pulseStockCard(el, asms) {
   if (!el) return;
-  var low = asms.filter(function(a) {
-    return (a.min_qty || 0) > 0 && (a.total_on_hand || 0) < (a.min_qty || 0);
+  var low = (asms || []).filter(function(a) {
+    return !a.is_subassembly && (a.min_qty || 0) > 0 && (a.total_on_hand || 0) < (a.min_qty || 0);
   }).sort(function(a, b) {
     return ((a.total_on_hand || 0) / (a.min_qty || 1)) - ((b.total_on_hand || 0) / (b.min_qty || 1));
   }).slice(0, 5);
