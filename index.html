@@ -51,7 +51,6 @@
 [data-theme="dark"] .ext-card{background:#1a1c1e;border-color:#2a2d30}
 [data-theme="dark"] .ext-name{color:#e8eaed}
 [data-theme="dark"] .ext-url{color:#4B5563}
-[data-theme="dark"] .pulse-card{background:#1a1c1e;border-color:#2a2d30}
 [data-theme="dark"] .dash-team-card{background:#1a1c1e;border-color:#2a2d30}
 [data-theme="dark"] .dash-team-invite{background:#1a1c1e;border-color:#2a2d30}
 [data-theme="dark"] .dash-team-name{color:#e8eaed}
@@ -1555,14 +1554,7 @@ select,select option{background-color:#fff!important;color:#111827!important}
 .dash-team-invite{background:#fff;border:1.5px dashed #C1C7D0;border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:.15s;color:#9CA3AF;font-size:13px;font-weight:600;min-height:76px}
 .dash-team-invite:hover{border-color:#2ABFAA;color:#2ABFAA;background:rgba(42,191,170,.03)}
 /* PULSE SECTION */
-.dash-pulse-section{margin:0 0 8px}
-.dash-pulse-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.dash-pulse-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF}
-.pulse-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
-.pulse-card{background:#fff;border:1px solid #E4E7EC;border-radius:12px;padding:16px 18px;min-height:110px}
-.pulse-skel{animation:pulse-sk 1.6s ease-in-out infinite}
-.pulse-skel-bar{height:8px;background:#F3F4F6;border-radius:4px;margin-bottom:7px}
-@keyframes pulse-sk{0%,100%{opacity:.6}50%{opacity:.15}}
+
 
 .pw-note-ta{width:100%;min-height:90px;border:1.5px solid #2ABFAA;border-radius:7px;padding:11px 12px;font-size:13.5px;font-family:var(--font);color:#111827;resize:none;outline:none;box-sizing:border-box;line-height:1.55}
 
@@ -1889,25 +1881,6 @@ window._sbBootPromise = (async function() {
     <div class="mod-grid" id="ext-grid"></div>
   </div>
 </div>
-
-  <!-- Business Pulse -->
-  <div class="dash-pulse-section" id="dash-pulse-wrap">
-    <div class="dash-pulse-hdr">
-      <span class="dash-pulse-title">&#128200; Business Pulse</span>
-      <button onclick="dashLoadPulse(true)" style="padding:3px 10px;border:1.5px solid #E4E7EC;border-radius:5px;background:#fff;cursor:pointer;font-size:11px;font-weight:600;color:#6B7280;font-family:var(--font);transition:.15s">&#8635; Refresh</button>
-    </div>
-    <div class="pulse-grid">
-      <div class="pulse-card" id="pulse-rev">
-        <div class="pulse-skel"><div class="pulse-skel-bar" style="width:50%;margin-bottom:12px"></div><div class="pulse-skel-bar" style="width:30%;height:28px;margin-bottom:10px"></div><div class="pulse-skel-bar" style="height:50px;width:100%"></div></div>
-      </div>
-      <div class="pulse-card" id="pulse-orders">
-        <div class="pulse-skel"><div class="pulse-skel-bar" style="width:65%"></div><div class="pulse-skel-bar" style="width:100%"></div><div class="pulse-skel-bar" style="width:80%"></div><div class="pulse-skel-bar" style="width:55%"></div></div>
-      </div>
-      <div class="pulse-card" id="pulse-stock">
-        <div class="pulse-skel"><div class="pulse-skel-bar" style="width:55%"></div><div class="pulse-skel-bar" style="width:100%"></div><div class="pulse-skel-bar" style="width:90%"></div><div class="pulse-skel-bar" style="width:75%"></div></div>
-      </div>
-    </div>
-  </div>
 
   <!-- Team Section -->
   <div class="dash-team-section" id="dash-team-wrap">
@@ -11453,7 +11426,6 @@ function dashLoadExt(){
     window._tbxItems=Array.isArray(data)?data:[];
     renderPinned();
   }).catch(function(){window._tbxItems=JSON.parse(localStorage.getItem('tgk_toolbox_v1')||'[]');renderPinned();});
-  setTimeout(function(){dashLoadPulse();},400);
 }
 
 /* ─── showView patch ─────────────────────────────────── */
@@ -13684,205 +13656,6 @@ function dashInviteUser() {
   }
 }
 
-/* ── CC Authenticated Fetch (outside IIFE — used by dashboard) ─────────── */
-function _ccAuthFetch(path) {
-  // Try session sources in order of preference
-  var token = null;
-
-  // 1. Command Center own session
-  try {
-    var ccSess = JSON.parse(localStorage.getItem('tgk_cc_session') || '{}');
-    if (ccSess && ccSess.access_token) token = ccSess.access_token;
-  } catch(e) {}
-
-  // 2. ERP Supabase JS v2 session (same domain = shared localStorage)
-  if (!token) {
-    try {
-      var erpSess = JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token') || 'null');
-      if (erpSess && erpSess.access_token) token = erpSess.access_token;
-    } catch(e) {}
-  }
-
-  // 3. ERP Supabase JS v1 session key (older format)
-  if (!token) {
-    try {
-      var v1 = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
-      if (v1 && v1.currentSession && v1.currentSession.access_token) token = v1.currentSession.access_token;
-    } catch(e) {}
-  }
-
-  var apiKey = TGK_SB_KEY;
-  var bearer = token || apiKey;
-
-  return fetch(TGK_SB_URL + path, {
-    headers: {
-      'apikey': apiKey,
-      'Authorization': 'Bearer ' + bearer,
-      'Content-Type': 'application/json'
-    }
-  }).then(function(r) {
-    return r.text().then(function(t) {
-      if (!r.ok) {
-        console.warn('[pulse] fetch failed', r.status, path.slice(0, 60), t.slice(0, 120));
-        throw new Error('HTTP ' + r.status);
-      }
-      return t ? JSON.parse(t) : null;
-    });
-  });
-}
-
-/* ── Business Pulse ─────────────────────────────────────────────────────── */
-function dashLoadPulse(force) {
-  var wrap = document.getElementById('dash-pulse-wrap');
-  if (!wrap) return;
-  var now = Date.now();
-  if (!force && window._pulseLastLoad && now - window._pulseLastLoad < 5 * 60 * 1000) return;
-  window._pulseLastLoad = now;
-
-  var d14 = new Date(now - 14 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  var d30 = new Date(now - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-
-  // Revenue + orders
-  _ccAuthFetch('/rest/v1/sales?select=sale_date,qty,msrp,fulfillment_status,order_number&sale_date=gte.' + d14 + '&order=sale_date&limit=3000')
-    .then(function(sales) {
-      _pulseRevChart(document.getElementById('pulse-rev'), sales || []);
-      _pulseOrderChart(document.getElementById('pulse-orders'), sales || []);
-    })
-    .catch(function(err) {
-      console.warn('[pulse] sales fetch failed:', err && err.message);
-      var errCode = (err && err.message) || '';
-      var msg = '<div style="margin-top:10px">'
-        + '<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">'
-        + (errCode.indexOf('401') > -1 || errCode.indexOf('403') > -1
-            ? 'Sign into the ERP to authorise data access.'
-            : 'Could not load data (' + errCode + ').')
-        + '</div>'
-        + '<button onclick="openERP()" style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:6px;border:1px solid #2ABFAA;background:transparent;color:#2ABFAA;cursor:pointer;font-family:inherit">Open ERP &#8594;</button>'
-        + '</div>';
-      var r = document.getElementById('pulse-rev');
-      var o = document.getElementById('pulse-orders');
-      if (r) r.innerHTML = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF">Revenue</div>' + msg;
-      if (o) o.innerHTML = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF">Orders</div>' + msg;
-    });
-
-  // Stock alerts from assemblies
-  _ccAuthFetch('/rest/v1/assemblies?select=pn,description,total_on_hand,min_qty&is_subassembly=eq.false&limit=500')
-    .then(function(asms) {
-      _pulseStockCard(document.getElementById('pulse-stock'), asms || []);
-    })
-    .catch(function() {
-      var s = document.getElementById('pulse-stock');
-      if (s) s.innerHTML = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF">Stock</div>'
-        + '<div style="margin-top:10px"><div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">Open ERP to authorise access.</div>'
-        + '<button onclick="openERP()" style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:6px;border:1px solid #2ABFAA;background:transparent;color:#2ABFAA;cursor:pointer;font-family:inherit">Open ERP &#8594;</button></div>';
-    });
-}
-
-function _pulseRevChart(el, sales) {
-  if (!el) return;
-  var days = [];
-  var now = new Date();
-  for (var i = 13; i >= 0; i--) {
-    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
-  }
-  var byDay = {};
-  sales.forEach(function(s) {
-    if (!s.sale_date) return;
-    var d = s.sale_date.slice(0, 10);
-    byDay[d] = (byDay[d] || 0) + (s.msrp || 0) * (s.qty || 1);
-  });
-  var vals = days.map(function(d) { return byDay[d] || 0; });
-  var total = vals.reduce(function(a, b) { return a + b; }, 0);
-  var prev7 = vals.slice(0, 7).reduce(function(a, b) { return a + b; }, 0);
-  var cur7  = vals.slice(7).reduce(function(a, b) { return a + b; }, 0);
-  var trend = prev7 > 0 ? ((cur7 - prev7) / prev7 * 100) : null;
-  var trendTxt = trend !== null
-    ? '<span style="font-size:11px;color:' + (trend >= 0 ? '#00875A' : '#dc2626') + ';font-weight:700">'
-      + (trend >= 0 ? '&#9650;' : '&#9660;') + Math.abs(trend).toFixed(0) + '%</span>'
-      + '<span style="font-size:11px;color:#9CA3AF"> vs prior week</span>'
-    : '';
-  var max = Math.max.apply(null, vals) || 1;
-  var W = 260, H = 60;
-  var bW = Math.floor((W - 12) / 14) - 2;
-  var bars = vals.map(function(v, i) {
-    var h = Math.max(2, Math.round((v / max) * H));
-    var x = 6 + i * (bW + 2);
-    return '<rect x="' + x + '" y="' + (H - h) + '" width="' + bW + '" height="' + h + '" fill="' + (v > 0 ? '#2ABFAA' : '#E4E7EC') + '" rx="2"/>';
-  }).join('');
-  var fmt = function(n) { return n >= 10000 ? '$' + (n / 1000).toFixed(1) + 'k' : '$' + Math.round(n); };
-  el.innerHTML =
-    '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:4px">Revenue &mdash; 14 Days</div>'
-    + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">'
-    + '<span style="font-size:24px;font-weight:800;color:#111827;font-family:monospace;letter-spacing:-.02em">' + fmt(total) + '</span>'
-    + trendTxt + '</div>'
-    + '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">' + bars + '</svg>';
-}
-
-function _pulseOrderChart(el, sales) {
-  if (!el) return;
-  var counts = {}, seen = {};
-  var _skip = {Cancelled:1, Delivered:1, Refunded:1};
-  sales.forEach(function(s) {
-    var fs = s.fulfillment_status || 'Open';
-    if (_skip[fs]) return;
-    var k = s.order_number || s.id || ('__' + Math.random());
-    if (seen[k]) return;
-    seen[k] = true;
-    counts[fs] = (counts[fs] || 0) + 1;
-  });
-  var stats = [
-    { label: 'Open',     color: '#dc2626' },
-    { label: 'On Hold',  color: '#f97316' },
-    { label: 'Partial',  color: '#d97706' },
-    { label: 'Packed',   color: '#2ABFAA' },
-    { label: 'Shipped',  color: '#3b82f6' }
-  ].filter(function(s) { return counts[s.label]; });
-  var total = stats.reduce(function(t, s) { return t + counts[s.label]; }, 0) || 1;
-  var html = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:10px">Order Pipeline</div>';
-  stats.forEach(function(s) {
-    var cnt = counts[s.label];
-    var pct = (cnt / total * 100).toFixed(0);
-    html += '<div style="margin-bottom:8px">'
-      + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">'
-      + '<span style="color:#4B5563">' + s.label + '</span>'
-      + '<span style="color:#111827;font-weight:700">' + cnt + '</span>'
-      + '</div>'
-      + '<div style="background:#F3F4F6;border-radius:3px;height:5px">'
-      + '<div style="background:' + s.color + ';width:' + pct + '%;height:100%;border-radius:3px"></div>'
-      + '</div></div>';
-  });
-  if (!stats.length) html += '<div style="font-size:13px;color:#2ABFAA;font-weight:600">&#10003; All orders shipped</div>';
-  el.innerHTML = html;
-}
-
-function _pulseStockCard(el, asms) {
-  if (!el) return;
-  var low = (asms || []).filter(function(a) {
-    return !a.is_subassembly && (a.min_qty || 0) > 0 && (a.total_on_hand || 0) < (a.min_qty || 0);
-  }).sort(function(a, b) {
-    return ((a.total_on_hand || 0) / (a.min_qty || 1)) - ((b.total_on_hand || 0) / (b.min_qty || 1));
-  }).slice(0, 5);
-  var html = '<div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:10px">Stock Alerts'
-    + (low.length ? ' <span style="background:#FEE2E2;color:#dc2626;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700">' + low.length + '</span>' : '') + '</div>';
-  if (!low.length) {
-    html += '<div style="font-size:13px;color:#2ABFAA;font-weight:600;margin-top:4px">&#10003; All assemblies in stock</div>';
-  } else {
-    low.forEach(function(a) {
-      var zero = (a.total_on_hand || 0) <= 0;
-      var ratio = Math.round((a.total_on_hand || 0) / (a.min_qty || 1) * 100);
-      html += '<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #F3F4F6">'
-        + '<span style="width:7px;height:7px;border-radius:50%;background:' + (zero ? '#dc2626' : '#d97706') + ';flex-shrink:0"></span>'
-        + '<span style="font-family:monospace;font-size:10px;font-weight:700;color:#2ABFAA;flex-shrink:0;min-width:80px;overflow:hidden;text-overflow:ellipsis">' + a.pn + '</span>'
-        + '<span style="font-size:11px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (a.description || '') + '</span>'
-        + '<span style="font-size:11px;font-weight:700;color:' + (zero ? '#dc2626' : '#d97706') + ';flex-shrink:0;white-space:nowrap">' + (a.total_on_hand || 0) + '/' + a.min_qty + '</span>'
-        + '</div>';
-    });
-  }
-  el.innerHTML = html;
-}
-
-// Load team when dashboard renders
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() { dashSyncTeam(); }, 1200);
 });
