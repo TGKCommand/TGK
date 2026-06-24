@@ -1777,9 +1777,11 @@ window._sbBootPromise = (async function() {
 .tgk-video-section { display:block }
 .tgk-video-sh { cursor:pointer; transition:background .15s; }
 .tgk-video-sh:hover { filter:brightness(1.18); }
-.wysi .tgk-video-sh.sh-active { outline:2px solid #2ABFAA; outline-offset:3px; border-radius:6px 6px 0 0; }
+.wysi .tgk-video-sh { margin-bottom:0 !important; border-radius:6px 6px 0 0 !important; }
+.wysi .tgk-video-sh.sh-active { outline:2px solid #2ABFAA; outline-offset:3px; border-radius:6px 6px 0 0 !important; }
 .tgk-video-title { cursor:text !important; }
-.tgk-video-title[contenteditable="true"]:focus { outline:1px solid rgba(42,191,170,.5); border-radius:3px; padding:0 3px; }
+.tgk-video-title[contenteditable="true"] { border-bottom:1px dashed rgba(42,191,170,.4); }
+.tgk-video-title[contenteditable="true"]:focus { outline:1px solid rgba(42,191,170,.5); border-radius:3px; padding:0 3px; border-bottom:none; }
 .tgk-video-wrap{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px;background:#000;margin-top:10px}
 .tgk-video-wrap iframe,.tgk-video-wrap video{position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px;display:block}
 .tgk-video-embed{position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:6px;display:block}
@@ -3256,6 +3258,7 @@ function _finishLoadEdit(html) {
   });
   wysiwyg.querySelectorAll('.tgk-section').forEach(function(sec){ wireSection(sec); });
   enableBlockEditing(wysiwyg, syncHtml);
+  _wireVideoSections(wysiwyg);
   wysiwyg.addEventListener('click', function(e) {
     if (!e.target.closest('table')) hideTableToolbar();
     if (!e.target.closest('.tgk-sh') && !e.target.closest('.tgk-video-sh') && !e.target.closest('.sec-toolbar')) hideSectionToolbar();
@@ -3772,6 +3775,7 @@ function loadConvEdit(html) {
   wysiwyg.querySelectorAll('.tgk-section').forEach(function(sec){ wireSection(sec); });
   // Wire block editing (drag, move, delete, add buttons)
   enableBlockEditing(wysiwyg, syncConvHtml);
+  _wireVideoSections(wysiwyg);
   // Wire wysiwyg click to dismiss toolbars when clicking outside them
   wysiwyg.removeEventListener('click', _convWysiwygClick);
   wysiwyg.addEventListener('click', _convWysiwygClick);
@@ -7448,14 +7452,15 @@ function _cleanWysiwygHtml(wy) {
   clone.querySelectorAll(
     '[contenteditable],[spellcheck],.add-block-btn,.blk-drag-handle,' +
     '.blk-resize-handle,.sec-toolbar,.blk-toolbar,.tbl-toolbar,.add-menu,' +
-    '.clr-picker-panel'
+    '.clr-picker-panel,.tgk-vid-autoplay-badge'
   ).forEach(function(el) {
     if (el.classList.contains('add-block-btn') ||
         el.classList.contains('blk-drag-handle') ||
         el.classList.contains('blk-resize-handle') ||
         el.classList.contains('sec-toolbar') ||
         el.classList.contains('blk-toolbar') ||
-        el.classList.contains('tbl-toolbar')) {
+        el.classList.contains('tbl-toolbar') ||
+        el.classList.contains('tgk-vid-autoplay-badge')) {
       el.remove();
     } else {
       el.removeAttribute('contenteditable');
@@ -8177,6 +8182,7 @@ function tllibLoadWysiwyg(){
   wy.addEventListener('input', function(){ tllibSyncOut(); });
   _tlUndoStack = [];
   enableBlockEditing(wy, function(){ _tlPushUndo(); tllibSyncOut(); });
+  _wireVideoSections(wy);
   _tlPushUndo();
   tllibSyncOut();
   document.getElementById('tllib-step2').style.display = 'block';
@@ -13034,6 +13040,75 @@ function _applyVideoPlaceholders(container) {
   });
 }
 
+/* ── _wireVideoSections: post-load wiring for video sections ── */
+function _wireVideoSections(wy) {
+  wy.querySelectorAll('.tgk-video-section').forEach(function(vsec) {
+    // Ensure header has tgk-sh so wireSection can grab it
+    var sh = vsec.querySelector('.tgk-sh');
+    if (!sh) {
+      // Fallback: promote first non-placeholder child to header
+      var kids = Array.from(vsec.children);
+      sh = kids.find(function(c) {
+        return !c.classList.contains('tgk-video-ph') && !c.classList.contains('add-block-btn');
+      }) || null;
+      if (sh) {
+        sh.classList.add('tgk-sh', 'tgk-video-sh');
+        var spans = sh.querySelectorAll('span');
+        spans.forEach(function(s) {
+          if (!s.className && s.textContent.trim()) s.classList.add('tgk-video-title');
+        });
+      }
+    }
+    // Ensure title span is editable
+    var titleSpan = vsec.querySelector('.tgk-video-title');
+    if (titleSpan && titleSpan.contentEditable !== 'true') {
+      titleSpan.contentEditable = 'true';
+      titleSpan.spellcheck = true;
+    }
+    // Wire section for drag + toolbar (idempotent via sh._wired guard)
+    wireSection(vsec);
+    // Wire autoplay checkbox: auto-apply on toggle
+    var cb = vsec.querySelector('.tgk-vid-autoplay');
+    if (cb && !cb._vidWired) {
+      cb._vidWired = true;
+      cb.addEventListener('change', function() {
+        var urlInp = vsec.querySelector('.tgk-vid-url-inp');
+        if (!urlInp || !urlInp.value.trim()) {
+          // No URL yet — just update the badge
+          _vidUpdateAutoplayBadge(vsec, cb.checked);
+          return;
+        }
+        tgkVidUpdate(urlInp);
+      });
+    }
+    // Sync badge to current state
+    _vidUpdateAutoplayBadge(vsec, cb ? cb.checked : false);
+  });
+}
+
+function _vidUpdateAutoplayBadge(vsec, on) {
+  var ph = vsec.querySelector('.tgk-video-ph');
+  if (!ph) return;
+  var badge = ph.querySelector('.tgk-vid-autoplay-badge');
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.className = 'tgk-vid-autoplay-badge';
+    badge.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:6px;padding:3px 8px;border-radius:4px;display:inline-block;transition:all .15s';
+    ph.appendChild(badge);
+  }
+  if (on) {
+    badge.textContent = 'AUTOPLAY ON';
+    badge.style.background = 'rgba(42,191,170,.15)';
+    badge.style.color = '#2ABFAA';
+    badge.style.border = '1px solid rgba(42,191,170,.3)';
+  } else {
+    badge.textContent = 'AUTOPLAY OFF';
+    badge.style.background = 'rgba(255,255,255,.04)';
+    badge.style.color = '#6B7280';
+    badge.style.border = '1px solid rgba(255,255,255,.08)';
+  }
+}
+
 /* ── Video placeholder editor ──────────────────────────── */
 window.tgkVidUpdate = function(inp) {
   var id = inp.dataset.tgkvid;
@@ -13067,6 +13142,11 @@ window.tgkVidUpdate = function(inp) {
     if (titleSpan) titleSpan.contentEditable = 'true';
     var fb = ph ? ph.querySelector('.tgk-vid-feedback') : null;
     if (fb) { fb.textContent = 'Updated'; setTimeout(function(){fb.textContent='';},2000); }
+    // Update autoplay badge
+    if (ph) {
+      var vsec = ph.closest('.tgk-video-section');
+      if (vsec && typeof _vidUpdateAutoplayBadge === 'function') _vidUpdateAutoplayBadge(vsec, autoplay);
+    }
     // Trigger sync on the containing wysiwyg
     if (ph) { var ctx = (typeof _getWyCtx === 'function') ? _getWyCtx(ph) : 'edit'; if (typeof _wySyncFn === 'function') _wySyncFn(ctx); }
   }
