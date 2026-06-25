@@ -1359,6 +1359,14 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .oo-bom-tbl tr:hover .oo-bom-del{color:#C1C7D0}.oo-bom-del:hover{color:#C9372C!important;background:#FFEDEB}
 /* SKU */
 .oo-sku-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;margin-bottom:20px}
+.oo-sku-inp-main{flex:1;background:#fff;border:1.5px solid #E4E7EC;border-radius:7px;padding:8px 10px;font-size:14px;font-weight:700;color:#111827;font-family:var(--font);outline:none;transition:.12s}
+.oo-sku-inp-main:focus{border-color:#2ABFAA}
+.oo-sku-inp-main::placeholder{font-weight:400;color:#9CA3AF}
+.oo-sku-gen-btn{padding:8px 14px;border:1.5px solid #E4E7EC;border-radius:7px;background:#F8F9FB;cursor:pointer;font-size:12px;font-weight:600;color:#374151;font-family:var(--font);white-space:nowrap;transition:.12s}
+.oo-sku-gen-btn:hover{border-color:#2ABFAA;color:#2ABFAA;background:#fff}
+[data-theme="dark"] .oo-sku-inp-main{background:#141618;border-color:#2a2d30;color:#e8eaed}
+[data-theme="dark"] .oo-sku-gen-btn{background:#1a1c1e;border-color:#2a2d30;color:#9AA3AF}
+[data-theme="dark"] .oo-sku-gen-btn:hover{border-color:#2ABFAA;color:#2ABFAA}
 .oo-sku-f label{font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px}
 .oo-sku-f input,.oo-sku-f select{width:100%;background:#fff;border:1.5px solid #E4E7EC;border-radius:7px;padding:8px 10px;font-size:13px;color:#111827;font-family:var(--font);outline:none;box-sizing:border-box;transition:.12s}
 .oo-sku-f input:focus,.oo-sku-f select:focus{border-color:#2ABFAA}
@@ -1377,6 +1385,23 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .oo-veh-inp:focus{border-color:#2ABFAA}
 /* Chatter */
 .oo-chatter{width:300px;flex-shrink:0;background:#fff;border-left:1px solid #E4E7EC;display:flex;flex-direction:column;overflow:hidden}
+.oo-chat-hdr{padding:10px 14px 8px;border-bottom:1px solid #E4E7EC;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.oo-chat-hdr-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B7280}
+.oo-quick-log{display:flex;align-items:flex-start;gap:10px;padding:10px 14px 8px;border-bottom:1px solid #E4E7EC;flex-shrink:0}
+.oo-quick-ta{flex:1;border:1.5px solid #E4E7EC;border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--font);color:#111827;resize:none;outline:none;line-height:1.5;transition:border-color .12s;background:#fff}
+.oo-quick-ta:focus{border-color:#2ABFAA}
+.oo-quick-ta::placeholder{color:#9CA3AF}
+.oo-erp-sync-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font);border:1.5px solid;transition:.12s;white-space:nowrap;flex-shrink:0}
+.oo-erp-btn-new{background:rgba(42,191,170,.08);border-color:#2ABFAA;color:#2ABFAA}
+.oo-erp-btn-new:hover{background:#2ABFAA;color:#fff}
+.oo-erp-btn-warn{background:rgba(224,123,40,.08);border-color:#E07B28;color:#E07B28}
+.oo-erp-btn-warn:hover{background:#E07B28;color:#fff}
+.oo-erp-btn-ok{background:rgba(0,135,90,.08);border-color:#00875A;color:#00875A;cursor:default}
+.oo-watcher-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+[data-theme="dark"] .oo-chat-hdr{border-bottom-color:#2a2d30}
+[data-theme="dark"] .oo-quick-log{border-bottom-color:#2a2d30}
+[data-theme="dark"] .oo-quick-ta{background:#141618;border-color:#2a2d30;color:#e8eaed}
+[data-theme="dark"] .oo-quick-ta:focus{border-color:#2ABFAA}
 .oo-chat-actions{padding:12px 14px;border-bottom:1px solid #F0F2F5;display:flex;gap:7px;flex-shrink:0}
 .oo-chat-btn{padding:7px 14px;border:1.5px solid #2ABFAA;border-radius:6px;background:#2ABFAA;color:#fff;cursor:pointer;font-size:12.5px;font-weight:600;font-family:var(--font);transition:.12s;white-space:nowrap;flex:1;text-align:center}
 .oo-chat-btn.ghost{background:#fff;color:#2ABFAA;border-color:#2ABFAA}
@@ -11512,15 +11537,23 @@ function _gs(){
   return _st;
 }
 var _isSaving=false,_saveQueued=false;
-function _save(){_pushUndo();
+function _save(){
+  _pushUndo();
   try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(_st)));}catch(e){}
-  if(typeof sbSet==='function'){
-    if(_isSaving){_saveQueued=true;return;}
-    _isSaving=true;
-    var cp=JSON.parse(JSON.stringify(_st));
-    Object.values(cp.tasks).forEach(function(t){if(t.files)t.files=t.files.map(function(f){return{id:f.id,name:f.name,type:f.type,size:f.size,uploadedAt:f.uploadedAt};});});
-    sbSet('tgk_projects_data',cp).catch(function(){});
-  }
+  if(typeof sbSet!=='function')return;
+  if(_isSaving){_saveQueued=true;return;}
+  _doSbSave();
+}
+function _doSbSave(){
+  _isSaving=true;_saveQueued=false;
+  var cp=JSON.parse(JSON.stringify(_st));
+  Object.values(cp.tasks).forEach(function(t){
+    if(t.files)t.files=t.files.map(function(f){return{id:f.id,name:f.name,type:f.type,size:f.size,uploadedAt:f.uploadedAt};});
+  });
+  sbSet('tgk_projects_data',cp).catch(function(){}).finally(function(){
+    _isSaving=false;
+    if(_saveQueued)_doSbSave();
+  });
 }
 function _def(){
   return{cols:[
@@ -12002,6 +12035,21 @@ function _renderDet(){
   // ── Priority options ──────────────────────────────────────
   var priOpts=Object.keys(PRI).map(function(k){return'<option value="'+k+'"'+(k===t.priority?' selected':'')+' style="background:#2a2d30">'+PRI[k].label+'</option>';}).join('');
 
+  // ── Current user ─────────────────────────────────────────────
+  var _me=_team.find(function(m){return m.email===(_curUser().email||'');});
+  var _meId=_me?_me.id:'';
+
+  // ── Watchers row ──────────────────────────────────────────
+  var watchers=t.watchers||[];
+  var watcherHtml=watchers.map(function(wid){
+    var m=_mem(wid);if(!m)return'';
+    return'<span class="oo-av-chip" style="display:inline-flex;align-items:center;gap:3px">'      +'<div class="pw-av" style="background:'+m.color+';width:18px;height:18px;font-size:7px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:700">'+_esc(m.initials)+'</div>'      +'<span style="font-size:12px;color:#374151">'+_esc(m.name)+'</span>'      +'<button data-wid="'+wid+'" onclick="pwDetRemoveWatcher(this.dataset.wid)" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:11px;padding:0 2px;line-height:1" title="Remove">&#215;</button>'      +'</span>';
+  }).join('');
+  var unwatchedTeam=_team.filter(function(m){return watchers.indexOf(m.id)<0&&m.id!==t.assignee;});
+  if(unwatchedTeam.length){
+    watcherHtml+='<select class="oo-fsel" onchange="pwDetAddWatcher(this.value);this.value=\'\'" style="width:auto;max-width:130px;font-size:12px;padding:3px 6px">'      +'<option value="">+ Watch</option>'      +unwatchedTeam.map(function(m){return'<option value="'+m.id+'">'+_esc(m.name)+'</option>';}).join('')      +'</select>';
+  }
+
   // ── Assignee options ──────────────────────────────────────
   var asnOpts='<option value="" style="background:#2a2d30">Unassigned</option>'+_team.map(function(m){return'<option value="'+m.id+'"'+(m.id===t.assignee?' selected':'')+' style="background:#2a2d30">'+_esc(m.name)+'</option>';}).join('');
 
@@ -12022,6 +12070,7 @@ function _renderDet(){
     +'<span style="color:#3a3d40;font-size:16px">|</span>'
     +smartBtns
     +'<div style="flex:1"></div>'
+    +    +(function(){var sku=t.sku||{};if(!sku.num)return'';var synced=sku.status==='active';var needsSync=synced&&t.updatedAt&&sku.publishedAt&&t.updatedAt>sku.publishedAt;var lbl,cls;if(!synced){lbl='&#11041; Publish to ERP';cls='oo-erp-btn-new';}else if(needsSync){lbl='&#8635; Re-sync ERP';cls='oo-erp-btn-warn';}else{lbl='&#10003; In ERP';cls='oo-erp-btn-ok';}var clk=(synced&&!needsSync)?'':"pwPublishToERP('" + t.id + "')";var tip=sku.publishedAt?'Last synced: '+_fdt(sku.publishedAt):'Not yet synced';return '<button class="oo-erp-sync-btn '+cls+'" onclick="'+clk+'" title="'+tip+'">'+lbl+'</button>';})()
     +'<div id="pw-autosave-ind" class="pw-autosave">&#10003; Saved</div>'
     +'</div>'
     // Body
@@ -12041,17 +12090,21 @@ function _renderDet(){
     +'<div class="oo-frow"><span class="oo-flbl">Project</span><span class="oo-fval">TGK Motorsport</span></div>'
     +'<div class="oo-frow"><span class="oo-flbl">Priority</span><select class="oo-fsel" onchange="pwDetF(\'priority\',this.value)">'+priOpts+'</select></div>'
     +'<div class="oo-frow"><span class="oo-flbl">Assignees</span><div class="oo-fval">'+avHtml+'<div id="oo-assign-picker" style="display:none;margin-top:8px"><select class="oo-fsel" id="oo-asgn-sel" onchange="pwDetF(\'assignee\',this.value);document.getElementById(\'oo-assign-picker\').style.display=\'none\';window._renderDet()">'+asnOpts+'</select></div></div></div>'
-    +'<div class="oo-frow"><span class="oo-flbl">Deadline</span><input type="date" class="oo-finp" value="'+_esc(t.deadline||'')+'" onchange="pwDetF(\'deadline\',this.value)"></div>'
+    +'<div class="oo-frow"><span class="oo-flbl">Deadline</span><input type="date" class="oo-finp" value="'+_esc(t.deadline||'')+'" onchange="pwDetF(\'deadline\',this.value)"></div>'    +'<div class="oo-frow" style="align-items:flex-start"><span class="oo-flbl">Watchers</span><div class="oo-fval"><div class="oo-watcher-row">'+watcherHtml+'</div></div></div>'
     +'<div class="oo-frow" style="align-items:flex-start;padding-top:8px"><span class="oo-flbl">Tags</span><div class="oo-fval" style="display:flex;flex-wrap:wrap;align-items:center">'+tagHtml+'<input id="oo-tag-inp" style="display:none;background:rgba(255,255,255,.08);border:1px solid #2ABFAA;border-radius:4px;padding:3px 8px;font-size:12px;color:#ddd;font-family:var(--font);outline:none;width:110px" placeholder="Tag name..." onkeydown="if(event.key===\'Enter\'){event.preventDefault();pwDetAddTag();}" onblur="pwDetAddTag()"></div></div>'
     +'</div>'
     // Tabs
     +'<div class="oo-tabs">'+tabsHtml+'</div>'
     +'<div class="oo-pane" id="pw-dpane"></div>'
     +'</div></div>'
-    // Chatter
+    // Chatter — always-visible quick log
     +'<div class="oo-chatter">'
-    +'<div class="oo-chat-actions"><button class="oo-chat-btn" onclick="pwChatMode(\'msg\')">Send message</button><button class="oo-chat-btn ghost" onclick="pwChatMode(\'note\')">Log note</button></div>'
-    +'<div class="oo-chat-compose" id="pw-chat-compose"><textarea class="oo-chat-ta" id="pw-chat-ta" rows="4" placeholder="Write a message..."></textarea><div class="oo-chat-cfoot"><button class="oo-chat-cancel" onclick="pwChatMode(\'\')">Discard</button><button class="oo-chat-send" onclick="pwChatSend()">Send</button></div></div>'
+    +'<div class="oo-chat-hdr"><span class="oo-chat-hdr-lbl">Activity Log</span></div>'
+    +'<div class="oo-quick-log">'
+    +'<div class="oo-feed-av" style="background:'+(_me?_me.color:'#6B7280')+';font-size:11px">'+(_me?_esc(_me.initials):'?')+'</div>'
+    +'<textarea id="pw-chat-ta" class="oo-quick-ta" placeholder="Log a note... (Enter to post, Shift+Enter for line break)" rows="2" '
+    +'onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();pwChatSend();}"></textarea>'
+    +'</div>'
     +'<div class="oo-feed" id="pw-chat-feed"></div>'
     +'</div>'
     +'</div></div>'
@@ -12107,7 +12160,7 @@ function _renderPane(){
     var grand=bom.reduce(function(s,r){return s+(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0);},0);
     h='<div class="oo-bom-wrap"><table class="oo-bom-tbl"><thead><tr><th style="min-width:150px">Component</th><th style="min-width:90px">Part #</th><th style="width:55px">Qty</th><th style="width:55px">Unit</th><th style="width:85px">Unit Cost</th><th style="min-width:110px">Supplier</th><th style="width:75px;text-align:right">Total</th><th style="width:30px"></th></tr></thead><tbody>';
     if(!bom.length)h+='<tr><td colspan="8" style="padding:14px 12px;text-align:center;color:#555;font-size:13px;font-style:italic">No components yet</td></tr>';
-    bom.forEach(function(r){h+='<tr><td><input class="oo-bom-inp" value="'+_esc(r.comp||'')+'" placeholder="Component" onchange="pwBomSet(\''+r.id+'\',\'comp\',this.value)"></td><td><input class="oo-bom-inp" value="'+_esc(r.pn||'')+'" placeholder="P/N" onchange="pwBomSet(\''+r.id+'\',\'pn\',this.value)"></td><td><input class="oo-bom-inp num" type="number" min="0" step="any" value="'+_esc(String(r.qty||1))+'" onchange="pwBomSet(\''+r.id+'\',\'qty\',this.value)"></td><td><input class="oo-bom-inp" value="'+_esc(r.unit||'ea')+'" style="width:50px" onchange="pwBomSet(\''+r.id+'\',\'unit\',this.value)"></td><td><input class="oo-bom-inp num" type="number" min="0" step="0.01" value="'+_esc(String(r.cost||0))+'" style="width:78px" onchange="pwBomSet(\''+r.id+'\',\'cost\',this.value)"></td><td><input class="oo-bom-inp" value="'+_esc(r.supplier||'')+'" placeholder="Supplier" onchange="pwBomSet(\''+r.id+'\',\'supplier\',this.value)"></td><td style="text-align:right;color:#ddd;font-size:12.5px;font-weight:600;padding-right:10px" id="pwbom-tot-'+r.id+'">$'+((parseFloat(r.qty)||1)*(parseFloat(r.cost)||0)).toFixed(2)+'</td><td><button class="oo-bom-del" onclick="pwBomDel(\''+r.id+'\')">&#x2715;</button></td></tr>';});
+    bom.forEach(function(r){h+='<tr><td><input class="oo-bom-inp" value="'+_esc(r.comp||'')+'" placeholder="Component" onchange="pwBomSet(\''+r.id+'\',\'comp\',this.value)"></td><td><input class="oo-bom-inp" value="'+_esc(r.pn||'')+'" placeholder="P/N" onchange="pwBomSet(\''+r.id+'\',\'pn\',this.value)" onblur="pwBomLookup(\''+r.id+'\',this.value)"></td><td><input class="oo-bom-inp num" type="number" min="0" step="any" value="'+_esc(String(r.qty||1))+'" onchange="pwBomSet(\''+r.id+'\',\'qty\',this.value)"></td><td><input class="oo-bom-inp" value="'+_esc(r.unit||'ea')+'" style="width:50px" onchange="pwBomSet(\''+r.id+'\',\'unit\',this.value)"></td><td><input class="oo-bom-inp num" type="number" min="0" step="0.01" value="'+_esc(String(r.cost||0))+'" style="width:78px" onchange="pwBomSet(\''+r.id+'\',\'cost\',this.value)"></td><td><input class="oo-bom-inp" value="'+_esc(r.supplier||'')+'" placeholder="Supplier" onchange="pwBomSet(\''+r.id+'\',\'supplier\',this.value)"></td><td style="text-align:right;color:#111827;font-size:12.5px;font-weight:600;padding-right:10px" id="pwbom-tot-'+r.id+'">$'+((parseFloat(r.qty)||1)*(parseFloat(r.cost)||0)).toFixed(2)+'</td><td><button class="oo-bom-del" onclick="pwBomDel(\''+r.id+'\')">&#x2715;</button></td></tr>';});
     h+='</tbody></table><div class="oo-bom-foot"><button class="oo-bom-add-btn" onclick="pwBomAdd()">+ Add component</button><div class="oo-bom-grand">BOM Total: <span id="pwbom-grand">$'+grand.toFixed(2)+'</span></div></div></div>';
   }
 
@@ -12302,18 +12355,25 @@ window.pwPublishToERP=function(taskId){
   if(!sku.num){alert('Please assign a SKU number before publishing.');return;}
   var product={
     name:task.title,sku:sku.num,
+    description:task.description||'',
     price:parseFloat(sku.msrp)||0,
     wholesale:parseFloat(sku.wholesale)||0,
     cost:parseFloat(sku.cost)||0,
     category:sku.cat||'',barcode:sku.barcode||'',
     weight:parseFloat(sku.weight)||0,
     tags:task.tags||[],
-    bom:task.bom||[],
-    vehicle:task.vehicle||{}
+    bom:(task.bom||[]).map(function(r){return{pn:r.pn,comp:r.comp,qty:r.qty,unit:r.unit,cost:r.cost,supplier:r.supplier};}),
+    vehicle:task.vehicle||{},
+    activities:(task.activities||[]).filter(function(a){return a.status==='done';}).map(function(a){return{type:a.type,title:a.title,completedAt:a.completedAt};}),
+    subtasks:(task.subtasks||[]),
+    projectStage:(function(){var col='';_gs().cols.forEach(function(c){if(c.tasks.indexOf(task.id)>=0)col=c.name;});return col;})()
   };
   window._currentProduct=product;
   _la(task,'Published to ERP: SKU '+sku.num);
   sku.status='active';
+  sku.publishedAt=_now();
+  task.updatedAt=_now();
+  _notifyWatchers(task,'Sent to ERP: '+sku.num);
   _save();
   // Update publish button
   var btn=document.getElementById('pw-pub-btn-'+taskId);
@@ -12335,6 +12395,53 @@ window.pwPublishToERP=function(taskId){
 window.pwBomAdd=function(){if(!_sd)return;_sd.bom=_sd.bom||[];_sd.bom.push({id:'b_'+_uid(),comp:'',pn:'',qty:1,unit:'ea',cost:0,supplier:''});_renderPane();};
 window.pwBomDel=function(id){if(!_sd)return;_sd.bom=(_sd.bom||[]).filter(function(r){return r.id!==id;});_renderPane();};
 window.pwBomSet=function(id,field,val){if(!_sd)return;var row=(_sd.bom||[]).find(function(r){return r.id===id;});if(row)row[field]=(field==='qty'||field==='cost')?parseFloat(val)||0:val;_updateBomTotals();};
+
+/* ── ERP lookups: auto-populate from assemblies table ─────────────────────── */
+window.pwBomLookup=function(rowId,pn){
+  if(!pn||!pn.trim()||!_sd)return;
+  var row=(_sd.bom||[]).find(function(r){return r.id===rowId;});
+  if(!row)return;
+  if(row.comp&&row.supplier)return; // already filled
+  _erpFetchPart(pn.trim()).then(function(part){
+    if(!part)return;
+    var changed=false;
+    if(!row.comp&&part.description){row.comp=part.description;changed=true;}
+    if(!row.supplier&&part.vendor){row.supplier=part.vendor;changed=true;}
+    if((!row.cost||row.cost===0)&&part.cost){row.cost=parseFloat(part.cost)||0;changed=true;}
+    if(changed){_renderPane();_autoCommit();}
+  }).catch(function(){});
+};
+
+window.pwSkuLookup=function(pn){
+  if(!pn||!pn.trim()||!_sd)return;
+  var sku=_sd.sku||{};
+  _erpFetchPart(pn.trim()).then(function(part){
+    if(!part)return;
+    var changed=false;
+    if(!_sd.description&&part.description){_sd.description=part.description;changed=true;}
+    if(!sku.cost&&part.cost){sku.cost=String(part.cost);_sd.sku=sku;changed=true;}
+    if(!sku.msrp&&part.msrp){sku.msrp=String(part.msrp);_sd.sku=sku;changed=true;}
+    if(!sku.wholesale&&part.wholesale){sku.wholesale=String(part.wholesale);_sd.sku=sku;changed=true;}
+    if(!sku.weight&&part.weight){sku.weight=String(part.weight);_sd.sku=sku;changed=true;}
+    if(changed){_renderPane();_autoCommit();}
+  }).catch(function(){});
+};
+
+function _erpFetchPart(pn){
+  var apiKey=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
+  var token=null;
+  try{var s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');if(s&&s.access_token)token=s.access_token;}catch(e){}
+  if(!token){try{var s2=JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token')||'null');if(s2&&s2.access_token)token=s2.access_token;}catch(e){}}
+  var bearer=token||apiKey;
+  var url=TGK_SB_URL+'/rest/v1/assemblies?select=pn,description,vendor,cost,msrp,wholesale_price,weight,category&pn=eq.'+encodeURIComponent(pn)+'&limit=1';
+  return fetch(url,{headers:{'apikey':apiKey,'Authorization':'Bearer '+bearer,'Content-Type':'application/json'}})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(rows){
+      if(!Array.isArray(rows)||!rows.length)return null;
+      var r=rows[0];
+      return{description:r.description||'',vendor:r.vendor||r.supplier||'',cost:r.cost||r.unit_cost||0,msrp:r.msrp||r.price||0,wholesale:r.wholesale_price||r.wholesale||0,weight:r.weight||0,category:r.category||''};
+    });
+}
 function _updateBomTotals(){
   (_sd.bom||[]).forEach(function(r){
     var tot=document.getElementById('pwbom-tot-'+r.id);
@@ -12370,13 +12477,18 @@ window.pwChatMode=function(mode){
 window.pwChatSend=function(){
   var ta=document.getElementById('pw-chat-ta');
   if(!ta||!ta.value.trim()||!_sd)return;
+  var txt=ta.value.trim();
   _sd.logs=_sd.logs||[];
-  _sd.logs.push({id:_uid(),type:_chatMode==='msg'?'message':'note',text:ta.value.trim(),user:_myId(),ts:_now()});
+  _sd.logs.push({id:_uid(),type:'note',text:txt,user:_myId(),ts:_now()});
   ta.value='';
-  var comp=document.getElementById('pw-chat-compose');if(comp)comp.classList.remove('show');
-  _chatMode='';
-  document.querySelectorAll('.pw-chat-btn').forEach(function(b){b.classList.remove('sel');});
+  ta.style.height='';
+  _autoCommit();
+  // Notify watchers of the new log
+  (_sd.watchers||[]).forEach(function(wid){
+    if(wid!==_myId()){_createNotif(_sd.id,_sd.title,null,'New note',null);}
+  });
   _renderChatter();
+  setTimeout(function(){ta.focus();},30);
 };
 function _renderChatter(){
   var feed=document.getElementById('pw-chat-feed');if(!feed||!_sd)return;
@@ -12471,9 +12583,8 @@ window.pwDetF=function(field,val){
   else if(field==='progress'){_sd.progress=val;}
   else if(field==='description'){_sd.description=val;}
   // Auto-save: immediately for select fields, debounced for text
-  var delay=field==='description'||field==='title'?800:0;
   if(_asTimer)clearTimeout(_asTimer);
-  _asTimer=setTimeout(function(){_autoCommit();},delay);
+  _asTimer=setTimeout(function(){_autoCommit();},150);
 };
 function _autoCommit(){
   if(!_dtid||!_sd)return;
@@ -12482,10 +12593,16 @@ function _autoCommit(){
   if(taskCopy._sc){
     S.cols.forEach(function(c){c.tasks=c.tasks.filter(function(id){return id!==_sd.id;});});
     var nc=S.cols.find(function(c){return c.id===taskCopy._sc;});
-    if(nc){nc.tasks.push(_sd.id);if(_sd.stageEnteredAt===undefined||taskCopy._sc)_sd.stageEnteredAt=_now();}
+    if(nc){nc.tasks.push(_sd.id);if(_sd.stageEnteredAt===undefined||taskCopy._sc)_sd.stageEnteredAt=_now();
+      // Notify stage responsible person
+      if(nc.responsible&&nc.responsible!==_myId()){var _rm=_mem(nc.responsible);if(_rm)_createNotif(_sd.id,_sd.title,nc.id,'Card entered your stage: '+nc.name,'');}
+      // Notify watchers of stage change
+      _notifyWatchers(_sd,'Stage changed to: '+nc.name);
+    }
     delete taskCopy._sc;delete _sd._sc;
   }
   (taskCopy.files||[]).forEach(function(f){delete f.dataUrl;});
+  _sd.updatedAt=_now();taskCopy.updatedAt=_sd.updatedAt;
   S.tasks[_sd.id]=taskCopy;
   _save();
   // Show autosave indicator
@@ -13076,11 +13193,24 @@ var AVATAR_COLORS = ['#2ABFAA','#E07B28','#6554C0','#00B8D9','#00875A','#FF5630'
 
 /* Authenticated REST fetch using CC session JWT (same project as ERP) */
 function _sbTeamFetch(path, method, body) {
-  var user = _curUser();
-  var token = (user && user.access_token) ? user.access_token : TGK_SB_KEY;
+  // Try CC session first, then ERP Supabase v2 session (shared localStorage on same domain)
+  var token = null;
+  try {
+    var cs = JSON.parse(localStorage.getItem('tgk_cc_session') || '{}');
+    if (cs && cs.access_token) token = cs.access_token;
+  } catch(e) {}
+  if (!token) {
+    try {
+      var es = JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token') || 'null');
+      if (es && es.access_token) token = es.access_token;
+    } catch(e) {}
+  }
+  // Use anon JWT as apikey so authenticated REST queries work
+  var apiKey = (typeof TGK_SB_JWT !== 'undefined') ? TGK_SB_JWT : TGK_SB_KEY;
+  var bearer = token || apiKey;
   var headers = {
-    'apikey': TGK_SB_KEY,
-    'Authorization': 'Bearer ' + token,
+    'apikey': apiKey,
+    'Authorization': 'Bearer ' + bearer,
     'Content-Type': 'application/json'
   };
   if (method === 'POST') headers['Prefer'] = 'resolution=merge-duplicates,return=minimal';
@@ -13090,7 +13220,10 @@ function _sbTeamFetch(path, method, body) {
     body: body ? JSON.stringify(body) : undefined
   }).then(function(res) {
     return res.text().then(function(t) {
-      if (!res.ok) throw new Error('SB ' + res.status);
+      if (!res.ok) {
+        console.warn('[team] fetch failed', res.status, path.slice(0,60), t.slice(0,120));
+        throw new Error('SB ' + res.status);
+      }
       return t ? JSON.parse(t) : null;
     });
   });
