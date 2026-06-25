@@ -12172,6 +12172,35 @@ function _renderPane(){
     h='<textarea class="oo-desc" placeholder="Add a description, notes, context, specs..." oninput="pwDetF(\'description\',this.value)">'+_esc(t.description||'')+'</textarea>';
   }
 
+
+  else if(_dtab==='updates'){
+    var updList=(_sd.updates||[]).slice().reverse();
+    h='<div class="oo-updates-wrap">'
+     +'<div class="oo-update-compose">'
+     +'<textarea id="pw-upd-ta" class="oo-update-ta" placeholder="Write a project update \u2014 progress, decisions, blockers, milestones..." rows="4"'
+     +' onkeydown="if(event.key===\'Enter\'&&(event.ctrlKey||event.metaKey)){event.preventDefault();pwUpdateAdd();}"></textarea>'
+     +'<div class="oo-update-foot"><span class="oo-update-hint">Ctrl+Enter to post</span>'
+     +'<button class="pw-btn-primary" style="font-size:12px;padding:6px 16px" onclick="pwUpdateAdd()">Post Update</button>'
+     +'</div></div>'
+     +'<div class="oo-updates-feed" id="pw-upd-feed">';
+    if(!updList.length){h+='<div class="oo-upd-empty">No updates yet.<br>Use this space for milestone notes, decisions, progress reports, and longer project context.</div>';}
+    updList.forEach(function(upd){
+      var m=_mem(upd.user)||{initials:'?',color:'#9CA3AF',name:'Unknown'};
+      var editedMark=upd.editedTs?'<span class="oo-upd-edited">(edited)</span>':'';
+      h+='<div class="oo-upd-entry" id="pw-upd-'+upd.id+'">';
+      h+='<div class="oo-upd-header"><div class="oo-upd-av" style="background:'+m.color+'">'+_esc(m.initials)+'</div>'
+        +'<div class="oo-upd-meta"><span class="oo-upd-name">'+_esc(m.name)+'</span>'
+        +'<span class="oo-upd-time">'+_fdt(upd.ts)+'</span>'+editedMark+'</div></div>';
+      h+='<div class="oo-upd-text" id="pw-upd-text-'+upd.id+'">'+_esc(upd.text)+'</div>';
+      h+='<div class="oo-upd-acts">'
+        +'<button class="oo-entry-btn" data-uid="'+upd.id+'" onclick="pwUpdateEdit(this.dataset.uid)" title="Edit">&#9998;</button>'
+        +'<button class="oo-entry-btn del" data-uid="'+upd.id+'" onclick="pwUpdateDel(this.dataset.uid)" title="Delete">&#128465;</button>'
+        +'</div>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+  }
+
   else if(_dtab==='subtasks'){
     var subs=t.subtasks||[],sdone=subs.filter(function(s){return s.done;}).length;
     var pct=subs.length?Math.round(sdone/subs.length*100):0;
@@ -12497,7 +12526,7 @@ function _loadBomCache(cb) {
   try{var s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');if(s&&s.access_token)token=s.access_token;}catch(e){}
   if(!token){try{var s2=JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token')||'null');if(s2&&s2.access_token)token=s2.access_token;}catch(e){}}
   var bearer = token || apiKey;
-  fetch(TGK_SB_URL+'/rest/v1/assemblies?select=pn,description,vendor,cost,msrp,wholesale_price,weight,category,unit&order=pn&limit=1000',{
+  fetch(TGK_SB_URL+'/rest/v1/assemblies?select=pn,description,vendor,unit_cost,msrp,sales_price,shipping_cost,category,is_subassembly,discount_t1,total_on_hand&order=pn&limit=1000',{
     headers:{'apikey':apiKey,'Authorization':'Bearer '+bearer,'Content-Type':'application/json'}
   }).then(function(r){return r.ok?r.json():[];})
   .then(function(rows){window._bomCache=Array.isArray(rows)?rows:[];window._bomCacheLoading=false;if(cb)cb(window._bomCache);})
@@ -12508,37 +12537,47 @@ window.pwBomPnSearch = function(rowId, query) {
   var dd = document.getElementById('bom-dd-'+rowId);
   if (!dd) return;
   var q = String(query||'').trim().toLowerCase();
-  function render(parts) {
+  function render(items) {
     var matches = q.length < 1
-      ? parts.slice(0,30)
-      : parts.filter(function(p){
-          return (p.pn||'').toLowerCase().indexOf(q)>=0 || (p.description||'').toLowerCase().indexOf(q)>=0;
+      ? items.slice(0,30)
+      : items.filter(function(p){
+          return (p.pn||'').toLowerCase().indexOf(q)>=0
+              || (p.description||'').toLowerCase().indexOf(q)>=0
+              || (p.vendor||'').toLowerCase().indexOf(q)>=0;
         }).slice(0,25);
     if (!matches.length && q.length > 0) {
-      dd.innerHTML = '<div class="bom-pn-none">No match — will be entered as-is</div>';
+      dd.innerHTML = '<div class="bom-pn-none">No match — P/N will be entered as-is</div>';
       dd.style.display = 'block';
     } else if (!matches.length) {
       dd.style.display = 'none';
     } else {
       dd.innerHTML = matches.map(function(p){
-        var costStr = p.cost ? ' · $'+parseFloat(p.cost).toFixed(2) : '';
+        var costStr = p.unit_cost ? ' · $'+parseFloat(p.unit_cost).toFixed(2)+' cost' : '';
+        var msrpStr = p.msrp ? ' / $'+parseFloat(p.msrp).toFixed(2)+' MSRP' : '';
         var vendorStr = p.vendor ? ' · '+p.vendor : '';
+        var typeTag = p._type==='part'
+          ? '<span style="font-size:9px;background:#EEF2FF;color:#6554C0;border-radius:3px;padding:1px 4px;margin-left:4px">PART</span>'
+          : (p.is_sub ? '<span style="font-size:9px;background:#FEF3C7;color:#92400E;border-radius:3px;padding:1px 4px;margin-left:4px">SUB</span>' : '');
+        var stockStr = p.on_hand ? '<span style="font-size:10px;color:#00875A"> · '+p.on_hand+' on hand</span>' : '';
         return '<div class="bom-pn-item"'
-          +' data-rid="'+rowId+'" data-pn="'+(p.pn||'').replace(/"/g,"&quot;")+'"'
-          +' data-desc="'+(p.description||'').replace(/"/g,"&quot;")+'"'
-          +' data-cost="'+(p.cost||0)+'" data-vendor="'+(p.vendor||'').replace(/"/g,"&quot;")+'"'
-          +' data-unit="'+(p.unit||'ea')+'" data-msrp="'+(p.msrp||0)+'"'
-          +' data-wholesale="'+(p.wholesale_price||0)+'" data-weight="'+(p.weight||0)+'"'
+          +' data-rid="'+rowId+'"'
+          +' data-pn="'+(p.pn||'').replace(/"/g,'&quot;')+'"'
+          +' data-desc="'+(p.description||'').replace(/"/g,'&quot;')+'"'
+          +' data-unit-cost="'+(p.unit_cost||0)+'"'
+          +' data-vendor="'+(p.vendor||'').replace(/"/g,'&quot;')+'"'
+          +' data-msrp="'+(p.msrp||0)+'"'
+          +' data-sales-price="'+(p.sales_price||0)+'"'
+          +' data-category="'+(p.category||'').replace(/"/g,'&quot;')+'"'
           +' onmousedown="event.preventDefault();pwBomPnSelect(this)">'
-          +'<span class="bom-pn-pn">'+(p.pn||'')+'</span>'
+          +'<div style="display:flex;align-items:center;gap:4px"><span class="bom-pn-pn">'+(p.pn||'')+'</span>'+typeTag+'</div>'
           +'<span class="bom-pn-desc">'+(p.description||'')+'</span>'
-          +'<span class="bom-pn-meta">'+(p.category||'')+costStr+vendorStr+'</span>'
+          +'<span class="bom-pn-meta">'+(p.category||'')+costStr+msrpStr+vendorStr+stockStr+'</span>'
           +'</div>';
       }).join('');
       dd.style.display = 'block';
     }
   }
-  _loadBomCache(function(parts){render(parts);});
+  _loadBomCache(function(items){render(items);});
   if (window._bomCache) render(window._bomCache);
 };
 
@@ -12548,27 +12587,30 @@ window.pwBomPnHide = function(rowId) {
 };
 
 window.pwBomPnSelect = function(el) {
-  var rowId=el.dataset.rid, pn=el.dataset.pn, desc=el.dataset.desc;
-  var cost=parseFloat(el.dataset.cost)||0, vendor=el.dataset.vendor;
-  var unit=el.dataset.unit||'ea', msrp=parseFloat(el.dataset.msrp)||0;
-  var wholesale=parseFloat(el.dataset.wholesale)||0, weight=parseFloat(el.dataset.weight)||0;
+  var rowId      = el.dataset.rid;
+  var pn         = el.dataset.pn;
+  var desc       = el.dataset.desc;
+  var unitCost   = parseFloat(el.dataset.unitCost)||0;
+  var vendor     = el.dataset.vendor;
+  var msrp       = parseFloat(el.dataset.msrp)||0;
+  var salesPrice = parseFloat(el.dataset.salesPrice)||0;
+  var category   = el.dataset.category||'';
   if (!_sd) return;
-  var row=(_sd.bom||[]).find(function(r){return r.id===rowId;});
+  var row = (_sd.bom||[]).find(function(r){return r.id===rowId;});
   if (!row) return;
-  row.pn=pn;
-  if(!row.comp&&desc) row.comp=desc;
-  if(!row.cost&&cost) row.cost=cost;
-  if(!row.supplier&&vendor) row.supplier=vendor;
-  if(!row.unit&&unit) row.unit=unit;
-  if(_sd.sku){
-    if(!_sd.sku.msrp&&msrp) _sd.sku.msrp=String(msrp);
-    if(!_sd.sku.wholesale&&wholesale) _sd.sku.wholesale=String(wholesale);
-    if(!_sd.sku.weight&&weight) _sd.sku.weight=String(weight);
+  row.pn = pn;
+  if (!row.comp && desc)       row.comp     = desc;
+  if (!row.cost && unitCost)   row.cost     = unitCost;
+  if (!row.supplier && vendor) row.supplier = vendor;
+  if (_sd.sku) {
+    if (!_sd.sku.msrp && msrp)           _sd.sku.msrp = String(msrp);
+    if (!_sd.sku.wholesale && salesPrice) _sd.sku.wholesale = String(salesPrice);
+    if (!_sd.sku.cat && category)         _sd.sku.cat  = category;
   }
-  var inp=document.getElementById('bom-pn-inp-'+rowId);
-  if(inp) inp.value=pn;
-  var dd=document.getElementById('bom-dd-'+rowId);
-  if(dd) dd.style.display='none';
+  var inp = document.getElementById('bom-pn-inp-'+rowId);
+  if (inp) inp.value = pn;
+  var dd  = document.getElementById('bom-dd-'+rowId);
+  if (dd)  dd.style.display = 'none';
   _renderPane();
   _autoCommit();
 };
@@ -12610,13 +12652,23 @@ function _erpFetchPart(pn){
   try{var s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');if(s&&s.access_token)token=s.access_token;}catch(e){}
   if(!token){try{var s2=JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token')||'null');if(s2&&s2.access_token)token=s2.access_token;}catch(e){}}
   var bearer=token||apiKey;
-  var url=TGK_SB_URL+'/rest/v1/assemblies?select=pn,description,vendor,cost,msrp,wholesale_price,weight,category&pn=eq.'+encodeURIComponent(pn)+'&limit=1';
-  return fetch(url,{headers:{'apikey':apiKey,'Authorization':'Bearer '+bearer,'Content-Type':'application/json'}})
-    .then(function(r){return r.ok?r.json():null;})
+  var base2 = TGK_SB_URL+'/rest/v1/';
+  var hdr3  = {'apikey':apiKey,'Authorization':'Bearer '+bearer,'Content-Type':'application/json'};
+  // Search assemblies first, parts as fallback
+  return fetch(base2+'assemblies?select=pn,description,vendor,unit_cost,msrp,sales_price,category&pn=eq.'+encodeURIComponent(pn)+'&limit=1',{headers:hdr3})
+    .then(function(r){return r.ok?r.json():[];})
     .then(function(rows){
-      if(!Array.isArray(rows)||!rows.length)return null;
-      var r=rows[0];
-      return{description:r.description||'',vendor:r.vendor||r.supplier||'',cost:r.cost||r.unit_cost||0,msrp:r.msrp||r.price||0,wholesale:r.wholesale_price||r.wholesale||0,weight:r.weight||0,category:r.category||''};
+      if(Array.isArray(rows)&&rows.length){
+        var a=rows[0];
+        return{description:a.description||'',vendor:a.vendor||'',cost:a.unit_cost||0,msrp:a.msrp||0,wholesale:a.sales_price||0,weight:0,category:a.category||''};
+      }
+      return fetch(base2+'parts?select=pn,description,vendor,unit_cost&pn=eq.'+encodeURIComponent(pn)+'&limit=1',{headers:hdr3})
+        .then(function(r2){return r2.ok?r2.json():[];})
+        .then(function(rows2){
+          if(!Array.isArray(rows2)||!rows2.length)return null;
+          var p=rows2[0];
+          return{description:p.description||'',vendor:p.vendor||'',cost:p.unit_cost||0,msrp:0,wholesale:0,weight:0,category:'Parts'};
+        });
     });
 }
 function _updateBomTotals(){
