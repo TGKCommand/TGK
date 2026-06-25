@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>TGK Motorsport &mdash; Command Center</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231e2022'/><text x='50%25' y='54%25' font-family='Arial Black,Arial' font-weight='900' font-size='13' fill='%232ABFAA' text-anchor='middle' dominant-baseline='middle'>TGK</text></svg>"/>
+
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -11829,14 +11831,6 @@ window.pwOpenModal=function(colId){
   pwOpenTemplateModal();
   // Pre-select the column after modal opens
   setTimeout(function(){var cSel=document.getElementById('pwm-col');if(cSel&&colId)cSel.value=colId;},80);
-  return;
-  var _unused_S=_gs();
-  var cSel=document.getElementById('pwm-col');if(cSel)cSel.innerHTML=S.cols.map(function(c){return'<option value="'+c.id+'"'+(c.id===colId?' selected':'')+'>'+_esc(c.name)+'</option>';}).join('');
-  var aSel=document.getElementById('pwm-asgn');if(aSel)aSel.innerHTML='<option value="">Unassigned</option>'+_team.map(function(m){return'<option value="'+m.id+'">'+_esc(m.name)+'</option>';}).join('');
-  ['pwm-title','pwm-tags'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  var d=document.getElementById('pwm-due');if(d)d.value='';
-  var ov=document.getElementById('pw-modal-ov');if(ov)ov.classList.add('open');
-  setTimeout(function(){var t=document.getElementById('pwm-title');if(t)t.focus();},60);
 };
 
 window.pwDoModal=function(){
@@ -12219,17 +12213,17 @@ function _renderPane(){
     if(!bom.length)h+='<tr><td colspan="8" style="padding:14px 12px;text-align:center;color:#555;font-size:13px;font-style:italic">No components yet</td></tr>';
     bom.forEach(function(r){
   var rid=r.id;
-  h+='<tr>'
+  h+='<tr data-rid="'+rid+'">'  // data-rid on tr so all child inputs can read it via closest('tr').dataset.rid
    +'<td><input class="oo-bom-inp" value="'+_esc(r.comp||'')+'" placeholder="Component" onchange="pwBomSet(this.closest(\'tr\').dataset.rid,\'comp\',this.value)"></td>'
    +'<td class="bom-pn-cell">'
    +'<input class="oo-bom-inp" id="bom-pn-inp-'+rid+'" value="'+_esc(r.pn||'')+'" placeholder="Search or enter P/N..." oninput="pwBomPnSearch(this.id.slice(11),this.value)" onfocus="pwBomPnSearch(this.id.slice(11),this.value)" onblur="pwBomPnHide(this.id.slice(11))" onchange="pwBomSet(this.id.slice(11),\'pn\',this.value)">'
    +'<div class="bom-pn-dd" id="bom-dd-'+rid+'" style="display:none"></div></td>'
-   +'<td><input class="oo-bom-inp num" type="number" min="0" step="any" value="'+_esc(String(r.qty||1))+'" onchange="pwBomSet(this.id||this.closest(\'tr\').dataset.rid||\'\',\'qty\',this.value)" data-rid="'+rid+'" ></td>'
+   +'<td><input class="oo-bom-inp num" type="number" min="0" step="any" value="'+_esc(String(r.qty||1))+'" oninput="pwBomSet(this.closest(\'tr\').dataset.rid,\'qty\',this.value)"></td>'
    +'<td><input class="oo-bom-inp" value="'+_esc(r.unit||'ea')+'" style="width:50px" onchange="pwBomSet(this.closest(\'tr\').dataset.rid,\'unit\',this.value)"></td>'
-   +'<td><input class="oo-bom-inp num" type="number" min="0" step="0.01" value="'+_esc(String(r.cost||0))+'" style="width:78px" onchange="pwBomSet(this.closest(\'tr\').dataset.rid,\'cost\',this.value)"></td>'
+   +'<td><input class="oo-bom-inp num" type="number" min="0" step="0.01" value="'+_esc(String(r.cost||0))+'" style="width:78px" oninput="pwBomSet(this.closest(\'tr\').dataset.rid,\'cost\',this.value)"></td>'
    +'<td><input class="oo-bom-inp" value="'+_esc(r.supplier||'')+'" placeholder="Supplier" onchange="pwBomSet(this.closest(\'tr\').dataset.rid,\'supplier\',this.value)"></td>'
    +'<td style="text-align:right;color:#111827;font-size:12.5px;font-weight:600;padding-right:10px" id="pwbom-tot-'+rid+'" >$'+((parseFloat(r.qty)||1)*(parseFloat(r.cost)||0)).toFixed(2)+'</td>'
-   +'<td><button class="oo-bom-del" data-rid="'+rid+'" onclick="pwBomDel(this.dataset.rid)">&#x2715;</button></td>'
+   +'<td><button class="oo-bom-del" onclick="pwBomDel(this.closest(\'tr\').dataset.rid)">&#x2715;</button></td>'
    +'</tr>';
   // tag the row with rid for event delegation
 });
@@ -12351,7 +12345,7 @@ window.pwAddMember=function(){
   var c=STG_COLORS[_team.length%STG_COLORS.length];
   _team.push({id:_uid(),name:n,email:e,color:c,initials:ini,role:'Member'});
   localStorage.setItem(PW_TEAM_KEY,JSON.stringify(_team));
-  if(e)_sbTeamFetch('/rest/v1/team_members','POST',{email:e,display_name:n,last_seen:null}).catch(function(){});
+  if(e)_sbTeamFetch('/rest/v1/team_members?on_conflict=email','POST',{email:e,display_name:n,last_seen:null}).catch(function(){});
   _renderDet();
 };
 window.pwDelMember=function(id){
@@ -12466,7 +12460,15 @@ window.pwPublishToERP=function(taskId){
 /* ── BOM helpers ──────────────────────────────────────────── */
 window.pwBomAdd=function(){if(!_sd)return;_sd.bom=_sd.bom||[];_sd.bom.push({id:'b_'+_uid(),comp:'',pn:'',qty:1,unit:'ea',cost:0,supplier:''});_renderPane();};
 window.pwBomDel=function(id){if(!_sd)return;_sd.bom=(_sd.bom||[]).filter(function(r){return r.id!==id;});_renderPane();};
-window.pwBomSet=function(id,field,val){if(!_sd)return;var row=(_sd.bom||[]).find(function(r){return r.id===id;});if(row)row[field]=(field==='qty'||field==='cost')?parseFloat(val)||0:val;_updateBomTotals();};
+window.pwBomSet=function(id,field,val){
+  if(!_sd||!id)return;
+  var row=(_sd.bom||[]).find(function(r){return r.id===id;});
+  if(!row)return;
+  row[field]=(field==='qty'||field==='cost')?parseFloat(val)||0:val;
+  _updateBomTotals();
+  if(_asTimer)clearTimeout(_asTimer);
+  _asTimer=setTimeout(function(){_autoCommit();},300);
+};
 
 
 /* ── Project Updates ─────────────────────────────────────────────────────── */
@@ -12682,6 +12684,7 @@ window.pwBomPnSearch = function(rowId, query) {
           +' data-vendor="'+(p.vendor||'').replace(/"/g,'&quot;')+'"'
           +' data-msrp="'+(p.msrp||0)+'"'
           +' data-sales-price="'+(p.sales_price||0)+'"'
+          +' data-is-sub="'+(p.is_sub?'true':'false')+'"'
           +' data-category="'+(p.category||'').replace(/"/g,'&quot;')+'"'
           +' onmousedown="event.preventDefault();pwBomPnSelect(this)">'
           +'<div style="display:flex;align-items:center;gap:4px"><span class="bom-pn-pn">'+(p.pn||'')+'</span>'+typeTag+'</div>'
@@ -12726,9 +12729,33 @@ window.pwBomPnSelect = function(el) {
   if (inp) inp.value = pn;
   var dd  = document.getElementById('bom-dd-'+rowId);
   if (dd)  dd.style.display = 'none';
-  _renderPane();
-  _autoCommit();
+  // Subassembly: fetch BOM build cost instead of unit_cost
+  if (el.dataset.isSub === 'true') {
+    _fetchSubAsmCost(pn, function(bomCost) {
+      if (bomCost > 0 && row) { row.cost = bomCost; }
+      _renderPane(); _autoCommit();
+    });
+  } else {
+    _renderPane(); _autoCommit();
+  }
 };
+
+/* Fetch subassembly BOM build cost: sum(qty * unit_cost) from boms table */
+function _fetchSubAsmCost(pn, cb) {
+  var apiKey=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
+  var token=null;
+  try{var _es=JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token')||'null');if(_es&&_es.access_token)token=_es.access_token;}catch(_x){}
+  if(!token){try{var _cs=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');if(_cs&&_cs.access_token)token=_cs.access_token;}catch(_x){}}
+  var hdr={'apikey':apiKey,'Authorization':'Bearer '+(token||apiKey),'Content-Type':'application/json'};
+  fetch(TGK_SB_URL+'/rest/v1/boms?select=qty,unit_cost&parent=eq.'+encodeURIComponent(pn)+'&limit=200',{headers:hdr})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(lines){
+      if(!Array.isArray(lines)||!lines.length){cb(0);return;}
+      var total=lines.reduce(function(s,l){return s+(parseFloat(l.qty)||1)*(parseFloat(l.unit_cost)||0);},0);
+      cb(parseFloat(total.toFixed(4)));
+    })
+    .catch(function(){cb(0);});
+}
 
 /* ── ERP lookups: auto-populate from assemblies table ─────────────────────── */
 window.pwBomLookup=function(rowId,pn){
@@ -13604,7 +13631,7 @@ function _syncMyProfile() {
   if (!user || !user.email) return Promise.resolve();
   var words = user.email.split('@')[0].replace(/[._\-+]/g,' ').split(' ').filter(Boolean);
   var displayName = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
-  return _sbTeamFetch('/rest/v1/team_members', 'POST',
+  return _sbTeamFetch('/rest/v1/team_members?on_conflict=email', 'POST',
     { email: user.email, display_name: displayName, last_seen: _now() }
   ).then(function() {
     return _loadTeam();
@@ -14140,7 +14167,7 @@ function dashInviteUser() {
   var displayName = words.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
   /* Write placeholder into team_members — same table as ERP */
   if (typeof window._sbTeamFetch === 'function') {
-    window._sbTeamFetch('/rest/v1/team_members', 'POST',
+    window._sbTeamFetch('/rest/v1/team_members?on_conflict=email', 'POST',
       { email: email, display_name: displayName, last_seen: null }
     ).then(function(){
       return typeof window.pwLoadTeam === 'function' ? window.pwLoadTeam() : Promise.resolve();
