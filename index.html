@@ -12547,14 +12547,14 @@ function _loadBomCache(cb) {
   }
 
   // Fetch assemblies (finished goods / sub-assemblies)
+  // select=* avoids 400 errors from guessing column names;
+  // we pick what we need from the result on the client side
   var asmUrl = TGK_SB_URL + '/rest/v1/assemblies'
-    + '?select=pn,description,vendor,unit_cost,msrp,sales_price,category,is_subassembly,total_on_hand'
-    + '&order=pn&limit=2000';
+    + '?select=*&order=pn&limit=2000';
 
   // Fetch raw parts separately — non-fatal if it fails
   var partsUrl = TGK_SB_URL + '/rest/v1/parts'
-    + '?select=pn,description,vendor,unit_cost'
-    + '&order=pn&limit=1000';
+    + '?select=*&order=pn&limit=1000';
 
   fetch(asmUrl, {headers: hdr})
     .then(function(r) {
@@ -12564,12 +12564,18 @@ function _loadBomCache(cb) {
     .then(function(asms) {
       if (!Array.isArray(asms)) asms = [];
       var combined = asms.map(function(a) {
+        // Handle column name variants across ERP schema versions
+        var cost = a.unit_cost || a.cost || a.unit_price || 0;
+        var msrp = a.msrp || a.price || a.retail_price || 0;
+        var sp   = a.sales_price || a.wholesale_price || a.dealer_price || 0;
+        var oh   = a.total_on_hand || a.on_hand || a.qty_on_hand || a.stock || 0;
         return {
           pn: a.pn || '', description: a.description || '',
-          vendor: a.vendor || '', unit_cost: a.unit_cost || 0,
-          msrp: a.msrp || 0, sales_price: a.sales_price || 0,
-          category: a.category || '', on_hand: a.total_on_hand || 0,
-          is_sub: !!a.is_subassembly, _type: 'assembly'
+          vendor: a.vendor || a.supplier || '',
+          unit_cost: cost, msrp: msrp, sales_price: sp,
+          category: a.category || '', on_hand: oh,
+          is_sub: !!(a.is_subassembly || a.subassembly || a.is_sub),
+          _type: 'assembly'
         };
       });
       // Try to add raw parts on top — silently ignore failure
@@ -12737,14 +12743,22 @@ function _erpFetchPart(pn){
   var base2 = TGK_SB_URL+'/rest/v1/';
   var hdr3  = {'apikey':apiKey,'Authorization':'Bearer '+bearer,'Content-Type':'application/json'};
   // Search assemblies first, parts as fallback
-  return fetch(base2+'assemblies?select=pn,description,vendor,unit_cost,msrp,sales_price,category&pn=eq.'+encodeURIComponent(pn)+'&limit=1',{headers:hdr3})
+  return fetch(base2+'assemblies?select=*&pn=eq.'+encodeURIComponent(pn)+'&limit=1',{headers:hdr3})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(rows){
       if(Array.isArray(rows)&&rows.length){
         var a=rows[0];
-        return{description:a.description||'',vendor:a.vendor||'',cost:a.unit_cost||0,msrp:a.msrp||0,wholesale:a.sales_price||0,weight:0,category:a.category||''};
+        return{
+          description: a.description||'',
+          vendor:      a.vendor||a.supplier||'',
+          cost:        a.unit_cost||a.cost||a.unit_price||0,
+          msrp:        a.msrp||a.price||a.retail_price||0,
+          wholesale:   a.sales_price||a.wholesale_price||a.dealer_price||0,
+          weight:      a.weight||a.weight_lbs||0,
+          category:    a.category||''
+        };
       }
-      return fetch(base2+'parts?select=pn,description,vendor,unit_cost&pn=eq.'+encodeURIComponent(pn)+'&limit=1',{headers:hdr3})
+      return fetch(base2+'parts?select=*&pn=eq.'+encodeURIComponent(pn)+'&limit=1',{headers:hdr3})
         .then(function(r2){return r2.ok?r2.json():[];})
         .then(function(rows2){
           if(!Array.isArray(rows2)||!rows2.length)return null;
