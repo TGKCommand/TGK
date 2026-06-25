@@ -12529,12 +12529,31 @@ function _loadBomCache(cb) {
   if(cb) window._bomCacheCallbacks.push(cb);
   window._bomCacheLoading = true;
 
-  // Use the anon JWT as BOTH apikey AND bearer — same pattern as ERP frontend (SUPA_KEY)
-  // The assemblies table allows anon reads; using a user session token can cause mismatches
+  // Auth: apikey = anon JWT (project identifier)
+  //       Bearer = user session token (required for assemblies RLS)
+  // Priority: ERP Supabase JS v2 session > CC session > anon fallback
   var apiKey = (typeof TGK_SB_JWT !== 'undefined') ? TGK_SB_JWT : TGK_SB_KEY;
+  var token = null;
+
+  // 1. ERP's Supabase JS v2 session (stored by the ERP's createClient)
+  try {
+    var _e = JSON.parse(localStorage.getItem('sb-piamamighqiielfztgic-auth-token') || 'null');
+    if (_e && _e.access_token) token = _e.access_token;
+  } catch(e2) {}
+
+  // 2. CC's own session (stored by doLogin)
+  if (!token) {
+    try {
+      var _c = JSON.parse(localStorage.getItem('tgk_cc_session') || '{}');
+      if (_c && _c.access_token) token = _c.access_token;
+    } catch(e2) {}
+  }
+
+  // 3. Fall back to anon key (may fail if table requires auth — will show error in dropdown)
+  var bearer = token || apiKey;
   var hdr = {
     'apikey': apiKey,
-    'Authorization': 'Bearer ' + apiKey,
+    'Authorization': 'Bearer ' + bearer,
     'Content-Type': 'application/json'
   };
 
@@ -12558,7 +12577,12 @@ function _loadBomCache(cb) {
 
   fetch(asmUrl, {headers: hdr})
     .then(function(r) {
-      if (!r.ok) throw new Error('assemblies HTTP ' + r.status);
+      if (!r.ok) {
+        return r.text().then(function(body) {
+          console.error('[BOM cache] assemblies ' + r.status + ':', body.slice(0, 300));
+          throw new Error('assemblies HTTP ' + r.status + ' — ' + body.slice(0, 80));
+        });
+      }
       return r.json();
     })
     .then(function(asms) {
@@ -12601,7 +12625,7 @@ function _loadBomCache(cb) {
     })
     .catch(function(err) {
       console.error('[BOM cache] fetch failed:', err);
-      // Signal error but don't leave cache null (prevents infinite retries)
+      window._bomCacheError = err.message || String(err);
       done([]);
     });
 }
@@ -12621,8 +12645,11 @@ window.pwBomPnSearch = function(rowId, query) {
   }
 
   function render(items) {
-    if (!items.length && !q.length) {
-      dd.innerHTML = '<div class="bom-pn-none">No ERP parts loaded. Check console for errors.</div>';
+    if (!items.length) {
+      var errMsg = window._bomCacheError
+        ? 'ERP load error: ' + window._bomCacheError
+        : 'No parts returned. Open ERP first, then click ↻ Reload parts.';
+      dd.innerHTML = '<div class="bom-pn-none" style="white-space:normal;line-height:1.5">' + errMsg + '</div>';
       dd.style.display = 'block';
       return;
     }
