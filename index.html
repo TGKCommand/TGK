@@ -177,6 +177,11 @@
 [data-theme="dark"] .login-logo-name,[data-theme="dark"] .login-title{color:#e8eaed}
 [data-theme="dark"] .login-inp{background:#111315;border-color:#2a2d30;color:#e8eaed}
 [data-theme="dark"] .login-inp::placeholder{color:#4B5563}
+[data-theme="dark"] .login-forgot-link{color:#2ABFAA}
+[data-theme="dark"] .login-forgot-link:hover{color:#1fcfb4}
+[data-theme="dark"] .login-back-link{color:#6B7280}
+[data-theme="dark"] .login-back-link:hover{color:#9AA3AF}
+[data-theme="dark"] #login-reset-panel{border-top-color:#2a2d30!important}
 /* General form inputs on light-bg pages */
 [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
 [data-theme="dark"] select,
@@ -1032,6 +1037,12 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .login-btn:hover{background:#1a8f7d}
 .login-btn:disabled{opacity:.5;cursor:not-allowed}
 .login-err{font-size:12px;color:#dc2626;margin-top:10px;text-align:center;min-height:18px}
+.login-forgot-link{display:block;text-align:right;font-size:11px;font-weight:600;color:#2ABFAA;text-decoration:none;margin-top:4px;cursor:pointer;letter-spacing:.02em}
+.login-forgot-link:hover{color:#1a8f7d;text-decoration:underline}
+.login-reset-panel{display:none}
+.login-reset-ok{font-size:13px;color:#2ABFAA;text-align:center;margin-top:12px;line-height:1.5;display:none}
+.login-back-link{display:block;text-align:center;font-size:12px;font-weight:600;color:#9CA3AF;margin-top:14px;cursor:pointer}
+.login-back-link:hover{color:#4B5563}
 .login-footer{font-size:11px;color:#9CA3AF;text-align:center;margin-top:20px}
 .logout-btn{font-size:11px;padding:4px 12px;border-radius:5px;background:transparent;border:1px solid rgba(255,255,255,.15);color:#9CA3AF;cursor:pointer;font-family:inherit;transition:all .15s}
 .logout-btn:hover{border-color:#f87171;color:#f87171}
@@ -1764,9 +1775,26 @@ window._sbBootPromise = (async function() {
     <div class="login-fg">
       <label class="login-lbl">Password</label>
       <input class="login-inp" id="login-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password"/>
+      <a class="login-forgot-link" onclick="showForgotPanel()">Forgot password?</a>
     </div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-err" id="login-err"></div>
+
+    <!-- Forgot Password Panel -->
+    <div class="login-reset-panel" id="login-reset-panel">
+      <div style="border-top:1px solid #E4E7EC;margin:20px 0 18px"></div>
+      <div class="login-title" style="font-size:17px;margin-bottom:4px">Reset Password</div>
+      <div class="login-sub" style="margin-bottom:20px">Enter your email and we will send a reset link.</div>
+      <div class="login-fg">
+        <label class="login-lbl">Email</label>
+        <input class="login-inp" id="reset-email" type="email" placeholder="you@tgkmotorsport.com" autocomplete="email"/>
+      </div>
+      <button class="login-btn" id="reset-btn" onclick="doForgotPassword()">Send Reset Link</button>
+      <div class="login-reset-ok" id="reset-ok">Check your inbox - reset link sent.</div>
+      <div class="login-err" id="reset-err"></div>
+      <a class="login-back-link" onclick="hideForgotPanel()">Back to sign in</a>
+    </div>
+
     <div class="login-footer">TGK Motorsport &mdash; Internal Use Only</div>
   </div>
 </div>
@@ -11150,6 +11178,63 @@ async function doLogin() {
   } catch(e) {
     err.textContent = 'Connection error. Check your internet connection.';
     btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+function showForgotPanel() {
+  var signInFields = ['login-email','login-pass','login-btn','login-err'];
+  signInFields.forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  var fLink = document.querySelector('.login-forgot-link');
+  if (fLink) fLink.style.display = 'none';
+  var panel = document.getElementById('login-reset-panel');
+  if (panel) panel.style.display = 'block';
+  var emailVal = document.getElementById('login-email').value.trim();
+  if (emailVal) { var re = document.getElementById('reset-email'); if(re) re.value = emailVal; }
+  setTimeout(function(){ var re = document.getElementById('reset-email'); if(re) re.focus(); }, 50);
+}
+
+function hideForgotPanel() {
+  var signInFields = ['login-email','login-pass','login-btn','login-err'];
+  signInFields.forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+  var fLink = document.querySelector('.login-forgot-link');
+  if (fLink) fLink.style.display = '';
+  var panel = document.getElementById('login-reset-panel');
+  if (panel) panel.style.display = 'none';
+  var ok = document.getElementById('reset-ok');
+  if (ok) ok.style.display = 'none';
+  var rerr = document.getElementById('reset-err');
+  if (rerr) rerr.textContent = '';
+  var re = document.getElementById('reset-email');
+  if (re) re.value = '';
+  var btn = document.getElementById('reset-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Send Reset Link'; }
+}
+
+async function doForgotPassword() {
+  var email = document.getElementById('reset-email').value.trim();
+  var btn   = document.getElementById('reset-btn');
+  var err   = document.getElementById('reset-err');
+  var ok    = document.getElementById('reset-ok');
+  err.textContent = ''; ok.style.display = 'none';
+  if (!email || !email.includes('@')) { err.textContent = 'Please enter a valid email address.'; return; }
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    await fetch(SB_AUTH_URL + '/auth/v1/recover', {
+      method: 'POST',
+      headers: { 'apikey': SB_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+    ok.style.display = 'block';
+    btn.textContent = 'Link Sent';
+  } catch(e) {
+    err.textContent = 'Connection error. Check your internet and try again.';
+    btn.disabled = false; btn.textContent = 'Send Reset Link';
   }
 }
 
