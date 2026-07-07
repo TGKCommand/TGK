@@ -11099,7 +11099,7 @@ if(fbgEl) fbgEl.addEventListener('keydown',function(e){if(e.key==='Enter')fbgSea
    TGK COMMAND CENTER — AUTH + BRIDGE + DASHBOARD v4
 ═══════════════════════════════════════════════════════ */
 
-var ERP_URL = 'https://tgkcommand.github.io/TGKErp/tgk_erp.html';
+var ERP_URL = 'https://erp.tgkmotorsport.com';
 var SB_AUTH_URL = 'https://piamamighqiielfztgic.supabase.co';
 var SB_ANON_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
 var AUTH_KEY = 'tgk_cc_session';
@@ -11313,7 +11313,7 @@ function openERP() {
               access_token: sess.access_token,
               refresh_token: sess.refresh_token || '',
               email: sess.email || ''
-            }, 'https://tgkcommand.github.io');
+            }, 'https://erp.tgkmotorsport.com');
           } catch(e) {}
         }, 300);
       }
@@ -11342,7 +11342,7 @@ async function sendProductToERP() {
 
   // If ERP iframe is open, push via postMessage (real-time)
   var frame = document.getElementById('erp-frame');
-  if (frame && frame.src && frame.src.indexOf('TGKErp') > -1) {
+  if (frame && frame.src && frame.src.indexOf(ERP_URL) > -1) {
     try {
       frame.contentWindow.postMessage({
         source: 'TGK_CC',
@@ -11358,7 +11358,7 @@ async function sendProductToERP() {
           h1:   document.getElementById('o-h1')   ? document.getElementById('o-h1').textContent   : '',
           body: document.getElementById('o-body') ? document.getElementById('o-body').innerHTML   : ''
         }
-      }, 'https://tgkcommand.github.io');
+      }, 'https://erp.tgkmotorsport.com');
       erpToast('Product sent to ERP', _currentProduct.name);
       var btn = document.getElementById('erp-send-product-btn');
       if (btn) { btn.innerHTML = '&#10003; Sent!'; setTimeout(function(){ btn.innerHTML='&#8594; Send current product to ERP'; btn.disabled=false; }, 3000); }
