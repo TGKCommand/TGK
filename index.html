@@ -314,6 +314,7 @@
 [data-theme="dark"] .pcard.inorder,[data-theme="dark"] .bx-pcard.inorder{background:#0d1f1d!important;border-color:#2ABFAA}
 /* ERP loading placeholder */
 [data-theme="dark"] #erp-loading{background:#0f1113}
+[data-theme="dark"] #support-loading{background:#0f1113}
 [data-theme="dark"] .erp-loading-text{color:#6B7280}
 /* Projects view */
 [data-theme="dark"] #view-projects{background:#0f1113}
@@ -1075,6 +1076,10 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #erp-viewer.active{display:flex}
 #erp-frame{width:100%;flex:1;border:none;background:#fff}
 #erp-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#support-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#support-viewer.active{display:flex}
+#support-frame{width:100%;flex:1;border:none;background:#fff}
+#support-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
 #erp-loading.hidden{display:none}
 .erp-spinner{width:36px;height:36px;border:3px solid #E4E7EC;border-top-color:#2ABFAA;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -1836,6 +1841,13 @@ window._sbBootPromise = (async function() {
     </div>
     <iframe id="erp-frame" title="TGK ERP" allowfullscreen></iframe>
   </div>
+  <div id="support-viewer">
+    <div id="support-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading Support Center&hellip;</div>
+    </div>
+    <iframe id="support-frame" title="TGK Support Center" allowfullscreen></iframe>
+  </div>
   <div id="cc-sidebar">
     <span class="cc-slbl">Tools</span>
     <button class="cc-navbtn active" id="cc-nav-home" onclick="showView('home')" draggable="true">
@@ -1938,6 +1950,12 @@ window._sbBootPromise = (async function() {
       <div class="mod-card ac-orange" onclick="showView('social')" data-mid="social"><div class="mod-card-icon" style="background:rgba(224,123,40,.1)">&#128247;</div><div class="mod-card-name">Social Engine</div><div class="mod-card-cat">Instagram &middot; Facebook &middot; Content</div><div class="mod-card-desc">AI-powered content &mdash; product drops, stories, competitor intel and calendar.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">AI</span><span class="mc-tag mc-gray">Social</span></div><div style="display:flex;align-items:center;gap:7px"><div class="bdot" id="bdot-social"></div><span class="mod-card-arrow">Open &rarr;</span></div></div></div>
       <div class="mod-card ac-teal" onclick="showView('ideas')" data-mid="ideas"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128161;</div><div class="mod-card-name">Idea Generator</div><div class="mod-card-cat">R&amp;D &middot; Product &middot; Market Gaps</div><div class="mod-card-desc">Find market gaps, rank opportunities and discover what to build next on Audi/VAG platforms.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">AI</span><span class="mc-tag mc-orange">R&amp;D</span></div><div style="display:flex;align-items:center;gap:7px"><div class="bdot" id="bdot-ideas"></div><span class="mod-card-arrow">Open &rarr;</span></div></div></div>
       <div class="mod-card ac-teal" onclick="showView('fbgroups')" data-mid="fbgroups"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128101;</div><div class="mod-card-name">FB Group Finder</div><div class="mod-card-cat">Marketing &middot; Communities</div><div class="mod-card-desc">Search Facebook groups by vehicle &mdash; find communities to market your parts and products.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Marketing</span></div><div style="display:flex;align-items:center;gap:7px"><div class="bdot" id="bdot-fbgroups"></div><span class="mod-card-arrow">Open &rarr;</span></div></div></div>
+    </div>
+  </div>
+  <div class="dash-section-block" id="dsec-cs">
+    <div class="dash-section-lbl">Customer Service</div>
+    <div class="mod-grid">
+      <div class="mod-card ac-orange" onclick="openSupportCenter()" data-mid="support"><div class="mod-card-icon" style="background:rgba(224,123,40,.1)">&#127915;</div><div class="mod-card-name">Support Center</div><div class="mod-card-cat">Tickets &middot; Warranty &middot; Shipment Errors</div><div class="mod-card-desc">Customer support ticket system &mdash; website submissions, email replies, and warranty/shipment error claims, all linked to the ERP.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Support</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
   </div>
   <div class="dash-section-block" id="dsec-ops">
@@ -11100,6 +11118,7 @@ if(fbgEl) fbgEl.addEventListener('keydown',function(e){if(e.key==='Enter')fbgSea
 ═══════════════════════════════════════════════════════ */
 
 var ERP_URL = 'https://erp.tgkmotorsport.com';
+var SUPPORT_URL = 'https://support.tgkmotorsport.com';
 var SB_AUTH_URL = 'https://piamamighqiielfztgic.supabase.co';
 var SB_ANON_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
 var AUTH_KEY = 'tgk_cc_session';
@@ -11327,6 +11346,66 @@ function openERP() {
 function closeERP() {
   var main   = document.getElementById('cc-main');
   var viewer = document.getElementById('erp-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
+}
+
+function openSupportCenter() {
+  // Show Support Center inline, same pattern as the ERP viewer
+  var main    = document.getElementById('cc-main');
+  var viewer  = document.getElementById('support-viewer');
+  var frame   = document.getElementById('support-frame');
+  var loading = document.getElementById('support-loading');
+  if (!viewer || !frame) { window.open(SUPPORT_URL, '_blank', 'noopener'); return; }
+
+  if (main)  main.style.display  = 'none';
+  if (viewer) viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'Support Center';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSupportCenter()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close Support Center</button>';
+  }
+
+  // Note: unlike the ERP, this does not pass an auth token via postMessage —
+  // staff sign in to the Support Center separately with their own login.
+  if (frame.src !== SUPPORT_URL) {
+    frame.onload = function() {
+      if (loading) loading.classList.add('hidden');
+      // Pass auth session to the Support Center so it skips its own login,
+      // same pattern as the ERP.
+      var sess = _getSession();
+      if (sess && sess.access_token) {
+        setTimeout(function() {
+          try {
+            frame.contentWindow.postMessage({
+              source: 'TGK_CC',
+              type: 'AUTH_TOKEN',
+              access_token: sess.access_token,
+              refresh_token: sess.refresh_token || '',
+              email: sess.email || ''
+            }, SUPPORT_URL);
+          } catch(e) {}
+        }, 300);
+      }
+    };
+    frame.src = SUPPORT_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+  }
+}
+
+function closeSupportCenter() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('support-viewer');
   var bc     = document.getElementById('cc-breadcrumb');
   if (main)   main.style.display = '';
   if (viewer) viewer.classList.remove('active');
