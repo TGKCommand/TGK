@@ -3386,6 +3386,14 @@ function showView(name) {
     var _bc = document.getElementById('cc-breadcrumb');
     if (_bc) _bc.classList.remove('visible');
   }
+  // Same for the Support Center viewer
+  var _suv = document.getElementById('support-viewer');
+  if (_suv && _suv.classList.contains('active')) {
+    _suv.classList.remove('active');
+    if (_ccm) _ccm.style.display = '';
+    var _bc2 = document.getElementById('cc-breadcrumb');
+    if (_bc2) _bc2.classList.remove('visible');
+  }
   document.querySelectorAll('.cc-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.cc-navbtn').forEach(b => b.classList.remove('active'));
   const view = document.getElementById('view-' + name);
