@@ -71,7 +71,7 @@ let db = null;
 
 const S = {
   parts: [], assemblies: [], allSkus: [],
-  searchQ: '', typeFilter: '', catFilter: '', stageFilter: '',
+  searchQ: '', typeFilter: '', catFilter: '', stageFilter: '', legacyFilter: '',
   editing: null, // {sku, type} or null for new
   pendingFiles: [], // File objects staged for upload on save
   existingFiles: [], // rows from part_files for the sku being edited
@@ -94,8 +94,8 @@ async function loadAll(){
   S.loading=true;render();
   try{
     const [pRes,aRes]=await Promise.all([
-      db.from('parts').select('id,pn,vendor,description,category,discontinued,stage,notes,reference_url,updated_at,created_at'),
-      db.from('assemblies').select('id,pn,description,category,discontinued,stage,notes,reference_url,updated_at,created_at')
+      db.from('parts').select('id,pn,vendor,description,category,discontinued,stage,notes,reference_url,new_sku,use_new_sku,updated_at,created_at'),
+      db.from('assemblies').select('id,pn,description,category,discontinued,stage,notes,reference_url,new_sku,use_new_sku,updated_at,created_at')
     ]);
     if(pRes.error)throw pRes.error;
     if(aRes.error)throw aRes.error;
@@ -162,12 +162,20 @@ function pillForLifecycle(stage){
   return '<span class="pill pill-teal">Live</span>';
 }
 
+function legacySkuCell(row){
+  if(!row.new_sku)return '<span class="t3xs">—</span>';
+  const activeBadge=row.use_new_sku?'<span class="pill pill-orange" title="New SKU is now the active one used for sync/pricing">Active</span>':'<span class="pill pill-muted" title="New SKU is on file but not yet switched over">Pending</span>';
+  return '<span class="pn" style="color:var(--text3)">'+escHtml(row.pn)+'</span> &rarr; <span class="pn" style="color:var(--teal)">'+escHtml(row.new_sku)+'</span> '+activeBadge;
+}
+
 function filteredSkus(){
   const q=S.searchQ.trim().toLowerCase();
   return S.allSkus.filter(r=>{
     if(S.typeFilter && r._type!==S.typeFilter)return false;
     if(S.catFilter && (r.category||'')!==S.catFilter)return false;
     if(S.stageFilter && lifecycleOf(r)!==S.stageFilter)return false;
+    if(S.legacyFilter==='has' && !r.new_sku)return false;
+    if(S.legacyFilter==='none' && r.new_sku)return false;
     if(q){
       const hay=(r.pn+' '+(r.description||'')+' '+(r.category||'')+' '+(r.notes||'')).toLowerCase();
       if(!hay.includes(q))return false;
@@ -208,15 +216,20 @@ function renderBrowse(){
         <option value="live" ${S.stageFilter==='live'?'selected':''}>Live</option>
         <option value="discontinued" ${S.stageFilter==='discontinued'?'selected':''}>Discontinued</option>
       </select>
+      <select class="form-input" style="max-width:150px" onchange="S.legacyFilter=this.value;render()">
+        <option value="">Legacy: All</option>
+        <option value="has" ${S.legacyFilter==='has'?'selected':''}>Has New SKU</option>
+        <option value="none" ${S.legacyFilter==='none'?'selected':''}>No New SKU</option>
+      </select>
       <span class="filter-count">${rows.length} of ${S.allSkus.length} SKUs</span>
     </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>SKU</th><th>Type</th><th>Category</th><th>Description</th><th>Lifecycle</th><th>Notes</th><th>Link</th><th></th>
+          <th>SKU</th><th>Type</th><th>Category</th><th>Description</th><th>Lifecycle</th><th>New SKU</th><th>Notes</th><th>Link</th><th></th>
         </tr></thead>
         <tbody>
-          ${rows.length===0?'<tr><td colspan="8" class="section-empty">No SKUs match your filters.</td></tr>':''}
+          ${rows.length===0?'<tr><td colspan="9" class="section-empty">No SKUs match your filters.</td></tr>':''}
           ${rows.map(r=>`
             <tr class="rowlink" onclick="openEditSkuModal('${escHtml(r.pn)}','${r._type}')">
               <td class="main-col pn">${escHtml(r.pn)}</td>
@@ -224,6 +237,7 @@ function renderBrowse(){
               <td>${escHtml(r.category||'—')}</td>
               <td>${escHtml(r.description||'—')}</td>
               <td>${pillForLifecycle(lifecycleOf(r))}</td>
+              <td>${legacySkuCell(r)}</td>
               <td>${r.notes?'<span title="'+escHtml(r.notes)+'">&#128221;</span>':''}</td>
               <td>${r.reference_url?'<a href="'+escHtml(r.reference_url)+'" target="_blank" onclick="event.stopPropagation()">&#128279;</a>':''}</td>
               <td><button class="action-btn" onclick="event.stopPropagation();openEditSkuModal('${escHtml(r.pn)}','${r._type}')">Edit</button></td>
@@ -314,6 +328,19 @@ function modalBody(row){
     <div class="form-group">
       <label class="form-label">Reference Link</label>
       <input id="f-link" class="form-input" value="${escHtml(row.reference_url||'')}" placeholder="https://…">
+    </div>
+  </div>
+  <div class="form-row cols-2">
+    <div class="form-group">
+      <label class="form-label">New SKU (if this is being replaced)</label>
+      <input id="f-new-sku" class="form-input" value="${escHtml(row.new_sku||'')}" placeholder="e.g. TGK-5678" style="text-transform:uppercase">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Use New SKU</label>
+      <select id="f-use-new-sku" class="form-input">
+        <option value="false" ${!row.use_new_sku?'selected':''}>Not yet — new SKU is pending</option>
+        <option value="true" ${row.use_new_sku?'selected':''}>Yes — new SKU is now active</option>
+      </select>
     </div>
   </div>
   <div class="form-row">
@@ -408,6 +435,8 @@ async function saveSku(){
   const description=$('f-desc').value.trim();
   const notes=$('f-notes').value.trim();
   const referenceUrl=$('f-link').value.trim();
+  const newSku=$('f-new-sku').value.trim().toUpperCase()||null;
+  const useNewSku=$('f-use-new-sku').value==='true';
   const stageVal=$('f-stage').value; // 'dev' | 'live' | 'discontinued'
   const discontinued=stageVal==='discontinued';
   const stage=discontinued?null:(stageVal==='dev'?'dev':null);
@@ -418,7 +447,7 @@ async function saveSku(){
     let error,data;
     if(S.editing){
       const table=type==='part'?'parts':'assemblies';
-      const payload={pn,category,description,notes,reference_url:referenceUrl||null,discontinued,stage,updated_at:new Date().toISOString()};
+      const payload={pn,category,description,notes,reference_url:referenceUrl||null,new_sku:newSku,use_new_sku:useNewSku,discontinued,stage,updated_at:new Date().toISOString()};
       const origPn=S.editing.origPn;
       if(pn!==origPn){
         // Mirror the ERP's SKU-rename cascade so downstream references don't silently break
@@ -434,14 +463,15 @@ async function saveSku(){
           pn,vendor:'',description,category,unit_cost:0,lead_time_weeks:1,avg_sales_wk:0,
           total_unpckgd:0,min_qty:0,max_qty:0,moq:0,safety_stock:0,price_breaks:[],
           location:'',drawing_url:'',image_url:null,discontinued,stage,
-          notes,reference_url:referenceUrl||null,updated_at:new Date().toISOString()
+          notes,reference_url:referenceUrl||null,new_sku:newSku,use_new_sku:useNewSku,
+          updated_at:new Date().toISOString()
         };
         ({data,error}=await db.from('parts').insert(payload).select().single());
       } else {
         const payload={
           pn,description,category,msrp:0,shipping_cost:10,total_on_hand:0,status:'ok',
           location:null,avg_sales_wk:0,drawing_url:'',image_url:null,discontinued,stage,
-          new_sku:null,use_new_sku:false,cc_project:null,pl_notes:null,product_url:null,
+          new_sku:newSku,use_new_sku:useNewSku,cc_project:null,pl_notes:null,product_url:null,
           build_to_order:false,notes,reference_url:referenceUrl||null,updated_at:new Date().toISOString()
         };
         ({data,error}=await db.from('assemblies').insert(payload).select().single());
