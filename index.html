@@ -1840,8 +1840,20 @@ window._sbBootPromise = (async function() {
   </div>
   <span id="topbar-user" style="font-size:11px;color:#9CA3AF;font-weight:500"></span><button class="logout-btn" id="logout-btn" onclick="doLogout()" style="display:none">Sign out</button>
   <button onclick="showView('launch');setTimeout(showKeyModal,50)" id="key-status" style="margin-left:12px;font-size:11px;padding:3px 12px;border-radius:20px;background:transparent;border:1px solid var(--orange);color:var(--orange);cursor:pointer;font-family:var(--font)" onclick="showKeyModal()">API Key</button>
+  <div id="cc-notif" style="position:relative;display:inline-flex;align-items:center">
+    <button id="cc-notif-bell" title="Notifications" data-notif-act="panel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+      <span id="cc-notif-count">0</span>
+    </button>
+    <div id="cc-notif-panel">
+      <div class="ccnp-head"><span>Notifications</span><button class="ccnp-clear" data-notif-act="dismissAll">Dismiss all</button></div>
+      <div id="cc-notif-list"></div>
+    </div>
+  </div>
   <button id="cc-theme-btn" onclick="ccToggleTheme()" title="Switch theme" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:6px;cursor:pointer;padding:5px 8px;color:#9CA3AF;margin-left:8px;line-height:1;transition:all .15s;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">&#9788;</button>
 </div>
+
+<div id="cc-notif-banner"></div>
 
 <div id="cc-breadcrumb">
   <button class="cc-bc-home" onclick="showView('home')">
@@ -1849,12 +1861,12 @@ window._sbBootPromise = (async function() {
     All Tools
   </button>
   <span class="cc-bc-sep">&#8250;</span>
-  <button class="cc-bc-home" onclick="openERP()" title="Jump straight to the ERP from anywhere">
+  <button class="cc-bc-home" id="cc-bc-erp" onclick="openERP()" title="Jump straight to the ERP from anywhere">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.09 2.26L15 3l-.5 2.5L17 6l-2 1.5L16.5 10 14 9l-1 2-1-2-2.5 1L11 7.5 9 6l2.5-.5L11 3l1.91 1.26z"/><circle cx="12" cy="14" r="7"/></svg>
     ERP
   </button>
   <span class="cc-bc-sep">&#8250;</span>
-  <button class="cc-bc-home" onclick="openSupportCenter()" title="Jump straight to the Support Center from anywhere">
+  <button class="cc-bc-home" id="cc-bc-support" onclick="openSupportCenter()" title="Jump straight to the Support Center from anywhere">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 11.9 13 12.5 13 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
     Support
   </button>
@@ -14526,5 +14538,341 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 })();
 </script>
+
+<script>
+/* ===== TGK Command Center - New Order / New Ticket notifications ===== */
+(function(){
+  var SB_URL  = (typeof SB_AUTH_URL !== 'undefined') ? SB_AUTH_URL : 'https://piamamighqiielfztgic.supabase.co';
+  var SB_KEY  = (typeof SB_ANON_KEY !== 'undefined') ? SB_ANON_KEY : 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
+  var SESS_KEY = 'tgk_cc_session';
+  var POLL_MS = 30000;
+  var LS_ACTIVE = 'tgk_cc_notif_active_v1';
+  var LS_HWM    = 'tgk_cc_notif_hwm_v1';
+
+  // kind -> where it comes from and which tool it belongs to
+  var SOURCES = {
+    orders:  { table:'sales',   tool:'erp',     openLbl:'Open ERP',     tag:'ORDER'  },
+    tickets: { table:'tickets', tool:'support', openLbl:'Open Support', tag:'TICKET' }
+  };
+  // which on-screen elements turn red for each kind
+  var HOT = {
+    orders:  ['cc-bc-erp', 'erp-hero-card'],
+    tickets: ['cc-bc-support', 'support-hero-card']
+  };
+
+  var active = [];   // [{kind, id, label, ts}]
+  var hwm = {};      // { orders:isoTs, tickets:isoTs }  high-water marks
+  var pollTimer = null;
+  var cssDone = false;
+
+  function loadState(){
+    try { active = JSON.parse(localStorage.getItem(LS_ACTIVE)) || []; } catch(e){ active = []; }
+    try { hwm    = JSON.parse(localStorage.getItem(LS_HWM))    || {}; } catch(e){ hwm = {}; }
+    if (!Array.isArray(active)) active = [];
+    if (!hwm || typeof hwm !== 'object') hwm = {};
+  }
+  function saveState(){
+    try { localStorage.setItem(LS_ACTIVE, JSON.stringify(active)); } catch(e){}
+    try { localStorage.setItem(LS_HWM,    JSON.stringify(hwm));    } catch(e){}
+  }
+  function session(){
+    try { return JSON.parse(localStorage.getItem(SESS_KEY)); } catch(e){ return null; }
+  }
+  function loggedIn(){ var s = session(); return !!(s && s.access_token); }
+  function token(){ var s = session(); return (s && s.access_token) ? s.access_token : SB_KEY; }
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  async function sbQuery(table, qs){
+    var res = await fetch(SB_URL + '/rest/v1/' + table + '?' + qs, {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token() }
+    });
+    if (!res.ok) { throw new Error(table + ' ' + res.status); }
+    return await res.json();
+  }
+
+  function orderLabel(r){
+    var n = r.order_number || r.name || r.order_no || r.id;
+    n = String(n);
+    return 'New order ' + (n.charAt(0) === '#' ? '' : '#') + n;
+  }
+  function ticketLabel(r){
+    var subj = r.subject || r.issue || r.topic || r.type || '';
+    var who  = r.customer_name || r.name || r.customer || r.email || '';
+    if (subj) return 'New ticket: ' + String(subj).slice(0, 48);
+    if (who)  return 'New ticket from ' + who;
+    return 'New ticket #' + (r.id != null ? r.id : '');
+  }
+  function rowId(kind, r){
+    return String(r.id != null ? r.id : (r.order_number || r.created_at || Math.random()));
+  }
+
+  function relTime(ts){
+    if (!ts) return '';
+    var d = new Date(ts).getTime();
+    if (isNaN(d)) return '';
+    var s = Math.floor((Date.now() - d) / 1000);
+    if (s < 60)   return 'just now';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    if (s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+  }
+
+  // ---- Baseline: on first ever run, ignore the existing backlog ----------
+  async function initHwm(kind){
+    if (hwm[kind]) return;
+    try {
+      var rows = await sbQuery(SOURCES[kind].table, 'select=created_at&order=created_at.desc&limit=1');
+      hwm[kind] = (rows && rows[0] && rows[0].created_at) || new Date().toISOString();
+    } catch(e){
+      hwm[kind] = new Date().toISOString();
+      console.warn('[notif] baseline failed for ' + kind + ': ' + e.message);
+    }
+    saveState();
+  }
+
+  // ---- Poll one source for rows newer than the high-water mark -----------
+  async function pollKind(kind){
+    var src = SOURCES[kind];
+    var since = hwm[kind] || new Date().toISOString();
+    var rows;
+    try {
+      rows = await sbQuery(src.table,
+        'select=*&created_at=gt.' + encodeURIComponent(since) + '&order=created_at.asc&limit=50');
+    } catch(e){
+      console.warn('[notif] poll failed for ' + kind + ': ' + e.message);
+      return false;
+    }
+    if (!rows || !rows.length) return false;
+    var maxTs = since, added = false;
+    rows.forEach(function(r){
+      var id = rowId(kind, r);
+      if (active.some(function(n){ return n.kind === kind && n.id === id; })) return;
+      active.push({
+        kind:  kind,
+        id:    id,
+        label: (kind === 'orders' ? orderLabel(r) : ticketLabel(r)),
+        ts:    r.created_at || new Date().toISOString()
+      });
+      added = true;
+      if ((r.created_at || '') > maxTs) maxTs = r.created_at;
+    });
+    hwm[kind] = maxTs;
+    return added;
+  }
+
+  async function pollAll(){
+    if (!loggedIn()) return;
+    var results = await Promise.all(Object.keys(SOURCES).map(pollKind));
+    saveState();
+    if (results.some(Boolean)) render();
+  }
+
+  // ---- Rendering ---------------------------------------------------------
+  function itemButtons(n){
+    var open = SOURCES[n.kind] ? SOURCES[n.kind].openLbl : 'Open';
+    return '<button class="nb-btn" data-notif-act="open" data-notif-kind="' + n.kind +
+             '" data-notif-id="' + esc(n.id) + '">' + open + '</button>' +
+           '<button class="nb-x" title="Dismiss" data-notif-act="dismiss" data-notif-kind="' + n.kind +
+             '" data-notif-id="' + esc(n.id) + '">&times;</button>';
+  }
+
+  function render(){
+    var count = active.length;
+
+    var bell = document.getElementById('cc-notif-bell');
+    if (bell) bell.classList.toggle('has', count > 0);
+    var cnt = document.getElementById('cc-notif-count');
+    if (cnt) cnt.textContent = count > 9 ? '9+' : String(count);
+
+    var banner = document.getElementById('cc-notif-banner');
+    if (banner){
+      if (count === 0){
+        banner.classList.remove('show');
+        banner.innerHTML = '';
+      } else if (count === 1){
+        var n = active[0];
+        banner.classList.add('show');
+        banner.innerHTML =
+          '<span class="nb-dot"></span>' +
+          '<span class="nb-msg">' + esc(n.label) + '</span>' +
+          itemButtons(n);
+      } else {
+        banner.classList.add('show');
+        banner.innerHTML =
+          '<span class="nb-dot"></span>' +
+          '<span class="nb-msg">' + count + ' new notifications</span>' +
+          '<button class="nb-btn" data-notif-act="panel">View all</button>' +
+          '<button class="nb-x" title="Dismiss all" data-notif-act="dismissAll">&times;</button>';
+      }
+    }
+
+    renderPanel();
+    applyHot();
+  }
+
+  function renderPanel(){
+    var list = document.getElementById('cc-notif-list');
+    if (!list) return;
+    if (!active.length){
+      list.innerHTML = '<div class="ccnp-empty">You are all caught up</div>';
+      return;
+    }
+    var items = active.slice().sort(function(a,b){ return (a.ts||'') < (b.ts||'') ? 1 : -1; });
+    list.innerHTML = items.map(function(n){
+      var s = SOURCES[n.kind] || {};
+      return '<div class="ccnp-item">' +
+        '<span class="ccnp-tag ccnp-' + n.kind + '">' + (s.tag || '') + '</span>' +
+        '<div class="ccnp-body"><div class="ccnp-lbl">' + esc(n.label) + '</div>' +
+          '<div class="ccnp-time">' + relTime(n.ts) + '</div></div>' +
+        '<div class="ccnp-acts">' +
+          '<button class="ccnp-open" data-notif-act="open" data-notif-kind="' + n.kind +
+            '" data-notif-id="' + esc(n.id) + '">' + (s.openLbl || 'Open') + '</button>' +
+          '<button class="ccnp-x" title="Dismiss" data-notif-act="dismiss" data-notif-kind="' + n.kind +
+            '" data-notif-id="' + esc(n.id) + '">&times;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function applyHot(){
+    var kinds = {};
+    active.forEach(function(n){ kinds[n.kind] = true; });
+    Object.keys(HOT).forEach(function(kind){
+      var on = !!kinds[kind];
+      HOT[kind].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle('cc-notif-hot', on);
+      });
+    });
+  }
+
+  // ---- Actions -----------------------------------------------------------
+  function openTool(kind){
+    var tool = SOURCES[kind] ? SOURCES[kind].tool : 'erp';
+    if (tool === 'erp' && typeof openERP === 'function') openERP();
+    else if (tool === 'support' && typeof openSupportCenter === 'function') openSupportCenter();
+  }
+  function dismiss(kind, id){
+    active = active.filter(function(n){ return !(n.kind === kind && n.id === id); });
+    saveState(); render();
+  }
+  function dismissAll(){
+    active = [];
+    saveState(); render(); closePanel();
+  }
+  function togglePanel(){
+    var p = document.getElementById('cc-notif-panel');
+    if (p) p.classList.toggle('show');
+  }
+  function closePanel(){
+    var p = document.getElementById('cc-notif-panel');
+    if (p) p.classList.remove('show');
+  }
+
+  // ---- One delegated click handler (no inline JS on the buttons) ---------
+  document.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('[data-notif-act]') : null;
+    if (b){
+      var act  = b.getAttribute('data-notif-act');
+      var kind = b.getAttribute('data-notif-kind');
+      var id   = b.getAttribute('data-notif-id');
+      if (act === 'open')            { openTool(kind); dismiss(kind, id); closePanel(); }
+      else if (act === 'dismiss')    { dismiss(kind, id); }
+      else if (act === 'dismissAll') { dismissAll(); }
+      else if (act === 'panel')      { togglePanel(); }
+      return;
+    }
+    // click outside closes the panel
+    if (!(e.target.closest && e.target.closest('#cc-notif'))) closePanel();
+  });
+
+  // ---- Styles ------------------------------------------------------------
+  function injectCSS(){
+    if (cssDone) return; cssDone = true;
+    var css = ''
+    + '#cc-notif{margin-left:8px}'
+    + '#cc-notif-bell{position:relative;background:none;border:1px solid rgba(255,255,255,.12);border-radius:6px;cursor:pointer;padding:5px 8px;color:#9CA3AF;line-height:1;display:none;align-items:center;justify-content:center;transition:all .15s}'
+    + '#cc-notif-bell.has{display:inline-flex;color:#f87171;border-color:rgba(248,113,113,.5)}'
+    + '#cc-notif-bell:hover{background:rgba(255,255,255,.06)}'
+    + '#cc-notif-count{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 3px;border-radius:9px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:var(--font,sans-serif);box-shadow:0 0 0 2px #1e2022}'
+    + '#cc-notif-panel{position:absolute;top:42px;right:0;width:340px;max-height:62vh;overflow-y:auto;background:#fff;border:1px solid rgba(0,0,0,.12);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,.24);z-index:400;display:none;font-family:var(--font,sans-serif)}'
+    + '#cc-notif-panel.show{display:block}'
+    + '[data-theme="dark"] #cc-notif-panel{background:#1e2022;border-color:rgba(255,255,255,.14)}'
+    + '.ccnp-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid rgba(0,0,0,.08);font-size:13px;font-weight:800;color:#111;position:sticky;top:0;background:inherit;letter-spacing:.02em}'
+    + '[data-theme="dark"] .ccnp-head{color:#f3f4f6;border-color:rgba(255,255,255,.1)}'
+    + '.ccnp-clear{font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;border:1px solid rgba(220,38,38,.4);background:rgba(220,38,38,.08);color:#dc2626;cursor:pointer;font-family:inherit}'
+    + '.ccnp-clear:hover{background:rgba(220,38,38,.16)}'
+    + '.ccnp-empty{padding:24px 14px;text-align:center;color:#9CA3AF;font-size:12px}'
+    + '.ccnp-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(0,0,0,.05)}'
+    + '[data-theme="dark"] .ccnp-item{border-color:rgba(255,255,255,.06)}'
+    + '.ccnp-item:last-child{border-bottom:none}'
+    + '.ccnp-tag{flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.06em;padding:3px 6px;border-radius:4px}'
+    + '.ccnp-orders{background:rgba(224,123,40,.14);color:#c9631a}'
+    + '.ccnp-tickets{background:rgba(42,191,170,.16);color:#159c88}'
+    + '.ccnp-body{flex:1;min-width:0}'
+    + '.ccnp-lbl{font-size:12.5px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '[data-theme="dark"] .ccnp-lbl{color:#e8eaed}'
+    + '.ccnp-time{font-size:10.5px;color:#9CA3AF;margin-top:2px}'
+    + '.ccnp-acts{display:flex;align-items:center;gap:4px;flex-shrink:0}'
+    + '.ccnp-open{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:5px;border:1px solid var(--teal,#2ABFAA);background:rgba(42,191,170,.1);color:#159c88;cursor:pointer;font-family:inherit;white-space:nowrap}'
+    + '.ccnp-open:hover{background:rgba(42,191,170,.2)}'
+    + '.ccnp-x{background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:17px;line-height:1;padding:0 4px}'
+    + '.ccnp-x:hover{color:#dc2626}'
+    + '#cc-notif-banner{display:none;align-items:center;gap:12px;padding:9px 20px;background:linear-gradient(90deg,rgba(220,38,38,.15),rgba(220,38,38,.05));border-bottom:1px solid rgba(220,38,38,.35);color:#111;font-family:var(--font,sans-serif);font-size:13px;position:relative;z-index:150;flex-shrink:0}'
+    + '#cc-notif-banner.show{display:flex}'
+    + '[data-theme="dark"] #cc-notif-banner{color:#f3f4f6}'
+    + '#cc-notif-banner .nb-dot{width:8px;height:8px;border-radius:50%;background:#dc2626;flex-shrink:0;animation:ccNbPulse 1.5s ease-in-out infinite}'
+    + '@keyframes ccNbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.65)}}'
+    + '#cc-notif-banner .nb-msg{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    + '#cc-notif-banner .nb-btn{font-size:11px;font-weight:700;padding:4px 12px;border-radius:5px;border:1px solid rgba(220,38,38,.45);background:rgba(220,38,38,.1);color:#dc2626;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}'
+    + '#cc-notif-banner .nb-btn:hover{background:rgba(220,38,38,.2)}'
+    + '#cc-notif-banner .nb-x{background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;flex-shrink:0}'
+    + '#cc-notif-banner .nb-x:hover{color:#dc2626}'
+    + '.cc-notif-hot{border-color:#dc2626 !important;box-shadow:0 0 0 2px rgba(220,38,38,.35),0 0 16px rgba(220,38,38,.25) !important;animation:ccHotPulse 1.8s ease-in-out infinite}'
+    + '.cc-bc-home.cc-notif-hot{color:#dc2626 !important}'
+    + '@keyframes ccHotPulse{0%,100%{box-shadow:0 0 0 2px rgba(220,38,38,.32),0 0 14px rgba(220,38,38,.22)}50%{box-shadow:0 0 0 2px rgba(220,38,38,.55),0 0 24px rgba(220,38,38,.4)}}';
+    var st = document.createElement('style');
+    st.id = 'cc-notif-css';
+    st.textContent = css;
+    document.head.appendChild(st);
+  }
+
+  // ---- Boot --------------------------------------------------------------
+  async function boot(){
+    loadState();
+    render();                 // restore any notifications persisted from before
+    await initHwm('orders');
+    await initHwm('tickets');
+    await pollAll();
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(pollAll, POLL_MS);
+    // catch up quickly when the tab regains focus
+    document.addEventListener('visibilitychange', function(){
+      if (!document.hidden) pollAll();
+    });
+  }
+
+  function start(){
+    injectCSS();
+    loadState();
+    render();
+    var waited = 0;
+    var iv = setInterval(function(){
+      if (loggedIn()){ clearInterval(iv); boot(); }
+      else if ((waited += 1500) > 120000){ clearInterval(iv); }
+    }, 1500);
+  }
+
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', start);
+  else
+    start();
+})();
+</script>
+
 </body>
 </html>
