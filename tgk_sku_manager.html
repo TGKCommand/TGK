@@ -128,8 +128,21 @@ function skuExists(pn,excludeId,excludeType){
 
 // ---------- Render: shell ----------
 function render(){
+  const active=document.activeElement;
+  const activeId=active&&active.id;
+  const selStart=active&&typeof active.selectionStart==='number'?active.selectionStart:null;
+  const selEnd=active&&typeof active.selectionEnd==='number'?active.selectionEnd:null;
   $('content').innerHTML=renderBrowse();
   renderFilterOptions();
+  if(activeId){
+    const el=document.getElementById(activeId);
+    if(el){
+      el.focus();
+      if(selStart!=null&&el.setSelectionRange){
+        try{el.setSelectionRange(selStart,selEnd);}catch(e){}
+      }
+    }
+  }
 }
 
 function distinctCategories(){
@@ -178,7 +191,7 @@ function renderBrowse(){
     <div class="filter-bar">
       <div class="search-wrap">
         <span class="search-icon">&#128269;</span>
-        <input class="form-input" placeholder="Search SKU, description, category, notes…" value="${escHtml(S.searchQ)}" oninput="S.searchQ=this.value;render()">
+        <input id="search-box" class="form-input" placeholder="Search SKU, description, category, notes…" value="${escHtml(S.searchQ)}" oninput="S.searchQ=this.value;render()">
       </div>
       <select class="form-input" style="max-width:140px" onchange="S.typeFilter=this.value;render()">
         <option value="">All Types</option>
