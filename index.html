@@ -1844,6 +1844,16 @@ window._sbBootPromise = (async function() {
     All Tools
   </button>
   <span class="cc-bc-sep">&#8250;</span>
+  <button class="cc-bc-home" onclick="openERP()" title="Jump straight to the ERP from anywhere">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.09 2.26L15 3l-.5 2.5L17 6l-2 1.5L16.5 10 14 9l-1 2-1-2-2.5 1L11 7.5 9 6l2.5-.5L11 3l1.91 1.26z"/><circle cx="12" cy="14" r="7"/></svg>
+    ERP
+  </button>
+  <span class="cc-bc-sep">&#8250;</span>
+  <button class="cc-bc-home" onclick="openSupportCenter()" title="Jump straight to the Support Center from anywhere">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 11.9 13 12.5 13 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
+    Support
+  </button>
+  <span class="cc-bc-sep">&#8250;</span>
   <span class="cc-bc-label" id="cc-bc-label">Tool</span>
   <div id="cc-bc-actions"></div>
 </div>
@@ -11335,6 +11345,11 @@ function openERP() {
   var loading = document.getElementById('erp-loading');
   if (!viewer || !frame) { window.open(ERP_URL, '_blank', 'noopener'); return; }
 
+  // Close the Support Center viewer first if it's currently open — switching directly between the
+  // two overlay viewers without going through Home first would otherwise leave both active at once.
+  var _suv = document.getElementById('support-viewer');
+  if (_suv && _suv.classList.contains('active')) { _suv.classList.remove('active'); }
+
   // Swap cc-main for erp-viewer
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -11394,6 +11409,11 @@ function openSupportCenter() {
   var frame   = document.getElementById('support-frame');
   var loading = document.getElementById('support-loading');
   if (!viewer || !frame) { window.open(SUPPORT_URL, '_blank', 'noopener'); return; }
+
+  // Close the ERP viewer first if it's currently open — same reasoning as the symmetric check in
+  // openERP(), so a direct switch between the two never leaves both active simultaneously.
+  var _erv = document.getElementById('erp-viewer');
+  if (_erv && _erv.classList.contains('active')) { _erv.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
