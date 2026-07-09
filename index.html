@@ -1095,8 +1095,13 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #support-viewer.active{display:flex}
 #support-frame{width:100%;flex:1;border:none;background:#fff}
 #support-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#sku-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#sku-viewer.active{display:flex}
+#sku-frame{width:100%;flex:1;border:none;background:#fff}
+#sku-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
 #erp-loading.hidden{display:none}
 #support-loading.hidden{display:none}
+#sku-loading.hidden{display:none}
 .erp-spinner{width:36px;height:36px;border:3px solid #E4E7EC;border-top-color:#2ABFAA;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .erp-loading-text{font-size:13px;font-weight:600;color:#4B5563}
@@ -1874,6 +1879,13 @@ window._sbBootPromise = (async function() {
     </div>
     <iframe id="support-frame" title="TGK Support Center" allowfullscreen></iframe>
   </div>
+  <div id="sku-viewer">
+    <div id="sku-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading SKU Manager&hellip;</div>
+    </div>
+    <iframe id="sku-frame" title="TGK SKU Manager" allowfullscreen></iframe>
+  </div>
   <div id="cc-sidebar">
     <span class="cc-slbl">Tools</span>
     <button class="cc-navbtn active" id="cc-nav-home" onclick="showView('home')" draggable="true">
@@ -1996,6 +2008,7 @@ window._sbBootPromise = (async function() {
   <div class="dash-section-block" id="dsec-ops">
     <div class="dash-section-lbl">Operations</div>
     <div class="mod-grid">
+      <div class="mod-card ac-teal" onclick="openSKU()" data-mid="sku"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127991;</div><div class="mod-card-name">SKU Manager</div><div class="mod-card-cat">Inventory &middot; Registry &middot; Supabase</div><div class="mod-card-desc">Create and edit raw part &amp; assembly SKUs &mdash; categories, notes, reference links, files, and dev/live/discontinued lifecycle. Feeds directly into the ERP.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Inventory</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-teal" onclick="showView('box')" data-mid="box"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128230;</div><div class="mod-card-name">Box Selector</div><div class="mod-card-cat">Shipping &middot; Packing &middot; 3D</div><div class="mod-card-desc">Build an order, run the 3D bin-packing algorithm and get the optimal shipping box in seconds.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Shipping</span></div><div style="display:flex;align-items:center;gap:7px"><div class="bdot" id="bdot-box"></div><span class="mod-card-arrow">Open &rarr;</span></div></div></div>
       <div class="mod-card ac-purple" onclick="showView('toolbox')" data-mid="toolbox"><div class="mod-card-icon" style="background:rgba(124,58,237,.1)">&#128279;</div><div class="mod-card-name">Toolbox</div><div class="mod-card-cat">External Tools &middot; Links</div><div class="mod-card-desc">Manage external tools and links &mdash; add, organize, and launch from one place.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-purple">External</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
@@ -11161,6 +11174,7 @@ if(fbgEl) fbgEl.addEventListener('keydown',function(e){if(e.key==='Enter')fbgSea
 ═══════════════════════════════════════════════════════ */
 
 var ERP_URL = 'https://erp.tgkmotorsport.com';
+var SKU_URL = 'https://command.tgkmotorsport.com/tgk_sku_manager.html';
 var SUPPORT_URL = 'https://support.tgkmotorsport.com';
 var SB_AUTH_URL = 'https://piamamighqiielfztgic.supabase.co';
 var SB_ANON_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -11349,6 +11363,8 @@ function openERP() {
   // two overlay viewers without going through Home first would otherwise leave both active at once.
   var _suv = document.getElementById('support-viewer');
   if (_suv && _suv.classList.contains('active')) { _suv.classList.remove('active'); }
+  var _skv = document.getElementById('sku-viewer');
+  if (_skv && _skv.classList.contains('active')) { _skv.classList.remove('active'); }
 
   // Swap cc-main for erp-viewer
   if (main)  main.style.display  = 'none';
@@ -11414,6 +11430,8 @@ function openSupportCenter() {
   // openERP(), so a direct switch between the two never leaves both active simultaneously.
   var _erv = document.getElementById('erp-viewer');
   if (_erv && _erv.classList.contains('active')) { _erv.classList.remove('active'); }
+  var _skv2 = document.getElementById('sku-viewer');
+  if (_skv2 && _skv2.classList.contains('active')) { _skv2.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -11459,6 +11477,55 @@ function openSupportCenter() {
 function closeSupportCenter() {
   var main   = document.getElementById('cc-main');
   var viewer = document.getElementById('support-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
+}
+
+function openSKU() {
+  // Show the SKU Manager inline, same pattern as the ERP/Support Center viewers.
+  var main    = document.getElementById('cc-main');
+  var viewer  = document.getElementById('sku-viewer');
+  var frame   = document.getElementById('sku-frame');
+  var loading = document.getElementById('sku-loading');
+  if (!viewer || !frame) { window.open(SKU_URL, '_blank', 'noopener'); return; }
+
+  // Close the ERP/Support viewers first if either is open — same reasoning as the symmetric
+  // checks in openERP()/openSupportCenter(), so switching tools never leaves two active at once.
+  var _erv = document.getElementById('erp-viewer');
+  if (_erv && _erv.classList.contains('active')) { _erv.classList.remove('active'); }
+  var _suv = document.getElementById('support-viewer');
+  if (_suv && _suv.classList.contains('active')) { _suv.classList.remove('active'); }
+
+  if (main)  main.style.display  = 'none';
+  if (viewer) viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'SKU Manager';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSKU()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close SKU Manager</button>';
+  }
+
+  // No auth token passed — the SKU Manager connects to Supabase directly with its own
+  // anon key and doesn't have a login gate of its own.
+  if (frame.src !== SKU_URL) {
+    frame.onload = function() { if (loading) loading.classList.add('hidden'); };
+    frame.src = SKU_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+  }
+}
+
+function closeSKU() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('sku-viewer');
   var bc     = document.getElementById('cc-breadcrumb');
   if (main)   main.style.display = '';
   if (viewer) viewer.classList.remove('active');
