@@ -11611,8 +11611,8 @@ function erpToast(msg, detail) {
 /* ─── LAYOUT ─────────────────────────────────────────── */
 var LAYOUT_KEY = 'tgk_layout_v3';
 var layout = {
-  visible: ['launch','social','ideas','fbgroups','box','toolbox','arcade'],
-  order:   ['launch','social','ideas','fbgroups','box','toolbox','arcade'],
+  visible: ['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'],
+  order:   ['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'],
   pinned:  [],
   custom:  false
 };
@@ -11622,10 +11622,15 @@ function loadLayout() {
     var s = JSON.parse(localStorage.getItem(LAYOUT_KEY));
     if (s) { layout.visible=s.visible||layout.visible; layout.order=s.order||layout.order; layout.pinned=s.pinned||[]; layout.custom=s.custom||false; }
   } catch(e) {}
+  // Migration: SKU Manager was added after some users already saved a custom layout.
+  // Its absence from a previously-saved list means it didn't exist yet, not that it
+  // was intentionally hidden, so make sure it's always present going forward.
+  if (layout.visible.indexOf('sku') === -1) layout.visible.push('sku');
+  if (layout.order.indexOf('sku') === -1) layout.order.push('sku');
 }
 
 /* ─── RENDER DASHBOARD ───────────────────────────────── */
-var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','toolbox'], fun:['arcade'] };
+var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','toolbox'], fun:['arcade'] };
 
 function renderDashboard() {
   var n = document.getElementById('tpl-name');
@@ -11728,12 +11733,12 @@ var _fd=null;
 function openFilter(){_fd=layout.visible.slice();renderFilterBody();document.getElementById('filter-overlay').classList.add('open');document.getElementById('filter-drawer').classList.add('open');}
 function closeFilter(){document.getElementById('filter-overlay').classList.remove('open');document.getElementById('filter-drawer').classList.remove('open');}
 function saveFilter(){layout.visible=_fd?_fd.slice():[];layout.custom=true;saveLayout();closeFilter();renderDashboard();}
-function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','toolbox','arcade'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
-function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','toolbox','arcade'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
+function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
+function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
 function _fdToggle(id,el){if(!_fd)_fd=[];var i=_fd.indexOf(id);if(i>-1)_fd.splice(i,1);else _fd.push(id);var c=el.querySelector('.fd-chk');if(c)c.classList.toggle('on',_fd.indexOf(id)>-1);}
 var SDEFS=[
   {lbl:'AI-Powered Tools',items:[{id:'launch',icon:'&#128640;',name:'Product Launch'},{id:'social',icon:'&#128247;',name:'Social Engine'},{id:'ideas',icon:'&#128161;',name:'Idea Generator'},{id:'fbgroups',icon:'&#128101;',name:'FB Group Finder'}]},
-  {lbl:'Operations',items:[{id:'box',icon:'&#128230;',name:'Box Selector'},{id:'toolbox',icon:'&#128279;',name:'Toolbox'}]},
+  {lbl:'Operations',items:[{id:'box',icon:'&#128230;',name:'Box Selector'},{id:'sku',icon:'&#127991;',name:'SKU Manager'},{id:'toolbox',icon:'&#128279;',name:'Toolbox'}]},
   {lbl:'Entertainment',items:[{id:'arcade',icon:'&#127918;',name:'Arcade'}]}
 ];
 function renderFilterBody(){
