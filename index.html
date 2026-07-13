@@ -1099,9 +1099,14 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #sku-viewer.active{display:flex}
 #sku-frame{width:100%;flex:1;border:none;background:#fff}
 #sku-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#cal-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#cal-viewer.active{display:flex}
+#cal-frame{width:100%;flex:1;border:none;background:#fff}
+#cal-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
 #erp-loading.hidden{display:none}
 #support-loading.hidden{display:none}
 #sku-loading.hidden{display:none}
+#cal-loading.hidden{display:none}
 .erp-spinner{width:36px;height:36px;border:3px solid #E4E7EC;border-top-color:#2ABFAA;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .erp-loading-text{font-size:13px;font-weight:600;color:#4B5563}
@@ -1898,6 +1903,13 @@ window._sbBootPromise = (async function() {
     </div>
     <iframe id="sku-frame" title="TGK SKU Manager" allowfullscreen></iframe>
   </div>
+  <div id="cal-viewer">
+    <div id="cal-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading Team Calendar&hellip;</div>
+    </div>
+    <iframe id="cal-frame" title="TGK Team Calendar" allowfullscreen></iframe>
+  </div>
   <div id="cc-sidebar">
     <span class="cc-slbl">Tools</span>
     <button class="cc-navbtn active" id="cc-nav-home" onclick="showView('home')" draggable="true">
@@ -2021,6 +2033,7 @@ window._sbBootPromise = (async function() {
     <div class="dash-section-lbl">Operations</div>
     <div class="mod-grid">
       <div class="mod-card ac-teal" onclick="openSKU()" data-mid="sku"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127991;</div><div class="mod-card-name">SKU Manager</div><div class="mod-card-cat">Inventory &middot; Registry &middot; Supabase</div><div class="mod-card-desc">Create and edit raw part &amp; assembly SKUs &mdash; categories, notes, reference links, files, and dev/live/discontinued lifecycle. Feeds directly into the ERP.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Inventory</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
+      <div class="mod-card ac-teal" onclick="openCal()" data-mid="calendar"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128197;</div><div class="mod-card-name">Team Calendar</div><div class="mod-card-cat">Time Off &middot; Deadlines &middot; Notes</div><div class="mod-card-desc">Shared team calendar &mdash; book time off, flag deadlines and drop notes. Everyone sees changes live.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Team</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-teal" onclick="showView('box')" data-mid="box"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128230;</div><div class="mod-card-name">Box Selector</div><div class="mod-card-cat">Shipping &middot; Packing &middot; 3D</div><div class="mod-card-desc">Build an order, run the 3D bin-packing algorithm and get the optimal shipping box in seconds.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Shipping</span></div><div style="display:flex;align-items:center;gap:7px"><div class="bdot" id="bdot-box"></div><span class="mod-card-arrow">Open &rarr;</span></div></div></div>
       <div class="mod-card ac-purple" onclick="showView('toolbox')" data-mid="toolbox"><div class="mod-card-icon" style="background:rgba(124,58,237,.1)">&#128279;</div><div class="mod-card-name">Toolbox</div><div class="mod-card-cat">External Tools &middot; Links</div><div class="mod-card-desc">Manage external tools and links &mdash; add, organize, and launch from one place.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-purple">External</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
@@ -3429,6 +3442,8 @@ function showView(name) {
     var _bc2 = document.getElementById('cc-breadcrumb');
     if (_bc2) _bc2.classList.remove('visible');
   }
+  var _clvV = document.getElementById('cal-viewer');
+  if (_clvV && _clvV.classList.contains('active')) { _clvV.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc3 = document.getElementById('cc-breadcrumb'); if (_bc3) _bc3.classList.remove('visible'); }
   document.querySelectorAll('.cc-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.cc-navbtn').forEach(b => b.classList.remove('active'));
   const view = document.getElementById('view-' + name);
@@ -11187,6 +11202,8 @@ if(fbgEl) fbgEl.addEventListener('keydown',function(e){if(e.key==='Enter')fbgSea
 
 var ERP_URL = 'https://erp.tgkmotorsport.com';
 var SKU_URL = 'https://command.tgkmotorsport.com/tgk_sku_manager.html';
+var CAL_URL = 'https://command.tgkmotorsport.com/tgk_calendar.html';
+var CAL_ORIGIN = 'https://command.tgkmotorsport.com';
 var SUPPORT_URL = 'https://support.tgkmotorsport.com';
 var SB_AUTH_URL = 'https://piamamighqiielfztgic.supabase.co';
 var SB_ANON_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -11388,6 +11405,7 @@ function openERP() {
   if (bc) bc.classList.add('visible');
   var lbl = document.getElementById('cc-bc-label');
   if (lbl) lbl.textContent = 'TGK ERP';
+  var _clv = document.getElementById('cal-viewer'); if (_clv && _clv.classList.contains('active')) { _clv.classList.remove('active'); }
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
     acts.innerHTML = '<button class="cc-bc-btn" onclick="closeERP()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close ERP</button>';
@@ -11453,6 +11471,7 @@ function openSupportCenter() {
   if (bc) bc.classList.add('visible');
   var lbl = document.getElementById('cc-bc-label');
   if (lbl) lbl.textContent = 'Support Center';
+  var _clv = document.getElementById('cal-viewer'); if (_clv && _clv.classList.contains('active')) { _clv.classList.remove('active'); }
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
     acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSupportCenter()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close Support Center</button>';
@@ -11520,6 +11539,7 @@ function openSKU() {
   if (bc) bc.classList.add('visible');
   var lbl = document.getElementById('cc-bc-label');
   if (lbl) lbl.textContent = 'SKU Manager';
+  var _clv = document.getElementById('cal-viewer'); if (_clv && _clv.classList.contains('active')) { _clv.classList.remove('active'); }
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
     acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSKU()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close SKU Manager</button>';
@@ -11538,6 +11558,69 @@ function openSKU() {
 function closeSKU() {
   var main   = document.getElementById('cc-main');
   var viewer = document.getElementById('sku-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
+}
+
+/* --- TEAM CALENDAR VIEWER --- */
+function _sendCalIdentity() {
+  var frame = document.getElementById('cal-frame');
+  if (!frame || !frame.contentWindow) return;
+  var sess = _getSession() || {};
+  var email = sess.email || '';
+  var name = email ? email.split('@')[0] : '';
+  try { frame.contentWindow.postMessage({ type: 'tgk-identity', email: email, name: name }, CAL_ORIGIN); } catch(e) {}
+}
+// The calendar announces itself with {type:'tgk-cal-ready'}; reply with who is signed in.
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'tgk-cal-ready') _sendCalIdentity();
+});
+
+function openCal() {
+  var main    = document.getElementById('cc-main');
+  var viewer  = document.getElementById('cal-viewer');
+  var frame   = document.getElementById('cal-frame');
+  var loading = document.getElementById('cal-loading');
+  if (!viewer || !frame) { window.open(CAL_URL, '_blank', 'noopener'); return; }
+
+  // Close the other overlay viewers first so two are never active at once.
+  var _erv = document.getElementById('erp-viewer');
+  if (_erv && _erv.classList.contains('active')) { _erv.classList.remove('active'); }
+  var _suv = document.getElementById('support-viewer');
+  if (_suv && _suv.classList.contains('active')) { _suv.classList.remove('active'); }
+  var _skv = document.getElementById('sku-viewer');
+  if (_skv && _skv.classList.contains('active')) { _skv.classList.remove('active'); }
+
+  if (main)  main.style.display  = 'none';
+  if (viewer) viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'Team Calendar';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeCal()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close Calendar</button>';
+  }
+
+  // The calendar reads Supabase directly with its own anon key; we only hand it identity.
+  if (frame.src !== CAL_URL) {
+    frame.onload = function() { if (loading) loading.classList.add('hidden'); setTimeout(_sendCalIdentity, 250); };
+    frame.src = CAL_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+    setTimeout(_sendCalIdentity, 80);
+  }
+}
+
+function closeCal() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('cal-viewer');
   var bc     = document.getElementById('cc-breadcrumb');
   if (main)   main.style.display = '';
   if (viewer) viewer.classList.remove('active');
@@ -11623,8 +11706,8 @@ function erpToast(msg, detail) {
 /* ─── LAYOUT ─────────────────────────────────────────── */
 var LAYOUT_KEY = 'tgk_layout_v3';
 var layout = {
-  visible: ['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'],
-  order:   ['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'],
+  visible: ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade'],
+  order:   ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade'],
   pinned:  [],
   custom:  false
 };
@@ -11639,10 +11722,13 @@ function loadLayout() {
   // was intentionally hidden, so make sure it's always present going forward.
   if (layout.visible.indexOf('sku') === -1) layout.visible.push('sku');
   if (layout.order.indexOf('sku') === -1) layout.order.push('sku');
+  // Same migration for the Team Calendar, added after SKU Manager.
+  if (layout.visible.indexOf('calendar') === -1) layout.visible.push('calendar');
+  if (layout.order.indexOf('calendar') === -1) layout.order.push('calendar');
 }
 
 /* ─── RENDER DASHBOARD ───────────────────────────────── */
-var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','toolbox'], fun:['arcade'] };
+var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','toolbox'], fun:['arcade'] };
 
 function renderDashboard() {
   var n = document.getElementById('tpl-name');

@@ -259,11 +259,10 @@ document.addEventListener('DOMContentLoaded',function(){
 
 async function boot(){
   await loadMembers();
-  await resolveIdentity();
-  renderChrome();
   await loadEvents();
   render();
   subscribeRealtime();
+  resolveIdentity();
 }
 
 async function loadMembers(){
@@ -277,29 +276,32 @@ async function resolveIdentity(){
   // 1) authenticated session on this origin (same as ERP)
   try{
     var u=await db.auth.getUser();
-    if(u&&u.data&&u.data.user&&u.data.user.email){
-      var em=u.data.user.email;
-      S.me={email:em,name:displayFor(em)||em};
-      return;
-    }
+    if(u&&u.data&&u.data.user&&u.data.user.email){setMe(u.data.user.email,null);return;}
   }catch(e){}
   // 2) URL params (Command Center can pass ?email=&name=)
   var q=new URLSearchParams(location.search);
-  if(q.get('email')){S.me={email:q.get('email'),name:q.get('name')||displayFor(q.get('email'))||q.get('email')};localStorage.setItem('tgk_cal_me',JSON.stringify(S.me));return;}
-  // 3) message from parent (iframe host)
+  if(q.get('email')){setMe(q.get('email'),q.get('name'));return;}
+  // 3) ask the host (Command Center) who we are, then give it a moment to reply
   try{window.parent&&window.parent.postMessage({type:'tgk-cal-ready'},'*');}catch(e){}
+  await new Promise(function(r){setTimeout(r,700);});
+  if(S.me)return;
   // 4) remembered pick
-  try{var saved=JSON.parse(localStorage.getItem('tgk_cal_me')||'null');if(saved&&saved.email){S.me=saved;return;}}catch(e){}
+  try{var saved=JSON.parse(localStorage.getItem('tgk_cal_me')||'null');if(saved&&saved.email){setMe(saved.email,saved.name);return;}}catch(e){}
+  if(S.me)return;
   // 5) ask
-  await pickIdentity();
+  pickIdentity();
+}
+function setMe(email,name){
+  S.me={email:email,name:name||displayFor(email)||email};
+  try{localStorage.setItem('tgk_cal_me',JSON.stringify(S.me));}catch(e){}
+  renderChrome();render();
 }
 
 window.addEventListener('message',function(ev){
   var d=ev.data||{};
   if(d.type==='tgk-identity'&&d.email){
-    S.me={email:d.email,name:d.name||displayFor(d.email)||d.email};
-    try{localStorage.setItem('tgk_cal_me',JSON.stringify(S.me));}catch(e){}
-    hide('pick-overlay');renderChrome();render();
+    hide('pick-overlay');
+    setMe(d.email,d.name);
   }
 });
 
