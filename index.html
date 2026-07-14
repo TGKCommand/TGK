@@ -1105,6 +1105,8 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #erp-loading.hidden{display:none}
 #support-loading.hidden{display:none}
 #sku-loading.hidden{display:none}
+#cal-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#cal-loading.hidden{display:none}
 .erp-spinner{width:36px;height:36px;border:3px solid #E4E7EC;border-top-color:#2ABFAA;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .erp-loading-text{font-size:13px;font-weight:600;color:#4B5563}
@@ -11601,6 +11603,7 @@ function openCal() {
     if (loading) loading.classList.add('hidden');
     _calSendIdentity();
   }
+  setTimeout(function(){ if (loading) loading.classList.add('hidden'); }, 4000);
 }
 
 function closeCal() {
@@ -11628,7 +11631,7 @@ function _calSendIdentity() {
 
 // The calendar announces itself with {type:'tgk-cal-ready'}; reply with the current identity.
 window.addEventListener('message', function(e) {
-  if (e && e.data && e.data.type === 'tgk-cal-ready') { _calSendIdentity(); }
+  if (e && e.data && e.data.type === 'tgk-cal-ready') { var _cl = document.getElementById('cal-loading'); if (_cl) _cl.classList.add('hidden'); _calSendIdentity(); }
 });
 
 var _currentProduct = null;
