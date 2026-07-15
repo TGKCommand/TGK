@@ -1116,6 +1116,36 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 /* Board */
 #pw-board{display:flex;flex-direction:column;height:100%}
 #pw-board.hidden{display:none}
+#pw-dash{display:flex;flex-direction:column;height:100%;background:#F0F2F5}
+#pw-dash.hidden{display:none}
+.pw-dash-sub{font-size:12px;color:#9CA3AF;font-weight:600;white-space:nowrap}
+.pw-dash-scroll{flex:1;overflow-y:auto;padding:24px 26px 44px}
+.pw-dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:16px;max-width:1180px;margin:0 auto}
+.pw-pcard{background:#fff;border:1px solid #E8EBF0;border-radius:14px;padding:18px 18px 14px;cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:184px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.pw-pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--pc);opacity:0;transition:opacity .18s}
+.pw-pcard:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.10);border-color:var(--pc)}
+.pw-pcard:hover::before{opacity:1}
+.pw-pcard-acts{position:absolute;top:12px;right:12px;display:flex;gap:5px;opacity:0;transition:opacity .15s;z-index:2}
+.pw-pcard:hover .pw-pcard-acts{opacity:1}
+.pw-pcard-act{width:26px;height:26px;border-radius:6px;border:none;background:#F0F2F5;cursor:pointer;font-size:12px;color:#6B778C;display:flex;align-items:center;justify-content:center;transition:.12s;font-family:var(--font)}
+.pw-pcard-act:hover{background:#E4E7EC;color:#111827}
+.pw-pcard-act.del:hover{background:rgba(248,113,113,.14);color:#dc2626}
+.pw-pcard-icon{width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;margin-bottom:12px}
+.pw-pcard-name{font-size:16px;font-weight:700;color:#111827;letter-spacing:-.01em;margin-bottom:4px}
+.pw-pcard-desc{font-size:11.5px;color:#6B778C;line-height:1.5;flex:1}
+.pw-pcard-meta{display:flex;gap:14px;margin-top:12px;font-size:11px;font-weight:600;color:#5E6C84}
+.pw-pcard-meta b{color:#111827;font-weight:700}
+.pw-pcard-bar{height:5px;border-radius:3px;background:#EEF0F3;overflow:hidden;margin-top:10px}
+.pw-pcard-bar-fill{height:100%;border-radius:3px;background:var(--pc);transition:width .3s}
+.pw-pcard-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid #F0F2F5}
+.pw-pcard-open{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#9CA3AF;transition:color .15s}
+.pw-pcard:hover .pw-pcard-open{color:var(--pc)}
+.pw-pcard-new{border:2px dashed #D1D5DD;background:rgba(255,255,255,.35);box-shadow:none;align-items:center;justify-content:center;color:#9CA3AF;min-height:184px}
+.pw-pcard-new:hover{border-color:var(--teal);color:var(--teal);background:rgba(42,191,170,.05);transform:translateY(-2px);box-shadow:none}
+.pw-pcard-new-plus{font-size:36px;font-weight:300;line-height:1}
+.pw-pcard-new-lbl{font-size:13px;font-weight:700;margin-top:6px}
+.pw-back-btn{width:30px;height:30px;border-radius:7px;border:none;background:#EEF0F3;cursor:pointer;font-size:16px;color:#5E6C84;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px;transition:.12s;font-family:var(--font)}
+.pw-back-btn:hover{background:#E4E7EC;color:#111827}
 .pw-hdr{background:#1e2022;border-bottom:2px solid #2ABFAA;height:52px;padding:0 18px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 .pw-hdr-logo{height:26px;display:block;flex-shrink:0}
 .pw-hdr-brand{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;white-space:nowrap}
@@ -11952,11 +11982,46 @@ function _mem(id){return _team.find(function(m){return m.id===id;})||null;}
 function _la(task,txt){task.logs=task.logs||[];task.logs.push({id:_uid(),type:'action',text:txt,user:'',ts:_now()});}
 
 /* ── state ──────────────────────────────────────────────────── */
-var _st=null;
-function _gs(){
+var _st=null;   /* CONTAINER: {boards:[{id,name,icon,color,desc,data:{cols,tasks}}], active:id} */
+function _blankData(){
+  return{cols:[
+    {id:_uid(),name:'Backlog',    color:'#6B778C',responsible:'',tasks:[]},
+    {id:_uid(),name:'In Progress',color:'#2ABFAA',responsible:'',tasks:[]},
+    {id:_uid(),name:'Review',     color:'#E07B28',responsible:'',tasks:[]},
+    {id:_uid(),name:'Done',       color:'#00875A',responsible:'',tasks:[]}
+  ],tasks:{}};
+}
+function _defContainer(){
+  return{boards:[{id:'b_prod',name:'Product Development',icon:'&#128295;',color:'#2ABFAA',desc:'New product development pipeline \u2014 concept to launch.',data:_def()}],active:''};
+}
+/* Accept both the old single-board shape and the new container shape. */
+function _migrate(raw){
+  if(!raw||typeof raw!=='object')return _defContainer();
+  if(Array.isArray(raw.boards)){
+    raw.active=raw.active||'';
+    raw.boards.forEach(function(b){
+      b.id=b.id||_uid();b.name=b.name||'Untitled';b.icon=b.icon||'&#128203;';b.color=b.color||'#2ABFAA';b.desc=b.desc||'';
+      if(!b.data||!b.data.cols||!b.data.tasks)b.data=_blankData();
+    });
+    if(!raw.boards.length)raw.boards.push({id:'b_prod',name:'Product Development',icon:'&#128295;',color:'#2ABFAA',desc:'',data:_def()});
+    return raw;
+  }
+  if(raw.cols&&raw.tasks){
+    return{boards:[{id:'b_prod',name:'Product Development',icon:'&#128295;',color:'#2ABFAA',desc:'New product development pipeline \u2014 concept to launch.',data:raw}],active:''};
+  }
+  return _defContainer();
+}
+function _gc(){  /* get container */
   if(_st)return _st;
-  try{var s=localStorage.getItem(PW_KEY);_st=s?JSON.parse(s):_def();}catch(e){_st=_def();}
+  try{var s=localStorage.getItem(PW_KEY);_st=s?_migrate(JSON.parse(s)):_defContainer();}catch(e){_st=_defContainer();}
   return _st;
+}
+function _activeBoard(){var C=_gc();return C.boards.filter(function(b){return b.id===C.active;})[0]||null;}
+function _gs(){  /* active board data \u2014 every downstream call uses this */
+  var b=_activeBoard();
+  if(b)return b.data;
+  var C=_gc();
+  return C.boards[0]?C.boards[0].data:_blankData();
 }
 var _isSaving=false,_saveQueued=false;
 function _save(){
@@ -11968,10 +12033,7 @@ function _save(){
 }
 function _doSbSave(){
   _isSaving=true;_saveQueued=false;
-  var cp=JSON.parse(JSON.stringify(_st));
-  Object.values(cp.tasks).forEach(function(t){
-    if(t.files)t.files=t.files.map(function(f){return{id:f.id,name:f.name,type:f.type,size:f.size,uploadedAt:f.uploadedAt};});
-  });
+  var cp=_stripFiles(_gc());
   sbSet('tgk_projects_data',cp).catch(function(){}).finally(function(){
     _isSaving=false;
     if(_saveQueued)_doSbSave();
@@ -12022,7 +12084,7 @@ var _booted=false;
 window.pwInit=function(){
   var det=document.getElementById('pw-detail'),brd=document.getElementById('pw-board'),ep=document.getElementById('pw-ep-ov');
   if(det){det.classList.remove('open');det.innerHTML='';}
-  if(brd)brd.classList.remove('hidden');
+  if(brd)brd.classList.add('hidden');
   if(ep)ep.classList.remove('open');
   _epId=null;_epTags=[];_dtid=null;_sd=null;
   // TGK circle watermark
@@ -12032,10 +12094,10 @@ window.pwInit=function(){
   var logo=document.querySelector('#cc-topbar img');
   if(!_booted){
     _booted=true;
-    _syncMyProfile().then(function(){ return _loadTeam(); }).then(function(){pwRenderBoard();_updateBell();}).catch(function(){pwRenderBoard();_updateBell();});
+    _syncMyProfile().then(function(){ return _loadTeam(); }).then(function(){pwShowDash();_updateBell();}).catch(function(){pwShowDash();_updateBell();});
     setTimeout(_syncRemoteNotifs,1500);
-    if(typeof sbGet==='function')sbGet('tgk_projects_data').then(function(r){if(r&&r.cols&&r.tasks){_st=r;try{localStorage.setItem(PW_KEY,JSON.stringify(_st));}catch(e){}pwRenderBoard();}}).catch(function(){});
-  }else{pwRenderBoard();_updateBell();}
+    if(typeof sbGet==='function')sbGet('tgk_projects_data').then(function(r){if(r){var keep=_gc().active;_st=_migrate(r);if(keep&&_st.boards.filter(function(b){return b.id===keep;}).length)_st.active=keep;try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(_st)));}catch(e){}pwRefreshView();}}).catch(function(){});
+  }else{pwShowDash();_updateBell();}
   pwStartPolling();
 };
 
@@ -13739,12 +13801,14 @@ window.pwStartPolling=function(){
   _pollTimer=setInterval(function(){
     if(typeof sbGet==='function'){
       sbGet('tgk_projects_data').then(function(r){
-        if(!r||!r.cols||!r.tasks)return;
-        var sig=JSON.stringify({tasks:Object.keys(r.tasks),cols:r.cols.map(function(c){return c.id+':'+c.tasks.length;})});
+        if(!r)return;
+        var C2=_migrate(r);
+        var sig=JSON.stringify(C2.boards.map(function(b){return b.id+':'+Object.keys(b.data.tasks).length+':'+b.data.cols.map(function(c){return c.id+'#'+c.tasks.length;}).join(',');}));
         if(_lastPollData&&_lastPollData!==sig&&!_isSaving){
-          _st=r;
-          try{localStorage.setItem('tgk_projects_data_cache',JSON.stringify(_st));}catch(e){}
-          pwRenderBoard();
+          var keep=_gc().active;
+          _st=C2;if(keep&&_st.boards.filter(function(b){return b.id===keep;}).length)_st.active=keep;
+          try{localStorage.setItem('tgk_projects_data_cache',JSON.stringify(_stripFiles(_st)));}catch(e){}
+          pwRefreshView();
           var ind=document.getElementById('pw-poll-ind');
           if(ind){ind.textContent='↻ Updated';ind.style.opacity='1';setTimeout(function(){ind.style.opacity='0';},2000);}
         }
@@ -13759,13 +13823,17 @@ window.pwStopPolling=function(){if(_pollTimer){clearInterval(_pollTimer);_pollTi
 /* ── UNDO SYSTEM ─────────────────────────────────────────── */
 var _undoStack=[], _undoMax=20;
 function _stripFiles(state){
-  // Remove dataUrl from file objects before saving/snapshotting
+  // Remove dataUrl from file objects before saving/snapshotting.
   var cp=JSON.parse(JSON.stringify(state));
-  Object.values(cp.tasks||{}).forEach(function(t){
-    if(t.files)t.files=t.files.map(function(f){
-      return{id:f.id,name:f.name,type:f.type,size:f.size,uploadedAt:f.uploadedAt};
+  function strip(tasks){
+    Object.values(tasks||{}).forEach(function(t){
+      if(t.files)t.files=t.files.map(function(f){
+        return{id:f.id,name:f.name,type:f.type,size:f.size,uploadedAt:f.uploadedAt};
+      });
     });
-  });
+  }
+  if(cp.boards&&Array.isArray(cp.boards)){cp.boards.forEach(function(b){if(b.data)strip(b.data.tasks);});}
+  else strip(cp.tasks);
   return cp;
 }
 function _pushUndo(){
@@ -13789,15 +13857,17 @@ window.pwUndo=function(){
   if(!_undoStack.length)return;
   var snap=_undoStack.pop();
   try{
-    _st=JSON.parse(snap);
-    localStorage.setItem('tgk_projects_data_cache',JSON.stringify(_st));
+    var d=JSON.parse(snap);
+    var b=_activeBoard();if(b)b.data=d;
+    localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(_gc())));
+    localStorage.setItem('tgk_projects_data_cache',JSON.stringify(_stripFiles(_gc())));
     // Also push to Supabase
-    if(typeof sbSet==='function')sbSet('tgk_projects_data',_st).catch(function(){});
+    if(typeof sbSet==='function')sbSet('tgk_projects_data',_stripFiles(_gc())).catch(function(){});
   }catch(e){}
   _updateUndoBtn();
   pwRenderBoard();
-  if(typeof _sd!=='undefined'&&_sd&&_st.tasks&&_st.tasks[_sd.id]){
-    _sd=JSON.parse(JSON.stringify(_st.tasks[_sd.id]));
+  if(typeof _sd!=='undefined'&&_sd&&_gs().tasks&&_gs().tasks[_sd.id]){
+    _sd=JSON.parse(JSON.stringify(_gs().tasks[_sd.id]));
     _renderDet();
   }
 };
@@ -14105,6 +14175,106 @@ window.pwSetMemberRole = function(id, role){
   if (typeof dashRenderTeam === 'function') dashRenderTeam();
 };
 
+/* === MULTI-BOARD DASHBOARD ================================================ */
+function _hexA(h,a){h=String(h||'#2ABFAA').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return'rgba('+r+','+g+','+b+','+a+')';}
+
+window.pwShowDash=function(){
+  var C=_gc();C.active='';
+  var brd=document.getElementById('pw-board'),det=document.getElementById('pw-detail'),dash=document.getElementById('pw-dash'),ep=document.getElementById('pw-ep-ov');
+  if(det){det.classList.remove('open');det.innerHTML='';}
+  if(ep)ep.classList.remove('open');
+  if(brd)brd.classList.add('hidden');
+  if(dash)dash.classList.remove('hidden');
+  pwRenderDash();
+};
+
+window.pwRenderDash=function(){
+  var C=_gc();var grid=document.getElementById('pw-dash-grid');if(!grid)return;
+  var h='';
+  C.boards.forEach(function(b){
+    var data=b.data||{cols:[],tasks:{}};
+    var tasks=Object.keys(data.tasks||{}).map(function(k){return data.tasks[k];});
+    var tot=tasks.length;
+    var done=tasks.filter(function(t){return(t.progress||0)>=100;}).length;
+    var stages=(data.cols||[]).length;
+    var avg=tot?Math.round(tasks.reduce(function(n,t){return n+(t.progress||0);},0)/tot):0;
+    var col=b.color||'#2ABFAA';
+    var sub=b.desc?b.desc:(tot?(tot+' task'+(tot===1?'':'s')+' across '+stages+' stages'):'No tasks yet \u2014 click to start');
+    h+='<div class="pw-pcard" style="--pc:'+col+'" onclick="pwOpenBoard(\''+b.id+'\')">'
+      +'<div class="pw-pcard-acts">'
+        +'<button class="pw-pcard-act" title="Rename" onclick="pwRenameBoard(\''+b.id+'\',event)">&#9998;</button>'
+        +'<button class="pw-pcard-act del" title="Delete" onclick="pwDeleteBoard(\''+b.id+'\',event)">&#128465;</button>'
+      +'</div>'
+      +'<div class="pw-pcard-icon" style="background:'+_hexA(col,0.13)+';color:'+col+'">'+(b.icon||'&#128203;')+'</div>'
+      +'<div class="pw-pcard-name">'+_esc(b.name)+'</div>'
+      +'<div class="pw-pcard-desc">'+_esc(sub)+'</div>'
+      +'<div class="pw-pcard-meta"><span><b>'+tot+'</b> tasks</span><span><b>'+done+'</b> done</span><span><b>'+stages+'</b> stages</span></div>'
+      +'<div class="pw-pcard-bar"><div class="pw-pcard-bar-fill" style="width:'+avg+'%"></div></div>'
+      +'<div class="pw-pcard-foot"><span class="pw-pcard-open">Open board &#8594;</span><span class="pw-pcard-open">'+avg+'%</span></div>'
+    +'</div>';
+  });
+  h+='<div class="pw-pcard pw-pcard-new" onclick="pwNewBoard()"><div class="pw-pcard-new-plus">+</div><div class="pw-pcard-new-lbl">New Project</div></div>';
+  grid.innerHTML=h;
+};
+
+window.pwOpenBoard=function(id){
+  var C=_gc();
+  if(!C.boards.filter(function(b){return b.id===id;}).length)return;
+  C.active=id;
+  var brd=document.getElementById('pw-board'),dash=document.getElementById('pw-dash');
+  if(dash)dash.classList.add('hidden');
+  if(brd)brd.classList.remove('hidden');
+  var b=_activeBoard(),nm=document.getElementById('pw-hdr-boardname');
+  if(nm&&b)nm.textContent=b.name;
+  _srchQ='';var si=document.getElementById('pw-search');if(si)si.value='';
+  _undoStack=[];if(typeof _updateUndoBtn==='function')_updateUndoBtn();
+  pwRenderBoard();_updateBell();
+};
+
+window.pwNewBoard=function(){
+  var name=prompt('New project name:');
+  if(!name||!name.trim())return;
+  var C=_gc();
+  var pal=[['#2ABFAA','&#128295;'],['#185FA5','&#127760;'],['#E07B28','&#128736;'],['#6554C0','&#128161;'],['#00875A','&#128203;'],['#B91C1C','&#128293;'],['#00B8D9','&#128241;'],['#6D28D9','&#127912;']];
+  var pick=pal[C.boards.length%pal.length];
+  var b={id:_uid(),name:name.trim(),icon:pick[1],color:pick[0],desc:'',data:_blankData()};
+  C.boards.push(b);
+  try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(C)));}catch(e){}
+  if(typeof sbSet==='function')sbSet('tgk_projects_data',_stripFiles(C)).catch(function(){});
+  pwOpenBoard(b.id);
+};
+
+window.pwRenameBoard=function(id,ev){
+  if(ev){ev.stopPropagation();}
+  var C=_gc(),b=C.boards.filter(function(x){return x.id===id;})[0];if(!b)return;
+  var nn=prompt('Rename project:',b.name);if(nn===null)return;nn=nn.trim();if(!nn)return;
+  b.name=nn;
+  try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(C)));}catch(e){}
+  if(typeof sbSet==='function')sbSet('tgk_projects_data',_stripFiles(C)).catch(function(){});
+  pwRenderDash();
+  var nm=document.getElementById('pw-hdr-boardname');if(nm&&_gc().active===id)nm.textContent=nn;
+};
+
+window.pwDeleteBoard=function(id,ev){
+  if(ev){ev.stopPropagation();}
+  var C=_gc();
+  if(C.boards.length<=1){alert('You need at least one project.');return;}
+  var b=C.boards.filter(function(x){return x.id===id;})[0];if(!b)return;
+  if(!confirm('Delete project "'+b.name+'" and all of its tasks? This cannot be undone.'))return;
+  C.boards=C.boards.filter(function(x){return x.id!==id;});
+  if(C.active===id)C.active='';
+  try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(C)));}catch(e){}
+  if(typeof sbSet==='function')sbSet('tgk_projects_data',_stripFiles(C)).catch(function(){});
+  pwShowDash();
+};
+
+/* Re-render whichever view is currently on screen (used after remote sync). */
+function pwRefreshView(){
+  var brd=document.getElementById('pw-board');
+  if(brd&&!brd.classList.contains('hidden')&&_gc().active&&_activeBoard())pwRenderBoard();
+  else pwRenderDash();
+}
+
 })(); /* end PW IIFE */
 
 </script>
@@ -14113,7 +14283,8 @@ window.pwSetMemberRole = function(id, role){
 <div id="view-projects" class="cc-view">
   <div id="pw-board">
     <div class="pw-hdr">
-      <span class="pw-hdr-brand">Projects</span>
+      <button class="pw-back-btn" onclick="pwShowDash()" title="All projects">&#8592;</button>
+      <span class="pw-hdr-brand" id="pw-hdr-boardname">Projects</span>
       <div class="pw-hdr-div"></div>
       <div id="pw-hdr-stats" style="display:flex;gap:6px"></div>
       <div style="flex:1"></div>
@@ -14138,6 +14309,16 @@ window.pwSetMemberRole = function(id, role){
       <div id="pw-wm"></div>
       <div id="pw-kanban"></div>
     </div>
+  </div>
+  <div id="pw-dash" class="hidden">
+    <div class="pw-hdr">
+      <span class="pw-hdr-brand">Projects</span>
+      <div class="pw-hdr-div"></div>
+      <span class="pw-dash-sub">Pick a workspace to open its board</span>
+      <div style="flex:1"></div>
+      <button class="pw-hdr-btn" onclick="pwNewBoard()">+ New Project</button>
+    </div>
+    <div class="pw-dash-scroll"><div id="pw-dash-grid" class="pw-dash-grid"></div></div>
   </div>
   <div id="pw-detail"></div>
   <!-- Context menu -->
