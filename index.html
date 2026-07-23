@@ -2072,7 +2072,7 @@ window._sbBootPromise = (async function() {
       <span class="cc-badge badge-live">LIVE</span>
       <span class="cc-drag-handle">&#10783;</span>
     </button>
-    <div class="cc-foot"><p>TGK Motorsport<br>Command Center v1.1<br>Add tools as you build them.</p></div>
+    <div class="cc-foot"><p>TGK Motorsport<br>Command Center v1.2<br>Add tools as you build them.</p></div>
   </div>
 
   <div id="cc-main">
@@ -6234,70 +6234,132 @@ function socCopySchedule(){
   let angle=0,rpm=0,psi=0,spooling=false;
   let rafId=null,idleTimer=null,lastT=null,clickN=0;
   let actx=null,audioBuilt=false;
-  let masterGain=null,whistleGain=null,noiseGain=null;
-  let whistleOsc=null,whistleOsc2=null,noiseNode=null,noiseLPF=null;
+  let masterGain=null;
+  let whineOsc=null,whineOsc2=null,whineBP=null,whineGain=null;
+  let sizzleOsc=null,sizzleGain=null;
+  let noiseNode=null,noiseBP=null,noiseGain=null;
+  let hissHP=null,hissGain=null;
+  let rumbleOsc=null,rumbleGain=null;
   function spoolRate(r){if(r<0.20)return 10;if(r<0.45)return 42;if(r<0.70)return 68;return 38;}
   function rpmToPsi(r){if(r<0.20)return r*3;return 0.6+Math.pow((r-0.20)/0.80,1.6)*39.4;}
   function getCtx(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();return actx;}
+  function makeNoiseBuffer(ctx,seconds){
+    const len=Math.max(1,Math.floor(ctx.sampleRate*seconds));
+    const buf=ctx.createBuffer(1,len,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    return buf;
+  }
   function buildAudio(){
     if(audioBuilt)return;audioBuilt=true;
     try{
       const ctx=getCtx();
       masterGain=ctx.createGain();masterGain.gain.value=0;masterGain.connect(ctx.destination);
-      whistleOsc=ctx.createOscillator();whistleOsc.type='sine';whistleOsc.frequency.value=200;
-      whistleOsc2=ctx.createOscillator();whistleOsc2.type='sine';whistleOsc2.frequency.value=202;
-      whistleGain=ctx.createGain();whistleGain.gain.value=0;
-      whistleOsc.connect(whistleGain);whistleOsc2.connect(whistleGain);whistleGain.connect(masterGain);
-      whistleOsc.start();whistleOsc2.start();
-      const bufLen=ctx.sampleRate*3;const nBuf=ctx.createBuffer(1,bufLen,ctx.sampleRate);
-      const nd=nBuf.getChannelData(0);for(let i=0;i<bufLen;i++)nd[i]=Math.random()*2-1;
-      noiseNode=ctx.createBufferSource();noiseNode.buffer=nBuf;noiseNode.loop=true;
-      noiseLPF=ctx.createBiquadFilter();noiseLPF.type='lowpass';noiseLPF.frequency.value=800;
+      // Compressor whine: detuned saw pair through a tracking bandpass -> harmonic-rich whine, not a pure tone
+      whineOsc=ctx.createOscillator();whineOsc.type='sawtooth';whineOsc.frequency.value=140;
+      whineOsc2=ctx.createOscillator();whineOsc2.type='sawtooth';whineOsc2.frequency.value=141;
+      whineBP=ctx.createBiquadFilter();whineBP.type='bandpass';whineBP.Q.value=7;whineBP.frequency.value=140;
+      whineGain=ctx.createGain();whineGain.gain.value=0;
+      whineOsc.connect(whineBP);whineOsc2.connect(whineBP);whineBP.connect(whineGain);whineGain.connect(masterGain);
+      whineOsc.start();whineOsc2.start();
+      // Octave-up sine: the thin metallic whistle riding on top at high rpm
+      sizzleOsc=ctx.createOscillator();sizzleOsc.type='sine';sizzleOsc.frequency.value=280;
+      sizzleGain=ctx.createGain();sizzleGain.gain.value=0;
+      sizzleOsc.connect(sizzleGain);sizzleGain.connect(masterGain);
+      sizzleOsc.start();
+      // Induction whoosh: noise through a rising bandpass (was a plain lowpass)
+      noiseNode=ctx.createBufferSource();noiseNode.buffer=makeNoiseBuffer(ctx,3);noiseNode.loop=true;
+      noiseBP=ctx.createBiquadFilter();noiseBP.type='bandpass';noiseBP.Q.value=0.7;noiseBP.frequency.value=350;
       noiseGain=ctx.createGain();noiseGain.gain.value=0;
-      noiseNode.connect(noiseLPF);noiseLPF.connect(noiseGain);noiseGain.connect(masterGain);noiseNode.start();
+      noiseNode.connect(noiseBP);noiseBP.connect(noiseGain);noiseGain.connect(masterGain);noiseNode.start();
+      // Bright intake hiss, only audible near peak boost
+      hissHP=ctx.createBiquadFilter();hissHP.type='highpass';hissHP.frequency.value=3800;
+      hissGain=ctx.createGain();hissGain.gain.value=0;
+      noiseNode.connect(hissHP);hissHP.connect(hissGain);hissGain.connect(masterGain);
+      // Low rumble for body under load
+      rumbleOsc=ctx.createOscillator();rumbleOsc.type='sine';rumbleOsc.frequency.value=52;
+      rumbleGain=ctx.createGain();rumbleGain.gain.value=0;
+      rumbleOsc.connect(rumbleGain);rumbleGain.connect(masterGain);
+      rumbleOsc.start();
     }catch(e){console.error('Audio build failed:',e);}
   }
   function updateAudio(){
-    if(!masterGain||!whistleOsc)return;
+    if(!masterGain||!whineOsc)return;
     try{
       const ctx=getCtx();const t=ctx.currentTime;const r=rpm/100;
       if(spooling){
-        const freq=200+(r*r)*3800;
-        whistleOsc.frequency.setTargetAtTime(freq,t,0.05);
-        whistleOsc2.frequency.setTargetAtTime(freq*1.008,t,0.05);
-        const wVol=r<0.15?r*0.4:0.06+Math.pow((r-0.15)/0.85,1.2)*0.34;
-        whistleGain.gain.setTargetAtTime(wVol,t,0.06);
-        masterGain.gain.setTargetAtTime(0.7,t,0.05);
-        noiseLPF.frequency.setTargetAtTime(400+r*3600,t,0.1);
-        const nVol=r<0.20?0:Math.pow((r-0.20)/0.80,1.5)*0.4;
-        noiseGain.gain.setTargetAtTime(nVol,t,0.1);
+        // Blade-pass whine climbs from ~140 Hz to ~6.5 kHz, weighted toward the top end
+        const freq=140+Math.pow(r,1.7)*6400;
+        whineOsc.frequency.setTargetAtTime(freq,t,0.045);
+        whineOsc2.frequency.setTargetAtTime(freq*1.006,t,0.045);
+        whineBP.frequency.setTargetAtTime(freq,t,0.045);
+        sizzleOsc.frequency.setTargetAtTime(Math.min(freq*2,12000),t,0.045);
+        const wVol=r<0.12?r*0.5:0.06+Math.pow((r-0.12)/0.88,1.25)*0.5;
+        whineGain.gain.setTargetAtTime(wVol,t,0.06);
+        sizzleGain.gain.setTargetAtTime(r>0.35?Math.pow((r-0.35)/0.65,1.6)*0.10:0,t,0.08);
+        // Whoosh brightens and swells as boost builds
+        noiseBP.frequency.setTargetAtTime(300+Math.pow(r,1.4)*3400,t,0.09);
+        noiseGain.gain.setTargetAtTime(r<0.15?0:Math.pow((r-0.15)/0.85,1.4)*0.34,t,0.09);
+        hissGain.gain.setTargetAtTime(r>0.6?Math.pow((r-0.6)/0.4,2)*0.12:0,t,0.12);
+        rumbleOsc.frequency.setTargetAtTime(46+r*44,t,0.08);
+        rumbleGain.gain.setTargetAtTime(0.10+r*0.10,t,0.10);
+        masterGain.gain.setTargetAtTime(0.8,t,0.05);
       }else{
-        masterGain.gain.setTargetAtTime(0,t,0.25);
-        whistleGain.gain.setTargetAtTime(0,t,0.2);
-        noiseGain.gain.setTargetAtTime(0,t,0.2);
+        masterGain.gain.setTargetAtTime(0,t,0.22);
+        whineGain.gain.setTargetAtTime(0,t,0.16);
+        sizzleGain.gain.setTargetAtTime(0,t,0.14);
+        noiseGain.gain.setTargetAtTime(0,t,0.18);
+        hissGain.gain.setTargetAtTime(0,t,0.14);
+        rumbleGain.gain.setTargetAtTime(0,t,0.20);
       }
     }catch(e){}
   }
-  function playBOV(){
+  function playBOV(flutter){
     try{
-      const ctx=getCtx();const t=ctx.currentTime;const r=Math.max(rpm/100,0.2);
-      if(masterGain)masterGain.gain.setTargetAtTime(0,t,0.01);
-      if(whistleGain)whistleGain.gain.setTargetAtTime(0,t,0.01);
-      if(noiseGain)noiseGain.gain.setTargetAtTime(0,t,0.01);
-      const bufSize=Math.floor(ctx.sampleRate*0.25);const buf=ctx.createBuffer(1,bufSize,ctx.sampleRate);
-      const bd=buf.getChannelData(0);for(let i=0;i<bufSize;i++)bd[i]=Math.random()*2-1;
-      const ns=ctx.createBufferSource();ns.buffer=buf;
-      const ng=ctx.createGain();ng.gain.setValueAtTime(0.35*r,t);ng.gain.exponentialRampToValueAtTime(0.001,t+0.25);
-      ns.connect(ng);ng.connect(ctx.destination);ns.start(t);ns.stop(t+0.25);
-      const osc=ctx.createOscillator();const og=ctx.createGain();const bp=ctx.createBiquadFilter();
-      bp.type='bandpass';bp.Q.value=2.5;bp.frequency.setValueAtTime(900*r,t);bp.frequency.exponentialRampToValueAtTime(120,t+0.4);
-      osc.type='sawtooth';osc.frequency.setValueAtTime(900*r,t);osc.frequency.exponentialRampToValueAtTime(110,t+0.38);
-      og.gain.setValueAtTime(0.22*r,t);og.gain.exponentialRampToValueAtTime(0.001,t+0.4);
-      osc.connect(bp);bp.connect(og);og.connect(ctx.destination);osc.start(t);osc.stop(t+0.4);
+      const ctx=getCtx();const t=ctx.currentTime;const r=Math.max(rpm/100,0.25);
+      if(masterGain)masterGain.gain.setTargetAtTime(0,t,0.012);
+      if(whineGain)whineGain.gain.setTargetAtTime(0,t,0.012);
+      if(sizzleGain)sizzleGain.gain.setTargetAtTime(0,t,0.012);
+      if(noiseGain)noiseGain.gain.setTargetAtTime(0,t,0.012);
+      if(hissGain)hissGain.gain.setTargetAtTime(0,t,0.012);
+      if(rumbleGain)rumbleGain.gain.setTargetAtTime(0,t,0.05);
+      const dur=0.38+r*0.42;
+      // Main vent hiss: bright noise, bandpass sweeping down as pressure bleeds off
+      const ns=ctx.createBufferSource();ns.buffer=makeNoiseBuffer(ctx,dur+0.1);
+      const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=900;
+      const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.Q.value=0.9;
+      bp.frequency.setValueAtTime(2600+r*3200,t);bp.frequency.exponentialRampToValueAtTime(750,t+dur);
+      const ng=ctx.createGain();
+      const peak=0.5*r;
+      if(flutter){
+        // Compressor-surge flutter: chop the hiss at ~34 Hz, slowing to ~20 Hz as it dies
+        const N=512;const curve=new Float32Array(N);const dt=dur/(N-1);let ph=0;
+        for(let i=0;i<N;i++){
+          const p=i/(N-1);
+          ph+=6.2832*(34-14*p)*dt;
+          const env=Math.pow(1-p,1.35);
+          const chop=0.22+0.78*(Math.sin(ph)>0?1:0);
+          curve[i]=peak*env*chop;
+        }
+        ng.gain.setValueCurveAtTime(curve,t,dur);
+      }else{
+        ng.gain.setValueAtTime(peak,t);
+        ng.gain.exponentialRampToValueAtTime(0.001,t+dur);
+      }
+      ns.connect(hp);hp.connect(bp);bp.connect(ng);ng.connect(ctx.destination);
+      ns.start(t);ns.stop(t+dur+0.05);
+      // Pitch-drop body under the hiss
+      const osc=ctx.createOscillator();const obp=ctx.createBiquadFilter();const og=ctx.createGain();
+      osc.type='sawtooth';obp.type='bandpass';obp.Q.value=3;
+      osc.frequency.setValueAtTime(300+1100*r,t);osc.frequency.exponentialRampToValueAtTime(90,t+dur*0.9);
+      obp.frequency.setValueAtTime(300+1100*r,t);obp.frequency.exponentialRampToValueAtTime(110,t+dur*0.95);
+      og.gain.setValueAtTime(0.10*r,t);og.gain.exponentialRampToValueAtTime(0.001,t+dur*0.9);
+      osc.connect(obp);obp.connect(og);og.connect(ctx.destination);osc.start(t);osc.stop(t+dur);
+      // Initial release thump
       const th=ctx.createOscillator();const tg=ctx.createGain();
-      th.type='sine';th.frequency.setValueAtTime(95,t);th.frequency.exponentialRampToValueAtTime(22,t+0.14);
-      tg.gain.setValueAtTime(0.5*r,t);tg.gain.exponentialRampToValueAtTime(0.001,t+0.16);
-      th.connect(tg);tg.connect(ctx.destination);th.start(t);th.stop(t+0.16);
+      th.type='sine';th.frequency.setValueAtTime(110,t);th.frequency.exponentialRampToValueAtTime(28,t+0.12);
+      tg.gain.setValueAtTime(0.4*r,t);tg.gain.exponentialRampToValueAtTime(0.001,t+0.14);
+      th.connect(tg);tg.connect(ctx.destination);th.start(t);th.stop(t+0.15);
     }catch(e){}
   }
   function draw(ts){
@@ -6351,9 +6413,12 @@ function socCopySchedule(){
   function doBOV(){
     if(!spooling)return;
     spooling=false;widget.classList.remove('on');
-    playBOV();
-    const t=['PSSHH!','TSSSS!','FLUTTER!','WHOOSH!','PFFFFT!'];
-    if(bovEl){bovEl.textContent=t[Math.floor(Math.random()*t.length)];bovEl.classList.add('show');setTimeout(()=>bovEl.classList.remove('show'),900);}
+    const flutter=rpm>55&&Math.random()<0.45;
+    playBOV(flutter);
+    const hiss=['PSSHH!','TSSSS!','WHOOSH!','PFFFFT!'];
+    const stut=['STUTUTU!','SUTUTUTU!','FLUTTER!'];
+    const pool=flutter?stut:hiss;
+    if(bovEl){bovEl.textContent=pool[Math.floor(Math.random()*pool.length)];bovEl.classList.add('show');setTimeout(()=>bovEl.classList.remove('show'),900);}
   }
   function turboClick(){
     clickN++;buildAudio();
