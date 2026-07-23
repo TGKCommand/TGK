@@ -2072,7 +2072,7 @@ window._sbBootPromise = (async function() {
       <span class="cc-badge badge-live">LIVE</span>
       <span class="cc-drag-handle">&#10783;</span>
     </button>
-    <div class="cc-foot"><p>TGK Motorsport<br>Command Center v1.2<br>Add tools as you build them.</p></div>
+    <div class="cc-foot"><p>TGK Motorsport<br>Command Center v1.3<br>Add tools as you build them.</p></div>
   </div>
 
   <div id="cc-main">
@@ -6234,45 +6234,76 @@ function socCopySchedule(){
   let angle=0,rpm=0,psi=0,spooling=false;
   let rafId=null,idleTimer=null,lastT=null,clickN=0;
   let actx=null,audioBuilt=false;
-  let masterGain=null;
+  let masterGain=null,shaper=null;
   let whineOsc=null,whineOsc2=null,whineBP=null,whineGain=null;
-  let sizzleOsc=null,sizzleGain=null;
-  let noiseNode=null,noiseBP=null,noiseGain=null;
+  let sizzleOsc=null,sizzleGain=null,harm3Osc=null,harm3Gain=null;
+  let jit1=null,jit2=null,jitGain=null;
+  let noiseNode=null,noiseBP=null,resPeak=null,noiseGain=null;
   let hissHP=null,hissGain=null;
   let rumbleOsc=null,rumbleGain=null;
   function spoolRate(r){if(r<0.20)return 10;if(r<0.45)return 42;if(r<0.70)return 68;return 38;}
   function rpmToPsi(r){if(r<0.20)return r*3;return 0.6+Math.pow((r-0.20)/0.80,1.6)*39.4;}
   function getCtx(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();return actx;}
-  function makeNoiseBuffer(ctx,seconds){
+  function makeNoiseBuffer(ctx,seconds,pink){
     const len=Math.max(1,Math.floor(ctx.sampleRate*seconds));
     const buf=ctx.createBuffer(1,len,ctx.sampleRate);
     const d=buf.getChannelData(0);
-    for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    if(pink){
+      // Paul Kellet pink noise: induction roar is pink-weighted, not white hiss
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for(let i=0;i<len;i++){
+        const w=Math.random()*2-1;
+        b0=0.99886*b0+w*0.0555179;b1=0.99332*b1+w*0.0750759;
+        b2=0.96900*b2+w*0.1538520;b3=0.86650*b3+w*0.3104856;
+        b4=0.55000*b4+w*0.5329522;b5=-0.7616*b5-w*0.0168980;
+        d[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;
+        b6=w*0.115926;
+      }
+    }else{
+      for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    }
     return buf;
   }
   function buildAudio(){
     if(audioBuilt)return;audioBuilt=true;
     try{
       const ctx=getCtx();
-      masterGain=ctx.createGain();masterGain.gain.value=0;masterGain.connect(ctx.destination);
-      // Compressor whine: detuned saw pair through a tracking bandpass -> harmonic-rich whine, not a pure tone
+      // Soft-clip output stage glues the layers into one machine
+      shaper=ctx.createWaveShaper();
+      const SC=1024;const sc=new Float32Array(SC);
+      for(let i=0;i<SC;i++){const x=i/(SC-1)*2-1;sc[i]=Math.tanh(1.5*x);}
+      shaper.curve=sc;shaper.connect(ctx.destination);
+      masterGain=ctx.createGain();masterGain.gain.value=0;masterGain.connect(shaper);
+      // Compressor whine: detuned saw pair through a tracking bandpass
       whineOsc=ctx.createOscillator();whineOsc.type='sawtooth';whineOsc.frequency.value=140;
       whineOsc2=ctx.createOscillator();whineOsc2.type='sawtooth';whineOsc2.frequency.value=141;
       whineBP=ctx.createBiquadFilter();whineBP.type='bandpass';whineBP.Q.value=7;whineBP.frequency.value=140;
       whineGain=ctx.createGain();whineGain.gain.value=0;
       whineOsc.connect(whineBP);whineOsc2.connect(whineBP);whineBP.connect(whineGain);whineGain.connect(masterGain);
       whineOsc.start();whineOsc2.start();
-      // Octave-up sine: the thin metallic whistle riding on top at high rpm
+      // Pitch turbulence: two incommensurate LFOs wobble the whine so the sweep is never synth-smooth
+      jit1=ctx.createOscillator();jit1.type='sine';jit1.frequency.value=6.3;
+      jit2=ctx.createOscillator();jit2.type='sine';jit2.frequency.value=11.7;
+      jitGain=ctx.createGain();jitGain.gain.value=0;
+      jit1.connect(jitGain);jit2.connect(jitGain);
+      jitGain.connect(whineOsc.frequency);jitGain.connect(whineOsc2.frequency);
+      jit1.start();jit2.start();
+      // Octave-up sizzle + 3rd partial fill out the whine spectrum
       sizzleOsc=ctx.createOscillator();sizzleOsc.type='sine';sizzleOsc.frequency.value=280;
       sizzleGain=ctx.createGain();sizzleGain.gain.value=0;
       sizzleOsc.connect(sizzleGain);sizzleGain.connect(masterGain);
       sizzleOsc.start();
-      // Induction whoosh: noise through a rising bandpass (was a plain lowpass)
-      noiseNode=ctx.createBufferSource();noiseNode.buffer=makeNoiseBuffer(ctx,3);noiseNode.loop=true;
+      harm3Osc=ctx.createOscillator();harm3Osc.type='sine';harm3Osc.frequency.value=423;
+      harm3Gain=ctx.createGain();harm3Gain.gain.value=0;
+      harm3Osc.connect(harm3Gain);harm3Gain.connect(masterGain);
+      harm3Osc.start();
+      // Induction whoosh: pink noise -> rising bandpass -> intake-pipe resonance peak
+      noiseNode=ctx.createBufferSource();noiseNode.buffer=makeNoiseBuffer(ctx,3,true);noiseNode.loop=true;
       noiseBP=ctx.createBiquadFilter();noiseBP.type='bandpass';noiseBP.Q.value=0.7;noiseBP.frequency.value=350;
+      resPeak=ctx.createBiquadFilter();resPeak.type='peaking';resPeak.frequency.value=1150;resPeak.Q.value=4;resPeak.gain.value=7;
       noiseGain=ctx.createGain();noiseGain.gain.value=0;
-      noiseNode.connect(noiseBP);noiseBP.connect(noiseGain);noiseGain.connect(masterGain);noiseNode.start();
-      // Bright intake hiss, only audible near peak boost
+      noiseNode.connect(noiseBP);noiseBP.connect(resPeak);resPeak.connect(noiseGain);noiseGain.connect(masterGain);noiseNode.start();
+      // Bright intake hiss near peak boost
       hissHP=ctx.createBiquadFilter();hissHP.type='highpass';hissHP.frequency.value=3800;
       hissGain=ctx.createGain();hissGain.gain.value=0;
       noiseNode.connect(hissHP);hissHP.connect(hissGain);hissGain.connect(masterGain);
@@ -6293,13 +6324,17 @@ function socCopySchedule(){
         whineOsc.frequency.setTargetAtTime(freq,t,0.045);
         whineOsc2.frequency.setTargetAtTime(freq*1.006,t,0.045);
         whineBP.frequency.setTargetAtTime(freq,t,0.045);
+        // Turbulence wobble: strongest mid-spool, tightens as the wheel loads up
+        jitGain.gain.setTargetAtTime(freq*(0.002+0.005*(1-r*0.6)),t,0.08);
         sizzleOsc.frequency.setTargetAtTime(Math.min(freq*2,12000),t,0.045);
+        harm3Osc.frequency.setTargetAtTime(Math.min(freq*3.02,15000),t,0.045);
         const wVol=r<0.12?r*0.5:0.06+Math.pow((r-0.12)/0.88,1.25)*0.5;
         whineGain.gain.setTargetAtTime(wVol,t,0.06);
         sizzleGain.gain.setTargetAtTime(r>0.35?Math.pow((r-0.35)/0.65,1.6)*0.10:0,t,0.08);
+        harm3Gain.gain.setTargetAtTime(r>0.45?Math.pow((r-0.45)/0.55,1.8)*0.05:0,t,0.08);
         // Whoosh brightens and swells as boost builds
         noiseBP.frequency.setTargetAtTime(300+Math.pow(r,1.4)*3400,t,0.09);
-        noiseGain.gain.setTargetAtTime(r<0.15?0:Math.pow((r-0.15)/0.85,1.4)*0.34,t,0.09);
+        noiseGain.gain.setTargetAtTime(r<0.15?0:Math.pow((r-0.15)/0.85,1.4)*0.38,t,0.09);
         hissGain.gain.setTargetAtTime(r>0.6?Math.pow((r-0.6)/0.4,2)*0.12:0,t,0.12);
         rumbleOsc.frequency.setTargetAtTime(46+r*44,t,0.08);
         rumbleGain.gain.setTargetAtTime(0.10+r*0.10,t,0.10);
@@ -6308,6 +6343,8 @@ function socCopySchedule(){
         masterGain.gain.setTargetAtTime(0,t,0.22);
         whineGain.gain.setTargetAtTime(0,t,0.16);
         sizzleGain.gain.setTargetAtTime(0,t,0.14);
+        harm3Gain.gain.setTargetAtTime(0,t,0.14);
+        jitGain.gain.setTargetAtTime(0,t,0.14);
         noiseGain.gain.setTargetAtTime(0,t,0.18);
         hissGain.gain.setTargetAtTime(0,t,0.14);
         rumbleGain.gain.setTargetAtTime(0,t,0.20);
@@ -6317,36 +6354,49 @@ function socCopySchedule(){
   function playBOV(flutter){
     try{
       const ctx=getCtx();const t=ctx.currentTime;const r=Math.max(rpm/100,0.25);
+      const out=shaper||ctx.destination;
       if(masterGain)masterGain.gain.setTargetAtTime(0,t,0.012);
       if(whineGain)whineGain.gain.setTargetAtTime(0,t,0.012);
       if(sizzleGain)sizzleGain.gain.setTargetAtTime(0,t,0.012);
+      if(harm3Gain)harm3Gain.gain.setTargetAtTime(0,t,0.012);
       if(noiseGain)noiseGain.gain.setTargetAtTime(0,t,0.012);
       if(hissGain)hissGain.gain.setTargetAtTime(0,t,0.012);
       if(rumbleGain)rumbleGain.gain.setTargetAtTime(0,t,0.05);
       const dur=0.38+r*0.42;
+      // Valve-crack chuff: sharp ~40 ms broadband transient before the hiss
+      const ch=ctx.createBufferSource();ch.buffer=makeNoiseBuffer(ctx,0.05,false);
+      const chp=ctx.createBiquadFilter();chp.type='highpass';chp.frequency.value=1500;
+      const cg=ctx.createGain();cg.gain.setValueAtTime(0.55*r,t);cg.gain.exponentialRampToValueAtTime(0.001,t+0.045);
+      ch.connect(chp);chp.connect(cg);cg.connect(out);ch.start(t);ch.stop(t+0.05);
       // Main vent hiss: bright noise, bandpass sweeping down as pressure bleeds off
-      const ns=ctx.createBufferSource();ns.buffer=makeNoiseBuffer(ctx,dur+0.1);
+      const ns=ctx.createBufferSource();ns.buffer=makeNoiseBuffer(ctx,dur+0.1,false);
       const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=900;
       const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.Q.value=0.9;
-      bp.frequency.setValueAtTime(2600+r*3200,t);bp.frequency.exponentialRampToValueAtTime(750,t+dur);
       const ng=ctx.createGain();
       const peak=0.5*r;
+      const f0=2600+r*3200,f1=750;
       if(flutter){
-        // Compressor-surge flutter: chop the hiss at ~34 Hz, slowing to ~20 Hz as it dies
-        const N=512;const curve=new Float32Array(N);const dt=dur/(N-1);let ph=0;
+        // Compressor-surge flutter: soft-edged chop slowing 34 -> 20 Hz,
+        // each pulse lifts the filter pitch as the wheel momentarily re-loads
+        const N=1024;const gc=new Float32Array(N);const fc=new Float32Array(N);
+        const dt=dur/(N-1);let ph=0;
         for(let i=0;i<N;i++){
           const p=i/(N-1);
           ph+=6.2832*(34-14*p)*dt;
+          const pulse=1/(1+Math.exp(-14*Math.sin(ph)));
           const env=Math.pow(1-p,1.35);
-          const chop=0.22+0.78*(Math.sin(ph)>0?1:0);
-          curve[i]=peak*env*chop;
+          gc[i]=peak*env*(0.18+0.82*pulse);
+          fc[i]=f0*Math.pow(f1/f0,p)*(1+0.22*pulse);
         }
-        ng.gain.setValueCurveAtTime(curve,t,dur);
+        ng.gain.setValueCurveAtTime(gc,t,dur);
+        bp.frequency.setValueCurveAtTime(fc,t,dur);
       }else{
         ng.gain.setValueAtTime(peak,t);
         ng.gain.exponentialRampToValueAtTime(0.001,t+dur);
+        bp.frequency.setValueAtTime(f0,t);
+        bp.frequency.exponentialRampToValueAtTime(f1,t+dur);
       }
-      ns.connect(hp);hp.connect(bp);bp.connect(ng);ng.connect(ctx.destination);
+      ns.connect(hp);hp.connect(bp);bp.connect(ng);ng.connect(out);
       ns.start(t);ns.stop(t+dur+0.05);
       // Pitch-drop body under the hiss
       const osc=ctx.createOscillator();const obp=ctx.createBiquadFilter();const og=ctx.createGain();
@@ -6354,12 +6404,12 @@ function socCopySchedule(){
       osc.frequency.setValueAtTime(300+1100*r,t);osc.frequency.exponentialRampToValueAtTime(90,t+dur*0.9);
       obp.frequency.setValueAtTime(300+1100*r,t);obp.frequency.exponentialRampToValueAtTime(110,t+dur*0.95);
       og.gain.setValueAtTime(0.10*r,t);og.gain.exponentialRampToValueAtTime(0.001,t+dur*0.9);
-      osc.connect(obp);obp.connect(og);og.connect(ctx.destination);osc.start(t);osc.stop(t+dur);
+      osc.connect(obp);obp.connect(og);og.connect(out);osc.start(t);osc.stop(t+dur);
       // Initial release thump
       const th=ctx.createOscillator();const tg=ctx.createGain();
       th.type='sine';th.frequency.setValueAtTime(110,t);th.frequency.exponentialRampToValueAtTime(28,t+0.12);
       tg.gain.setValueAtTime(0.4*r,t);tg.gain.exponentialRampToValueAtTime(0.001,t+0.14);
-      th.connect(tg);tg.connect(ctx.destination);th.start(t);th.stop(t+0.15);
+      th.connect(tg);tg.connect(out);th.start(t);th.stop(t+0.15);
     }catch(e){}
   }
   function draw(ts){
@@ -6413,7 +6463,7 @@ function socCopySchedule(){
   function doBOV(){
     if(!spooling)return;
     spooling=false;widget.classList.remove('on');
-    const flutter=rpm>55&&Math.random()<0.45;
+    const flutter=rpm>85||(rpm>55&&Math.random()<0.45);
     playBOV(flutter);
     const hiss=['PSSHH!','TSSSS!','WHOOSH!','PFFFFT!'];
     const stut=['STUTUTU!','SUTUTUTU!','FLUTTER!'];
