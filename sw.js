@@ -1,67 +1,52 @@
-/* TGK Command Center service worker.
- * Design goal: make the app installable + shell-cached for instant/offline launch,
- * WITHOUT ever serving stale data. All Supabase/Shopify/API traffic bypasses the
- * cache entirely and goes straight to the network.
- *
- * Bump CACHE_VERSION whenever you change the shell so clients pick up the update.
- */
-const CACHE_VERSION = 'tgk-cc-v1';
-const SHELL = [
-  './index.html',
-  './icon-192.png',
-  './icon-512.png',
-  './manifest.json'
-];
+/* ============================================================
+   TGK Command Center - service worker
+   Strategy:
+     - Same-origin app shell (index.html, manifest, icons): NETWORK-FIRST,
+       so a new deploy is picked up immediately; falls back to cache offline.
+     - Supabase / APIs / any cross-origin or non-GET request: NOT intercepted
+       -> goes straight to the network, never cached (no stale data).
+   Deploy step: change CACHE_NAME on every release (e.g. v2 -> v3) so installed
+   PWA clients drop the old cache and pull the new files.
+   ============================================================ */
+const CACHE_NAME = 'tgk-command-v2';          // <-- BUMP THIS ON EVERY DEPLOY
+const SHELL = ['./', './index.html', './manifest.json'];
 
-self.addEventListener('install', function (event) {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then(function (cache) {
-      return cache.addAll(SHELL);
+self.addEventListener('install', function (e) {
+  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(function (c) {
+      return c.addAll(SHELL).catch(function () { /* ok if some shell items 404 */ });
     })
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', function (event) {
-  event.waitUntil(
+self.addEventListener('activate', function (e) {
+  e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(
-        keys.filter(function (k) { return k !== CACHE_VERSION; })
+        keys.filter(function (k) { return k !== CACHE_NAME; })
             .map(function (k) { return caches.delete(k); })
       );
-    })
+    }).then(function () { return self.clients.claim(); })
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', function (event) {
-  var req = event.request;
+self.addEventListener('fetch', function (e) {
+  var req = e.request;
+  var url;
+  try { url = new URL(req.url); } catch (_) { return; }
 
-  // Only ever handle same-origin GET requests. Everything else — Supabase,
-  // Shopify, ShipStation, Google Fonts, POST/PUT/etc. — passes straight through
-  // untouched, so live data is never intercepted or cached.
-  if (req.method !== 'GET') return;
-  var url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
+  // Never touch non-GET or cross-origin (Supabase, Shopify, etc.) -> default network, no caching.
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // Navigation requests: network-first, fall back to cached shell when offline.
-  if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req).catch(function () {
-        return caches.match('./index.html');
-      })
-    );
-    return;
-  }
-
-  // Same-origin static assets (icons, manifest): cache-first, then network.
-  event.respondWith(
-    caches.match(req).then(function (cached) {
-      return cached || fetch(req).then(function (resp) {
-        var copy = resp.clone();
-        caches.open(CACHE_VERSION).then(function (cache) { cache.put(req, copy); });
-        return resp;
-      });
+  // Network-first for our own files; cache a copy; fall back to cache (then index.html) when offline.
+  e.respondWith(
+    fetch(req).then(function (res) {
+      var copy = res.clone();
+      caches.open(CACHE_NAME).then(function (c) { c.put(req, copy).catch(function () {}); });
+      return res;
+    }).catch(function () {
+      return caches.match(req).then(function (hit) { return hit || caches.match('./index.html'); });
     })
   );
 });
