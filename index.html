@@ -9552,7 +9552,7 @@ function arcRenderCarPicker() {
   ['audi','tiguan','cc','x5'].forEach(function(id) {
     var m = ARC_CARS[id], on = id === sel;
     var card = document.createElement('div');
-    card.style.cssText = 'cursor:pointer;border:2px solid ' + (on ? '#2ABFAA' : '#333') + ';border-radius:8px;padding:8px 6px 7px;background:' + (on ? '#0d1614' : '#101010') + ';width:88px;text-align:center;transition:border-color .15s';
+    card.style.cssText = 'cursor:pointer;border:2px solid ' + (on ? '#2ABFAA' : '#3d4147') + ';border-radius:8px;padding:9px 7px 8px;background:' + (on ? '#0d1614' : '#121316') + ';width:98px;text-align:center;transition:border-color .15s';
     var cv = document.createElement('canvas'); cv.width = 64; cv.height = 92;
     var cctx = cv.getContext('2d');
     cctx.save(); cctx.translate(32, 47); cctx.scale(1.15, 1.15);
@@ -9560,11 +9560,11 @@ function arcRenderCarPicker() {
     cctx.restore();
     card.appendChild(cv);
     var bar = function(label, v) {
-      return '<div style="display:flex;align-items:center;gap:3px;margin-top:2px"><span style="font-size:6px;color:#777;width:16px;text-align:left;letter-spacing:.05em">' + label + '</span><div style="flex:1;height:3px;background:#222;border-radius:2px;overflow:hidden"><div style="width:' + Math.round(v*100) + '%;height:100%;background:' + (on ? '#2ABFAA' : '#555') + '"></div></div></div>';
+      return '<div style="display:flex;align-items:center;gap:4px;margin-top:3px"><span style="font-size:7.5px;color:#a0a6ae;width:22px;text-align:left;letter-spacing:.05em">' + label + '</span><div style="flex:1;height:4px;background:#26282d;border-radius:2px;overflow:hidden"><div style="width:' + Math.round(v*100) + '%;height:100%;background:' + (on ? '#2ABFAA' : '#555') + '"></div></div></div>';
     };
     card.insertAdjacentHTML('beforeend',
-      '<div style="font-size:9px;font-weight:700;color:' + (on ? '#2ABFAA' : '#ccc') + ';letter-spacing:.06em;margin-top:5px">' + m.name + '</div>' +
-      '<div style="font-size:6.5px;color:#666;letter-spacing:.08em;margin-top:1px">' + m.sub + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:' + (on ? '#2ABFAA' : '#e4e7ea') + ';letter-spacing:.05em;margin-top:6px">' + m.name + '</div>' +
+      '<div style="font-size:8px;color:#8b929b;letter-spacing:.07em;margin-top:2px">' + m.sub + '</div>' +
       '<div style="margin-top:5px">' + bar('SPD', m.top/235) + bar('ACC', m.accel/1.2) + bar('GRP', m.grip/1.14) + '</div>');
     card.onclick = function(){ arcPickCar(id); };
     row.appendChild(card);
@@ -9591,19 +9591,19 @@ function arcRenderOver() {
   var o = window._arcOver; if (!o) return;
   var el = document.getElementById('arc-leaderboard'); if (!el) return;
   var st = o.stats;
-  var stat = function(l, v) { return '<div style="text-align:center;min-width:56px"><div style="font-size:8px;color:#777;letter-spacing:.12em">' + l + '</div><div style="font-size:15px;font-weight:700;color:#fff;margin-top:2px">' + v + '</div></div>'; };
+  var stat = function(l, v) { return '<div style="text-align:center;min-width:60px"><div style="font-size:9.5px;color:#a0a6ae;letter-spacing:.12em">' + l + '</div><div style="font-size:15px;font-weight:700;color:#fff;margin-top:2px">' + v + '</div></div>'; };
   var html = '<div style="display:flex;gap:14px;justify-content:center;margin-bottom:14px;padding:10px 12px;background:#111;border:1px solid #222;border-radius:6px;flex-wrap:wrap">'
     + stat('CAR', st.car) + stat('TOP SPEED', st.top + ' MPH') + stat('BEST STREAK', '\u00d7' + st.streak) + stat('GATES', st.g + '/' + st.gt) + '</div>';
-  if (o.freeRun) html += '<div style="font-size:9px;color:#777;letter-spacing:.1em;margin-bottom:10px">FREE RUN \u2014 SCORE NOT POSTED</div>';
+  if (o.freeRun) html += '<div style="font-size:10.5px;color:#a0a6ae;letter-spacing:.1em;margin-bottom:10px">FREE RUN \u2014 SCORE NOT POSTED</div>';
   var tabs = [['today','TODAY'],['week','WEEK'],['all','ALL-TIME']];
   html += '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:7px">' + tabs.map(function(t) {
     var on = o.tab === t[0];
-    return '<button onclick="arcBoardTab(\'' + t[0] + '\')" style="background:' + (on ? '#2ABFAA' : 'transparent') + ';color:' + (on ? '#0a0a0a' : '#888') + ';border:1px solid ' + (on ? '#2ABFAA' : '#333') + ';font-family:\'Courier New\',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;padding:4px 12px;border-radius:3px;cursor:pointer">' + t[1] + '</button>';
+    return '<button onclick="arcBoardTab(\'' + t[0] + '\')" style="background:' + (on ? '#2ABFAA' : 'transparent') + ';color:' + (on ? '#0a0a0a' : '#888') + ';border:1px solid ' + (on ? '#2ABFAA' : '#333') + ';font-family:\'Courier New\',monospace;font-size:10.5px;font-weight:700;letter-spacing:.1em;padding:5px 13px;border-radius:3px;cursor:pointer">' + t[1] + '</button>';
   }).join('') + '</div>';
   var carsF = [['all','ALL'],['audi','AUDI'],['tiguan','TIGUAN'],['cc','CC'],['x5','X5']];
   html += '<div style="display:flex;gap:4px;justify-content:center;margin-bottom:10px">' + carsF.map(function(t) {
     var on = o.car === t[0];
-    return '<button onclick="arcBoardCar(\'' + t[0] + '\')" style="background:transparent;color:' + (on ? '#2ABFAA' : '#555') + ';border:none;border-bottom:1px solid ' + (on ? '#2ABFAA' : 'transparent') + ';font-family:\'Courier New\',monospace;font-size:8px;font-weight:700;letter-spacing:.1em;padding:2px 6px;cursor:pointer">' + t[1] + '</button>';
+    return '<button onclick="arcBoardCar(\'' + t[0] + '\')" style="background:transparent;color:' + (on ? '#2ABFAA' : '#555') + ';border:none;border-bottom:1px solid ' + (on ? '#2ABFAA' : 'transparent') + ';font-family:\'Courier New\',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;padding:3px 7px;cursor:pointer">' + t[1] + '</button>';
   }).join('') + '</div>';
   var weekAgo = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   var list = arcGetScores().filter(function(s2) {
@@ -9613,15 +9613,15 @@ function arcRenderOver() {
     return true;
   }).slice(0, 10);
   html += '<table style="width:100%;border-collapse:collapse;font-family:\'Courier New\',monospace;font-size:11px">';
-  if (!list.length) html += '<tr><td style="color:#555;letter-spacing:.1em;padding:10px 0;text-align:center">NO RUNS YET \u2014 SET THE PACE</td></tr>';
+  if (!list.length) html += '<tr><td style="color:#9aa0a8;letter-spacing:.1em;padding:10px 0;text-align:center">NO RUNS YET \u2014 SET THE PACE</td></tr>';
   list.forEach(function(s2, i) {
     var key = s2.name + '|' + s2.dist + '|' + (s2.date || '') + '|' + (s2.seed || '');
     var isMe = o.myKey && key === o.myKey;
-    var col = isMe ? '#2ABFAA' : (i === 0 ? '#f87171' : '#555');
+    var col = isMe ? '#2ABFAA' : (i === 0 ? '#ff9a9a' : '#9aa0a8');
     var tag = s2.car ? (ARC_CAR_TAG[s2.car] || '?') : '\u2014';
     html += '<tr style="color:' + col + '"><td style="padding:2px 6px 2px 0;width:18px">' + (i + 1) + '.</td>'
       + '<td style="padding:2px 6px;letter-spacing:.1em">' + s2.name + '</td>'
-      + '<td style="padding:2px 6px;font-size:8px;color:' + (isMe ? '#2ABFAA' : '#666') + ';letter-spacing:.05em">' + tag + '</td>'
+      + '<td style="padding:2px 6px;font-size:9px;color:' + (isMe ? '#2ABFAA' : '#8b929b') + ';letter-spacing:.05em">' + tag + '</td>'
       + '<td style="padding:2px 0;text-align:right;font-weight:700">' + (s2.dist || 0).toLocaleString() + 'ft</td></tr>';
   });
   html += '</table>';
@@ -9723,21 +9723,29 @@ function arcRun(driverName) {
   // Start wide (car + 120px), narrow to (car + 36px), never tighter
   var CAR_W = car.width;
   function gateGapPx() {
-    var minGap = CAR_W + 36;  // absolute minimum — always passable
-    var maxGap = CAR_W + 120; // starting gap — very easy
-    return Math.max(minGap, maxGap - distance * 0.022);
+    var minGap = CAR_W + 46;  // absolute minimum \u2014 always comfortably passable
+    var maxGap = CAR_W + 120; // starting gap \u2014 very easy
+    return Math.max(minGap, maxGap - distance * 0.017);
   }
 
   function spawnGate() {
     var margin = 20;
-    var roadL  = CX - ROAD_W/2 + margin;
-    var roadR  = CX + ROAD_W/2 - margin;
+    var rc     = roadPts.length ? _rcx : CX; // gates enter at the top of the road, wherever it currently bends
+    var roadL  = rc - ROAD_W/2 + margin;
+    var roadR  = rc + ROAD_W/2 - margin;
     var gap    = gateGapPx();
     var half   = gap / 2;
-    // How far the gate centre can wander from road centre
     var maxWander = Math.max(0, (roadR - roadL - gap) / 2);
-    var mid = CX + (runRng() * 2 - 1) * maxWander;
+    var mid = rc + (runRng() * 2 - 1) * maxWander;
+    // [FAIR] Reachability clamp: a gate can never demand more lateral travel than the car
+    // can physically cover in the spacing since the previous gate (no more impossible gates).
+    if (_lastGateMid !== null) {
+      var spacingM = Math.max(10, distance - _lastGateSpawnDist);
+      var reach = gap * 0.45 + spacingM * 2.0;
+      mid = Math.max(_lastGateMid - reach, Math.min(_lastGateMid + reach, mid));
+    }
     mid = Math.max(roadL + half, Math.min(roadR - half, mid));
+    _lastGateMid = mid; _lastGateSpawnDist = distance;
     var r = 10;
     gates.push({
       cL: { x: mid - half, y: -24, r: r, hit: false, vx: 0 },
@@ -9773,9 +9781,10 @@ function arcRun(driverName) {
     var idx = Math.floor(runRng() * _bbMessages.length);
     var msg = _bbMessages[idx];
     var bw  = 140, bh = 76, postH = 50;
+    var _brc = roadPts.length ? _rcx : CX;
     var xPos = msg.side === 'L'
-      ? CX - ROAD_W/2 - bw - 16
-      : CX + ROAD_W/2 + 16;
+      ? _brc - ROAD_W/2 - bw - 16
+      : _brc + ROAD_W/2 + 16;
     billboards.push({ x: xPos, y: -bh - postH, w: bw, h: bh, postH: postH,
                       line1: msg.line1, line2: msg.line2, line3: msg.line3, side: msg.side });
   }
@@ -9845,6 +9854,11 @@ function arcRun(driverName) {
   var _lastMile = 0;      // [FUN] milestone callouts every 500 ft
   var topSpeed = 35, gatesPassed = 0, gatesTotal = 0, runTime = 0; // [COMP] run stats
   var ghostRec = [], _ghostNextT = 0, ghost = null, ghostIdx = 0;  // [COMP] ghost record + replay
+  // [ROAD] Curved course: the road centreline drifts through seeded bends. roadPts is the scrolling
+  // centreline (bottom of screen first); everything (draw, clamp, spawns, ghost) follows it.
+  var roadPts = [], _rcx = 0, _rcxTarget = 0, _nextCurveAt = 120;
+  var CURVE_RATE = 1.1; // max lateral drift px per metre travelled - gentle, always followable
+  var _lastGateMid = null, _lastGateSpawnDist = 0; // [FAIR] reachability clamp anchors
   if (RUN_MODE === 'daily' && typeof sbGet === 'function') {
     sbGet('arc_ghost_' + RUN_SEED).then(function(g){ if (g && g.samples && g.samples.length > 3) ghost = g; }).catch(function(){});
   }
@@ -10209,26 +10223,43 @@ function arcRun(driverName) {
   }
 
   // ── Draw road (straight) ──────────────────────────────────────────────
-  function drawRoad() {
-    ctx.fillStyle='#0d1a0d'; ctx.fillRect(0,0,W,H);
-    var roadL = CX - ROAD_W/2, roadR = CX + ROAD_W/2;
-    ctx.fillStyle='#1c1c1c'; ctx.fillRect(roadL,0,ROAD_W,H);
-    // Kerb stripes
-    var kw=10;
-    for (var y=-dashOffset%40; y<H; y+=40) {
-      ctx.fillStyle='#cc2200';
-      ctx.fillRect(roadL-kw,y,kw,20); ctx.fillRect(roadR,y,kw,20);
-      ctx.fillStyle='#ffffff';
-      ctx.fillRect(roadL-kw,y+20,kw,20); ctx.fillRect(roadR,y+20,kw,20);
+  function roadCenterAt(y) {
+    var n = roadPts.length; if (!n) return CX;
+    if (y >= roadPts[0].y) return roadPts[0].cx;                 // below bottom
+    if (y <= roadPts[n-1].y) return roadPts[n-1].cx;             // above top
+    for (var i = 0; i < n - 1; i++) {
+      var a = roadPts[i], b = roadPts[i+1];
+      if (y <= a.y && y >= b.y) { var f = (a.y - y) / ((a.y - b.y) || 1); return a.cx + (b.cx - a.cx) * f; }
     }
-    // Edge lines
+    return CX;
+  }
+  function drawRoad() {
+    // Grass: two-tone scrolling bands for a sense of speed
+    ctx.fillStyle='#0d1a0d'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#12220f';
+    for (var gy = -(dashOffset % 80); gy < H; gy += 80) ctx.fillRect(0, gy, W, 40);
+    if (!roadPts.length) return;
+    var i, p;
+    // Tarmac ribbon following the centreline
+    ctx.beginPath();
+    for (i = roadPts.length - 1; i >= 0; i--) { p = roadPts[i]; if (i === roadPts.length - 1) ctx.moveTo(p.cx - ROAD_W/2, p.y); else ctx.lineTo(p.cx - ROAD_W/2, p.y); }
+    for (i = 0; i < roadPts.length; i++) { p = roadPts[i]; ctx.lineTo(p.cx + ROAD_W/2, p.y); }
+    ctx.closePath(); ctx.fillStyle='#1c1c1c'; ctx.fill();
+    // Kerbs: alternating red/white blocks hugging both edges through the bends
+    var kw = 10, blk = 20;
+    for (var y = -(dashOffset % blk) - blk; y < H + blk; y += blk) {
+      var cxh = roadCenterAt(y + blk/2);
+      ctx.fillStyle = (Math.floor((y + dashOffset) / blk) % 2 === 0) ? '#cc2200' : '#ffffff';
+      ctx.fillRect(cxh - ROAD_W/2 - kw, y, kw, blk);
+      ctx.fillRect(cxh + ROAD_W/2, y, kw, blk);
+    }
+    // Edge lines + centre dashes as polylines along the curve
     ctx.strokeStyle='#fff'; ctx.lineWidth=3;
-    ctx.beginPath(); ctx.moveTo(roadL,0); ctx.lineTo(roadL,H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(roadR,0); ctx.lineTo(roadR,H); ctx.stroke();
-    // Centre dashes
-    ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+    ctx.beginPath(); for (i = roadPts.length - 1; i >= 0; i--) { p = roadPts[i]; if (i === roadPts.length - 1) ctx.moveTo(p.cx - ROAD_W/2, p.y); else ctx.lineTo(p.cx - ROAD_W/2, p.y); } ctx.stroke();
+    ctx.beginPath(); for (i = roadPts.length - 1; i >= 0; i--) { p = roadPts[i]; if (i === roadPts.length - 1) ctx.moveTo(p.cx + ROAD_W/2, p.y); else ctx.lineTo(p.cx + ROAD_W/2, p.y); } ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=2;
     ctx.setLineDash([30,20]); ctx.lineDashOffset=-dashOffset;
-    ctx.beginPath(); ctx.moveTo(CX,0); ctx.lineTo(CX,H); ctx.stroke();
+    ctx.beginPath(); for (i = roadPts.length - 1; i >= 0; i--) { p = roadPts[i]; if (i === roadPts.length - 1) ctx.moveTo(p.cx, p.y); else ctx.lineTo(p.cx, p.y); } ctx.stroke();
     ctx.setLineDash([]);
   }
 
@@ -10387,7 +10418,21 @@ function arcRun(driverName) {
     _lastScroll = scrollSpeed * dt;
 
     dashOffset += _lastScroll;
-    distance   += speedMph * 0.00745 * dt; // [ACC] true conversion: mph -> metres per 60fps frame
+    var _mThis = speedMph * 0.00745 * dt;
+    distance  += _mThis; // [ACC] true conversion: mph -> metres per 60fps frame
+
+    // [ROAD] advance the seeded curve plan (deterministic per daily seed)
+    if (roadPts.length === 0) { _rcx = CX; _rcxTarget = CX; for (var _ry = H + 60; _ry >= -60; _ry -= 8) roadPts.push({ y: _ry, cx: CX }); }
+    if (distance >= _nextCurveAt) {
+      var _maxOff = Math.max(0, (W - ROAD_W) / 2 - 26);
+      _rcxTarget = CX + (runRng() * 2 - 1) * _maxOff;
+      _nextCurveAt = distance + 130 + runRng() * 170;
+    }
+    var _dC = _rcxTarget - _rcx, _mvC = CURVE_RATE * _mThis;
+    _rcx += Math.max(-_mvC, Math.min(_mvC, _dC));
+    for (var _ri = 0; _ri < roadPts.length; _ri++) roadPts[_ri].y += _lastScroll;
+    while (roadPts.length && roadPts[0].y > H + 60) roadPts.shift();
+    while (roadPts.length && roadPts[roadPts.length - 1].y > -60) roadPts.push({ y: roadPts[roadPts.length - 1].y - 8, cx: _rcx });
 
     // Billboard spawn — by distance travelled
     if (distance - _lastBBDist >= BB_EVERY_M) { spawnBillboard(); _lastBBDist = distance; }
@@ -10396,14 +10441,14 @@ function arcRun(driverName) {
     if (distance >= _nextGateAt) {
       spawnGate();
       var gapM = Math.max(25, 45 - distance * 0.011);
-      if (_slalomQueue > 0) { _slalomQueue--; gapM = Math.max(14, gapM * 0.5); }
+      if (_slalomQueue > 0) { _slalomQueue--; gapM = Math.max(18, gapM * 0.55); }
       else if (distance > 350 && runRng() < 0.16) { _slalomQueue = 2; } // [FUN] slalom!
       _nextGateAt = distance + gapM;
     }
 
     // Oil slicks — seeded hazards; hit one and grip vanishes for a moment
     if (distance >= _nextSlickAt) {
-      slicks.push({ x: CX + (runRng() * 2 - 1) * (ROAD_W / 2 - 34), y: -22, r: 15 });
+      slicks.push({ x: (roadPts.length ? _rcx : CX) + (runRng() * 2 - 1) * (ROAD_W / 2 - 34), y: -22, r: 15 });
       _nextSlickAt = distance + 260 + runRng() * 320;
     }
 
@@ -10417,7 +10462,7 @@ function arcRun(driverName) {
       blip(760, 0.06);
     }
     if (runTime >= _ghostNextT) { // 10 samples/sec: [ms, lane offset in 0.1%, distance in dm]
-      ghostRec.push([Math.round(runTime), Math.round((car.x - CX) / ROAD_W * 1000), Math.round(distance * 10)]);
+      ghostRec.push([Math.round(runTime), Math.round((car.x - roadCenterAt(car.y)) / ROAD_W * 1000), Math.round(distance * 10)]);
       _ghostNextT += 100;
     }
 
@@ -10437,9 +10482,10 @@ function arcRun(driverName) {
     car.x  += car.vx * dt;
     car.angle = car.vx * 0.09;
 
-    // Road boundaries
-    var roadL = CX - ROAD_W/2 + car.width/2 + 2;
-    var roadR = CX + ROAD_W/2 - car.width/2 - 2;
+    // Road boundaries follow the curve at the car's row
+    var _rcCar = roadCenterAt(car.y);
+    var roadL = _rcCar - ROAD_W/2 + car.width/2 + 2;
+    var roadR = _rcCar + ROAD_W/2 - car.width/2 - 2;
     car.x = Math.max(roadL, Math.min(roadR, car.x));
 
     if (penFlash > 0) penFlash -= dt;
@@ -10492,9 +10538,9 @@ function arcRun(driverName) {
       while (ghostIdx < gs.length - 1 && gs[ghostIdx + 1][0] <= runTime) ghostIdx++;
       var ga = gs[ghostIdx], gb = gs[Math.min(ghostIdx + 1, gs.length - 1)];
       var gf = gb[0] > ga[0] ? Math.min(1, (runTime - ga[0]) / (gb[0] - ga[0])) : 0;
-      var gx = CX + ((ga[1] + (gb[1] - ga[1]) * gf) / 1000) * ROAD_W;
       var gd = (ga[2] + (gb[2] - ga[2]) * gf) / 10;
       var gy = car.y - Math.max(-H * 0.45, Math.min(H * 0.55, (gd - distance) * 3));
+      var gx = roadCenterAt(gy) + ((ga[1] + (gb[1] - ga[1]) * gf) / 1000) * ROAD_W;
       var alive2 = runTime <= gs[gs.length - 1][0] + 150;
       ctx.save(); ctx.globalAlpha = alive2 ? 0.32 : 0.12; ctx.translate(gx, gy);
       var gm = (window.ARC_CARS && ARC_CARS[ghost.car]) || null;
@@ -10995,7 +11041,7 @@ window.addEventListener('resize', function(){
 </div>
 <!-- ========= END FB GROUP FINDER VIEW ========= -->
 <!-- ========= ARCADE VIEW ========= -->
-<div id="view-arcade" class="cc-view" style="background:#0a0a0a;position:relative;overflow:hidden;flex-direction:column"><canvas id="arc-canvas" style="display:block;flex:1;min-height:0"></canvas><div id="arc-start" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.85);z-index:10"><div style="font-family:'Courier New',monospace;text-align:center"><div style="font-size:11px;letter-spacing:.3em;color:#f87171;margin-bottom:8px;text-transform:uppercase">TGK Motorsport</div><div style="font-size:42px;font-weight:900;color:#fff;letter-spacing:-.02em;line-height:1">AUTOCROSS</div><div style="font-size:13px;color:#777;margin-top:8px;letter-spacing:.1em">SURVIVAL CHALLENGE</div><div style="margin-top:36px;display:flex;gap:32px;justify-content:center;font-size:11px;color:#aaa;letter-spacing:.08em"><div><span style="color:#2ABFAA;font-weight:700">W</span> ACCELERATE</div><div><span style="color:#2ABFAA;font-weight:700">S</span> BRAKE</div><div><span style="color:#2ABFAA;font-weight:700">A/D</span> STEER</div><div><span style="color:#2ABFAA;font-weight:700">DRAG</span> STEER (TOUCH)</div></div><div style="margin-top:24px;display:flex;gap:10px;justify-content:center"><button id="arc-mode-daily" onclick="arcSetMode('daily')" style="background:#2ABFAA;border:1px solid #2ABFAA;color:#0a0a0a;font-family:'Courier New',monospace;font-size:10px;font-weight:700;letter-spacing:.12em;padding:7px 16px;border-radius:4px;cursor:pointer">DAILY CHALLENGE</button><button id="arc-mode-free" onclick="arcSetMode('free')" style="background:transparent;border:1px solid #444;color:#888;font-family:'Courier New',monospace;font-size:10px;font-weight:700;letter-spacing:.12em;padding:7px 16px;border-radius:4px;cursor:pointer">FREE RUN</button></div><div id="arc-mode-note" style="font-size:9px;color:#666;letter-spacing:.06em;margin-top:8px;max-width:340px;margin-left:auto;margin-right:auto"></div><div style="margin-top:22px"><div style="font-size:11px;color:#aaa;letter-spacing:.08em;margin-bottom:10px">PICK YOUR CAR</div><div id="arc-car-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"></div></div><div id="arc-name-row" style="margin-top:24px"><div style="font-size:11px;color:#aaa;letter-spacing:.08em;margin-bottom:8px">YOUR NAME</div><input id="arc-name-input" maxlength="12" placeholder="DRIVER" style="background:#111;border:1px solid #333;color:#fff;font-family:'Courier New',monospace;font-size:18px;font-weight:700;letter-spacing:.15em;padding:10px 18px;border-radius:4px;width:200px;text-align:center;text-transform:uppercase;outline:none"/></div><button id="arc-start-btn" onclick="arcStart()" style="margin-top:28px;background:#f87171;border:none;color:#fff;font-family:'Courier New',monospace;font-size:13px;font-weight:700;letter-spacing:.2em;padding:12px 36px;border-radius:4px;cursor:pointer;text-transform:uppercase">START ENGINE</button></div></div><div id="arc-over" style="position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.9);z-index:10"><div style="font-family:'Courier New',monospace;text-align:center"><div style="font-size:32px;font-weight:900;color:#f87171;letter-spacing:.05em">CONE HIT</div><div style="font-size:11px;color:#777;letter-spacing:.2em;margin-top:4px">PENALTIES EXCEEDED</div><div style="margin-top:28px;font-size:13px;color:#aaa;letter-spacing:.1em">DISTANCE</div><div id="arc-final-score" style="font-size:52px;font-weight:900;color:#fff;line-height:1">0</div><div style="font-size:10px;color:#aaa;letter-spacing:.1em;margin-top:4px">FEET</div><div id="arc-new-record" style="margin-top:16px;font-size:12px;color:#2ABFAA;font-weight:700;letter-spacing:.15em;display:none">★ NEW HIGH SCORE</div><div id="arc-leaderboard" style="margin-top:24px;min-width:260px"></div><button onclick="arcRestart()" style="margin-top:28px;background:#f87171;border:none;color:#fff;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;padding:10px 32px;border-radius:4px;cursor:pointer;text-transform:uppercase">AGAIN</button></div></div><div id="arc-hud" style="position:absolute;top:18px;left:50%;transform:translateX(-50%);display:none;font-family:'Courier New',monospace;pointer-events:none;z-index:5"><div style="display:flex;gap:32px;align-items:center"><div style="text-align:center"><div style="font-size:9px;color:#777;letter-spacing:.15em">SPEED</div><div id="arc-hud-speed" style="font-size:22px;font-weight:700;color:#fff">0</div></div><div style="text-align:center"><div style="font-size:9px;color:#777;letter-spacing:.15em">DISTANCE</div><div id="arc-hud-dist" style="font-size:22px;font-weight:700;color:#2ABFAA">0 ft</div></div><div style="text-align:center"><div style="font-size:9px;color:#777;letter-spacing:.15em">STREAK</div><div id="arc-hud-streak" style="font-size:22px;font-weight:700;color:#aaa">&mdash;</div></div><div style="text-align:center"><div style="font-size:9px;color:#777;letter-spacing:.15em">PENALTIES</div><div id="arc-hud-pen" style="font-size:22px;font-weight:700;color:#f87171">0/3</div></div></div></div>
+<div id="view-arcade" class="cc-view" style="background:#0a0a0a;position:relative;overflow:hidden;flex-direction:column"><canvas id="arc-canvas" style="display:block;flex:1;min-height:0"></canvas><div id="arc-start" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.85);z-index:10"><div style="font-family:'Courier New',monospace;text-align:center"><div style="font-size:13px;letter-spacing:.25em;color:#ff9a9a;margin-bottom:8px;text-transform:uppercase">TGK Motorsport</div><div style="font-size:42px;font-weight:900;color:#fff;letter-spacing:-.02em;line-height:1">AUTOCROSS</div><div style="font-size:15px;color:#c3c9cf;margin-top:8px;letter-spacing:.12em">SURVIVAL CHALLENGE</div><div style="margin-top:34px;display:flex;gap:22px;justify-content:center;font-size:13px;color:#d5d9de;letter-spacing:.06em;flex-wrap:wrap"><div><span style="color:#2ABFAA;font-weight:700">W</span> ACCELERATE</div><div><span style="color:#2ABFAA;font-weight:700">S</span> BRAKE</div><div><span style="color:#2ABFAA;font-weight:700">A/D</span> STEER</div><div><span style="color:#2ABFAA;font-weight:700">DRAG</span> STEER (TOUCH)</div></div><div style="margin-top:24px;display:flex;gap:10px;justify-content:center"><button id="arc-mode-daily" onclick="arcSetMode('daily')" style="background:#2ABFAA;border:1px solid #2ABFAA;color:#0a0a0a;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;padding:9px 18px;border-radius:4px;cursor:pointer">DAILY CHALLENGE</button><button id="arc-mode-free" onclick="arcSetMode('free')" style="background:transparent;border:1px solid #444;color:#888;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;padding:9px 18px;border-radius:4px;cursor:pointer">FREE RUN</button></div><div id="arc-mode-note" style="font-size:11px;color:#9aa0a8;letter-spacing:.04em;margin-top:9px;max-width:420px;line-height:1.5;margin-left:auto;margin-right:auto"></div><div style="margin-top:22px"><div style="font-size:13px;color:#d5d9de;letter-spacing:.1em;margin-bottom:10px">PICK YOUR CAR</div><div id="arc-car-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"></div></div><div id="arc-name-row" style="margin-top:24px"><div style="font-size:13px;color:#d5d9de;letter-spacing:.1em;margin-bottom:8px">YOUR NAME</div><input id="arc-name-input" maxlength="12" placeholder="DRIVER" style="background:#111;border:1px solid #333;color:#fff;font-family:'Courier New',monospace;font-size:18px;font-weight:700;letter-spacing:.15em;padding:10px 18px;border-radius:4px;width:200px;text-align:center;text-transform:uppercase;outline:none"/></div><button id="arc-start-btn" onclick="arcStart()" style="margin-top:28px;background:#f87171;border:none;color:#fff;font-family:'Courier New',monospace;font-size:13px;font-weight:700;letter-spacing:.2em;padding:12px 36px;border-radius:4px;cursor:pointer;text-transform:uppercase">START ENGINE</button></div></div><div id="arc-over" style="position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.9);z-index:10"><div style="font-family:'Courier New',monospace;text-align:center"><div style="font-size:32px;font-weight:900;color:#f87171;letter-spacing:.05em">CONE HIT</div><div style="font-size:12px;color:#a7adb5;letter-spacing:.18em;margin-top:5px">PENALTIES EXCEEDED</div><div style="margin-top:26px;font-size:14px;color:#c3c9cf;letter-spacing:.12em">DISTANCE</div><div id="arc-final-score" style="font-size:52px;font-weight:900;color:#fff;line-height:1">0</div><div style="font-size:12px;color:#c3c9cf;letter-spacing:.12em;margin-top:4px">FEET</div><div id="arc-new-record" style="margin-top:16px;font-size:12px;color:#2ABFAA;font-weight:700;letter-spacing:.15em;display:none">★ NEW HIGH SCORE</div><div id="arc-leaderboard" style="margin-top:24px;min-width:260px"></div><button onclick="arcRestart()" style="margin-top:28px;background:#f87171;border:none;color:#fff;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;padding:10px 32px;border-radius:4px;cursor:pointer;text-transform:uppercase">AGAIN</button></div></div><div id="arc-hud" style="position:absolute;top:18px;left:50%;transform:translateX(-50%);display:none;font-family:'Courier New',monospace;pointer-events:none;z-index:5"><div style="display:flex;gap:32px;align-items:center"><div style="text-align:center"><div style="font-size:11px;color:#a7adb5;letter-spacing:.14em">SPEED</div><div id="arc-hud-speed" style="font-size:22px;font-weight:700;color:#fff">0</div></div><div style="text-align:center"><div style="font-size:11px;color:#a7adb5;letter-spacing:.14em">DISTANCE</div><div id="arc-hud-dist" style="font-size:22px;font-weight:700;color:#2ABFAA">0 ft</div></div><div style="text-align:center"><div style="font-size:11px;color:#a7adb5;letter-spacing:.14em">STREAK</div><div id="arc-hud-streak" style="font-size:22px;font-weight:700;color:#aaa">&mdash;</div></div><div style="text-align:center"><div style="font-size:11px;color:#a7adb5;letter-spacing:.14em">PENALTIES</div><div id="arc-hud-pen" style="font-size:22px;font-weight:700;color:#f87171">0/3</div></div></div></div>
 </div>
 <!-- ========= END ARCADE VIEW ========= -->
 
