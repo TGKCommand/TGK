@@ -1753,6 +1753,10 @@ select,select option{background-color:#fff!important;color:#111827!important}
   .tbx-modal{width:92vw!important;max-width:none!important}
   #cc-notif-panel{position:fixed!important;top:52px!important;right:0!important;left:0!important;width:auto!important;max-width:none!important}
   #erp-toast{left:12px;right:12px;max-width:none}
+  /* Touch/zoom pass (added v1.2): 16px inputs stop iOS zoom-on-focus; bigger tap targets */
+  input,select,textarea{font-size:16px!important}
+  .btn,.cc-navbtn,.tbx-btn,.pw-btn,.cc-bc-btn,.cc-bc-home{min-height:40px}
+  .cc-navbtn{padding:13px 12px}
 }
 
 @media(max-width:480px){
@@ -15396,6 +15400,36 @@ if ('serviceWorker' in navigator) {
   var side=document.getElementById('cc-sidebar');
   if(side)side.addEventListener('click',function(e){if(e.target.closest('.cc-navbtn'))closeDrawer();});
   window.addEventListener('resize',function(){if(window.innerWidth>768)closeDrawer();});
+})();
+</script>
+<script>
+/* Back-button trap (added v1.2): dismiss the top layer instead of closing the app. */
+(function(){
+  function arm(){ try{ history.pushState({ccTrap:1}, ''); }catch(_){} }
+  function onBack(){
+    var handled=false;
+    var m=document.querySelector('.tbx-modal-overlay.open, .fbg-modal-overlay.open');
+    if(m){ m.classList.remove('open'); handled=true; }
+    if(!handled){
+      var list=document.querySelectorAll('.modal-overlay');
+      for(var i=0;i<list.length;i++){ if(getComputedStyle(list[i]).display!=='none'){ list[i].style.display='none'; handled=true; break; } }
+    }
+    if(!handled){
+      var dr=document.getElementById('cc-sidebar');
+      if(dr && dr.classList.contains('cc-drawer-open')){ dr.classList.remove('cc-drawer-open'); var bd=document.getElementById('cc-drawer-backdrop'); if(bd)bd.classList.remove('cc-drawer-open'); handled=true; }
+    }
+    if(!handled){
+      var v=document.querySelector('#erp-viewer.active, #support-viewer.active, #cal-viewer.active');
+      if(v){ try{ showView('home'); }catch(_){ v.classList.remove('active'); } handled=true; }
+    }
+    if(!handled){
+      var av=document.querySelector('.cc-view.active');
+      if(av && av.id!=='view-home'){ try{ showView('home'); }catch(_){} handled=true; }
+    }
+    if(handled) arm();
+  }
+  function init(){ arm(); window.addEventListener('popstate', onBack); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 </script>
 </body>
