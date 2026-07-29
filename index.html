@@ -333,7 +333,6 @@
 /* Tag input */
 [data-theme="dark"] .oo-tag-chip span{color:#a5b4fc}
 /* API key input */
-[data-theme="dark"] #key-input{background:#141618!important;border-color:#2a2d30!important;color:#e8eaed!important}
 /* Search inputs throughout */
 [data-theme="dark"] .search-input,[data-theme="dark"] .bx-search-input,[data-theme="dark"] .ideas-input,
 [data-theme="dark"] .tllib-search{background:#141618;border-color:#2a2d30;color:#e8eaed}
@@ -1704,7 +1703,6 @@ select,select option{background-color:#fff!important;color:#111827!important}
   #cc-topbar img{height:24px!important}
   .logo-sep,.logo-sub{display:none}
   #tllib-sync-status,#topbar-user{display:none!important}
-  #key-status{margin-left:6px!important;font-size:10px!important;padding:3px 8px!important}
 
   /* left nav becomes an off-canvas drawer */
   #cc-shell{position:relative}
@@ -1956,7 +1954,6 @@ window._sbBootPromise = (async function() {
     <span id="tllib-sync-status" style="font-size:10px;font-family:inherit;letter-spacing:.03em;display:flex;align-items:center;gap:5px;cursor:default" title=""></span>
   </div>
   <span id="topbar-user" style="font-size:11px;color:#9CA3AF;font-weight:500"></span><button class="logout-btn" id="logout-btn" onclick="doLogout()" style="display:none">Sign out</button>
-  <button onclick="showView('launch');setTimeout(showKeyModal,50)" id="key-status" style="margin-left:12px;font-size:11px;padding:3px 12px;border-radius:20px;background:transparent;border:1px solid var(--orange);color:var(--orange);cursor:pointer;font-family:var(--font)" onclick="showKeyModal()">API Key</button>
   <div id="cc-notif" style="position:relative;display:inline-flex;align-items:center">
     <button id="cc-notif-bell" title="Notifications" data-notif-act="panel">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -2771,16 +2768,6 @@ window._sbBootPromise = (async function() {
       </div>
     </div>
 
-  </div>
-</div>
-
-<div class="modal-overlay" id="key-modal">
-  <div class="modal-box">
-    <div class="modal-title">Enter your Anthropic API key</div>
-    <div class="modal-desc">Get your key from <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys. Saved locally in your browser only.</div>
-    <input id="key-input" type="password" placeholder="sk-ant-api03-…" style="width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#111;font-family:var(--font)" onkeydown="if(event.key==='Enter')submitKey()"/>
-    <div class="modal-err" id="key-err"></div>
-    <div class="modal-btns"><button class="gbtn" onclick="submitKey()">Save key</button><button class="gbtn sec" onclick="hideKeyModal()">Cancel</button></div>
   </div>
 </div>
 
@@ -3684,14 +3671,16 @@ function addOptionToGroup(group){const options=group.querySelectorAll('.vr-optio
 function updateVariantGroup(group){const options=group.querySelectorAll('.vr-option');options.forEach((opt,idx)=>{const color=VAR_COLORS[idx%VAR_COLORS.length];const label=VAR_LABELS[idx%VAR_LABELS.length];const lbl=opt.querySelector('.flbl');const inp=opt.querySelector('.vr-opt-val');if(lbl){lbl.style.color=color;lbl.textContent='Option '+(idx+1);}if(inp){inp.setAttribute('data-label',label);inp.style.borderColor=color+'40';}});}
 function addVariant(){const id='vg'+Date.now();const d=document.createElement('div');d.className='variant-group';d.id=id;d.style.cssText='background:var(--body-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px';d.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="flex:1;margin-right:10px"><div class="flbl">Configuration type</div><input class="vr-name" placeholder="e.g. Stiffness, Color, Finish"/></div><button class="rm-btn" onclick="document.getElementById('${id}').remove()" style="flex-shrink:0;margin-top:16px">×</button></div><div class="vr-options" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div><button class="add-var-btn" style="font-size:11px;padding:6px 12px;width:auto" onclick="addOptionToGroup(this.closest('.variant-group'))">+ Add option</button>`;document.getElementById('variants-list').appendChild(d);addOptionToGroup(d);addOptionToGroup(d);}
 function getProd(){const vars=[];document.querySelectorAll('.variant-group').forEach(g=>{const name=g.querySelector('.vr-name')?.value||'';const opts=[...g.querySelectorAll('.vr-opt-val')].map(i=>i.value.trim()).filter(Boolean);if(name&&opts.length)vars.push(name+': '+opts.join(' / '));});return{name:document.getElementById('p-name').value||'Performance Part',cat:document.getElementById('p-cat').value||'Auto part',sku:document.getElementById('p-sku').value||'TGK-XX-0001',price:document.getElementById('p-price').value||'0',stock:document.getElementById('p-stock').value,make:document.getElementById('p-make').value||'Audi/VW',model:document.getElementById('p-model').value||'',years:document.getElementById('p-years').value||'',chassis:document.getElementById('p-chassis').value||'',engine:document.getElementById('p-engine').value||'',material:document.getElementById('p-material').value||'',points:document.getElementById('p-points').value||'',variants:vars.join('; '),oem:document.getElementById('p-oem').value||'',notes:document.getElementById('p-notes').value||'',refs:S.refs.join(', ')||'034 Motorsport',hardware:document.getElementById('p-hardware')?.checked??true,video:(document.getElementById('p-video')||{}).value||''};}
-function getKey(){return localStorage.getItem('tgk_api_key')||'';}
-function saveKey(k){localStorage.setItem('tgk_api_key',k.trim());}
-function showKeyModal(){document.getElementById('key-modal').style.display='flex';document.getElementById('key-input').value=getKey();setTimeout(()=>document.getElementById('key-input').focus(),50);}
-function hideKeyModal(){document.getElementById('key-modal').style.display='none';}
-function submitKey(){const v=document.getElementById('key-input').value.trim();if(!v.startsWith('sk-ant-')){document.getElementById('key-err').textContent='Keys start with sk-ant- — check and try again.';return;}saveKey(v);document.getElementById('key-err').textContent='';hideKeyModal();updateKeyStatus();}
-function updateKeyStatus(){const k=getKey();const el=document.getElementById('key-status');if(!el)return;if(k){el.textContent='API key ✓';el.style.borderColor='var(--teal)';el.style.color='var(--teal)';}else{el.textContent='Add API key';el.style.borderColor='var(--orange)';el.style.color='var(--orange)';}}
-function showErr(elId,err){const map={'NO_KEY':null,'NETWORK_ERROR':'Cannot reach the Anthropic API. Try running via a local server: npx serve . then open http://localhost:3000','AUTH_ERROR':'API key rejected. Click "Add API key" to update it.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'Response was cut off. Switch to Medium or Short length and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
-async function callAI(prompt,maxTokens=1200){const key=getKey();if(!key){showKeyModal();throw new Error('NO_KEY');}let r,d;try{r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})});}catch(fe){throw new Error('NETWORK_ERROR');}d=await r.json();if(d.error){if(d.error.type==='authentication_error')throw new Error('AUTH_ERROR');if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');throw new Error('API: '+d.error.message);}if(d.stop_reason==='max_tokens')throw new Error('TRUNCATED');return d.content?.[0]?.text||'';}
+/* ===== AI proxy: all Anthropic calls route through the anthropic-proxy Supabase Edge Function. No API key ever lives in the browser. ===== */
+try{localStorage.removeItem('tgk_api_key');}catch(e){}
+function tgkAIFetch(bodyObj){
+  var token='';
+  try{var s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');if(s&&s.access_token)token=s.access_token;}catch(e){}
+  var anon=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
+  return fetch(TGK_SB_URL+'/functions/v1/anthropic-proxy',{method:'POST',headers:{'Content-Type':'application/json','apikey':anon,'Authorization':'Bearer '+(token||anon)},body:JSON.stringify(bodyObj)});
+}
+function showErr(elId,err){const map={'NETWORK_ERROR':'Cannot reach the AI service. Check your connection and try again.','AUTH_ERROR':'AI service is not configured. Contact the administrator.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'Response was cut off. Switch to Medium or Short length and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
+async function callAI(prompt,maxTokens=1200){let r,d;try{r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]});}catch(fe){throw new Error('NETWORK_ERROR');}d=await r.json();if(d.error){if(d.error.type==='authentication_error'||d.error.type==='proxy_not_configured')throw new Error('AUTH_ERROR');if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');throw new Error('API: '+d.error.message);}if(d.stop_reason==='max_tokens')throw new Error('TRUNCATED');return d.content?.[0]?.text||'';}
 function animProg(fillId,dur){const el=document.getElementById(fillId);let w=0;const iv=setInterval(()=>{w=Math.min(w+1.5,82);el.style.width=w+'%';},dur/60);return{done:()=>{clearInterval(iv);el.style.width='100%';setTimeout(()=>{el.style.width='0%';},500);}};}
 function setDone(id){document.getElementById('ns-'+id).classList.add('done');}
 // Guarantee TGK Motorsport is always in the meta title
@@ -5408,8 +5397,7 @@ function socShowErr(elId,msg){
 }
 
 async function socCallAI(prompt,maxTokens=1600){
-  const key=getKey();if(!key){showKeyModal();throw new Error('No API key');}
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTokens,system:TGK_VOICE,messages:[{role:'user',content:prompt}]})});
+  const r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:maxTokens,system:TGK_VOICE,messages:[{role:'user',content:prompt}]});
   const d=await r.json();
   if(d.error)throw new Error(d.error.message);
   return d.content?.[0]?.text||'';
@@ -5417,17 +5405,12 @@ async function socCallAI(prompt,maxTokens=1600){
 
 /* Web search fetch — handles multi-turn tool use properly */
 async function socRawSearch(url, maxUses){
-  const key=getKey();if(!key){showKeyModal();throw new Error('No API key');}
   const prompt='Search for this product page and extract the details. URL: '+url+'\n\nReturn the results in this exact format:\nNAME: [exact product title]\nPRICE: [price in USD, digits only]\nFITMENT: [vehicle years, make, model, chassis codes]\nMATERIAL: [primary material]\nFEATURES: [2-3 key selling points, one sentence]\n\nDo not write anything else.';
   const messages=[{role:'user',content:prompt}];
   const tools=[{type:'web_search_20250305',name:'web_search',max_uses:maxUses||2}];
 
   // First call — model will use web_search tool
-  let r=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages})
-  });
+  let r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages});
   let d=await r.json();
   if(d.error)throw new Error(d.error.message);
 
@@ -5442,11 +5425,7 @@ async function socRawSearch(url, maxUses){
       .filter(b=>b.type==='tool_use')
       .map(b=>({type:'tool_result',tool_use_id:b.id,content:'Search completed for: '+url}));
     if(toolResults.length===0)return firstText;
-    r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages:[...messages,assistantMsg,{role:'user',content:toolResults}]})
-    });
+    r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages:[...messages,assistantMsg,{role:'user',content:toolResults}]});
     d=await r.json();
     if(d.error)throw new Error(d.error.message);
   }
@@ -5457,15 +5436,10 @@ async function socRawSearch(url, maxUses){
 async function socWebFetch(url, instruction){ return socRawSearch(url, 1); }
 
 async function socExtract(rawText, schema){
-  const key=getKey();if(!key){showKeyModal();throw new Error('No API key');}
-  const r=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({
+  const r=await tgkAIFetch({
       model:'claude-sonnet-4-6',
       max_tokens:400,
       messages:[{role:'user',content:'Extract data from the text below into JSON. Output ONLY the JSON object — no markdown fences, no explanation, nothing else.\n\nSchema: '+schema+'\n\nText:\n'+rawText.substring(0,2500)}]
-    })
   });
   const d=await r.json();
   if(d.error)throw new Error(d.error.message);
@@ -5473,14 +5447,9 @@ async function socExtract(rawText, schema){
 }
 
 async function socWebFetchMulti(url, instruction){
-  const key=getKey();if(!key){showKeyModal();throw new Error('No API key');}
   const messages=[{role:'user',content:'Search and read: '+url+'. '+instruction}];
   const tools=[{type:'web_search_20250305',name:'web_search',max_uses:2}];
-  let r=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages})
-  });
+  let r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages});
   let d=await r.json();
   if(d.error)throw new Error(d.error.message);
   const firstText=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
@@ -5489,11 +5458,7 @@ async function socWebFetchMulti(url, instruction){
     const assistantMsg={role:'assistant',content:d.content};
     const toolResults=(d.content||[]).filter(b=>b.type==='tool_use').map(b=>({type:'tool_result',tool_use_id:b.id,content:'Search completed'}));
     if(!toolResults.length)return firstText;
-    r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages:[...messages,assistantMsg,{role:'user',content:toolResults}]})
-    });
+    r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:1500,tools,messages:[...messages,assistantMsg,{role:'user',content:toolResults}]});
     d=await r.json();
     if(d.error)throw new Error(d.error.message);
   }
@@ -7908,7 +7873,6 @@ function _onDragDrop(e){
 
 document.addEventListener('DOMContentLoaded',function(){
   buildChecklist();
-  updateKeyStatus();
   render();
   renderOrder();
   socShowMode('launch');
@@ -8596,7 +8560,6 @@ var _ideasData=[];
 var _ideasSort='rank';
 function ideasGetChips(id){return Array.from(document.querySelectorAll('#'+id+' .ideas-chip.on')).map(function(c){return c.dataset.val;});}
 function ideasGenerate(){
-  var key=getKey();if(!key){showKeyModal();return;}
   var pl=ideasGetChips('ideas-platforms');var ca=ideasGetChips('ideas-cats');
   if(!pl.length||!ca.length){alert('Pick at least one platform and one category.');return;}
   var price=document.getElementById('ideas-price').value;
@@ -8611,7 +8574,7 @@ function ideasGenerate(){
   document.getElementById('ideas-gen-lbl').textContent='Thinking...';
   btn.disabled=true;
   document.getElementById('ideas-main').innerHTML='<div class="ideas-loading"><div class="ideas-spinner"></div><div class="ideas-loading-txt">Scanning the market for gaps...</div><div class="ideas-loading-sub">Analysing '+pl.length+' platforms, '+ca.length+' categories</div></div>';
-  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8000,messages:[{role:'user',content:prompt}]})})
+  tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:8000,messages:[{role:'user',content:prompt}]})
   .then(function(r){return r.json();})
   .then(function(d){
     var raw=(d.content||[]).map(function(b){return b.text||'';}).join('');
@@ -8692,12 +8655,11 @@ function ideasLaunch(idx){
 }
 function ideasDeepDive(idx){
   var idea=_ideasData[idx];if(!idea)return;
-  var key=getKey();if(!key){showKeyModal();return;}
   var card=document.getElementById('icard-'+idx);
   var btns=card.querySelectorAll('.idea-act-btn');
   btns[1].textContent='Loading...';btns[1].disabled=true;
   var p='Deep dive for TGK Motorsport product idea:\nName: '+idea.name+'\nPlatforms: '+(idea.platforms||[]).join(', ')+'\nPrice: '+idea.price_range+'\nContext: '+idea.why+'\n\nProvide: 1) Technical and manufacturing requirements, 2) Key differentiators vs competitors, 3) SKU variations, 4) Suggested Shopify title, 5) Top 5 SEO keywords, 6) Risks and challenges.\n\nBold headers, max 400 words, practical and specific.';
-    fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:p}]})})
+    tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:p}]})
   .then(function(r){return r.json();})
   .then(function(d){
     var txt=(d.content||[]).map(function(b){return b.text||'';}).join('');
@@ -11382,9 +11344,6 @@ var fbgVisibleCount = 10;
 
 // ── Web-search powered FB group finder ────────────────────────────────────
 async function callAIWithWebSearch(systemPrompt, userPrompt, maxTokens) {
-  var key = getKey();
-  if (!key) { showKeyModal(); throw new Error('NO_KEY'); }
-
   var messages = [{ role: 'user', content: userPrompt }];
   var tools = [{ type: 'web_search_20250305', name: 'web_search' }];
 
@@ -11399,16 +11358,7 @@ async function callAIWithWebSearch(systemPrompt, userPrompt, maxTokens) {
     };
     var r, d;
     try {
-      r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify(body)
-      });
+      r = await tgkAIFetch(body);
     } catch(fe) { throw new Error('NETWORK_ERROR'); }
 
     d = await r.json();
@@ -11467,10 +11417,6 @@ async function fbgSearch(){
 
   // Block if still cooling down
   if (Date.now() < fbgCooldownEnd) return;
-
-  // Check API key first
-  var key = getKey();
-  if(!key){ showKeyModal(); return; }
 
   // Show loading state
   var btn = document.querySelector('.fbg-btn');
@@ -11548,9 +11494,8 @@ async function fbgSearch(){
     fbgRender();
     fbgShowSaveBar(q);
   } catch(e) {
-    var msg = e.message === 'AUTH_ERROR' ? 'API key rejected — click "API Key" to update it.'
-            : e.message === 'NETWORK_ERROR' ? 'Cannot reach the API. Check your connection.'
-            : e.message === 'NO_KEY' ? 'No API key set.'
+    var msg = e.message === 'AUTH_ERROR' ? 'AI service is not configured. Contact the administrator.'
+            : e.message === 'NETWORK_ERROR' ? 'Cannot reach the AI service. Check your connection.'
             : e.message === 'RATE_ERROR' ? 'Anthropic API rate limit hit. Wait 30–60 seconds and try again.'
             : e.message === 'PARSE_FAIL' ? 'The AI response was unexpected. Please retry — it usually works on the second attempt.'
             : e.message;
@@ -11766,9 +11711,6 @@ async function fbgLoadMore(){
 
   // Otherwise fetch 5 new from AI
   var existing = fbgCurrentResults.map(function(g){ return g.name; });
-  var key = getKey();
-  if(!key){ showKeyModal(); if(btn){btn.disabled=false;btn.textContent='Search for 5 more groups';} return; }
-
   var prompt = 'Find 5 MORE real Facebook groups for owners of: "' + q + '".\n'
     + 'Already found — do NOT repeat these:\n'
     + existing.map(function(n,i){return (i+1)+'. '+n;}).join('\n') + '\n\n'
