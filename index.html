@@ -1802,8 +1802,9 @@ async function sbGet(id) {
   } catch(e) { console.warn('sbGet error:', e); return null; }
 }
 
-async function sbSet(id, data) {
+async function sbSet(id, data, ts) {
   try {
+    ts = ts || new Date().toISOString();
     await sbFetch('/rest/v1/workspace', {
       method: 'POST',
       headers: {
@@ -1812,9 +1813,10 @@ async function sbSet(id, data) {
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
-      body: JSON.stringify({ id: id, data: data, updated_at: new Date().toISOString() })
+      body: JSON.stringify({ id: id, data: data, updated_at: ts })
     });
-  } catch(e) { console.warn('sbSet error:', e); }
+    return ts;
+  } catch(e) { console.warn('sbSet error:', e); return null; }
 }
 
 // ── Templates ─────────────────────────────────────────────────
@@ -12596,7 +12598,11 @@ function _save(){
 function _doSbSave(){
   _isSaving=true;_saveQueued=false;
   var cp=_stripFiles(_gc());
-  sbSet('tgk_projects_data',cp).catch(function(){}).finally(function(){
+  var ts=new Date().toISOString();
+  sbSet('tgk_projects_data',cp,ts).then(function(ok){
+    if(ok){_pwRemoteTs=ts;_pwSaveDirty=false;_pwInd('\u2713 Saved');}
+    else{_pwSaveDirty=true;_pwInd('\u26a0 Offline \u2014 will retry');}
+  }).catch(function(){_pwSaveDirty=true;_pwInd('\u26a0 Offline \u2014 will retry');}).finally(function(){
     _isSaving=false;
     if(_saveQueued)_doSbSave();
   });
@@ -12658,7 +12664,7 @@ window.pwInit=function(){
     _booted=true;
     _syncMyProfile().then(function(){ return _loadTeam(); }).then(function(){pwShowDash();_updateBell();}).catch(function(){pwShowDash();_updateBell();});
     setTimeout(_syncRemoteNotifs,1500);
-    if(typeof sbGet==='function')sbGet('tgk_projects_data').then(function(r){if(r){var keep=_gc().active;_st=_migrate(r);if(keep&&_st.boards.filter(function(b){return b.id===keep;}).length)_st.active=keep;try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(_st)));}catch(e){}pwRefreshView();}}).catch(function(){});
+    /* initial cloud pull handled by pwSyncNow(true) inside pwStartPolling */
   }else{pwShowDash();_updateBell();}
   pwStartPolling();
 };
@@ -12817,8 +12823,8 @@ function _mkCard(task,colId){
     +'<p class="pw-card-title">'+_esc(task.title)+'</p>'+prog
     +'<div class="pw-card-foot">'+av+'<span style="flex:1"></span>'+dl+daysBadge+counts+'</div>'
     +(badges?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;padding-top:7px;border-top:1px solid #F4F5F7">'+badges+'</div>':'');
-  el.addEventListener('dragstart',function(e){_dragId=task.id;this.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
-  el.addEventListener('dragend',function(){this.classList.remove('dragging');document.querySelectorAll('.pw-col-body.dov').forEach(function(b){b.classList.remove('dov');});});
+  el.addEventListener('dragstart',function(e){window._pwDragging=true;_dragId=task.id;this.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+  el.addEventListener('dragend',function(){window._pwDragging=false;this.classList.remove('dragging');document.querySelectorAll('.pw-col-body.dov').forEach(function(b){b.classList.remove('dov');});});
   el.setAttribute('data-taskid', task.id);
   el.setAttribute('data-colid', colId);
   return el;
@@ -14357,27 +14363,70 @@ window.pwUnblock=function(bid){
 };
 
 /* ── REAL-TIME POLLING ───────────────────────────────────── */
-var _pollTimer=null,_lastPollData=null;
+/* Live sync engine (v2). Every edit already saves instantly (_save); this keeps every open
+   Command Center in step:
+   - every 5s a tiny updated_at check (no payload); pull + apply only when it changed
+   - timestamp comparison, not content signatures: renames, descriptions, colors and
+     assignee changes now sync too (the old signature only saw structural moves)
+   - echo-proof: our own saves set _pwRemoteTs, so we never re-apply ourselves
+   - never applies mid-edit (task panel / endpoint / stage config open, or dragging);
+     the change lands on the next tick after you close
+   - same-browser tabs sync instantly via the storage event */
+var _pollTimer=null,_pwRemoteTs=null,_pwSaveDirty=false,_pwSyncBusy=false;
+function _pwInd(msg){
+  var ind=document.getElementById('pw-poll-ind');
+  if(!ind){
+    var host=document.getElementById('view-projects')||document.body;
+    ind=document.createElement('div');
+    ind.id='pw-poll-ind';
+    ind.style.cssText='position:absolute;bottom:14px;right:16px;background:rgba(20,22,24,.88);color:#2ABFAA;font-family:var(--font,sans-serif);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;opacity:0;transition:opacity .25s;z-index:60;pointer-events:none';
+    host.appendChild(ind);
+  }
+  ind.textContent=msg;ind.style.opacity='1';
+  clearTimeout(_pwInd._t);_pwInd._t=setTimeout(function(){ind.style.opacity='0';},2200);
+}
+function _pwEditing(){
+  var det=document.getElementById('pw-detail');
+  var ep=document.getElementById('pw-ep-ov');
+  var sc=document.getElementById('pw-scfg');
+  return !!((det&&det.classList.contains('open'))||(ep&&ep.classList.contains('open'))||(sc&&sc.classList.contains('open'))||window._pwDragging);
+}
+function _pwApplyRemote(container,ts){
+  var keep=_gc().active;
+  _st=_migrate(container);
+  if(keep&&_st.boards.filter(function(b){return b.id===keep;}).length)_st.active=keep;
+  try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(_st)));}catch(e){}
+  _pwRemoteTs=ts;
+  pwRefreshView();
+  _pwInd('\u21bb Live update');
+}
+window.pwSyncNow=async function(initial){
+  if(_pwSyncBusy||typeof sbFetch!=='function')return;
+  _pwSyncBusy=true;
+  try{
+    if(_pwSaveDirty&&!_isSaving)_doSbSave(); // offline save catch-up
+    var rows=await sbFetch('/rest/v1/workspace?id=eq.tgk_projects_data&select=updated_at&limit=1');
+    var ts=(rows&&rows[0])?rows[0].updated_at:null;
+    if(ts&&ts!==_pwRemoteTs){
+      if(!initial&&_pwEditing()){_pwSyncBusy=false;return;} // retry on next tick after the editor closes
+      var full=await sbFetch('/rest/v1/workspace?id=eq.tgk_projects_data&select=data,updated_at&limit=1');
+      if(full&&full[0]&&full[0].data)_pwApplyRemote(full[0].data,full[0].updated_at);
+    }
+  }catch(e){}
+  _pwSyncBusy=false;
+};
 window.pwStartPolling=function(){
   if(_pollTimer)clearInterval(_pollTimer);
-  _pollTimer=setInterval(function(){
-    if(typeof sbGet==='function'){
-      sbGet('tgk_projects_data').then(function(r){
-        if(!r)return;
-        var C2=_migrate(r);
-        var sig=JSON.stringify(C2.boards.map(function(b){return b.id+':'+Object.keys(b.data.tasks).length+':'+b.data.cols.map(function(c){return c.id+'#'+c.tasks.length;}).join(',');}));
-        if(_lastPollData&&_lastPollData!==sig&&!_isSaving){
-          var keep=_gc().active;
-          _st=C2;if(keep&&_st.boards.filter(function(b){return b.id===keep;}).length)_st.active=keep;
-          try{localStorage.setItem('tgk_projects_data_cache',JSON.stringify(_stripFiles(_st)));}catch(e){}
-          pwRefreshView();
-          var ind=document.getElementById('pw-poll-ind');
-          if(ind){ind.textContent='↻ Updated';ind.style.opacity='1';setTimeout(function(){ind.style.opacity='0';},2000);}
-        }
-        _lastPollData=sig;
-      }).catch(function(){});
-    }
-  },45000);
+  _pollTimer=setInterval(function(){pwSyncNow(false);},5000);
+  pwSyncNow(_pwRemoteTs===null); // immediate catch-up on entry; first ever run applies the cloud copy
+  if(!window._pwSyncWired){
+    window._pwSyncWired=true;
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&_pollTimer)pwSyncNow(false);});
+    window.addEventListener('storage',function(ev){ // another tab in this same browser saved
+      if(ev.key!==PW_KEY||!ev.newValue||_pwEditing())return;
+      try{_st=_migrate(JSON.parse(ev.newValue));pwRefreshView();_pwInd('\u21bb Live update');}catch(e){}
+    });
+  }
 };
 window.pwStopPolling=function(){if(_pollTimer){clearInterval(_pollTimer);_pollTimer=null;}};
 
