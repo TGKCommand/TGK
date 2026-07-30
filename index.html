@@ -1925,6 +1925,8 @@ thead{background-color:var(--cb-c);background-image:var(--cb-i);background-size:
 thead th{background:transparent!important;color:#E8EDF0!important;border-bottom:2px solid rgba(42,191,170,.6)!important;text-shadow:0 1px 2px rgba(0,0,0,.75)}
 /* plates: hairline rings (theme-safe via border token) */
 .mod-card,.ocard,.soc-output-card,.login-box{border-color:transparent!important;box-shadow:0 1px 2px rgba(14,20,24,.05),0 0 0 1px var(--border)}
+[data-theme="dark"] .login-box{box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px var(--border)}
+#cc-version-badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:#7E8994;margin-left:10px;white-space:nowrap;align-self:center}
 .cc-navbtn{border-radius:5px}
 @media print{
   .tgk-sh,thead{background:#f0f2f5!important;background-image:none!important;box-shadow:none!important}
@@ -15877,6 +15879,23 @@ if ('serviceWorker' in navigator) {
   }
   function init(){ arm(); window.addEventListener('popstate', onBack); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+<script>
+/* Command Center version marker (introduced with the Machined redesign). */
+var TGK_CC_VERSION='v2.0';
+(function(){
+  function arm(){
+    var tb=document.getElementById('cc-topbar');
+    if(!tb){setTimeout(arm,400);return;}
+    if(document.getElementById('cc-version-badge'))return;
+    var sp=document.createElement('span');
+    sp.id='cc-version-badge';
+    sp.textContent=TGK_CC_VERSION;
+    sp.title='TGK Command Center '+TGK_CC_VERSION;
+    tb.appendChild(sp);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();
 })();
 </script>
 </body>
