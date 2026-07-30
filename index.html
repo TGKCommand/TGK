@@ -1927,6 +1927,22 @@ thead th{background:transparent!important;color:#E8EDF0!important;border-bottom:
 .mod-card,.ocard,.soc-output-card,.login-box{border-color:transparent!important;box-shadow:0 1px 2px rgba(14,20,24,.05),0 0 0 1px var(--border)}
 [data-theme="dark"] .login-box{box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px var(--border)}
 #cc-version-badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:#7E8994;margin-left:10px;white-space:nowrap;align-self:center}
+/* == GARAGE DOOR ARRIVAL (v2.1) - plays on load: carbon sectional door rolls up,
+   the workspace pulls in behind it. Click to skip; disabled for reduced-motion. == */
+#cc-garage{position:fixed;inset:0;z-index:99998;display:flex;flex-direction:column;cursor:pointer;
+ background-color:#0B0D0E;background-image:var(--cb-i);background-size:100% 100%,100% 100%,100% 100%,auto 320px;
+ box-shadow:inset 0 -14px 30px rgba(0,0,0,.5);
+ transition:transform .92s cubic-bezier(.7,.02,.32,1) .18s;will-change:transform}
+#cc-garage.up{transform:translateY(-103%)}
+#cc-garage .gseg{flex:1;border-bottom:3px solid rgba(0,0,0,.62);box-shadow:inset 0 2px 0 rgba(255,255,255,.06),inset 0 -8px 14px rgba(0,0,0,.28)}
+#cc-garage .gseg:last-of-type{border-bottom:none}
+#cc-garage .gseal{height:12px;background:linear-gradient(180deg,#131518,#000)}
+#cc-garage .gcrest{position:absolute;inset:0;background-position:center 42%;background-repeat:no-repeat;background-size:min(46vw,420px);opacity:.16;filter:invert(1) brightness(1.5);pointer-events:none}
+#cc-garage .gtag{position:absolute;left:0;right:0;top:calc(42% + min(24vw,225px));text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.5em;color:rgba(255,255,255,.34);pointer-events:none}
+html.cc-pull body{animation:ccPull 1.25s cubic-bezier(.2,.85,.28,1) .18s both;transform-origin:50% 34%}
+@keyframes ccPull{0%{transform:scale(.9);filter:blur(7px)}60%{filter:blur(0)}100%{transform:scale(1);filter:blur(0)}}
+@media (prefers-reduced-motion:reduce){#cc-garage{display:none}html.cc-pull body{animation:none}}
+
 .cc-navbtn{border-radius:5px}
 @media print{
   .tgk-sh,thead{background:#f0f2f5!important;background-image:none!important;box-shadow:none!important}
@@ -15883,7 +15899,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.0';
+var TGK_CC_VERSION='v2.1';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -15896,6 +15912,30 @@ var TGK_CC_VERSION='v2.0';
     tb.appendChild(sp);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();
+})();
+</script>
+<script>
+/* Garage-door arrival animation (v2.1). */
+(function(){
+  try{if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;}catch(e){}
+  function go(){
+    if(document.getElementById('cc-garage'))return;
+    var o=document.createElement('div');o.id='cc-garage';
+    var h='';for(var i=0;i<5;i++)h+='<div class="gseg"></div>';
+    o.innerHTML=h+'<div class="gseal"></div><div class="gcrest"></div><div class="gtag">TGK MOTORSPORT</div>';
+    try{if(typeof TGK_WM==='string')o.querySelector('.gcrest').style.backgroundImage='url('+TGK_WM+')';}catch(e){}
+    document.body.appendChild(o);
+    document.documentElement.classList.add('cc-pull');
+    requestAnimationFrame(function(){requestAnimationFrame(function(){o.classList.add('up');});});
+    var done=function(){
+      if(o.parentNode)o.parentNode.removeChild(o);
+      document.documentElement.classList.remove('cc-pull');
+      try{document.body.style.transform='';document.body.style.filter='';}catch(e){}
+    };
+    o.addEventListener('click',done);
+    setTimeout(done,1600);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
 })();
 </script>
 </body>
