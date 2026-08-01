@@ -13214,6 +13214,32 @@ window.pwDetToggleAssignPicker=function(){var p=document.getElementById('oo-assi
 window.pwDetAddTagInput=function(){var btn=document.getElementById('oo-tag-add-btn'),inp=document.getElementById('oo-tag-inp');if(btn)btn.style.display='none';if(inp){inp.style.display='inline-block';inp.focus();}};
 window.pwDetAddTag=function(){var inp=document.getElementById('oo-tag-inp');if(!inp||!_sd)return;var tag=inp.value.trim();if(tag&&!(_sd.tags||[]).includes(tag)){_sd.tags=_sd.tags||[];_sd.tags.push(tag);_la(_sd,'Tag added: "'+tag+'"');}inp.value='';_renderDet();};
 
+/* Watchers (v2.9). The task detail rendered a "+ Watch" picker and a remove button
+   wired to pwDetAddWatcher / pwDetRemoveWatcher, but neither function existed -
+   both controls threw ReferenceError. Implemented to match the tag/assignee
+   pattern: mutate the task, log the activity, persist, re-render. */
+window.pwDetAddWatcher=function(id){
+  if(!id||!_sd)return;
+  _sd.watchers=_sd.watchers||[];
+  if(_sd.watchers.indexOf(id)<0){
+    _sd.watchers.push(id);
+    _la(_sd,'Watcher added: '+(((typeof _mem==='function'&&_mem(id))||{}).name||id));
+    _save();
+  }
+  _renderDet();
+};
+window.pwDetRemoveWatcher=function(id){
+  if(!id||!_sd||!Array.isArray(_sd.watchers))return;
+  var i=_sd.watchers.indexOf(id);
+  if(i>-1){
+    var nm=((typeof _mem==='function'&&_mem(id))||{}).name||id;
+    _sd.watchers.splice(i,1);
+    _la(_sd,'Watcher removed: '+nm);
+    _save();
+  }
+  _renderDet();
+};
+
 window.pwDetPipeMove=function(taskId,toColId){
   var S=_gs(),fromColId='';
   S.cols.forEach(function(c){if(c.tasks.indexOf(taskId)>=0)fromColId=c.id;});
@@ -15900,7 +15926,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.8';
+var TGK_CC_VERSION='v2.9';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
