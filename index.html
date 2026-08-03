@@ -3733,8 +3733,93 @@ function tgkAIFetch(bodyObj){
   var anon=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
   return fetch(TGK_SB_URL+'/functions/v1/anthropic-proxy',{method:'POST',headers:{'Content-Type':'application/json','apikey':anon,'Authorization':'Bearer '+(token||anon)},body:JSON.stringify(bodyObj)});
 }
-function showErr(elId,err){const map={'NETWORK_ERROR':'Cannot reach the AI service. Check your connection and try again.','AUTH_ERROR':'AI service is not configured. Contact the administrator.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'Response was cut off. Switch to Medium or Short length and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
+function showErr(elId,err){const map={'NETWORK_ERROR':'Cannot reach the AI service. Check your connection and try again.','AUTH_ERROR':'AI service is not configured. Contact the administrator.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'The AI response was cut off even after auto-continuing. Trim the source description and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
 async function callAI(prompt,maxTokens=1200){let r,d;try{r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]});}catch(fe){throw new Error('NETWORK_ERROR');}d=await r.json();if(d.error){if(d.error.type==='authentication_error'||d.error.type==='proxy_not_configured')throw new Error('AUTH_ERROR');if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');throw new Error('API: '+d.error.message);}if(d.stop_reason==='max_tokens')throw new Error('TRUNCATED');return d.content?.[0]?.text||'';}
+/* ===== Long-form AI calls. Sonnet stops with stop_reason 'max_tokens' when the
+   requested ceiling is reached. The TGK template (inline SVG icons, specs table,
+   6 feature blocks, 5 FAQ items, all JSON-escaped) routinely exceeds a single
+   response window, so callAILong feeds the partial answer back as an assistant
+   prefill and lets the model continue where it stopped, then stitches the pieces
+   back together. Works even if the edge function clamps max_tokens, because the
+   loop keys off stop_reason rather than the requested number. ===== */
+async function callAILong(prompt,maxTokens,maxCont){
+  maxTokens=maxTokens||8000;
+  maxCont=(maxCont===undefined||maxCont===null)?3:maxCont;
+  var msgs=[{role:'user',content:prompt}];
+  var acc='';
+  for(var pass=0;pass<=maxCont;pass++){
+    var r,d;
+    try{r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:msgs});}
+    catch(fe){throw new Error('NETWORK_ERROR');}
+    try{d=await r.json();}catch(je){throw new Error('NETWORK_ERROR');}
+    if(d.error){
+      if(d.error.type==='authentication_error'||d.error.type==='proxy_not_configured')throw new Error('AUTH_ERROR');
+      if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');
+      throw new Error('API: '+d.error.message);
+    }
+    var chunk=(d.content&&d.content[0]&&d.content[0].text)?d.content[0].text:'';
+    acc+=chunk;
+    if(d.stop_reason!=='max_tokens')return acc;
+    var prefill=acc.replace(/\s+$/,'');
+    if(!prefill)throw new Error('TRUNCATED');
+    acc=prefill;
+    msgs=[{role:'user',content:prompt},{role:'assistant',content:prefill}];
+  }
+  return acc;
+}
+/* Close any strings/braces left open by a truncated JSON payload. */
+function _repairJson(t){
+  var inStr=false,esc=false,stack=[],i,c;
+  for(i=0;i<t.length;i++){
+    c=t.charAt(i);
+    if(esc){esc=false;continue;}
+    if(c==='\\'){if(inStr)esc=true;continue;}
+    if(c==='"'){inStr=!inStr;continue;}
+    if(inStr)continue;
+    if(c==='{'||c==='[')stack.push(c);
+    else if(c==='}'||c===']')stack.pop();
+  }
+  var out=t;
+  if(esc)out=out.slice(0,-1);
+  if(inStr){out+='"';}
+  else{out=out.replace(/\s*,\s*$/,'').replace(/\s*,?\s*"[A-Za-z0-9_]*"\s*:\s*$/,'');}
+  for(var j=stack.length-1;j>=0;j--)out+=(stack[j]==='{'?'}':']');
+  return out;
+}
+/* Strict parse, then repaired parse, then null. Never throws. */
+function parseAIJson(raw){
+  var t=String(raw||'').replace(/```json/gi,'').replace(/```/g,'').trim();
+  var st=t.indexOf('{');
+  if(st>0)t=t.slice(st);
+  if(!t)return null;
+  try{return JSON.parse(t);}catch(e){}
+  try{return JSON.parse(_repairJson(t));}catch(e2){}
+  return null;
+}
+/* Last-resort single-field rescue from unparseable / half-written JSON. */
+function _extractJsonField(raw,key){
+  var t=String(raw||'');
+  var m=new RegExp('"'+key+'"\\s*:\\s*"').exec(t);
+  if(!m)return '';
+  var i=m.index+m[0].length,out='',c,n;
+  for(;i<t.length;i++){
+    c=t.charAt(i);
+    if(c==='\\'){
+      n=t.charAt(i+1);
+      if(n==='n')out+='\n';
+      else if(n==='t')out+='\t';
+      else if(n==='r')out+='\r';
+      else if(n==='b')out+='\b';
+      else if(n==='f')out+='\f';
+      else if(n==='u'){out+=String.fromCharCode(parseInt(t.substr(i+2,4),16)||32);i+=4;}
+      else out+=n;
+      i++;continue;
+    }
+    if(c==='"')break;
+    out+=c;
+  }
+  return out;
+}
 function animProg(fillId,dur){const el=document.getElementById(fillId);let w=0;const iv=setInterval(()=>{w=Math.min(w+1.5,82);el.style.width=w+'%';},dur/60);return{done:()=>{clearInterval(iv);el.style.width='100%';setTimeout(()=>{el.style.width='0%';},500);}};}
 function setDone(id){document.getElementById('ns-'+id).classList.add('done');}
 // Guarantee TGK Motorsport is always in the meta title
@@ -3751,7 +3836,7 @@ function _enforceMetaTitle(t) {
   return t.slice(0, budget).trim() + ' | ' + brand;
 }
 
-async function genSEO(){const p=getProd();const btn=document.getElementById('seo-btn');const lbl=document.getElementById('seo-lbl');btn.disabled=true;lbl.innerHTML='<span class="spin"></span> Analyzing…';const bar=document.getElementById('seo-bar');bar.style.display='block';const anim=animProg('seo-fill',3500);try{const prompt=`You are an SEO specialist for TGK Motorsport (tgkmotorsport.com). Compete against: ${p.refs}.\nProduct: ${p.name} | ${p.cat} | SKU: ${p.sku} | $${p.price} | ${p.stock}\nFitment: ${p.years} ${p.make} ${p.model}${p.chassis?' ('+p.chassis+')':''} ${p.engine}\nMaterial: ${p.material} | Features: ${p.points}\n${p.variants?'Variants: '+p.variants:''} ${p.oem?'Replaces OEM: '+p.oem:''} ${p.notes?'Notes: '+p.notes:''}\nReturn ONLY valid JSON: {"metaTitle":"","metaDescription":"","urlHandle":"","keywords":["","","","","","","","","",""],"shopifyTags":""}\nRules: metaTitle MUST contain "TGK Motorsport" (full name, exact spelling). metaTitle 50-60 chars total. metaDescription 150-160 chars. urlHandle lowercase hyphens. 10 long-tail keywords. shopifyTags comma-separated.`;const raw=await callAI(prompt,4000);let d;try{d=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){throw new Error('TRUNCATED');}d.metaTitle=_enforceMetaTitle(d.metaTitle);anim.done();document.getElementById('o-metatitle').textContent=d.metaTitle;document.getElementById('o-metatitle-c').textContent=d.metaTitle.length+' chars — ideal 50–60';document.getElementById('oc-metatitle').classList.add('on');document.getElementById('o-metadesc').textContent=d.metaDescription;document.getElementById('o-metadesc-c').textContent=d.metaDescription.length+' chars — ideal 150–160';document.getElementById('oc-metadesc').classList.add('on');document.getElementById('o-url').textContent='/products/'+d.urlHandle;document.getElementById('oc-url').classList.add('on');const wrap=document.getElementById('o-kw-tags');wrap.innerHTML='';d.keywords.forEach(k=>{const t=document.createElement('span');t.className='kwtag';t.textContent=k;wrap.appendChild(t);});document.getElementById('o-kw-raw').textContent=d.keywords.join(', ');document.getElementById('oc-kw').classList.add('on');document.getElementById('o-sptags').textContent=d.shopifyTags;document.getElementById('oc-sptags').classList.add('on');const tl=d.metaTitle.length,dl=d.metaDescription.length;document.getElementById('sc-t').textContent=tl>=50&&tl<=60?'100':tl<50?'72':'82';document.getElementById('sc-d').textContent=dl>=150&&dl<=160?'100':dl<130?'68':'85';document.getElementById('sc-k').textContent=d.keywords.length>=8?'95':'75';document.getElementById('sc-u').textContent='98';document.getElementById('seo-scores').style.display='block';S.gen.seo=d;setDone('seo');buildChecklist();}catch(e){anim.done();showErr('o-metatitle',e);}bar.style.display='none';btn.disabled=false;lbl.textContent='Regenerate SEO';}
+async function genSEO(){const p=getProd();const btn=document.getElementById('seo-btn');const lbl=document.getElementById('seo-lbl');btn.disabled=true;lbl.innerHTML='<span class="spin"></span> Analyzing…';const bar=document.getElementById('seo-bar');bar.style.display='block';const anim=animProg('seo-fill',3500);try{const prompt=`You are an SEO specialist for TGK Motorsport (tgkmotorsport.com). Compete against: ${p.refs}.\nProduct: ${p.name} | ${p.cat} | SKU: ${p.sku} | $${p.price} | ${p.stock}\nFitment: ${p.years} ${p.make} ${p.model}${p.chassis?' ('+p.chassis+')':''} ${p.engine}\nMaterial: ${p.material} | Features: ${p.points}\n${p.variants?'Variants: '+p.variants:''} ${p.oem?'Replaces OEM: '+p.oem:''} ${p.notes?'Notes: '+p.notes:''}\nReturn ONLY valid JSON: {"metaTitle":"","metaDescription":"","urlHandle":"","keywords":["","","","","","","","","",""],"shopifyTags":""}\nRules: metaTitle MUST contain "TGK Motorsport" (full name, exact spelling). metaTitle 50-60 chars total. metaDescription 150-160 chars. urlHandle lowercase hyphens. 10 long-tail keywords. shopifyTags comma-separated.`;const raw=await callAILong(prompt,4000,2);let d=parseAIJson(raw);if(!d||!d.metaTitle)throw new Error('TRUNCATED');if(!Array.isArray(d.keywords))d.keywords=[];d.metaTitle=_enforceMetaTitle(d.metaTitle);anim.done();document.getElementById('o-metatitle').textContent=d.metaTitle;document.getElementById('o-metatitle-c').textContent=d.metaTitle.length+' chars — ideal 50–60';document.getElementById('oc-metatitle').classList.add('on');document.getElementById('o-metadesc').textContent=d.metaDescription;document.getElementById('o-metadesc-c').textContent=d.metaDescription.length+' chars — ideal 150–160';document.getElementById('oc-metadesc').classList.add('on');document.getElementById('o-url').textContent='/products/'+d.urlHandle;document.getElementById('oc-url').classList.add('on');const wrap=document.getElementById('o-kw-tags');wrap.innerHTML='';d.keywords.forEach(k=>{const t=document.createElement('span');t.className='kwtag';t.textContent=k;wrap.appendChild(t);});document.getElementById('o-kw-raw').textContent=d.keywords.join(', ');document.getElementById('oc-kw').classList.add('on');document.getElementById('o-sptags').textContent=d.shopifyTags;document.getElementById('oc-sptags').classList.add('on');const tl=d.metaTitle.length,dl=d.metaDescription.length;document.getElementById('sc-t').textContent=tl>=50&&tl<=60?'100':tl<50?'72':'82';document.getElementById('sc-d').textContent=dl>=150&&dl<=160?'100':dl<130?'68':'85';document.getElementById('sc-k').textContent=d.keywords.length>=8?'95':'75';document.getElementById('sc-u').textContent='98';document.getElementById('seo-scores').style.display='block';S.gen.seo=d;setDone('seo');buildChecklist();}catch(e){anim.done();showErr('o-metatitle',e);}bar.style.display='none';btn.disabled=false;lbl.textContent='Regenerate SEO';}
 async function genCopy() {
   const p = getProd();
   const tone = document.getElementById('c-tone').value;
@@ -3793,16 +3878,16 @@ Use this exact structure:
 bullets: 5 plain-text punchy bullets for internal reference
 faq: same 5 questions as plain-text objects for schema generation`;
 
-    const raw = await callAI(prompt, 4000);
-    let d;
-    try {
-      d = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    } catch(parseErr) {
-      const fixAttempt = raw.replace(/```json|```/g,'').trim();
-      const h1Match = fixAttempt.match(/"h1"\s*:\s*"([^"]+)"/);
-      if(h1Match) { throw new Error('TRUNCATED'); }
-      throw new Error('PARSE: ' + parseErr.message + ' \u2014 try a shorter description length');
+    const raw = await callAILong(prompt, 8000, 3);
+    let d = parseAIJson(raw);
+    if (!d || !d.descriptionHtml) {
+      const _salH1 = (d && d.h1) || _extractJsonField(raw, 'h1');
+      const _salHtml = (d && d.descriptionHtml) || _extractJsonField(raw, 'descriptionHtml');
+      if (!_salHtml) throw new Error('TRUNCATED');
+      d = { h1: _salH1, descriptionHtml: _salHtml, bullets: [], faq: [] };
     }
+    if (!Array.isArray(d.bullets)) d.bullets = [];
+    if (!Array.isArray(d.faq)) d.faq = [];
     anim.done();
 
     document.getElementById('o-h1').textContent = d.h1;
@@ -3871,12 +3956,18 @@ NO stats bar. NO ratings. NO fitment section. NO SKU rows in variant tables. NO 
 changes: 1-2 sentences describing what was restructured or improved.`;
 
   try {
-    const raw = await callAI(prompt, 4000);
-    let d;
-    try {
-      d = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    } catch(e) {
-      throw new Error('TRUNCATED');
+    const raw = await callAILong(prompt, 8000, 3);
+    let d = parseAIJson(raw);
+    let _convSalvaged = false;
+    if (!d || !d.descriptionHtml) {
+      const _salH1 = (d && d.h1) || _extractJsonField(raw, 'h1');
+      const _salHtml = (d && d.descriptionHtml) || _extractJsonField(raw, 'descriptionHtml');
+      if (!_salHtml) throw new Error('TRUNCATED');
+      d = { h1: _salH1, descriptionHtml: _salHtml, changes: _extractJsonField(raw, 'changes') };
+      _convSalvaged = true;
+    }
+    if (_convSalvaged) {
+      d.changes = (d.changes || '') + ' [Heads up: the response was cut off and partially recovered - review the output before publishing.]';
     }
     anim.done();
 
@@ -4051,9 +4142,10 @@ descriptionHtml: Full Shopify HTML using TGK CSS classes. Use EXACTLY this struc
 NO stats bar. NO ratings. NO fitment section. NO SKU rows in variant tables.`;
 
   try {
-    const raw = await callAI(prompt, 4000);
-    let d;
-    try { d = JSON.parse(raw.replace(/```json|```/g, '').trim()); } catch(e) { throw new Error('TRUNCATED'); }
+    const raw = await callAILong(prompt, 8000, 3);
+    let d = parseAIJson(raw);
+    if (!d || !d.descriptionHtml) { d = { descriptionHtml: _extractJsonField(raw, 'descriptionHtml') }; }
+    if (!d.descriptionHtml) throw new Error('TRUNCATED');
     _finishLoadEdit(d.descriptionHtml || '');
   } catch(e) {
     // If AI fails, fall back to loading raw input so the user isn't blocked
@@ -15926,7 +16018,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.9';
+var TGK_CC_VERSION='v2.10';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
