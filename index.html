@@ -3733,7 +3733,32 @@ function tgkAIFetch(bodyObj){
   var anon=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
   return fetch(TGK_SB_URL+'/functions/v1/anthropic-proxy',{method:'POST',headers:{'Content-Type':'application/json','apikey':anon,'Authorization':'Bearer '+(token||anon)},body:JSON.stringify(bodyObj)});
 }
-function showErr(elId,err){const map={'NETWORK_ERROR':'Cannot reach the AI service. Check your connection and try again.','AUTH_ERROR':'AI service is not configured. Contact the administrator.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'The AI response was cut off even after auto-continuing. Trim the source description and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
+function showErr(elId,err){const _m=String((err&&err.message)||err||'');if(_m.indexOf('TRUNCATED')===0&&_m.length>9){try{err=new Error('TRUNCATED');console.warn('[TGK AI] truncation detail:',_m);}catch(_e){}}
+  const map={'NETWORK_ERROR':'Cannot reach the AI service. Check your connection and try again.','AUTH_ERROR':'AI service is not configured. Contact the administrator.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'The AI response was cut off even after auto-continuing. Trim the source description and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
+/* Reduce a pasted description to meaningful content: drop style/script/comments,
+   collapse base64 images, and flatten runaway whitespace. Keeps text and structural
+   tags so the model can still see headings, lists and tables. */
+function stripSourceHtml(t){
+  var s=String(t||'');
+  var before=s.length;
+  s=s.replace(/<!--[\s\S]*?-->/g,'');
+  s=s.replace(/<style[\s\S]*?<\/style>/gi,'');
+  s=s.replace(/<script[\s\S]*?<\/script>/gi,'');
+  s=s.replace(/\ssrc\s*=\s*"data:[^"]*"/gi,' src="[inline-image]"');
+  s=s.replace(/\ssrc\s*=\s*'data:[^']*'/gi," src='[inline-image]'");
+  s=s.replace(/\sstyle\s*=\s*"[^"]*"/gi,'');
+  s=s.replace(/\sstyle\s*=\s*'[^']*'/gi,'');
+  s=s.replace(/\sclass\s*=\s*"[^"]*"/gi,'');
+  s=s.replace(/\sclass\s*=\s*'[^']*'/gi,'');
+  s=s.replace(/\s(data-[\w-]+|aria-[\w-]+|role|id)\s*=\s*"[^"]*"/gi,'');
+  s=s.replace(/<\/?(span|font|o:p)[^>]*>/gi,'');
+  s=s.replace(/[ \t]{2,}/g,' ').replace(/(\r?\n){3,}/g,'\n\n').trim();
+  _lastStripStats={before:before,after:s.length};
+  return s;
+}
+var _lastStripStats={};
+window.stripSourceHtml=stripSourceHtml;
+
 async function callAI(prompt,maxTokens=1200){let r,d;try{r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]});}catch(fe){throw new Error('NETWORK_ERROR');}d=await r.json();if(d.error){if(d.error.type==='authentication_error'||d.error.type==='proxy_not_configured')throw new Error('AUTH_ERROR');if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');throw new Error('API: '+d.error.message);}if(d.stop_reason==='max_tokens')throw new Error('TRUNCATED');return d.content?.[0]?.text||'';}
 /* ===== Long-form AI calls. Sonnet stops with stop_reason 'max_tokens' when the
    requested ceiling is reached. The TGK template (inline SVG icons, specs table,
@@ -3757,16 +3782,31 @@ async function callAILong(prompt,maxTokens,maxCont){
       if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');
       throw new Error('API: '+d.error.message);
     }
-    var chunk=(d.content&&d.content[0]&&d.content[0].text)?d.content[0].text:'';
+    // Join EVERY text block. Reading only content[0] silently dropped output whenever the
+    // response came back as more than one block, which looks identical to truncation.
+    var chunk=(d.content||[]).filter(function(b){return b&&b.type==='text'&&b.text;})
+                             .map(function(b){return b.text;}).join('');
+    if(!chunk&&d.content&&d.content[0]&&d.content[0].text)chunk=d.content[0].text;
     acc+=chunk;
+    _lastAIDiag={passes:pass+1,chars:acc.length,stop:d.stop_reason||'(none)',lastChunk:chunk.length};
     if(d.stop_reason!=='max_tokens')return acc;
+    // A continuation that returns nothing will never finish - stop instead of burning passes.
+    if(pass>0&&!chunk){_lastAIDiag.stalled=true;return acc;}
     var prefill=acc.replace(/\s+$/,'');
     if(!prefill)throw new Error('TRUNCATED');
     acc=prefill;
     msgs=[{role:'user',content:prompt},{role:'assistant',content:prefill}];
   }
+  _lastAIDiag.exhausted=true;
   return acc;
 }
+var _lastAIDiag={};
+function aiDiagText(){
+  var d=_lastAIDiag||{};
+  return (d.passes?(' (' + d.passes + ' pass' + (d.passes!==1?'es':'') + ', ' + (d.chars||0) + ' chars, stop_reason: ' + (d.stop||'?')
+    + (d.stalled?', continuation returned nothing':'') + (d.exhausted?', continuation budget used up':'') + ')'):'');
+}
+window.aiDiagText=aiDiagText;
 /* Close any strings/braces left open by a truncated JSON payload. */
 function _repairJson(t){
   var inStr=false,esc=false,stack=[],i,c;
@@ -3910,7 +3950,12 @@ faq: same 5 questions as plain-text objects for schema generation`;
   bar.style.display = 'none'; btn.disabled = false; lbl.textContent = 'Rewrite copy';
 }
 async function convertDesc() {
-  const input = document.getElementById('conv-input').value.trim();
+  var _rawInput = document.getElementById('conv-input').value.trim();
+  // Pasted Shopify descriptions routinely carry <style> blocks, <script>, comments and
+  // base64 data-URI images. That payload consumes the context window before the model
+  // writes a single character, which is the most common reason a long conversion
+  // truncates. Strip it to the content that actually matters.
+  const input = stripSourceHtml(_rawInput);
   if (!input) { alert('Paste your existing description first.'); return; }
 
   const name = document.getElementById('conv-name').value.trim();
@@ -3956,13 +4001,13 @@ NO stats bar. NO ratings. NO fitment section. NO SKU rows in variant tables. NO 
 changes: 1-2 sentences describing what was restructured or improved.`;
 
   try {
-    const raw = await callAILong(prompt, 8000, 3);
+    const raw = await callAILong(prompt, 8000, 5);
     let d = parseAIJson(raw);
     let _convSalvaged = false;
     if (!d || !d.descriptionHtml) {
       const _salH1 = (d && d.h1) || _extractJsonField(raw, 'h1');
       const _salHtml = (d && d.descriptionHtml) || _extractJsonField(raw, 'descriptionHtml');
-      if (!_salHtml) throw new Error('TRUNCATED');
+      if (!_salHtml) throw new Error('TRUNCATED'+(typeof aiDiagText==='function'?aiDiagText():''));
       d = { h1: _salH1, descriptionHtml: _salHtml, changes: _extractJsonField(raw, 'changes') };
       _convSalvaged = true;
     }
@@ -16018,7 +16063,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.10';
+var TGK_CC_VERSION='v2.11';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
