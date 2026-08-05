@@ -266,7 +266,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-eyebrow"><span>TGK Motorsport / Competition Sim</span><i></i><span id="ta-ver" style="color:var(--alu-3)">v2.10</span></div>
+      <div class="ta-eyebrow"><span>TGK Motorsport / Competition Sim</span><i></i><span id="ta-ver" style="color:var(--alu-3)">v2.30</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -310,6 +310,14 @@ body{
               <button data-v="sport">Sport</button>
               <button data-v="off">Off</button>
             </div>
+          </div>
+          <div class="ta-opt">
+            <span class="lbl">ABS</span>
+            <div class="ta-seg" id="ta-seg-abs">
+              <button data-v="on" class="sel">On</button>
+              <button data-v="off">Off</button>
+            </div>
+            <div class="ta-hint">Off: the pedal is raw. Locked fronts do not steer.</div>
           </div>
           <div class="ta-opt">
             <span class="lbl">Racing line</span>
@@ -395,7 +403,7 @@ body{
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v2.10';
+var TA_VER = 'v2.30';
 
 var TGK_SB_URL = 'https://piamamighqiielfztgic.supabase.co';
 var TGK_SB_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -1174,7 +1182,8 @@ function taCarReset(opts) {
     /* derived / telemetry */
     slipF: 0, slipR: 0, gripUse: 0, offLine: false, wheelspin: 0, locked: 0,
     seg: 0, lat: 0, sAlong: 0, offTime: 0, topV: 0,
-    bodyRoll: 0, pitch: 0, exhaust: 0, revLimit: 0, delta: 0, absOn: 0, wheelAng: 0, fyF: 0, fyR: 0
+    bodyRoll: 0, pitch: 0, exhaust: 0, revLimit: 0, delta: 0, absOn: 0, wheelAng: 0, fyF: 0, fyR: 0,
+    absOff: (opts.abs === 'off'), lockF: 0, lockR: 0
   };
   /* the renderer and tach follow the chosen car */
   if (typeof taBuildCar === 'function') taBuildCar(car.spec);
@@ -1350,10 +1359,22 @@ function taStep(dt) {
      corner entry consumed the whole friction circle longitudinally and the car
      went straight on regardless of steering - the single biggest reason the
      old model felt undrivable. The handbrake bypasses ABS entirely. */
-  var absK = Math.max(0.52, 0.965 - 0.42 * Math.abs(delta) / 0.55);
-  var FbFe = Math.min(FbF, capF * absK);
-  var FbRe = Math.min(FbR, capR * absK) + HANDBRAKE * car.hb;
-  car.absOn = (FbFe < FbF - 5) ? 1 : 0;
+  var FbFe, FbRe;
+  car.lockF = 0; car.lockR = 0;
+  if (car.absOff) {
+    /* ABS OFF: the pedal is a straight line to the calipers. Demand past
+       the tyre's cap LOCKS the wheel: a locked tyre slides at reduced
+       friction and - critically - a locked FRONT cannot steer at all. */
+    FbFe = FbF; FbRe = FbR + HANDBRAKE * car.hb;
+    if (FbF > capF * 0.98) { car.lockF = clamp((FbF - capF) / (capF * 0.6 + 1) + 0.35, 0, 1); FbFe = capF * (1 - 0.22 * car.lockF); }
+    if (FbR + HANDBRAKE * car.hb > capR * 0.98) { car.lockR = clamp((FbR + HANDBRAKE * car.hb - capR) / (capR * 0.6 + 1) + 0.35, 0, 1); FbRe = capR * (1 - 0.22 * car.lockR); }
+    car.absOn = 0;
+  } else {
+    var absK = Math.max(0.52, 0.965 - 0.42 * Math.abs(delta) / 0.55);
+    FbFe = Math.min(FbF, capF * absK);
+    FbRe = Math.min(FbR, capR * absK) + HANDBRAKE * car.hb;
+    car.absOn = (FbFe < FbF - 5) ? 1 : 0;
+  }
 
   /* ---- longitudinal force per axle ----
      Excess drive torque does not just clip: a spinning tyre falls to its
@@ -1367,7 +1388,7 @@ function taStep(dt) {
   var FxF = clamp(demF, -capFe, capFe);
   var FxR = clamp(demR, -capRe, capRe);
   car.wheelspin = clamp(Math.max(demR - capR, demF - capF) / (Math.max(capF, capR) * 0.5 + 1), 0, 1);
-  car.locked = Math.max(car.absOn * 0.45, clamp((HANDBRAKE * car.hb - capR * 0.9) / (capR * 0.5 + 1), 0, 1));
+  car.locked = Math.max(car.absOn * 0.45, car.lockF || 0, car.lockR || 0, clamp((HANDBRAKE * car.hb - capR * 0.9) / (capR * 0.5 + 1), 0, 1));
 
   /* ---- lateral force per axle, resolved in the wheel frame ----
      Working in the wheel frame rather than approximating with small-angle body
@@ -1395,6 +1416,8 @@ function taStep(dt) {
   var F = axleForce(car.vy + A_CG * car.r, delta, capFe, FxF);
   var R = axleForce(car.vy - B_CG * car.r, 0, capRe, FxR);
   if (car.hb > 0) R.fy *= (1 - 0.55 * car.hb);
+  if (car.lockF) F.fy *= (1 - 0.92 * car.lockF);   /* locked front = no steering */
+  if (car.lockR) R.fy *= (1 - 0.80 * car.lockR);   /* locked rear  = instability */
   car.slipF = F.alpha; car.slipR = R.alpha;
 
   /* relaxation length: the contact patch has to roll ~0.55 m before the
@@ -1546,8 +1569,38 @@ function taResize() {
   HW = CW / 2; HH = CH / 2;
 }
 
+var orbitA = Math.PI;      /* showroom angle, starts behind the car */
 function taCamUpdate(dt) {
   var m = CAM_MODES[camMode];
+
+  /* On the grid, before the run starts, the camera becomes a showroom:
+     it circles the car slowly at bumper height so the driver actually sees
+     the machine - the face, the profile, the tail - not just a rear bumper.
+     The moment the car moves off, it eases back into the chase position. */
+  var showroom = (typeof _taState !== 'undefined' && _taState === 'grid' && typeof run !== 'undefined' && !run.started && Math.abs(car.v) < 0.8);
+  if (showroom) {
+    orbitA += dt * 0.42;
+    var oR = 5.6, oH = 1.15;
+    var ox = car.x + Math.sin(car.yaw + orbitA) * oR;
+    var oz = car.z + Math.cos(car.yaw + orbitA) * oR;
+    var kO = 1 - Math.pow(0.05, dt);
+    camX = lerp(camX, ox, kO);
+    camZ = lerp(camZ, oz, kO);
+    camY = lerp(camY, oH, kO);
+    /* look at the car */
+    var lYaw = Math.atan2(car.x - camX, car.z - camZ);
+    var dO = lYaw - camYaw;
+    while (dO > Math.PI) dO -= Math.PI * 2;
+    while (dO < -Math.PI) dO += Math.PI * 2;
+    camYaw += dO * kO;
+    camPitch = lerp(camPitch, 0.02, kO);
+    var fovS = camFovBase + 4;
+    camDepth = 1 / Math.tan(fovS * Math.PI / 360);
+    shakeX = 0; shakeY = 0;
+    return;
+  }
+  orbitA = Math.PI;
+
   /* look where the car is going, not just where it points */
   var slip = Math.atan2(car.vy, Math.max(Math.abs(car.v), 2));
   var tYaw = car.yaw + clamp(slip * 0.42, -0.28, 0.28);
@@ -2209,7 +2262,7 @@ function taBuildCar(spec) {
   var lenF = S.wb / 2 + (suv ? 0.98 : 0.86), lenR = -(S.wb / 2 + (suv ? 0.98 : 0.86));
   var SILL = suv ? 0.34 : 0.14;
   var BELT = suv ? 1.04 : (st === 'cc' ? 0.70 : 0.72);
-  var ROOF = suv ? (S.rw > 0.38 ? 1.66 : 1.72) : (st === 'cc' ? 1.22 : 1.30);
+  var ROOF = suv ? (S.rw > 0.38 ? 1.66 : 1.72) : (st === 'cc' ? 1.17 : 1.30);
   /* X5 (bigger wheels) gets the sportier, slightly lower raked roof */
   var raked = suv && S.rw > 0.38;
 
@@ -2308,10 +2361,15 @@ function taBuildCar(spec) {
     var xo = side * ARCH, xi = side * (HWID - 0.02);
     var xI = Math.min(xo, xi), xO = Math.max(xo, xi);
     var z0 = zc - rw2 - 0.10, z1 = zc + rw2 + 0.10;
-    /* the blade follows the tyre: rises over the crown, drops to the lips */
-    m.box(xI, xO, aTop - 0.09, aTop, zc - rw2 * 0.42, zc + rw2 * 0.42, FLARE, 'arch');
-    m.box(xI, xO, aTop - 0.20, aTop - 0.06, z0 - 0.06, zc - rw2 * 0.36, FLARE, 'arch');
-    m.box(xI, xO, aTop - 0.20, aTop - 0.06, zc + rw2 * 0.36, z1 + 0.06, FLARE, 'arch');
+    if (S.face === 'tg') {
+      /* Touareg: square-cut flat blade, the boxy SUV arch of the real car */
+      m.box(xI, xO, aTop - 0.10, aTop, z0 - 0.06, z1 + 0.06, FLARE, 'arch');
+    } else {
+      /* the blade follows the tyre: rises over the crown, drops to the lips */
+      m.box(xI, xO, aTop - 0.09, aTop, zc - rw2 * 0.42, zc + rw2 * 0.42, FLARE, 'arch');
+      m.box(xI, xO, aTop - 0.20, aTop - 0.06, z0 - 0.06, zc - rw2 * 0.36, FLARE, 'arch');
+      m.box(xI, xO, aTop - 0.20, aTop - 0.06, zc + rw2 * 0.36, z1 + 0.06, FLARE, 'arch');
+    }
     m.box(xI, xO, SILL, aTop, z1, z1 + 0.13, FLARE, 'arch');                 /* front lip */
     m.box(xI, xO, SILL, aTop, z0 - 0.13, z0, FLARE, 'arch');                 /* rear lip */
     var wi = side * (HWID - 0.28), wo = side * (HWID - 0.06);
@@ -2383,8 +2441,37 @@ function taBuildCar(spec) {
     m.box(-0.58, 0.58, BELT - 0.175, BELT - 0.155, lenF - 0.001, lenF + 0.034, [172, 176, 181], 'trim');
     m.box(-0.58, 0.58, SILL + 0.19, SILL + 0.21, lenF - 0.001, lenF + 0.034, [172, 176, 181], 'trim');
   }
-  m.box(-HWID - 0.015, -HWID + 0.54, BELT - 0.16, BELT - 0.06, lenR - 0.055, lenR + 0.02, [110, 20, 20], 'tail');
-  m.box(HWID - 0.54, HWID + 0.015, BELT - 0.16, BELT - 0.06, lenR - 0.055, lenR + 0.02, [110, 20, 20], 'tail');
+  /* THE REAR IS WHAT THE DRIVER SEES ALL RACE - so the rear is where each
+     car's real identity lives, exactly like the road cars: */
+  var RED = [122, 18, 18], REDL = [168, 34, 30];
+  if (S.face === 'hex') {
+    /* S6: wide thin horizontal LED bars set high, quad pipes below */
+    m.box(-HWID - 0.015, -HWID + 0.60, BELT - 0.115, BELT - 0.045, lenR - 0.055, lenR + 0.02, REDL, 'tail');
+    m.box(HWID - 0.60, HWID + 0.015, BELT - 0.115, BELT - 0.045, lenR - 0.055, lenR + 0.02, REDL, 'tail');
+    /* chrome beltline strip, an Audi signature seen from every angle */
+    m.box(-HWID - 0.012, -HWID - 0.002, BELT - 0.015, BELT + 0.005, lenR + 0.6, lenF - 0.9, [198, 202, 208], 'trim');
+    m.box(HWID + 0.002, HWID + 0.012, BELT - 0.015, BELT + 0.005, lenR + 0.6, lenF - 0.9, [198, 202, 208], 'trim');
+  } else if (S.face === 'bars') {
+    /* CC: slim tails high on the deck joined by the chrome boot strip */
+    m.box(-HWID - 0.015, -HWID + 0.50, BELT - 0.10, BELT - 0.035, lenR - 0.05, lenR + 0.02, RED, 'tail');
+    m.box(HWID - 0.50, HWID + 0.015, BELT - 0.10, BELT - 0.035, lenR - 0.05, lenR + 0.02, RED, 'tail');
+    m.box(-HWID + 0.46, HWID - 0.46, BELT - 0.085, BELT - 0.055, lenR - 0.055, lenR + 0.01, [196, 200, 206], 'exh');
+  } else if (S.face === 'tg') {
+    /* Touareg: big two-tier vertical tails wrapping the upright tailgate,
+       silver lower bumper element between the dual pipes */
+    m.box(-HWID - 0.015, -HWID + 0.30, BELT - 0.28, BELT - 0.02, lenR - 0.06, lenR + 0.02, RED, 'tail');
+    m.box(HWID - 0.30, HWID + 0.015, BELT - 0.28, BELT - 0.02, lenR - 0.06, lenR + 0.02, RED, 'tail');
+    m.box(-0.30, 0.30, SILL + 0.12, SILL + 0.24, lenR - 0.075, lenR - 0.01, [186, 189, 193], 'trim');
+  } else {
+    /* X5 M50i: wide slim darkened tails and the big gloss-black diffuser
+       panel spanning the whole bumper between the quad pipes */
+    m.box(-HWID - 0.015, -HWID + 0.58, BELT - 0.10, BELT - 0.03, lenR - 0.055, lenR + 0.02, [96, 14, 16], 'tail');
+    m.box(HWID - 0.58, HWID + 0.015, BELT - 0.10, BELT - 0.03, lenR - 0.055, lenR + 0.02, [96, 14, 16], 'tail');
+    m.box(-HWID + 0.10, HWID - 0.10, SILL + 0.10, SILL + 0.30, lenR - 0.045, lenR + 0.02, [18, 19, 21], 'trim');
+    /* gloss-black beltline, the counterpart to the Audi chrome */
+    m.box(-HWID - 0.012, -HWID - 0.002, BELT - 0.015, BELT + 0.005, lenR + 0.6, lenF - 0.9, [16, 17, 19], 'trim');
+    m.box(HWID + 0.002, HWID + 0.012, BELT - 0.015, BELT + 0.005, lenR + 0.6, lenF - 0.9, [16, 17, 19], 'trim');
+  }
   m.box(-ARCH - 0.005, -ARCH + 0.005, SILL + 0.26, SILL + 0.32, lenR + 0.6, lenF - 0.6, [42, 191, 170], 'stripe');
   m.box(ARCH - 0.005, ARCH + 0.005, SILL + 0.26, SILL + 0.32, lenR + 0.6, lenF - 0.6, [42, 191, 170], 'stripe');
   carMesh = m;
@@ -2769,7 +2856,7 @@ function taAudioFrame() {
    ========================================================================== */
 var run = null;
 var keys = {};
-var opts = { tyre: 'sport', box: 'auto', esc: 'on', line: 'on' };
+var opts = { tyre: 'sport', box: 'auto', esc: 'on', abs: 'on', line: 'on' };
 var mapCache = null, mapBox = null;
 var ghost = null;
 
@@ -2814,7 +2901,7 @@ function taSeedRubber() {
 }
 
 function taWireOptions() {
-  [['ta-seg-car', 'car'], ['ta-seg-tyre', 'tyre'], ['ta-seg-box', 'box'], ['ta-seg-esc', 'esc'], ['ta-seg-line', 'line']].forEach(function (pair) {
+  [['ta-seg-car', 'car'], ['ta-seg-tyre', 'tyre'], ['ta-seg-box', 'box'], ['ta-seg-esc', 'esc'], ['ta-seg-abs', 'abs'], ['ta-seg-line', 'line']].forEach(function (pair) {
     var wrap = taEl(pair[0]);
     if (!wrap) return;
     wrap.addEventListener('click', function (e) {
@@ -2840,7 +2927,7 @@ function taRestoreOptions() {
     if (o) { opts = Object.assign(opts, o); }
   } catch (e) {}
   if (!opts.car || !CAR_SPEC[opts.car]) opts.car = 's6';
-  [['ta-seg-car', 'car'], ['ta-seg-tyre', 'tyre'], ['ta-seg-box', 'box'], ['ta-seg-esc', 'esc'], ['ta-seg-line', 'line']].forEach(function (pair) {
+  [['ta-seg-car', 'car'], ['ta-seg-tyre', 'tyre'], ['ta-seg-box', 'box'], ['ta-seg-esc', 'esc'], ['ta-seg-abs', 'abs'], ['ta-seg-line', 'line']].forEach(function (pair) {
     var wrap = taEl(pair[0]);
     var kids = wrap.querySelectorAll('button');
     for (var i = 0; i < kids.length; i++) {
@@ -3441,7 +3528,7 @@ function taFinish(dnf, why) {
 
   var entry = {
     name: run.name, ms: Math.round(official), raw: Math.round(raw), pen: run.pen,
-    cones: run.cones, tyre: TYRE_SPEC[opts.tyre].name, esc: opts.esc,
+    cones: run.cones, tyre: TYRE_SPEC[opts.tyre].name, esc: opts.esc, abs: opts.abs,
     car: (CAR_SPEC[opts.car] || CAR_SPEC.s6).short,
     date: new Date().toISOString().slice(0, 10)
   };
