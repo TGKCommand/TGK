@@ -1131,22 +1131,22 @@ var CAR_SPEC = {
   s6: { name: 'Audi S6', short: 'S6', style: 'sedan', paint: [242, 240, 236], face: 'hex', exh: 4, wing: 'swan', mirror: [188, 192, 198], rails: 0,
     m: 1970, iz: 3400, wb: 2.92, acg: 1.31, hcg: 0.52, track: 1.64, awdF: 0.40, rearGrip: 1.06,
     tq: 550, rpmTq: 3200, rpmLim: 6800, gears: [3.36, 2.17, 1.60, 1.26, 1.02, 0.84], fin: 3.32,
-    cda: 0.78, cla: 0.50, brake: 24500, rw: 0.345,
+    cda: 0.78, cla: 0.50, brake: 33000, rw: 0.345,
     hint: 'The original TGK car. 4.0T V8, quattro, 550 Nm. Fast everywhere.' },
   cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [22, 23, 26], face: 'bars', exh: 2, wing: 'lip', mirror: [22, 23, 26], rails: 0,
     m: 1560, iz: 2450, wb: 2.71, acg: 1.14, hcg: 0.50, track: 1.55, awdF: 1.0, rearGrip: 1.06,
     tq: 280, rpmTq: 2600, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94,
-    cda: 0.66, cla: 0.28, brake: 18500, rw: 0.325,
+    cda: 0.66, cla: 0.28, brake: 25500, rw: 0.325,
     hint: '2.0T, FWD, the momentum car. Brakes deep, carries speed, hates greed.' },
   touareg: { name: 'VW Touareg', short: 'TOUAREG', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1,
     m: 2145, iz: 4600, wb: 2.90, acg: 1.36, hcg: 0.64, track: 1.66, awdF: 0.42, rearGrip: 1.04,
     tq: 450, rpmTq: 2800, rpmLim: 6200, gears: [3.30, 2.10, 1.52, 1.16, 0.94, 0.78], fin: 3.70,
-    cda: 1.02, cla: 0.10, brake: 26000, rw: 0.375,
+    cda: 1.02, cla: 0.10, brake: 35500, rw: 0.375,
     hint: '3.0 TSI, 2.1 tonnes, tall. Every input needs to be planned early.' },
   x5: { name: 'BMW X5 M50i', short: 'X5 M50i', style: 'suv', paint: [248, 249, 251], face: 'kidney', exh: 4, wing: 'roof', mirror: [30, 31, 34], rails: 1,
     m: 2385, iz: 5400, wb: 2.975, acg: 1.43, hcg: 0.66, track: 1.68, awdF: 0.35, rearGrip: 1.06,
     tq: 750, rpmTq: 3000, rpmLim: 6600, gears: [3.42, 2.19, 1.60, 1.26, 1.00, 0.82], fin: 3.15,
-    cda: 1.06, cla: 0.12, brake: 28500, rw: 0.385,
+    cda: 1.06, cla: 0.12, brake: 38500, rw: 0.385,
     hint: '4.4 TT V8, 750 Nm, 2.4 tonnes. A freight train with a hammer.' }
 };
 
@@ -1239,7 +1239,7 @@ function taStep(dt) {
      13:1 rack is ~1.2 rad/s at the road wheels. */
   var maxDelta = clamp(
     1.00 * (car.peakSlip || 0.14) + 1.60 * WB * G * car.mu / Math.max(absV * absV, 26),
-    0.10, 0.60);
+    0.10, 0.56);
   /* Countersteer is exempt from the grip cap: catching a slide needs the rack
      turned to roughly the body slip angle, and real hands can always reach
      opposite lock. Without this, a slide past the cap was mathematically
