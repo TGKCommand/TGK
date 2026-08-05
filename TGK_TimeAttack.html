@@ -102,6 +102,7 @@ body{
 #ta-gear.lim{color:var(--red)}
 #ta-speed-plate{width:112px;padding:8px 0 7px;text-align:center}
 #ta-speed{font-family:var(--mono);font-size:38px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums}
+#ta-tyretemp{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:#7fb3d5;margin-top:3px}
 
 /* course map, top right */
 #ta-map-plate{position:absolute;top:14px;right:16px;width:132px;padding:8px}
@@ -253,7 +254,7 @@ body{
       </div>
       <div id="ta-speed-plate" class="plate">
         <div class="lbl">mph</div>
-        <div id="ta-speed" class="num">0</div>
+        <div id="ta-speed" class="num">0</div><div id="ta-tyretemp">TYRE COLD</div>
       </div>
     </div>
 
@@ -266,7 +267,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-eyebrow"><span>TGK Motorsport / Competition Sim</span><i></i><span id="ta-ver" style="color:var(--alu-3)">v2.30</span></div>
+      <div class="ta-eyebrow"><span>TGK Motorsport / Competition Sim</span><i></i><span id="ta-ver" style="color:var(--alu-3)">v2.40</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -403,7 +404,7 @@ body{
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v2.30';
+var TA_VER = 'v2.40';
 
 var TGK_SB_URL = 'https://piamamighqiielfztgic.supabase.co';
 var TGK_SB_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -1090,6 +1091,11 @@ var R_MAX = 5.0;        /* rad/s - a real car cannot exceed this */
 var RS_FRONT = 0.54;    /* share of roll stiffness on the front axle */
 var LOAD_SENS = 0.55;   /* tyre grip falloff with lateral load transfer */
 
+/* Temperature sensitivity per compound: street rubber barely cares, sport
+   wants some heat, R-comp is nothing special until it is HOT - exactly why
+   real first runs on R-comps are treacherous. Overheating in long slides
+   costs grip too. */
+var TYRE_TEMP_SENS = { street: 0.03, sport: 0.07, rcomp: 0.14 };
 var TYRE_SPEC = {
   /* Post-peak retention set from real tyre data: passenger rubber keeps about
      95 percent of peak past the peak, sport about 92, slicks about 85. The old
@@ -1183,7 +1189,8 @@ function taCarReset(opts) {
     slipF: 0, slipR: 0, gripUse: 0, offLine: false, wheelspin: 0, locked: 0,
     seg: 0, lat: 0, sAlong: 0, offTime: 0, topV: 0,
     bodyRoll: 0, pitch: 0, exhaust: 0, revLimit: 0, delta: 0, absOn: 0, wheelAng: 0, fyF: 0, fyR: 0,
-    absOff: (opts.abs === 'off'), lockF: 0, lockR: 0
+    absOff: (opts.abs === 'off'), lockF: 0, lockR: 0,
+    tyreT: 0.25, ayS: 0, blip: 0
   };
   /* the renderer and tach follow the chosen car */
   if (typeof taBuildCar === 'function') taBuildCar(car.spec);
@@ -1283,7 +1290,8 @@ function taStep(dt) {
   if (car.wheelspin > 0.05 && car.thr > 0.2) {
     rpmTarget = Math.min(RPM_LIM + 120, rpmWheel + car.wheelspin * 2400);
   }
-  var rpmRate = rpmTarget > car.rpm ? (3800 + 9500 * car.thr) : 6200;
+  if (car.blip > 0) car.blip -= dt;
+  var rpmRate = rpmTarget > car.rpm ? (3800 + 9500 * car.thr + (car.blip > 0 ? 12000 : 0)) : 6200;
   car.rpm = clamp(car.rpm + clamp(rpmTarget - car.rpm, -rpmRate * dt, rpmRate * dt), RPM_IDLE, RPM_LIM + 150);
   car.revLimit = 0;
   if (car.rpm >= RPM_LIM - 20) { car.revLimit = 1; }
@@ -1335,6 +1343,19 @@ function taStep(dt) {
   var FbF = Fbrake * BRAKE_SPLIT_F;
   var FbR = Fbrake * (1 - BRAKE_SPLIT_F);
 
+  /* ---- tyre temperature: slip work heats the rubber, air cools it.
+     Starts COLD on the grid; optimum is 1.0; past ~1.15 it goes greasy. ---- */
+  var slipWork = (Math.abs(car.slipF || 0) + Math.abs(car.slipR || 0)) * Math.abs(car.v) * 0.012
+               + (car.wheelspin || 0) * 0.25 + (car.locked || 0) * 0.20;
+  car.tyreT += (slipWork * 0.55 + Math.abs(car.v) * 0.0016) * dt;
+  car.tyreT -= (car.tyreT - 0.18) * 0.030 * dt * (1 + Math.abs(car.v) * 0.02);
+  car.tyreT = clamp(car.tyreT, 0.15, 1.45);
+  var tSens = TYRE_TEMP_SENS[car.tyre] || 0.07;
+  var cold = 1 - Math.min(car.tyreT, 1.0);
+  var hot = Math.max(car.tyreT - 1.15, 0);
+  var muT = 1 - tSens * cold * cold * 3.2 - 0.10 * hot * 2.2;
+  mu = mu * clamp(muT, 0.80, 1.0);
+
   /* ---- vertical loads with longitudinal transfer ---- */
   var FzF = M * G * B_CG / WB - M * car.ax * H_CG / WB + down * 0.45;
   var FzR = M * G * A_CG / WB + M * car.ax * H_CG / WB + down * 0.55;
@@ -1347,7 +1368,11 @@ function taStep(dt) {
      arcade model: it is why real cars corner below tyre mu, why anti-roll bar
      split sets balance, and why kerbing one side mid-corner unsettles the car.
      Front carries 55 percent of roll stiffness -> transient understeer bias. */
-  var latW = M * Math.abs(car.ay) * H_CG / TRACK;
+  /* the body rolls onto its springs over ~0.22 s - lateral load transfer is
+     NOT instantaneous, which is why a fast flick is more forgiving than a
+     held corner at the same g */
+  car.ayS += (car.ay - car.ayS) * clamp(dt / 0.22, 0, 1);
+  var latW = M * Math.abs(car.ayS) * H_CG / TRACK;
   var dWf = latW * RS_FRONT, dWr = latW * (1 - RS_FRONT);
   var lossF = clamp(LOAD_SENS * (dWf / FzF) * (dWf / FzF), 0, 0.40);
   var lossR = clamp(LOAD_SENS * (dWr / FzR) * (dWr / FzR), 0, 0.40);
@@ -1515,6 +1540,7 @@ function taShift(dir) {
   if (g < 1 || g > car.spec.gears.length) return false;
   car.gear = g;
   car.shiftT = SHIFT_TIME;
+  if (dir < 0) car.blip = 0.30;   /* rev-match blip on the way down */
   car.clutch = 0;
   if (dir < 0) car.exhaust = 1;          /* overrun pop on the downshift */
   if (typeof taAudioShift === 'function') taAudioShift(dir);
@@ -1549,7 +1575,16 @@ var SKID_MAX = 1400;
 var particles = [];
 var showLine = true;
 
-var SUN = (function () { var v = [-0.42, 0.80, 0.43], l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; })();
+var SUN = [-0.42, 0.80, 0.43];
+/* the sun moves with the calendar: each daily course gets its own light -
+   morning courses throw long shadows one way, afternoon ones the other */
+function taApplySun(seed) {
+  var az = ((seed % 113) / 113 - 0.5) * 2.4;            /* -69 to +69 deg */
+  var el = 0.62 + ((seed % 47) / 47) * 0.35;            /* 36 to 56 deg   */
+  var v = [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)];
+  var l = Math.hypot(v[0], v[1], v[2]);
+  SUN = [v[0] / l, v[1] / l, v[2] / l];
+}
 
 /* ---- palette ---- */
 var C_SKY_TOP = [24, 44, 66], C_SKY_HOR = [150, 172, 188];
@@ -1996,6 +2031,12 @@ function drawScenery() {
       pushSprite(rz, function () {
         var f = 1 - fogAt(rz), s = p.s;
         var haze = 'rgba(' + C_SKY_HOR.join(',') + ',' + (1 - f) + ')';
+        /* every object casts a soft sun-direction shadow - nothing floats */
+        var shx = -SUN[0] / Math.max(SUN[1], 0.4), shz = -SUN[2] / Math.max(SUN[1], 0.4);
+        var sw = (o.w || 1.2) * 0.9, sl = (o.h || 2) * 0.8;
+        gquad([[o.x - sw, o.z], [o.x + sw, o.z],
+               [o.x + sw + shx * sl, o.z + shz * sl],
+               [o.x - sw + shx * sl, o.z + shz * sl]], 'rgba(8,9,10,' + (0.16 * f) + ')');
         if (o.t === 'tree') {
           /* trunk, then three overlapping canopy lobes lit from the sun side */
           var hh = o.h * s, ww = o.w * s;
@@ -2865,7 +2906,9 @@ var ghost = null;
    -------------------------------------------------------------------------- */
 function taBoot() {
   taResize();
-  taCourseBuild(parseInt(taDayKey(), 10) % 2147483647);
+  var daySeed = parseInt(taDayKey(), 10) % 2147483647;
+  taCourseBuild(daySeed);
+  if (typeof taApplySun === 'function') taApplySun(daySeed);
   taBuildCar(CAR_SPEC.s6);
   taBuildTach();
   taBuildMap();
@@ -3072,7 +3115,9 @@ function taInputs(dt) {
   var sTarget = 0;
   if (keys['a'] || keys['arrowleft']) sTarget -= 1;
   if (keys['d'] || keys['arrowright']) sTarget += 1;
-  var rate = sTarget === 0 ? 11.0 : 9.0;    /* quick hands; the rack slew is the real lag */
+  /* caster self-centres the wheel: return speeds up with road speed,
+     exactly like trail does in the real car */
+  var rate = sTarget === 0 ? (11.0 + Math.min(9, Math.abs(car.v) * 0.28)) : 9.0;
   var d = sTarget - car.steer;
   car.steer += clamp(d, -rate * dt, rate * dt);
   car.steer = clamp(car.steer, -1, 1);
@@ -3382,6 +3427,12 @@ function taHUD() {
   gEl.textContent = car.shiftT > 0 ? '-' : String(car.gear);
   gEl.classList.toggle('lim', !!car.revLimit);
   taEl('ta-speed').textContent = Math.round(taSpeedMph());
+  var tEl = taEl('ta-tyretemp');
+  if (tEl) {
+    var tt = car.tyreT || 0.25;
+    tEl.textContent = 'TYRE ' + (tt < 0.55 ? 'COLD' : tt < 0.85 ? 'WARMING' : tt <= 1.15 ? 'OPTIMAL' : 'HOT');
+    tEl.style.color = tt < 0.55 ? '#7fb3d5' : tt < 0.85 ? '#c9cdd3' : tt <= 1.15 ? '#2ABFAA' : '#e07a3c';
+  }
 
   /* grip */
   var gu = clamp(car.gripUse, 0, 1.1);
