@@ -266,7 +266,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-eyebrow"><span>TGK Motorsport / Competition Sim</span><i></i><span id="ta-ver" style="color:var(--alu-3)">v2.00</span></div>
+      <div class="ta-eyebrow"><span>TGK Motorsport / Competition Sim</span><i></i><span id="ta-ver" style="color:var(--alu-3)">v2.10</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -395,7 +395,7 @@ body{
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v2.00';
+var TA_VER = 'v2.10';
 
 var TGK_SB_URL = 'https://piamamighqiielfztgic.supabase.co';
 var TGK_SB_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -1429,7 +1429,15 @@ function taStep(dt) {
     /* In a right-hand spin the yaw rate is positive but the body slip angle is
        NEGATIVE, so both terms must be signed to push the same way - subtracting
        beta here would have the sideslip term cancel the yaw-rate correction. */
-    var mz = -Kesc * (car.r - rTarget) + Kbeta * beta;
+    /* Asymmetric intervention, like the real system: full authority pulling
+       DOWN excess rotation (that is a spin forming), but only a whisper when
+       the driver is asking for more yaw than grip allows - that is plain
+       understeer, the tyres are already the limiter, and a controller that
+       fights the wheel there just feels like the car refusing to turn. */
+    var yerr = car.r - rTarget;
+    var Ke = Kesc;
+    if (yerr * rTarget < 0 && Math.abs(beta) < 0.06) Ke *= 0.18;
+    var mz = -Ke * yerr + Kbeta * beta;
     /* real ESC stands down below walking pace; without this fade it would
        actively unwind the car's heading while it slides to a stop */
     mz *= clamp((speedMag - 2.5) / 5, 0, 1);
@@ -1527,7 +1535,7 @@ var C_TARMAC = [58, 60, 62], C_SWEPT = [46, 47, 49];
 function taResize() {
   cv = taEl('ta-canvas');
   if (!cv) return;
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  DPR = Math.min(1.5, window.devicePixelRatio || 1);
   var r = cv.getBoundingClientRect();
   CW = Math.max(360, Math.floor(r.width));
   CH = Math.max(300, Math.floor(r.height));
@@ -1621,10 +1629,10 @@ function drawSky() {
    they parallax correctly as the camera yaws */
 function az31(n) { n = Math.imul(n ^ (n >>> 15), 2246822519); n = Math.imul(n ^ (n >>> 13), 3266489917); return ((n ^ (n >>> 16)) >>> 0) / 4294967295; }
 function drawSkyline() {
-  var STEP = 0.030, D = 420;
+  var STEP = 0.045, D = 420;
   var a0 = Math.floor((camYaw - 0.95) / STEP), a1 = Math.ceil((camYaw + 0.95) / STEP);
   for (var bi = a0; bi < a1; bi++) {
-    var bin = ((bi % 210) + 210) % 210;
+    var bin = ((bi % 140) + 140) % 140;
     var h1 = az31(bin * 7 + 13);
     var aA = bi * STEP, aB = aA + STEP;
     if (h1 < 0.42) continue;                       /* gaps between buildings */
@@ -1689,12 +1697,12 @@ function drawGrain() {
   var y0 = Math.max(0, HORIZON) + 6;
   if (y0 > CH - 4) return;
   ctx.fillStyle = 'rgba(210,214,218,0.05)';
-  for (var i = 0; i < 70; i++) {
+  for (var i = 0; i < 44; i++) {
     var yy = y0 + Math.pow(Math.random(), 0.5) * (CH - y0);
     ctx.fillRect(Math.random() * CW, yy, 1.5, 1.5);
   }
   ctx.fillStyle = 'rgba(8,9,10,0.06)';
-  for (var j = 0; j < 50; j++) {
+  for (var j = 0; j < 30; j++) {
     var yj = y0 + Math.pow(Math.random(), 0.5) * (CH - y0);
     ctx.fillRect(Math.random() * CW, yj, 2, 1.5);
   }
@@ -1730,7 +1738,7 @@ function stripe(cx, cz, len, wid, rot, fill) {
 }
 
 function drawDecals() {
-  var near = taNear('decals', camX, camZ, 150);
+  var near = taNear('decals', camX, camZ, 120);
   near.sort(function (a, b) {
     var da = (a.x - camX) * (a.x - camX) + (a.z - camZ) * (a.z - camZ);
     var db = (b.x - camX) * (b.x - camX) + (b.z - camZ) * (b.z - camZ);
@@ -1740,7 +1748,7 @@ function drawDecals() {
     var d = near[i];
     var dx = d.x - camX, dz = d.z - camZ;
     var rz = dz * cosY + dx * sinY;
-    if (rz < 1 || rz > 155) continue;
+    if (rz < 1 || rz > 125) continue;
     var f = 1 - fogAt(rz);
     if (d.t === 'stall') stripe(d.x, d.z + d.len / 2, d.w, d.len, 0, 'rgba(216,220,223,' + (d.a * f * 0.55) + ')');
     else if (d.t === 'aisle') stripe(d.x, d.z, d.len, d.w, 0, 'rgba(216,220,223,' + (d.a * f * 0.5) + ')');
@@ -3146,6 +3154,7 @@ function taLoop(ts) {
   var dt = Math.min(0.05, (ts - _taLast) / 1000);
   _taLast = ts;
 
+  if (dt > 0.05) dt = 0.05;   /* a hitch must not become a physics lurch */
   taInputs(dt);
 
   var prevX = car.x, prevZ = car.z;
