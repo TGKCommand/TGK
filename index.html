@@ -1106,6 +1106,11 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #cal-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #cal-viewer.active{display:flex}
 #cal-frame{width:100%;flex:1;border:none;background:#fff}
+#notes-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#notes-viewer.active{display:flex}
+#notes-viewer iframe{flex:1;width:100%;border:none;background:#ECEEF0}
+#notes-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#ECEEF0;z-index:2}
+#notes-loading.hidden{display:none}
 #ta-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #ta-viewer.active{display:flex}
 #ta-frame{width:100%;flex:1;border:none;background:#0d0f11}
@@ -2074,6 +2079,13 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
     </div>
     <iframe id="support-frame" title="TGK Support Center" allowfullscreen></iframe>
   </div>
+  <div id="notes-viewer">
+    <div id="notes-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading Notes&hellip;</div>
+    </div>
+    <iframe id="notes-frame" title="TGK Notes" allowfullscreen></iframe>
+  </div>
   <div id="sku-viewer">
     <div id="sku-loading">
       <div class="erp-spinner"></div>
@@ -2220,6 +2232,7 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
       <div class="mod-card ac-teal" onclick="openSKU()" data-mid="sku"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127991;</div><div class="mod-card-name">SKU Manager</div><div class="mod-card-cat">Inventory &middot; Registry &middot; Supabase</div><div class="mod-card-desc">Create and edit raw part &amp; assembly SKUs &mdash; categories, notes, reference links, files, and dev/live/discontinued lifecycle. Feeds directly into the ERP.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Inventory</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-teal" onclick="openCal()" data-mid="calendar"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128197;</div><div class="mod-card-name">Team Calendar</div><div class="mod-card-cat">Operations &middot; Scheduling &middot; Supabase</div><div class="mod-card-desc">Shared company calendar &mdash; time off, deadlines, and notes across the team, with a month grid and multi-day event bars.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Team</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-teal" onclick="showView('box')" data-mid="box"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128230;</div><div class="mod-card-name">Box Selector</div><div class="mod-card-cat">Shipping &middot; Packing &middot; 3D</div><div class="mod-card-desc">Build an order, run the 3D bin-packing algorithm and get the optimal shipping box in seconds.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Shipping</span></div><div style="display:flex;align-items:center;gap:7px"><div class="bdot" id="bdot-box"></div><span class="mod-card-arrow">Open &rarr;</span></div></div></div>
+      <div class="mod-card ac-teal" onclick="openNotes()" data-mid="notes"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128221;</div><div class="mod-card-name">Notes</div><div class="mod-card-cat">Docs &middot; Wiki &middot; Databases</div><div class="mod-card-desc">Block-editor pages and Notion-style databases &mdash; SOPs, build notes, research logs, linked together.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Docs</span></div><span class="mod-card-open">Open &rarr;</span></div></div>
       <div class="mod-card ac-purple" onclick="showView('toolbox')" data-mid="toolbox"><div class="mod-card-icon" style="background:rgba(124,58,237,.1)">&#128279;</div><div class="mod-card-name">Toolbox</div><div class="mod-card-cat">External Tools &middot; Links</div><div class="mod-card-desc">Manage external tools and links &mdash; add, organize, and launch from one place.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-purple">External</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
   </div>
@@ -12055,6 +12068,7 @@ var SKU_URL = 'https://command.tgkmotorsport.com/tgk_sku_manager.html';
 var CAL_URL = 'https://command.tgkmotorsport.com/tgk_calendar.html';
 var TA_URL  = 'https://command.tgkmotorsport.com/TGK_TimeAttack.html';
 var SUPPORT_URL = 'https://support.tgkmotorsport.com';
+var NOTES_URL = 'https://command.tgkmotorsport.com/notes.html';
 var SB_AUTH_URL = 'https://piamamighqiielfztgic.supabase.co';
 var SB_ANON_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
 var AUTH_KEY = 'tgk_cc_session';
@@ -12248,6 +12262,8 @@ function openERP() {
   if (_clv && _clv.classList.contains('active')) { _clv.classList.remove('active'); }
   var _tav = document.getElementById('ta-viewer');
   if (_tav && _tav.classList.contains('active')) { _tav.classList.remove('active'); }
+  var _nt__tav = document.getElementById('notes-viewer');
+  if (_nt__tav && _nt__tav.classList.contains('active')) { _nt__tav.classList.remove('active'); }
 
   // Swap cc-main for erp-viewer
   if (main)  main.style.display  = 'none';
@@ -12319,6 +12335,8 @@ function openSupportCenter() {
   if (_clv2 && _clv2.classList.contains('active')) { _clv2.classList.remove('active'); }
   var _tav2 = document.getElementById('ta-viewer');
   if (_tav2 && _tav2.classList.contains('active')) { _tav2.classList.remove('active'); }
+  var _nt__tav2 = document.getElementById('notes-viewer');
+  if (_nt__tav2 && _nt__tav2.classList.contains('active')) { _nt__tav2.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12372,6 +12390,52 @@ function closeSupportCenter() {
   if (acts) acts.innerHTML = '';
 }
 
+function openNotes() {
+  // Inline viewer, same pattern as the ERP / Support Center / SKU Manager.
+  var main    = document.getElementById('cc-main');
+  var viewer  = document.getElementById('notes-viewer');
+  var frame   = document.getElementById('notes-frame');
+  var loading = document.getElementById('notes-loading');
+  if (!viewer || !frame) { window.open(NOTES_URL, '_blank', 'noopener'); return; }
+
+  ['erp-viewer','support-viewer','sku-viewer','cal-viewer','ta-viewer'].forEach(function(id){
+    var v = document.getElementById(id);
+    if (v && v.classList.contains('active')) v.classList.remove('active');
+  });
+
+  if (main)   main.style.display = 'none';
+  viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'Notes';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeNotes()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close Notes</button>';
+  }
+
+  // Notes has its own Supabase login gate, so no token is handed across.
+  if (frame.src !== NOTES_URL) {
+    frame.onload = function(){ if (loading) loading.classList.add('hidden'); };
+    frame.src = NOTES_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+  }
+}
+function closeNotes() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('notes-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
+}
+window.openNotes=openNotes;window.closeNotes=closeNotes;
+
 function openSKU() {
   // Show the SKU Manager inline, same pattern as the ERP/Support Center viewers.
   var main    = document.getElementById('cc-main');
@@ -12390,6 +12454,8 @@ function openSKU() {
   if (_clv3 && _clv3.classList.contains('active')) { _clv3.classList.remove('active'); }
   var _tav3 = document.getElementById('ta-viewer');
   if (_tav3 && _tav3.classList.contains('active')) { _tav3.classList.remove('active'); }
+  var _ntv3 = document.getElementById('notes-viewer');
+  if (_ntv3 && _ntv3.classList.contains('active')) { _ntv3.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12441,6 +12507,8 @@ function openCal() {
   if (_skv && _skv.classList.contains('active')) { _skv.classList.remove('active'); }
   var _tavC = document.getElementById('ta-viewer');
   if (_tavC && _tavC.classList.contains('active')) { _tavC.classList.remove('active'); }
+  var _nt__tavC = document.getElementById('notes-viewer');
+  if (_nt__tavC && _nt__tavC.classList.contains('active')) { _nt__tavC.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12492,6 +12560,8 @@ function openTimeAttack() {
   if (_skv && _skv.classList.contains('active')) { _skv.classList.remove('active'); }
   var _clvT = document.getElementById('cal-viewer');
   if (_clvT && _clvT.classList.contains('active')) { _clvT.classList.remove('active'); }
+  var _nt__clvT = document.getElementById('notes-viewer');
+  if (_nt__clvT && _nt__clvT.classList.contains('active')) { _nt__clvT.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12641,7 +12711,7 @@ function loadLayout() {
 }
 
 /* ─── RENDER DASHBOARD ───────────────────────────────── */
-var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','toolbox'], fun:['arcade','timeattack'] };
+var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','notes','toolbox'], fun:['arcade','timeattack'] };
 
 function renderDashboard() {
   var n = document.getElementById('tpl-name');
@@ -12744,12 +12814,12 @@ var _fd=null;
 function openFilter(){_fd=layout.visible.slice();renderFilterBody();document.getElementById('filter-overlay').classList.add('open');document.getElementById('filter-drawer').classList.add('open');}
 function closeFilter(){document.getElementById('filter-overlay').classList.remove('open');document.getElementById('filter-drawer').classList.remove('open');}
 function saveFilter(){layout.visible=_fd?_fd.slice():[];layout.custom=true;saveLayout();closeFilter();renderDashboard();}
-function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
-function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
+function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','sku','notes','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
+function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','sku','notes','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
 function _fdToggle(id,el){if(!_fd)_fd=[];var i=_fd.indexOf(id);if(i>-1)_fd.splice(i,1);else _fd.push(id);var c=el.querySelector('.fd-chk');if(c)c.classList.toggle('on',_fd.indexOf(id)>-1);}
 var SDEFS=[
   {lbl:'AI-Powered Tools',items:[{id:'launch',icon:'&#128640;',name:'Product Launch'},{id:'social',icon:'&#128247;',name:'Social Engine'},{id:'ideas',icon:'&#128161;',name:'Idea Generator'},{id:'fbgroups',icon:'&#128101;',name:'FB Group Finder'}]},
-  {lbl:'Operations',items:[{id:'box',icon:'&#128230;',name:'Box Selector'},{id:'sku',icon:'&#127991;',name:'SKU Manager'},{id:'toolbox',icon:'&#128279;',name:'Toolbox'}]},
+  {lbl:'Operations',items:[{id:'box',icon:'&#128230;',name:'Box Selector'},{id:'sku',icon:'&#127991;',name:'SKU Manager'},{id:'notes',icon:'&#128221;',name:'Notes'},{id:'toolbox',icon:'&#128279;',name:'Toolbox'}]},
   {lbl:'Entertainment',items:[{id:'arcade',icon:'&#127918;',name:'Arcade'},{id:'timeattack',icon:'&#127937;',name:'Time Attack'}]}
 ];
 function renderFilterBody(){
@@ -16188,7 +16258,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.13';
+var TGK_CC_VERSION='v2.14';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
