@@ -1106,6 +1106,12 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #cal-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #cal-viewer.active{display:flex}
 #cal-frame{width:100%;flex:1;border:none;background:#fff}
+#ta-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#ta-viewer.active{display:flex}
+#ta-frame{width:100%;flex:1;border:none;background:#0d0f11}
+#ta-loading{position:absolute;inset:0;background:#0d0f11;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#ta-loading.hidden{display:none}
+#ta-loading .erp-loading-text{color:#c3c9cf}
 #sku-loading{position:absolute;inset:0;background:#F0F2F5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
 #erp-loading.hidden{display:none}
 #support-loading.hidden{display:none}
@@ -2082,6 +2088,13 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
     </div>
     <iframe id="cal-frame" title="TGK Team Calendar" allowfullscreen></iframe>
   </div>
+  <div id="ta-viewer">
+    <div id="ta-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading Time Attack&hellip;</div>
+    </div>
+    <iframe id="ta-frame" title="TGK Time Attack" allowfullscreen></iframe>
+  </div>
   <div id="cc-sidebar">
     <span class="cc-slbl">Tools</span>
     <button class="cc-navbtn active" id="cc-nav-home" onclick="showView('home')" draggable="true">
@@ -2219,6 +2232,7 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
   <div class="dash-section-block" id="dsec-fun">
     <div class="dash-section-lbl">Entertainment</div>
     <div class="mod-grid">
+      <div class="mod-card ac-teal" onclick="openTimeAttack()" data-mid="timeattack"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127937;</div><div class="mod-card-name">Time Attack</div><div class="mod-card-cat">Fun &middot; Daily Course &middot; Leaderboard</div><div class="mod-card-desc">Drive the real TGK fleet &mdash; S6, CC, Touareg, X5 M50i &mdash; on a new autocross course every day. Sim physics, ghosts, daily board.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-teal">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-red" onclick="showView('arcade')" data-mid="arcade"><div class="mod-card-icon" style="background:rgba(248,113,113,.1)">&#127918;</div><div class="mod-card-name">Arcade</div><div class="mod-card-cat">Fun &middot; Break Time &middot; Game</div><div class="mod-card-desc">Take a break &mdash; TGK Autocross Survival Challenge. Compete for the leaderboard.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-red">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
   </div>
@@ -3606,6 +3620,8 @@ function showView(name) {
   }
   var _clv0 = document.getElementById('cal-viewer');
   if (_clv0 && _clv0.classList.contains('active')) { _clv0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc3 = document.getElementById('cc-breadcrumb'); if (_bc3) _bc3.classList.remove('visible'); }
+  var _tav0 = document.getElementById('ta-viewer');
+  if (_tav0 && _tav0.classList.contains('active')) { _tav0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc4 = document.getElementById('cc-breadcrumb'); if (_bc4) _bc4.classList.remove('visible'); }
   document.querySelectorAll('.cc-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.cc-navbtn').forEach(b => b.classList.remove('active'));
   const view = document.getElementById('view-' + name);
@@ -3618,7 +3634,7 @@ function showView(name) {
   if (name === 'arcade') { arcInit(); }
   else if (typeof arcPause === 'function') { arcPause(); }
   // Breadcrumb
-  const TOOL_NAMES = {launch:'Product Launch','launch-product':'Product Launch','launch-convert':'Convert Existing','launch-edit':'Product Page Editor','launch-tpllib':'Template Library',box:'Box Selector',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',toolbox:'Toolbox',projects:'Project Workflow'};
+  const TOOL_NAMES = {launch:'Product Launch','launch-product':'Product Launch','launch-convert':'Convert Existing','launch-edit':'Product Page Editor','launch-tpllib':'Template Library',box:'Box Selector',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',timeattack:'Time Attack',toolbox:'Toolbox',projects:'Project Workflow'};
   const bc = document.getElementById('cc-breadcrumb');
   if (name === 'home') {
     if (bc) bc.classList.remove('visible');
@@ -12037,6 +12053,7 @@ if(fbgEl) fbgEl.addEventListener('keydown',function(e){if(e.key==='Enter')fbgSea
 var ERP_URL = 'https://erp.tgkmotorsport.com';
 var SKU_URL = 'https://command.tgkmotorsport.com/tgk_sku_manager.html';
 var CAL_URL = 'https://command.tgkmotorsport.com/tgk_calendar.html';
+var TA_URL  = 'https://command.tgkmotorsport.com/TGK_TimeAttack.html';
 var SUPPORT_URL = 'https://support.tgkmotorsport.com';
 var SB_AUTH_URL = 'https://piamamighqiielfztgic.supabase.co';
 var SB_ANON_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -12229,6 +12246,8 @@ function openERP() {
   if (_skv && _skv.classList.contains('active')) { _skv.classList.remove('active'); }
   var _clv = document.getElementById('cal-viewer');
   if (_clv && _clv.classList.contains('active')) { _clv.classList.remove('active'); }
+  var _tav = document.getElementById('ta-viewer');
+  if (_tav && _tav.classList.contains('active')) { _tav.classList.remove('active'); }
 
   // Swap cc-main for erp-viewer
   if (main)  main.style.display  = 'none';
@@ -12298,6 +12317,8 @@ function openSupportCenter() {
   if (_skv2 && _skv2.classList.contains('active')) { _skv2.classList.remove('active'); }
   var _clv2 = document.getElementById('cal-viewer');
   if (_clv2 && _clv2.classList.contains('active')) { _clv2.classList.remove('active'); }
+  var _tav2 = document.getElementById('ta-viewer');
+  if (_tav2 && _tav2.classList.contains('active')) { _tav2.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12367,6 +12388,8 @@ function openSKU() {
   if (_suv && _suv.classList.contains('active')) { _suv.classList.remove('active'); }
   var _clv3 = document.getElementById('cal-viewer');
   if (_clv3 && _clv3.classList.contains('active')) { _clv3.classList.remove('active'); }
+  var _tav3 = document.getElementById('ta-viewer');
+  if (_tav3 && _tav3.classList.contains('active')) { _tav3.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12416,6 +12439,8 @@ function openCal() {
   if (_suv && _suv.classList.contains('active')) { _suv.classList.remove('active'); }
   var _skv = document.getElementById('sku-viewer');
   if (_skv && _skv.classList.contains('active')) { _skv.classList.remove('active'); }
+  var _tavC = document.getElementById('ta-viewer');
+  if (_tavC && _tavC.classList.contains('active')) { _tavC.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12443,6 +12468,55 @@ function openCal() {
 function closeCal() {
   var main   = document.getElementById('cc-main');
   var viewer = document.getElementById('cal-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
+}
+
+function openTimeAttack() {
+  // Time Attack inline viewer - same overlay pattern as the ERP/Support/SKU/Calendar viewers.
+  var main    = document.getElementById('cc-main');
+  var viewer  = document.getElementById('ta-viewer');
+  var frame   = document.getElementById('ta-frame');
+  var loading = document.getElementById('ta-loading');
+  if (!viewer || !frame) { window.open(TA_URL, '_blank', 'noopener'); return; }
+
+  var _erv = document.getElementById('erp-viewer');
+  if (_erv && _erv.classList.contains('active')) { _erv.classList.remove('active'); }
+  var _suv = document.getElementById('support-viewer');
+  if (_suv && _suv.classList.contains('active')) { _suv.classList.remove('active'); }
+  var _skv = document.getElementById('sku-viewer');
+  if (_skv && _skv.classList.contains('active')) { _skv.classList.remove('active'); }
+  var _clvT = document.getElementById('cal-viewer');
+  if (_clvT && _clvT.classList.contains('active')) { _clvT.classList.remove('active'); }
+
+  if (main)  main.style.display  = 'none';
+  if (viewer) viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'Time Attack';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeTimeAttack()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#dc2626">&#x2715; Close Time Attack</button>';
+  }
+
+  if (frame.src !== TA_URL) {
+    frame.onload = function() { if (loading) loading.classList.add('hidden'); };
+    frame.src = TA_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+  }
+  setTimeout(function(){ if (loading) loading.classList.add('hidden'); }, 4000);
+}
+function closeTimeAttack() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('ta-viewer');
   var bc     = document.getElementById('cc-breadcrumb');
   if (main)   main.style.display = '';
   if (viewer) viewer.classList.remove('active');
@@ -12545,8 +12619,8 @@ function erpToast(msg, detail) {
 /* ─── LAYOUT ─────────────────────────────────────────── */
 var LAYOUT_KEY = 'tgk_layout_v3';
 var layout = {
-  visible: ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade'],
-  order:   ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade'],
+  visible: ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade','timeattack'],
+  order:   ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade','timeattack'],
   pinned:  [],
   custom:  false
 };
@@ -12567,7 +12641,7 @@ function loadLayout() {
 }
 
 /* ─── RENDER DASHBOARD ───────────────────────────────── */
-var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','toolbox'], fun:['arcade'] };
+var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','toolbox'], fun:['arcade','timeattack'] };
 
 function renderDashboard() {
   var n = document.getElementById('tpl-name');
@@ -12670,13 +12744,13 @@ var _fd=null;
 function openFilter(){_fd=layout.visible.slice();renderFilterBody();document.getElementById('filter-overlay').classList.add('open');document.getElementById('filter-drawer').classList.add('open');}
 function closeFilter(){document.getElementById('filter-overlay').classList.remove('open');document.getElementById('filter-drawer').classList.remove('open');}
 function saveFilter(){layout.visible=_fd?_fd.slice():[];layout.custom=true;saveLayout();closeFilter();renderDashboard();}
-function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
-function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
+function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
+function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','sku','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
 function _fdToggle(id,el){if(!_fd)_fd=[];var i=_fd.indexOf(id);if(i>-1)_fd.splice(i,1);else _fd.push(id);var c=el.querySelector('.fd-chk');if(c)c.classList.toggle('on',_fd.indexOf(id)>-1);}
 var SDEFS=[
   {lbl:'AI-Powered Tools',items:[{id:'launch',icon:'&#128640;',name:'Product Launch'},{id:'social',icon:'&#128247;',name:'Social Engine'},{id:'ideas',icon:'&#128161;',name:'Idea Generator'},{id:'fbgroups',icon:'&#128101;',name:'FB Group Finder'}]},
   {lbl:'Operations',items:[{id:'box',icon:'&#128230;',name:'Box Selector'},{id:'sku',icon:'&#127991;',name:'SKU Manager'},{id:'toolbox',icon:'&#128279;',name:'Toolbox'}]},
-  {lbl:'Entertainment',items:[{id:'arcade',icon:'&#127918;',name:'Arcade'}]}
+  {lbl:'Entertainment',items:[{id:'arcade',icon:'&#127918;',name:'Arcade'},{id:'timeattack',icon:'&#127937;',name:'Time Attack'}]}
 ];
 function renderFilterBody(){
   var body=document.getElementById('filter-body');if(!body)return;
@@ -12715,7 +12789,7 @@ function dashLoadExt(){
   window.showView=function(name){
     if(_orig)_orig(name);
     var bc=document.getElementById('cc-breadcrumb');
-    var NAMES={launch:'Product Launch',box:'Box Selector',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',toolbox:'Toolbox'};
+    var NAMES={launch:'Product Launch',box:'Box Selector',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',timeattack:'Time Attack',toolbox:'Toolbox'};
     if(name==='home'){if(bc)bc.classList.remove('visible');dashLoadExt();}
     else{if(bc)bc.classList.add('visible');var lbl=document.getElementById('cc-bc-label');if(lbl)lbl.textContent=NAMES[name]||name;}
     // Bridge: watch product form
