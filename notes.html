@@ -178,6 +178,35 @@ table.dbt tbody tr:hover{background:rgba(13,148,136,.04)}
 .rfv{flex:1}
 .rpn{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);border-top:1px solid var(--border);padding-top:10px;margin-bottom:4px}
 
+.nx-overlay,#nx-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.nx-box{background:#fff;border-radius:var(--r-lg);width:470px;max-width:94vw;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(14,20,24,.22)}
+.nx-title{font-size:14px;font-weight:800;padding:16px 18px 10px}
+.nx-body{padding:0 18px 6px;overflow-y:auto}
+.nx-foot{display:flex;gap:8px;align-items:center;padding:12px 18px 16px;border-top:1px solid var(--border);margin-top:10px}
+.nx-l{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin:10px 0 4px}
+.nx-i{width:100%;padding:7px 9px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;background:#fff;outline:none;font-family:inherit}
+.nx-i:focus{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-dim)}
+.nx-b{background:#fff;border:1px solid var(--border2);border-radius:var(--r);padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--text2);font-family:inherit;cursor:pointer}
+.nx-b:hover{background:var(--bg3)}
+.nx-b.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+.nx-b.danger{color:var(--red);border-color:rgba(220,38,38,.35)}
+.nx-b.sm{padding:4px 9px;font-size:11.5px;margin-top:7px}
+.nx-hint{font-size:11px;color:var(--text3);margin:7px 0}
+.pe-opt{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.pe-sw{width:22px;height:22px;border-radius:4px;border:1px solid var(--border2);cursor:pointer;flex-shrink:0}
+.pe-x{background:none;border:none;color:var(--text3);font-size:17px;cursor:pointer;padding:0 4px;line-height:1}
+.pe-x:hover{color:var(--red)}
+.fe-row{display:grid;grid-template-columns:1fr 1fr 1fr 22px;gap:5px;align-items:center;margin-bottom:6px}
+.mp-o{display:flex;align-items:center;gap:8px;padding:5px 3px;cursor:pointer}
+.tr-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.tr-n{flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a.mention{color:var(--teal-d);background:var(--teal-dim);border-radius:3px;padding:0 3px;cursor:pointer;text-decoration:none;font-weight:600}
+a.mention:hover{background:rgba(13,148,136,.18)}
+.bl-wrap{margin-top:34px;padding-top:14px;border-top:1px solid var(--border)}
+.bl-h{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
+.bl-i{display:inline-block;font-size:12.5px;color:var(--text2);background:var(--bg3);border-radius:var(--r);padding:4px 9px;margin:0 6px 6px 0;cursor:pointer;text-decoration:none}
+.bl-i:hover{background:var(--bg4);color:var(--teal-d)}
+.fbadge{background:var(--teal);color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-left:4px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#141618;color:#EDF1F0;padding:10px 18px;border-radius:5px;font-size:12.5px;z-index:200;transition:transform .25s;max-width:80vw;text-align:center}
 #toast.on{transform:translateX(-50%) translateY(0)}
 @media(max-width:900px){
@@ -216,6 +245,7 @@ table.dbt tbody tr:hover{background:rgba(13,148,136,.04)}
       <div class="sync"><div class="l">TGK Notes</div><div class="s" id="sync-sub">workspace</div></div>
       <button class="btn btn-w" onclick="newPage(null,'doc')">+ New page</button>
       <button class="btn btn-w" onclick="newPage(null,'db')">+ New database</button>
+      <button class="btn btn-w" onclick="openTrash()">Trash</button>
     </div>
   </div>
   <div class="wrap">
@@ -240,7 +270,7 @@ table.dbt tbody tr:hover{background:rgba(13,148,136,.04)}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v0.2';
+const TGK_NOTES_VERSION='v0.3';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -394,7 +424,7 @@ function renderTree(){
       +'<span class="ic">'+(p.icon?esc(p.icon):(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'))+'</span>'
       +'<span class="nm">'+esc(p.title||'Untitled')+'</span>'
       +'<button class="act" title="Add sub-page" onclick="event.stopPropagation();newPage(\''+p.id+'\')">+</button>'
-      +'<button class="act" title="Delete" onclick="event.stopPropagation();deletePage(\''+p.id+'\')">\u00d7</button>'
+      +'<button class="act" title="Move to trash" onclick="event.stopPropagation();archivePage(\''+p.id+'\')">\u00d7</button>'
       +'</div>'+(open&&kids.length?walk(p.id,depth+1):'');
   }).join('');
   const html=walk(null,0);
@@ -442,7 +472,8 @@ function renderDoc(){
     '<div class="crumb">'+trail.map((t,i)=>(i?'<span>/</span>':'')+'<b>'+esc(t.title||'Untitled')+'</b>').join(' ')+'</div>'
     +'<div class="doc-ic" onclick="pickIcon()" title="Change icon">'+(p.icon?esc(p.icon):'\u{1F4C4}')+'</div>'
     +'<div class="doc-title" contenteditable="true" spellcheck="true">'+esc(p.title==='Untitled'?'':p.title)+'</div>'
-    +'<div id="blocks"></div>';
+    +'<div id="blocks"></div>'
+    +(typeof backlinksHTML==='function'?backlinksHTML(p.id):'');
   const t=$('doc').querySelector('.doc-title');
   t.addEventListener('input',()=>{p.title=t.textContent.trim()||'Untitled';markDirty();renderTree();});
   t.addEventListener('keydown',e=>{
@@ -480,7 +511,7 @@ function renderBlocks(){
     const ph=i===0?"Type '/' for commands":'';
     return '<div class="bk" data-bid="'+bl.id+'" data-type="'+bl.type+'" style="margin-left:'+pad+'px">'
       +'<span class="bk-handle" draggable="true">\u2059</span>'+mk
-      +'<div class="bk-t'+(bl.type==='todo'&&bl.checked?' done':'')+'" contenteditable="true" spellcheck="true" data-ph="'+ph+'">'+esc(bl.text||'')+'</div>'
+      +'<div class="bk-t'+(bl.type==='todo'&&bl.checked?' done':'')+'" contenteditable="true" spellcheck="true" data-ph="'+ph+'">'+(typeof mentionify==='function'?mentionify(esc(bl.text||'')):esc(bl.text||''))+'</div>'
       +'</div>';
   }).join('');
 }
@@ -528,11 +559,14 @@ document.addEventListener('input',e=>{
     }
   }
   if(bl.text.startsWith('/'))openSlash(host,bl.text.slice(1));else closeSlash();
+  var _at=/@([^@]*)$/.exec(bl.text||'');
+  if(_at&&typeof openAt==='function')openAt(host,_at[1]);else if(typeof closeAt==='function')closeAt();
   markDirty();
 },true);
 
 document.addEventListener('keydown',e=>{
   if(slashOpen&&['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)){slashKey(e);return;}
+  if(typeof atOpen!=='undefined'&&atOpen&&['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)){atKey(e);return;}
   const t=e.target;
   if(!t.classList||!t.classList.contains('bk-t'))return;
   const host=t.closest('.bk'),id=host.getAttribute('data-bid'),i=blockIndex(id),b=blocks(),bl=b[i];
@@ -729,7 +763,8 @@ function renderDbPage(p){
     '<div class="crumb">'+trail.map((t,i)=>(i?'<span>/</span>':'')+'<b>'+esc(t.title||'Untitled')+'</b>').join(' ')+'</div>'
     +'<div class="doc-ic" onclick="pickIcon()" title="Change icon">'+(p.icon?esc(p.icon):'\u{1F5C3}')+'</div>'
     +'<div class="doc-title" contenteditable="true" spellcheck="true">'+esc(p.title==='New database'?'':p.title)+'</div>'
-    +'<div id="dbwrap"></div>';
+    +'<div id="dbwrap"></div>'
+    +(typeof backlinksHTML==='function'?backlinksHTML(p.id):'');
   const t=$('doc').querySelector('.doc-title');
   t.addEventListener('input',()=>{p.title=t.textContent.trim()||'New database';markDirty();renderTree();});
   renderDb();
@@ -742,9 +777,11 @@ function renderDb(){
   const body=v.kind==='board'?dbBoardHTML(d,v):dbTableHTML(d,v);
   $('dbwrap').innerHTML=
     '<div class="dbbar">'+tabs
-    +'<button class="vtab add" onclick="addView()" title="Add a view">+</button>'
-    +'<input class="dbq" placeholder="Filter rows..." value="'+esc(S.dbq||'')+'" oninput="S.dbq=this.value;renderDb()">'
-    +'<button class="btn btn-sm" onclick="addProp()">+ Property</button>'
+    +'<button class="vtab add" onclick="openViewEditor()" title="Add a view">+</button>'
+    +'<button class="vtab" onclick="openViewEditor('+(d.activeView||0)+')" title="Edit this view">\u2699</button>'
+    +'<input class="dbq" placeholder="Search rows..." value="'+esc(S.dbq||'')+'" oninput="S.dbq=this.value;renderDb()">'
+    +'<button class="btn btn-sm" onclick="openFilterEditor()">Filter'+(((v.filters||[]).length)?('<span class="fbadge">'+v.filters.length+'</span>'):'')+'</button>'
+    +'<button class="btn btn-sm" onclick="openPropEditor()">+ Property</button>'
     +'<button class="btn btn-sm btn-primary" onclick="addRow()">+ Row</button></div>'
     +body
     +(S.rowEdit?rowPanelHTML():'');
@@ -753,6 +790,8 @@ function renderDb(){
 function visibleRows(d){
   const q=(S.dbq||'').trim().toLowerCase();
   let rows=(d.rows||[]).slice();
+  const _f=(activeView().filters)||[];
+  if(_f.length&&typeof rowPasses==='function')rows=rows.filter(r=>_f.every(f=>rowPasses(r,f)));
   if(q)rows=rows.filter(r=>Object.keys(r.cells||{}).some(k=>String(r.cells[k]==null?'':r.cells[k]).toLowerCase().includes(q)));
   if(d.sort&&d.sort.prop){
     const pr=dbProp(d.sort.prop),dir=d.sort.dir==='desc'?-1:1;
@@ -769,7 +808,7 @@ function dbTableHTML(d,v){
   const head=(d.props||[]).map(pr=>{
     const arrow=(d.sort&&d.sort.prop===pr.id)?(d.sort.dir==='desc'?' \u25be':' \u25b4'):'';
     return '<th><span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
-      +'<button class="thx" title="Edit property" onclick="editProp(\''+pr.id+'\')">\u22ef</button></th>';
+      +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
   }).join('');
   const body=rows.map(r=>'<tr>'+(d.props||[]).map((pr,ci)=>
       '<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
@@ -792,7 +831,7 @@ function cellHTML(r,pr,first){
   if(pr.type==='multi'){
     const chips=String(v||'').split(',').filter(Boolean).map(x=>
       '<span class="chip" style="background:'+selColor(pr,x.trim())+'22;color:'+selColor(pr,x.trim())+'">'+esc(x.trim())+'</span>').join('');
-    return '<div class="multi" onclick="editMulti(\''+r.id+'\',\''+pr.id+'\')">'+(chips||'<span class="ph">\u2014</span>')+'</div>';
+    return '<div class="multi" onclick="openMultiPicker(\''+r.id+'\',\''+pr.id+'\')">'+(chips||'<span class="ph">\u2014</span>')+'</div>';
   }
   if(pr.type==='date')return '<input type="date" class="cin" value="'+esc(v)+'" '+set+'>';
   if(pr.type==='number')return '<input type="number" step="any" class="cin num" value="'+esc(v)+'" '+set+'>';
@@ -929,6 +968,414 @@ function dropCard(e,pid,group){
   setCell(_dragRow,pid,group);
   _dragRow=null;renderDb();
 }
+
+
+/* ======================================================================
+   PHASE 3
+   - real popovers for properties / views / multi-select (no more prompt())
+   - multi-condition filters per view
+   - @mentions between pages, with backlinks
+   - trash + restore instead of destructive delete
+   ====================================================================== */
+
+/* ---------- generic modal ---------- */
+function nxModal(title, bodyHtml, footHtml){
+  nxClose();
+  const ov=document.createElement('div');
+  ov.id='nx-overlay';
+  ov.innerHTML='<div class="nx-box" onclick="event.stopPropagation()">'
+    +'<div class="nx-title">'+esc(title)+'</div>'
+    +'<div class="nx-body">'+bodyHtml+'</div>'
+    +'<div class="nx-foot">'+(footHtml||'')+'</div></div>';
+  ov.addEventListener('click',nxClose);
+  document.body.appendChild(ov);
+  return ov;
+}
+function nxClose(){const e=document.getElementById('nx-overlay');if(e)e.remove();}
+window.nxClose=nxClose;
+
+/* ---------- property editor ---------- */
+let _propEdit=null;      // property id being edited, or null for a new one
+let _propOpts=[];        // working copy of select options
+
+function openPropEditor(pid){
+  const d=db();
+  const p=pid?dbProp(pid):null;
+  _propEdit=pid||null;
+  _propOpts=p&&Array.isArray(p.options)?p.options.map(o=>({v:o.v,c:o.c||0})):[];
+  const typeOpts=PROP_TYPES.map(t=>'<option value="'+t.t+'"'+((p&&p.type===t.t)?' selected':'')+'>'+esc(t.n)+'</option>').join('');
+  nxModal(pid?'Edit property':'New property',
+    '<label class="nx-l">Name</label>'
+    +'<input id="pe-name" class="nx-i" value="'+esc(p?p.name:'')+'" placeholder="e.g. Vendor">'
+    +'<label class="nx-l">Type</label>'
+    +'<select id="pe-type" class="nx-i" onchange="propTypeChanged()">'+typeOpts+'</select>'
+    +'<div id="pe-opts"></div>',
+    (pid?'<button class="nx-b danger" onclick="deleteProp()">Delete</button>':'')
+    +'<span style="flex:1"></span>'
+    +'<button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="saveProp()">'+(pid?'Save':'Add property')+'</button>');
+  propTypeChanged();
+  setTimeout(()=>{const f=document.getElementById('pe-name');if(f)f.focus();},40);
+}
+function propTypeChanged(){
+  const t=(document.getElementById('pe-type')||{}).value;
+  const box=document.getElementById('pe-opts');
+  if(!box)return;
+  if(t!=='select'&&t!=='multi'){box.innerHTML='';return;}
+  box.innerHTML='<label class="nx-l">Options</label><div id="pe-optlist"></div>'
+    +'<button class="nx-b sm" onclick="addPropOpt()">+ Add option</button>';
+  drawPropOpts();
+}
+function drawPropOpts(){
+  const l=document.getElementById('pe-optlist');
+  if(!l)return;
+  l.innerHTML=_propOpts.map((o,i)=>
+    '<div class="pe-opt">'
+    +'<button class="pe-sw" style="background:'+SEL_COLORS[(o.c||0)%SEL_COLORS.length]+'" title="Change colour" onclick="cyclePropOpt('+i+')"></button>'
+    +'<input class="nx-i" value="'+esc(o.v)+'" oninput="_propOpts['+i+'].v=this.value">'
+    +'<button class="pe-x" title="Remove" onclick="rmPropOpt('+i+')">&times;</button></div>').join('')
+    ||'<div class="nx-hint">No options yet.</div>';
+}
+function addPropOpt(){_propOpts.push({v:'',c:_propOpts.length%SEL_COLORS.length});drawPropOpts();}
+function rmPropOpt(i){_propOpts.splice(i,1);drawPropOpts();}
+function cyclePropOpt(i){_propOpts[i].c=((_propOpts[i].c||0)+1)%SEL_COLORS.length;drawPropOpts();}
+function saveProp(){
+  const name=((document.getElementById('pe-name')||{}).value||'').trim();
+  const type=(document.getElementById('pe-type')||{}).value||'text';
+  if(!name){toast('Give the property a name');return;}
+  const d=db();
+  const opts=_propOpts.map(o=>({v:String(o.v||'').trim(),c:o.c||0})).filter(o=>o.v);
+  if(_propEdit){
+    const p=dbProp(_propEdit);
+    if(p){p.name=name;p.type=type;if(type==='select'||type==='multi')p.options=opts;else delete p.options;}
+  }else{
+    const p={id:uid(),name:name,type:type};
+    if(type==='select'||type==='multi')p.options=opts;
+    d.props=d.props||[];d.props.push(p);
+    (d.rows||[]).forEach(r=>{r.cells=r.cells||{};r.cells[p.id]=(type==='check')?false:'';});
+  }
+  nxClose();markDirty();renderDb();
+}
+function deleteProp(){
+  const d=db(),p=dbProp(_propEdit);
+  if(!p)return;
+  if(!confirm('Delete the "'+p.name+'" property and its values from every row?'))return;
+  d.props=(d.props||[]).filter(x=>x.id!==_propEdit);
+  (d.rows||[]).forEach(r=>{if(r.cells)delete r.cells[_propEdit];});
+  (d.views||[]).forEach(v=>{
+    if(v.groupBy===_propEdit)v.groupBy=null;
+    if(Array.isArray(v.filters))v.filters=v.filters.filter(f=>f.prop!==_propEdit);
+  });
+  if(d.sort&&d.sort.prop===_propEdit)d.sort=null;
+  nxClose();markDirty();renderDb();
+}
+
+/* ---------- view editor ---------- */
+let _viewEdit=null;
+function openViewEditor(i){
+  const d=db();
+  const v=(typeof i==='number')?(d.views||[])[i]:null;
+  _viewEdit=(typeof i==='number')?i:null;
+  const sels=(d.props||[]).filter(p=>p.type==='select');
+  nxModal(v?'Edit view':'New view',
+    '<label class="nx-l">Name</label><input id="ve-name" class="nx-i" value="'+esc(v?v.name:'')+'" placeholder="e.g. By status">'
+    +'<label class="nx-l">Layout</label><select id="ve-kind" class="nx-i">'
+      +'<option value="table"'+((v&&v.kind==='table')?' selected':'')+'>Table</option>'
+      +'<option value="board"'+((v&&v.kind==='board')?' selected':'')+'>Board</option></select>'
+    +'<label class="nx-l">Group by (board only)</label><select id="ve-group" class="nx-i">'
+      +'<option value="">None</option>'
+      +sels.map(p=>'<option value="'+p.id+'"'+((v&&v.groupBy===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')
+    +'</select>'
+    +(sels.length?'':'<div class="nx-hint">A board needs a Select property to group by.</div>'),
+    ((typeof i==='number'&&(d.views||[]).length>1)?'<button class="nx-b danger" onclick="deleteView()">Delete</button>':'')
+    +'<span style="flex:1"></span>'
+    +'<button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="saveView()">'+(v?'Save':'Add view')+'</button>');
+}
+function saveView(){
+  const d=db();
+  const name=((document.getElementById('ve-name')||{}).value||'').trim()||'View';
+  const kind=(document.getElementById('ve-kind')||{}).value||'table';
+  const groupBy=(document.getElementById('ve-group')||{}).value||null;
+  if(_viewEdit===null){
+    d.views=d.views||[];
+    d.views.push({id:uid(),name:name,kind:kind,groupBy:groupBy,filters:[]});
+    d.activeView=d.views.length-1;
+  }else{
+    const v=d.views[_viewEdit];
+    if(v){v.name=name;v.kind=kind;v.groupBy=groupBy;}
+  }
+  nxClose();markDirty();renderDb();
+}
+function deleteView(){
+  const d=db();
+  if((d.views||[]).length<2){toast('Keep at least one view');return;}
+  d.views.splice(_viewEdit,1);
+  d.activeView=0;
+  nxClose();markDirty();renderDb();
+}
+
+/* ---------- filters ---------- */
+const OPS={
+  text:[['contains','contains'],['is','is'],['nis','is not'],['empty','is empty'],['nempty','is not empty']],
+  number:[['eq','='],['gt','>'],['lt','<'],['empty','is empty'],['nempty','is not empty']],
+  select:[['is','is'],['nis','is not'],['empty','is empty'],['nempty','is not empty']],
+  multi:[['contains','contains'],['empty','is empty'],['nempty','is not empty']],
+  date:[['is','on'],['gt','after'],['lt','before'],['empty','is empty'],['nempty','is not empty']],
+  check:[['yes','is checked'],['no','is unchecked']],
+  url:[['contains','contains'],['empty','is empty'],['nempty','is not empty']],
+  person:[['contains','contains'],['is','is'],['empty','is empty'],['nempty','is not empty']],
+  relation:[['is','is'],['empty','is empty'],['nempty','is not empty']]
+};
+function opsFor(t){return OPS[t]||OPS.text;}
+function rowPasses(r,f){
+  const p=dbProp(f.prop);
+  if(!p)return true;
+  const raw=(r.cells||{})[f.prop];
+  const v=(raw===null||raw===undefined)?'':String(raw);
+  const q=String(f.val==null?'':f.val);
+  switch(f.op){
+    case 'empty':    return v==='' || v==='false';
+    case 'nempty':   return !(v==='' || v==='false');
+    case 'is':       return v.toLowerCase()===q.toLowerCase();
+    case 'nis':      return v.toLowerCase()!==q.toLowerCase();
+    case 'contains': return v.toLowerCase().includes(q.toLowerCase());
+    case 'eq':       return Number(v)===Number(q);
+    case 'gt':       return (p.type==='date')?(v>q):(Number(v)>Number(q));
+    case 'lt':       return (p.type==='date')?(v<q&&v!==''):(Number(v)<Number(q));
+    case 'yes':      return v==='true'||raw===true;
+    case 'no':       return !(v==='true'||raw===true);
+    default:         return true;
+  }
+}
+function openFilterEditor(){
+  const d=db(),v=activeView();
+  v.filters=Array.isArray(v.filters)?v.filters:[];
+  nxModal('Filters - '+(v.name||'view'),
+    '<div id="fe-list"></div><button class="nx-b sm" onclick="addFilterRow()">+ Add filter</button>'
+    +'<div class="nx-hint">All conditions must match.</div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Done</button>');
+  drawFilters();
+}
+function drawFilters(){
+  const v=activeView(),d=db(),l=document.getElementById('fe-list');
+  if(!l)return;
+  const props=d.props||[];
+  l.innerHTML=(v.filters||[]).map((f,i)=>{
+    const p=dbProp(f.prop)||props[0]||{};
+    const ops=opsFor(p.type||'text');
+    const needsVal=['empty','nempty','yes','no'].indexOf(f.op)<0;
+    let valInput='';
+    if(needsVal){
+      if(p.type==='select'&&Array.isArray(p.options))
+        valInput='<select class="nx-i" onchange="setFilterVal('+i+',this.value)">'
+          +'<option value="">-</option>'
+          +p.options.map(o=>'<option value="'+esc(o.v)+'"'+(o.v===f.val?' selected':'')+'>'+esc(o.v)+'</option>').join('')+'</select>';
+      else if(p.type==='date')
+        valInput='<input type="date" class="nx-i" value="'+esc(f.val||'')+'" onchange="setFilterVal('+i+',this.value)">';
+      else
+        valInput='<input class="nx-i" value="'+esc(f.val||'')+'" oninput="setFilterVal('+i+',this.value)">';
+    }
+    return '<div class="fe-row">'
+      +'<select class="nx-i" onchange="setFilterProp('+i+',this.value)">'
+        +props.map(pp=>'<option value="'+pp.id+'"'+(pp.id===f.prop?' selected':'')+'>'+esc(pp.name)+'</option>').join('')+'</select>'
+      +'<select class="nx-i" onchange="setFilterOp('+i+',this.value)">'
+        +ops.map(o=>'<option value="'+o[0]+'"'+(o[0]===f.op?' selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>'
+      +valInput
+      +'<button class="pe-x" onclick="rmFilter('+i+')">&times;</button></div>';
+  }).join('')||'<div class="nx-hint">No filters - every row is shown.</div>';
+}
+function addFilterRow(){
+  const v=activeView(),d=db();
+  if(!(d.props||[]).length){toast('Add a property first');return;}
+  v.filters=v.filters||[];
+  const p=d.props[0];
+  v.filters.push({prop:p.id,op:opsFor(p.type)[0][0],val:''});
+  markDirty();drawFilters();renderDb();reopenFilters();
+}
+function setFilterProp(i,pid){
+  const v=activeView(),p=dbProp(pid);
+  v.filters[i].prop=pid;
+  v.filters[i].op=opsFor(p?p.type:'text')[0][0];
+  v.filters[i].val='';
+  markDirty();drawFilters();renderDb();reopenFilters();
+}
+function setFilterOp(i,op){const v=activeView();v.filters[i].op=op;markDirty();drawFilters();renderDb();reopenFilters();}
+function setFilterVal(i,val){const v=activeView();v.filters[i].val=val;markDirty();renderDb();reopenFilters();}
+function rmFilter(i){const v=activeView();v.filters.splice(i,1);markDirty();drawFilters();renderDb();reopenFilters();}
+function reopenFilters(){
+  // renderDb() rebuilds the page underneath; keep the dialog on screen
+  if(!document.getElementById('nx-overlay'))return;
+  const l=document.getElementById('fe-list');
+  if(l)drawFilters();
+}
+
+/* ---------- multi-select cell picker ---------- */
+function openMultiPicker(rid,pid){
+  const d=db(),r=(d.rows||[]).find(x=>x.id===rid),p=dbProp(pid);
+  if(!r||!p)return;
+  const cur=String((r.cells||{})[pid]||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const opts=(p.options||[]).map(o=>
+    '<label class="mp-o"><input type="checkbox" value="'+esc(o.v)+'"'+(cur.indexOf(o.v)>=0?' checked':'')+'>'
+    +'<span class="chip" style="background:'+selColor(p,o.v)+'22;color:'+selColor(p,o.v)+'">'+esc(o.v)+'</span></label>').join('')
+    ||'<div class="nx-hint">This property has no options yet - add some in the property editor.</div>';
+  nxModal(p.name, '<div id="mp-list">'+opts+'</div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="saveMulti(\''+rid+'\',\''+pid+'\')">Apply</button>');
+}
+function saveMulti(rid,pid){
+  const boxes=Array.prototype.slice.call(document.querySelectorAll('#mp-list input[type=checkbox]'));
+  const vals=boxes.filter(b=>b.checked).map(b=>b.value);
+  setCell(rid,pid,vals.join(', '));
+  nxClose();renderDb();
+}
+
+/* ---------- @mentions + backlinks ---------- */
+function mentionify(escaped){
+  // Runs on ALREADY-escaped text. Only the rendered HTML changes - the block model keeps
+  // the plain "@Title", so textContent round-trips byte-for-byte and caret maths is unaffected.
+  const pages=(S.pages||[]).slice().sort((a,b)=>(b.title||'').length-(a.title||'').length);
+  let out=escaped;
+  pages.forEach(p=>{
+    const t=(p.title||'').trim();
+    if(!t||t==='Untitled')return;
+    const needle='@'+esc(t);
+    if(out.indexOf(needle)<0)return;
+    out=out.split(needle).join('<a class="mention" data-pid="'+p.id+'" title="Open '+esc(t)+'">'+needle+'</a>');
+  });
+  return out;
+}
+function pageMentions(page){
+  const ids=new Set();
+  const scan=t=>{
+    const txt=String(t||'');
+    (S.pages||[]).forEach(p=>{
+      const ti=(p.title||'').trim();
+      if(ti&&ti!=='Untitled'&&p.id!==page.id&&txt.indexOf('@'+ti)>=0)ids.add(p.id);
+    });
+  };
+  if(isDb(page))((page.content||{}).rows||[]).forEach(r=>(r.notes||[]).forEach(b=>scan(b.text)));
+  else (Array.isArray(page.content)?page.content:[]).forEach(b=>scan(b.text));
+  return [...ids];
+}
+function backlinksFor(pageId){
+  const me=pageById(pageId);
+  if(!me)return [];
+  const t=(me.title||'').trim();
+  if(!t||t==='Untitled')return [];
+  return (S.pages||[]).filter(p=>p.id!==pageId&&pageMentions(p).indexOf(pageId)>=0);
+}
+function backlinksHTML(pageId){
+  const list=backlinksFor(pageId);
+  if(!list.length)return '';
+  return '<div class="bl-wrap"><div class="bl-h">Linked from</div>'
+    +list.map(p=>'<a class="bl-i" onclick="openPage(\''+p.id+'\')">'
+      +(p.icon?esc(p.icon):(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'))+' '+esc(p.title||'Untitled')+'</a>').join('')
+    +'</div>';
+}
+document.addEventListener('click',e=>{
+  const m=e.target.closest&&e.target.closest('.mention');
+  if(m){e.preventDefault();e.stopPropagation();const id=m.getAttribute('data-pid');if(id)openPage(id);}
+},true);
+
+/* @ picker inside the editor */
+let atOpen=false,atSel=0,atHost=null,atList=[];
+function openAt(host,filter){
+  const f=(filter||'').toLowerCase();
+  atList=(S.pages||[]).filter(p=>p.id!==S.activeId&&(p.title||'').toLowerCase().includes(f)).slice(0,8);
+  if(!atList.length){closeAt();return;}
+  atHost=host;atOpen=true;atSel=0;
+  const el=document.getElementById('slash'),r=host.getBoundingClientRect();
+  el.style.display='block';
+  el.style.left=Math.min(r.left,window.innerWidth-280)+'px';
+  el.style.top=(r.bottom+window.scrollY+4)+'px';
+  drawAt();
+}
+function drawAt(){
+  document.getElementById('slash').innerHTML='<div class="sh">Link to page</div>'+atList.map((p,i)=>
+    '<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">'
+    +(p.icon?esc(p.icon):'\u{1F4C4}')+'</span><div><div>'+esc(p.title||'Untitled')+'</div></div></div>').join('');
+}
+function closeAt(){atOpen=false;atHost=null;const e=document.getElementById('slash');if(e)e.style.display='none';}
+function atKey(e){
+  if(e.key==='Escape'){e.preventDefault();closeAt();return;}
+  if(e.key==='ArrowDown'){e.preventDefault();atSel=(atSel+1)%atList.length;drawAt();return;}
+  if(e.key==='ArrowUp'){e.preventDefault();atSel=(atSel-1+atList.length)%atList.length;drawAt();return;}
+  if(e.key==='Enter'){e.preventDefault();applyAt(atList[atSel]);}
+}
+function applyAt(p){
+  if(!p||!atHost)return;
+  const id=atHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
+  if(i<0){closeAt();return;}
+  b[i].text=b[i].text.replace(/@[^@]*$/,'@'+(p.title||'Untitled')+' ');
+  closeAt();renderBlocks();focusBlock(id);markDirty();
+}
+document.addEventListener('click',e=>{
+  const si=e.target.closest&&e.target.closest('[data-ai]');
+  if(si&&atOpen){applyAt(atList[Number(si.getAttribute('data-ai'))]);}
+},true);
+
+/* ---------- trash ---------- */
+async function archivePage(id){
+  const p=pageById(id);
+  if(!p)return;
+  const kids=childrenOf(id).length;
+  if(!confirm('Move "'+(p.title||'Untitled')+'"'+(kids?(' and its '+kids+' sub-page(s)'):'')+' to trash?'))return;
+  const drop=new Set([id]);
+  let grew=true;
+  while(grew){grew=false;S.pages.forEach(x=>{if(x.parent_id&&drop.has(x.parent_id)&&!drop.has(x.id)){drop.add(x.id);grew=true;}});}
+  try{
+    const {error}=await sb.from('wiki_pages').update({archived:true}).in('id',[...drop]);
+    if(error)throw error;
+    S.pages.forEach(x=>{if(drop.has(x.id))x.archived=true;});
+    S.trash=(S.trash||[]).concat(S.pages.filter(x=>drop.has(x.id)));
+    S.pages=S.pages.filter(x=>!drop.has(x.id));
+    if(drop.has(S.activeId))S.activeId=null;
+    renderTree();
+    const f=S.pages[0];if(f)openPage(f.id);else renderDoc();
+    toast('Moved to trash - restore from the Trash list');
+  }catch(e){toast(writeErr(e,'move the page to trash'),9000);}
+}
+async function openTrash(){
+  try{
+    const {data,error}=await sb.from('wiki_pages').select('*').eq('archived',true).order('updated_at',{ascending:false});
+    if(error)throw error;
+    S.trash=data||[];
+  }catch(e){toast(writeErr(e,'load the trash'),9000);return;}
+  const rows=(S.trash||[]).map(p=>'<div class="tr-row"><span class="tr-n">'
+    +(p.icon?esc(p.icon):'\u{1F4C4}')+' '+esc(p.title||'Untitled')+'</span>'
+    +'<button class="nx-b sm" onclick="restorePage(\''+p.id+'\')">Restore</button>'
+    +'<button class="nx-b sm danger" onclick="purgePage(\''+p.id+'\')">Delete forever</button></div>').join('')
+    ||'<div class="nx-hint">Trash is empty.</div>';
+  nxModal('Trash', rows, '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+async function restorePage(id){
+  try{
+    const {error}=await sb.from('wiki_pages').update({archived:false}).eq('id',id);
+    if(error)throw error;
+    const p=(S.trash||[]).find(x=>x.id===id);
+    if(p){p.archived=false;S.pages.push(p);S.trash=S.trash.filter(x=>x.id!==id);}
+    renderTree();openTrash();toast('Restored');
+  }catch(e){toast(writeErr(e,'restore the page'),9000);}
+}
+async function purgePage(id){
+  if(!confirm('Delete this page permanently? This cannot be undone.'))return;
+  try{
+    const {error}=await sb.from('wiki_pages').delete().eq('id',id);
+    if(error)throw error;
+    S.trash=(S.trash||[]).filter(x=>x.id!==id);
+    openTrash();toast('Deleted permanently');
+  }catch(e){toast(writeErr(e,'delete the page'),9000);}
+}
+
+window.openPropEditor=openPropEditor;window.propTypeChanged=propTypeChanged;window.saveProp=saveProp;
+window.deleteProp=deleteProp;window.addPropOpt=addPropOpt;window.rmPropOpt=rmPropOpt;window.cyclePropOpt=cyclePropOpt;
+window.openViewEditor=openViewEditor;window.saveView=saveView;window.deleteView=deleteView;
+window.openFilterEditor=openFilterEditor;window.addFilterRow=addFilterRow;window.setFilterProp=setFilterProp;
+window.setFilterOp=setFilterOp;window.setFilterVal=setFilterVal;window.rmFilter=rmFilter;
+window.openMultiPicker=openMultiPicker;window.saveMulti=saveMulti;
+window.archivePage=archivePage;window.openTrash=openTrash;window.restorePage=restorePage;window.purgePage=purgePage;
+window.backlinksHTML=backlinksHTML;window.mentionify=mentionify;
 
 </script>
 </body>
