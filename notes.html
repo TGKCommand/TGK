@@ -206,6 +206,18 @@ a.mention:hover{background:rgba(13,148,136,.18)}
 .bl-h{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
 .bl-i{display:inline-block;font-size:12.5px;color:var(--text2);background:var(--bg3);border-radius:var(--r);padding:4px 9px;margin:0 6px 6px 0;cursor:pointer;text-decoration:none}
 .bl-i:hover{background:var(--bg4);color:var(--teal-d)}
+.sp-empty{flex:1;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:11px 14px;color:var(--text3);cursor:pointer;font-size:12.5px;background:var(--bg2)}
+.sp-empty:hover{border-color:var(--teal);color:var(--teal-d)}
+.sp-card{flex:1;display:flex;align-items:center;gap:9px;background:var(--bg2);border-radius:var(--r-lg);padding:10px 13px;cursor:pointer;text-decoration:none;color:var(--text);border-left:3px solid var(--teal)}
+.sp-card:hover{background:var(--bg3)}
+.sp-ic{font-size:16px}
+.sp-t{flex:1;font-size:13.5px;font-weight:600}
+.sp-go{font-size:11px;color:var(--text3)}
+.pi-r{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.pi-k{min-width:130px;color:var(--text3)}
+.pi-v{flex:1;font-weight:600}
+.pi-r kbd{background:var(--bg3);border:1px solid var(--border2);border-bottom-width:2px;border-radius:3px;padding:1px 5px;font-family:var(--mono);font-size:10.5px}
+.ver-w{font-size:10.5px;color:var(--text3);font-weight:400}
 .tb-wrap{flex:1;margin:6px 0}
 table.tb{border-collapse:collapse;width:100%;font-size:13px}
 table.tb th,table.tb td.tb-cell{border:1px solid var(--border);padding:0;vertical-align:top}
@@ -311,6 +323,7 @@ table.tb th .tb-c{font-weight:700}
       <button class="btn btn-w" onclick="newPage(null,'db')">+ New database</button>
       <button class="btn btn-w" onclick="openTemplates(null)">Templates</button>
       <button class="btn btn-w" onclick="openTrash()">Trash</button>
+      <button class="btn btn-w" onclick="openShortcuts()">Shortcuts</button>
     </div>
   </div>
   <div class="wrap">
@@ -322,6 +335,8 @@ table.tb th .tb-c{font-weight:700}
       </div>
       <div class="sp">
         <button class="fav-b" id="fav-btn" onclick="toggleFav(S.activeId)" title="Favourite this page">\u2606</button>
+        <button class="btn btn-sm" onclick="openHistory()" title="Version history">History</button>
+        <button class="btn btn-sm" onclick="openPageInfo()" title="Page info">Info</button>
         <button class="btn btn-sm" onclick="duplicatePage()" title="Duplicate this page">Duplicate</button>
         <button class="btn btn-sm" onclick="openSaveTemplate()" title="Save this page as a reusable template">Template</button>
       <button class="btn btn-sm" onclick="exportPage()" title="Export this page to Markdown">Export</button>
@@ -339,7 +354,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v0.6';
+const TGK_NOTES_VERSION='v0.7';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -457,6 +472,7 @@ async function savePage(){
     const{error}=await sb.from('wiki_pages').update({title:p.title,icon:p.icon,content:p.content}).eq('id',p.id);
     if(error)throw error;
     S.dirty=false;$('savest').textContent='saved';
+    if(typeof snapshotPage==='function')snapshotPage(false);
     setTimeout(()=>{if(!S.dirty)$('savest').textContent='';},1800);
   }catch(e){$('savest').textContent='save failed';toast(writeErr(e,'save'),9000);}
   finally{S.saving=false;}
@@ -524,7 +540,8 @@ const BLOCKS=[
   {t:'image',em:'\u{1F5BC}',n:'Image',d:'Upload a photo or paste a URL'},
   {t:'toggle',em:'\u25b8',n:'Toggle',d:'Collapsible section - indent blocks under it'},
   {t:'table',em:'\u25a6',n:'Table',d:'A simple table inside this page'},
-  {t:'toc',em:'\u2261',n:'Contents',d:'Auto list of the headings on this page'}
+  {t:'toc',em:'\u2261',n:'Contents',d:'Auto list of the headings on this page'},
+  {t:'subpage',em:'\u2197',n:'Sub-page',d:'Link or create a page inside this one'}
 ];
 function curPage(){return pageById(S.activeId);}
 function isDb(p){return !!(p&&p.page_type==='db');}
@@ -603,6 +620,9 @@ function renderBlocks(){
     if(bl.type==='table')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="table" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
         +(typeof tableBlockHTML==='function'?tableBlockHTML(bl):'')+'</div>';
+    if(bl.type==='subpage')
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="subpage" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
+        +(typeof subpageHTML==='function'?subpageHTML(bl):'')+'</div>';
     if(bl.type==='toc')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="toc" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
         +(typeof tocHTML==='function'?tocHTML():'')+'</div>';
@@ -815,6 +835,7 @@ function applySlash(def){
   if(def.t==='image'){closeSlash();renderBlocks();markDirty();if(typeof pickImage==='function')pickImage(id);return;}
   if(def.t==='table'){b[i].text='';if(typeof ensureTable==='function')ensureTable(b[i]);closeSlash();renderBlocks();addBlockAfter(i,'p');markDirty();return;}
   if(def.t==='toc'){b[i].text='';closeSlash();renderBlocks();addBlockAfter(i,'p');markDirty();return;}
+  if(def.t==='subpage'){b[i].text='';closeSlash();renderBlocks();markDirty();if(typeof pickSubpage==='function')pickSubpage(id);return;}
   if(def.t==='toggle'){
     b[i].open=true;closeSlash();renderBlocks();
     const nb=addBlockAfter(i,'p');
@@ -2138,6 +2159,227 @@ window.tblRowDel=tblRowDel;window.tblColDel=tblColDel;window.tblHead=tblHead;win
 window.tocHTML=tocHTML;window.scrollToBlock=scrollToBlock;
 window.favs=favs;window.isFav=isFav;window.toggleFav=toggleFav;window.favTreeHTML=favTreeHTML;
 window.duplicatePage=duplicatePage;
+
+
+/* ======================================================================
+   PHASE 7
+   - version history: throttled snapshots, browse and restore
+   - sub-page blocks: link or create a child page inline
+   - page info: word/block counts and timestamps
+   - keyboard shortcut reference
+   ====================================================================== */
+
+/* ---------- version history ---------- */
+const SNAP_EVERY_MS = 5*60*1000;   // at most one automatic snapshot per page per 5 min
+const KEEP_VERSIONS = 30;
+let _lastSnap = {};
+
+async function snapshotPage(force){
+  const p=curPage();
+  if(!p)return false;
+  const last=_lastSnap[p.id]||0;
+  if(!force && (Date.now()-last)<SNAP_EVERY_MS)return false;
+  _lastSnap[p.id]=Date.now();
+  try{
+    const{error}=await sb.from('wiki_page_versions').insert({
+      page_id:p.id,title:p.title,content:p.content,
+      page_type:p.page_type||'doc',saved_by:S.user?S.user.email:null});
+    if(error)throw error;
+    if(force)toast('\u2713 Version saved');
+    pruneVersions(p.id);
+    return true;
+  }catch(e){
+    const m=String(e.message||e);
+    if(/does not exist|schema cache/i.test(m)){
+      S._verMissing=true;
+      if(force)toast('Version history needs one migration - run the wiki_page_versions block in sql/add_wiki_pages.sql',10000);
+    }else if(force){toast('Could not save a version: '+m,8000);}
+    return false;
+  }
+}
+async function pruneVersions(pageId){
+  try{
+    const{data}=await sb.from('wiki_page_versions').select('id').eq('page_id',pageId).order('saved_at',{ascending:false});
+    const extra=(data||[]).slice(KEEP_VERSIONS).map(r=>r.id);
+    if(extra.length)await sb.from('wiki_page_versions').delete().in('id',extra);
+  }catch(e){/* pruning is best-effort */}
+}
+function verWhen(ts){
+  if(!ts)return '';
+  const d=new Date(ts), now=Date.now(), diff=(now-d.getTime())/1000;
+  if(diff<60)return 'just now';
+  if(diff<3600)return Math.floor(diff/60)+' min ago';
+  if(diff<86400)return Math.floor(diff/3600)+' h ago';
+  return d.toLocaleString();
+}
+async function openHistory(){
+  const p=curPage();
+  if(!p){toast('Open a page first');return;}
+  let rows=[];
+  try{
+    const{data,error}=await sb.from('wiki_page_versions').select('*').eq('page_id',p.id).order('saved_at',{ascending:false}).limit(KEEP_VERSIONS);
+    if(error)throw error;
+    rows=data||[];
+  }catch(e){
+    const m=String(e.message||e);
+    nxModal('Version history',
+      /does not exist|schema cache/i.test(m)
+        ? '<div class="nx-hint">Version history needs one migration. Run the <b>wiki_page_versions</b> block at the bottom of <b>sql/add_wiki_pages.sql</b>, then reload.</div>'
+        : '<div class="nx-hint">Could not load history: '+esc(m)+'</div>',
+      '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+    return;
+  }
+  S._versions=rows;
+  const list=rows.map((r,i)=>{
+    const n=Array.isArray(r.content)?r.content.length:((r.content&&r.content.rows)?r.content.rows.length:0);
+    return '<div class="tr-row"><span class="tr-n">'+esc(r.title||'Untitled')
+      +' <span class="ver-w">'+esc(verWhen(r.saved_at))+(r.saved_by?(' \u00b7 '+esc(String(r.saved_by).split('@')[0])):'')
+      +' \u00b7 '+n+' block'+(n!==1?'s':'')+'</span></span>'
+      +'<button class="nx-b sm" onclick="previewVersion('+i+')">Preview</button>'
+      +'<button class="nx-b sm primary" onclick="restoreVersion('+i+')">Restore</button></div>';
+  }).join('')||'<div class="nx-hint">No versions yet. One is captured automatically as you edit, or press "Save version".</div>';
+  nxModal('Version history - '+(p.title||'Untitled'),
+    list+'<div id="ver-prev"></div>',
+    '<button class="nx-b" onclick="snapshotPage(true).then(openHistory)">Save version now</button>'
+    +'<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+function previewVersion(i){
+  const r=(S._versions||[])[i];
+  if(!r)return;
+  const md=(typeof pageToMd==='function')
+    ? pageToMd({title:r.title,page_type:r.page_type,content:r.content})
+    : JSON.stringify(r.content).slice(0,2000);
+  const box=document.getElementById('ver-prev');
+  if(box)box.innerHTML='<label class="nx-l">Preview - '+esc(verWhen(r.saved_at))+'</label>'
+    +'<textarea class="nx-i" style="height:200px;font-family:var(--mono);font-size:11.5px" readonly>'+esc(md)+'</textarea>';
+}
+async function restoreVersion(i){
+  const r=(S._versions||[])[i];
+  const p=curPage();
+  if(!r||!p)return;
+  if(!confirm('Restore the version from '+verWhen(r.saved_at)+'?\n\nThe current content is snapshotted first, so this is reversible.'))return;
+  await snapshotPage(true);
+  try{
+    const{error}=await sb.from('wiki_pages').update({title:r.title,content:r.content}).eq('id',p.id);
+    if(error)throw error;
+    p.title=r.title;p.content=r.content;
+    S.dirty=false;
+    nxClose();renderTree();renderDoc();
+    toast('\u2713 Restored version from '+verWhen(r.saved_at));
+  }catch(e){toast(writeErr(e,'restore that version'),9000);}
+}
+
+/* ---------- sub-page blocks ---------- */
+function subpageHTML(bl){
+  const p=bl.pageId?pageById(bl.pageId):null;
+  if(!p){
+    return '<div class="sp-empty" onclick="pickSubpage(\''+bl.id+'\')">'
+      +'\u2795 Link or create a sub-page</div>';
+  }
+  return '<a class="sp-card" onclick="openPage(\''+p.id+'\')">'
+    +'<span class="sp-ic">'+(p.icon?esc(p.icon):(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'))+'</span>'
+    +'<span class="sp-t">'+esc(p.title||'Untitled')+'</span>'
+    +'<span class="sp-go">Open \u2192</span></a>';
+}
+let _spTarget=null;
+function pickSubpage(bid){
+  _spTarget=bid;
+  const opts=(S.pages||[]).filter(p=>p.id!==S.activeId)
+    .map(p=>'<option value="'+p.id+'">'+esc(p.title||'Untitled')+'</option>').join('');
+  nxModal('Sub-page',
+    '<label class="nx-l">Create a new page</label>'
+    +'<input id="sp-new" class="nx-i" placeholder="New page title...">'
+    +'<div class="nx-hint">or link an existing one</div>'
+    +'<select id="sp-pick" class="nx-i"><option value="">Choose a page...</option>'+opts+'</select>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="applySubpage()">Add</button>');
+  setTimeout(()=>{const f=document.getElementById('sp-new');if(f)f.focus();},40);
+}
+async function applySubpage(){
+  const title=((document.getElementById('sp-new')||{}).value||'').trim();
+  const pick=(document.getElementById('sp-pick')||{}).value||'';
+  const bid=_spTarget;
+  if(title){
+    try{
+      const row={title:title,icon:'',parent_id:S.activeId,sort_order:nextSort(S.activeId),
+                 page_type:'doc',content:[{id:uid(),type:'p',text:'',indent:0}],
+                 created_by:S.user?S.user.email:null};
+      const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+      if(error)throw error;
+      S.pages.push(data);
+      setSubpage(bid,data.id);
+      S.collapsed[S.activeId]=false;
+      renderTree();nxClose();
+    }catch(e){toast(writeErr(e,'create the sub-page'),9000);}
+    return;
+  }
+  if(pick){setSubpage(bid,pick);nxClose();return;}
+  toast('Type a title or choose a page');
+}
+function setSubpage(bid,pageId){
+  const b=blocks(),i=blockIndex(bid);
+  if(i<0)return;
+  b[i].pageId=pageId;
+  renderBlocks();markDirty();
+}
+
+/* ---------- page info ---------- */
+function pageStats(p){
+  let words=0,blocksN=0,chars=0;
+  const count=t=>{const s=String(t||'').trim();chars+=s.length;if(s)words+=s.split(/\s+/).length;};
+  if(isDb(p)){
+    const d=p.content||{};
+    blocksN=(d.rows||[]).length;
+    (d.rows||[]).forEach(r=>Object.keys(r.cells||{}).forEach(k=>count(r.cells[k])));
+  }else{
+    const bs=Array.isArray(p.content)?p.content:[];
+    blocksN=bs.length;
+    bs.forEach(b=>count(b.text));
+  }
+  return {words,chars,blocks:blocksN};
+}
+function openPageInfo(){
+  const p=curPage();
+  if(!p){toast('Open a page first');return;}
+  const st=pageStats(p);
+  const row=(k,v)=>'<div class="pi-r"><span class="pi-k">'+esc(k)+'</span><span class="pi-v">'+esc(v)+'</span></div>';
+  nxModal('Page info',
+    row(isDb(p)?'Rows':'Blocks', String(st.blocks))
+    +row('Words', String(st.words))
+    +row('Characters', String(st.chars))
+    +row('Type', isDb(p)?'Database':'Document')
+    +row('Sub-pages', String(childrenOf(p.id).length))
+    +row('Links in', String((typeof backlinksFor==='function'?backlinksFor(p.id):[]).length))
+    +row('Created', p.created_at?new Date(p.created_at).toLocaleString():'-')
+    +row('Updated', p.updated_at?new Date(p.updated_at).toLocaleString():'-')
+    +row('Created by', p.created_by||'-'),
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+
+/* ---------- shortcut reference ---------- */
+function openShortcuts(){
+  const k=(keys,what)=>'<div class="pi-r"><span class="pi-k"><kbd>'+keys.split('+').join('</kbd>+<kbd>')+'</kbd></span><span class="pi-v">'+esc(what)+'</span></div>';
+  nxModal('Keyboard shortcuts',
+    k('Ctrl+K','Quick switcher - pages, text and database rows')
+    +k('Ctrl+S','Save now')
+    +k('/','Block menu (start of a block)')
+    +k('@','Link to another page')
+    +k('Tab','Indent a block, or move between table cells')
+    +k('Shift+Tab','Outdent a block')
+    +k('Enter','New block, or split at the cursor')
+    +k('Backspace','At the start: clear formatting, outdent, then merge up')
+    +k('Esc','Close a menu or dialog')
+    +'<div class="nx-hint">Markdown as you type: <b># </b>heading, <b>- </b>bullet, <b>1. </b>numbered, <b>[] </b>to-do, <b>&gt; </b>quote, <b>```</b> code, <b>--- </b>divider.</div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='?'&&(e.ctrlKey||e.metaKey)){e.preventDefault();openShortcuts();}
+},true);
+
+window.snapshotPage=snapshotPage;window.openHistory=openHistory;window.previewVersion=previewVersion;
+window.restoreVersion=restoreVersion;window.verWhen=verWhen;
+window.subpageHTML=subpageHTML;window.pickSubpage=pickSubpage;window.applySubpage=applySubpage;window.setSubpage=setSubpage;
+window.pageStats=pageStats;window.openPageInfo=openPageInfo;window.openShortcuts=openShortcuts;
 
 </script>
 </body>
