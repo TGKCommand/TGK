@@ -224,6 +224,19 @@ body.dark .bk-t code{background:#2e3235}
 body.dark .gal-c,body.dark .bcard,body.dark .cal-c{background:#202325}
 body.dark .cal-dow{background:#26292c}
 body.dark .rowpanel{background:#202325}
+.ver-tag{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#6b7680;text-align:center;padding:7px 0 2px}
+body.dark .ver-tag{color:#6b7680}
+#bell{position:relative;background:none;border:none;cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
+.bell-n{position:absolute;top:-5px;right:-4px;background:var(--red);color:#fff;border-radius:8px;font-size:8.5px;
+  font-family:var(--mono);padding:1px 4px;line-height:1.4}
+.nt{border-bottom:1px solid var(--border);padding:8px 0}
+.nt.read{opacity:.5}
+.nt-b{font-size:12.5px}
+.nt-p{color:var(--teal-d);cursor:pointer;font-weight:600}
+.nt-t{font-size:10.5px;color:var(--text3);margin-top:2px}
+.nt-a{color:var(--teal-d);cursor:pointer}
+.person{background:rgba(124,92,214,.14);color:#6b4fc4;border-radius:3px;padding:0 4px;font-weight:600}
+body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 .cm-pin{position:absolute;right:-6px;top:2px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;
   font-size:10px;padding:1px 7px;cursor:pointer;color:var(--text3);font-family:inherit}
 .cm-pin:hover{color:var(--teal-d);border-color:var(--teal)}
@@ -401,6 +414,7 @@ table.tb th .tb-c{font-weight:700}
       <button class="btn btn-w" onclick="openTemplates(null)">Templates</button>
       <button class="btn btn-w" onclick="openTrash()">Trash</button>
       <button class="btn btn-w" onclick="openShortcuts()">Shortcuts</button>
+      <div class="ver-tag" id="ver-tag"></div>
     </div>
   </div>
   <div class="wrap">
@@ -411,6 +425,7 @@ table.tb th .tb-c{font-weight:700}
         <div class="tb-tt">Notes</div>
       </div>
       <div class="sp">
+        <button id="bell" onclick="openNotifs()" title="Notifications">\u{1F514}</button>
         <button class="fav-b" id="theme-btn" onclick="toggleTheme()" title="Switch theme">\u263D</button>
         <button class="fav-b" id="fav-btn" onclick="toggleFav(S.activeId)" title="Favourite this page">\u2606</button>
         <button class="btn btn-sm" onclick="openHistory()" title="Version history">History</button>
@@ -432,7 +447,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.1';
+const TGK_NOTES_VERSION='v1.2';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -463,6 +478,9 @@ async function afterLogin(user){
   $('who').textContent=(user.email||'').split('@')[0];
   $('ver').textContent=TGK_NOTES_VERSION;
   if(window.innerWidth<=860)$('menu-btn').style.display='';
+  const _vt=$('ver-tag'); if(_vt)_vt.textContent='TGK NOTES '+TGK_NOTES_VERSION;
+  if(typeof loadTeam==='function')await loadTeam();
+  if(typeof loadNotifs==='function'){loadNotifs();setInterval(loadNotifs,60000);}
   await loadPages();
 }
 (async()=>{
@@ -1088,6 +1106,7 @@ function cellHTML(r,pr,first){
   if(pr.type==='url')
     return '<div class="urlc"><input class="cin" value="'+esc(v)+'" placeholder="https://" '+set+'>'
       +(v?'<a href="'+esc(v)+'" target="_blank" rel="noopener" class="thx">\u2197</a>':'')+'</div>';
+  if(pr.type==='person')return (typeof personCellHTML==='function')?personCellHTML(r,pr):'';
   if(pr.type==='relation')return (typeof relCellHTML==='function')?relCellHTML(r,pr):'';
   if(pr.type==='rollup')return (typeof rollupCellHTML==='function')?rollupCellHTML(r,pr):'';
   return '<input class="cin'+(first?' first':'')+'" value="'+esc(v)+'" placeholder="'+(first?'Untitled':'')+'" '+set+'>';
@@ -1552,7 +1571,9 @@ document.addEventListener('click',e=>{
 let atOpen=false,atSel=0,atHost=null,atList=[];
 function openAt(host,filter){
   const f=(filter||'').toLowerCase();
-  atList=(S.pages||[]).filter(p=>p.id!==S.activeId&&(p.title||'').toLowerCase().includes(f)).slice(0,8);
+  const people=(typeof peopleHits==='function'?peopleHits(f):[]).map(t=>({_person:t}));
+  const pages=(S.pages||[]).filter(p=>p.id!==S.activeId&&(p.title||'').toLowerCase().includes(f)).slice(0,8);
+  atList=people.concat(pages);
   if(!atList.length){closeAt();return;}
   atHost=host;atOpen=true;atSel=0;
   const el=document.getElementById('slash'),r=host.getBoundingClientRect();
@@ -1562,9 +1583,20 @@ function openAt(host,filter){
   drawAt();
 }
 function drawAt(){
-  document.getElementById('slash').innerHTML='<div class="sh">Link to page</div>'+atList.map((p,i)=>
-    '<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">'
-    +(p.icon?esc(p.icon):'\u{1F4C4}')+'</span><div><div>'+esc(p.title||'Untitled')+'</div></div></div>').join('');
+  let out='',lastKind='';
+  atList.forEach((p,i)=>{
+    const kind=p._person?'people':'pages';
+    if(kind!==lastKind){out+='<div class="sh">'+(kind==='people'?'People':'Pages')+'</div>';lastKind=kind;}
+    if(p._person){
+      const t=p._person;
+      out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">\u263A</span>'
+        +'<div><div>'+esc(t.display_name||t.email)+'</div><div class="d">'+esc(t.email||'')+' - notify</div></div></div>';
+    }else{
+      out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">'
+        +(p.icon?esc(p.icon):'\u{1F4C4}')+'</span><div><div>'+esc(p.title||'Untitled')+'</div></div></div>';
+    }
+  });
+  document.getElementById('slash').innerHTML=out;
 }
 function closeAt(){atOpen=false;atHost=null;const e=document.getElementById('slash');if(e)e.style.display='none';}
 function atKey(e){
@@ -1575,6 +1607,7 @@ function atKey(e){
 }
 function applyAt(p){
   if(!p||!atHost)return;
+  if(p._person&&typeof applyPersonMention==='function'){applyPersonMention(p._person);return;}
   const id=atHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
   if(i<0){closeAt();return;}
   b[i].text=b[i].text.replace(/@[^@]*$/,'@'+(p.title||'Untitled')+' ');
@@ -2926,7 +2959,9 @@ function cleanInlineHTML(html){
       }
       Array.prototype.slice.call(ch.attributes||[]).forEach(a=>{
         const n=a.name.toLowerCase();
-        const keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^tx-/.test(a.value));
+        // 'person' must survive: an @teammate chip is a span carrying that class, and
+        // stripping it on the next keystroke would silently un-style every mention.
+        const keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^(tx-|person$)/.test(a.value));
         if(!keep)ch.removeAttribute(a.name);
       });
       if(tag==='A'){
@@ -3377,6 +3412,165 @@ window.addComment=addComment;window.resolveComment=resolveComment;window.deleteC
 window.paintCommentPins=paintCommentPins;window.commentsFor=commentsFor;window.commentBadge=commentBadge;
 window.toggleTheme=toggleTheme;window.applyTheme=applyTheme;
 window.dbEmbedHTML=dbEmbedHTML;window.pickEmbed=pickEmbed;window.saveEmbed=saveEmbed;window.embReload=embReload;
+
+
+/* ======================================================================
+   PHASE 12 - PEOPLE
+   - shared team roster from team_members (the same table the ERP uses)
+   - @ picker offers PEOPLE as well as pages
+   - Person properties assign a real teammate
+   - both raise a notification the recipient sees in their bell
+   ====================================================================== */
+
+/* ---------- roster ---------- */
+async function loadTeam(){
+  const me=(S.user&&S.user.email||'').toLowerCase();
+  try{
+    if(me){
+      await sb.from('team_members').upsert(
+        {email:me,display_name:(S.user.user_metadata&&S.user.user_metadata.full_name)||me.split('@')[0],
+         last_seen:new Date().toISOString()},{onConflict:'email'});
+    }
+    const{data,error}=await sb.from('team_members').select('email,display_name,last_seen').order('display_name');
+    if(error)throw error;
+    S.team=data||[];
+  }catch(e){
+    S.team=me?[{email:me,display_name:me.split('@')[0]}]:[];
+    console.warn('team roster unavailable:',e&&e.message);
+  }
+}
+function teamName(email){
+  const t=(S.team||[]).find(x=>(x.email||'').toLowerCase()===String(email||'').toLowerCase());
+  return (t&&t.display_name)||String(email||'').split('@')[0]||'someone';
+}
+function teamByName(name){
+  const n=String(name||'').trim().toLowerCase();
+  return (S.team||[]).find(x=>String(x.display_name||'').toLowerCase()===n
+                            ||String(x.email||'').toLowerCase()===n)||null;
+}
+
+/* ---------- notifications ---------- */
+async function notify(recipient,kind,message,blockId){
+  const me=(S.user&&S.user.email||'').toLowerCase();
+  const to=String(recipient||'').toLowerCase();
+  if(!to||to===me)return;                 // never notify yourself
+  const p=curPage();
+  try{
+    const{error}=await sb.from('wiki_notifications').insert({
+      recipient:to,actor:me,page_id:p?p.id:null,block_id:blockId||null,
+      kind:kind||'mention',message:message||''});
+    if(error)throw error;
+    toast('\u2713 '+teamName(to)+' notified');
+  }catch(e){
+    const m=String(e.message||e);
+    if(/does not exist|schema cache/i.test(m))
+      toast('Notifications need one migration - run the wiki_notifications block in sql/add_wiki_pages.sql',9000);
+    else toast('Could not notify: '+m,7000);
+  }
+}
+async function loadNotifs(){
+  const me=(S.user&&S.user.email||'').toLowerCase();
+  if(!me){S.notifs=[];return;}
+  try{
+    const{data,error}=await sb.from('wiki_notifications').select('*')
+      .eq('recipient',me).order('created_at',{ascending:false}).limit(40);
+    if(error)throw error;
+    S.notifs=data||[];
+  }catch(e){S.notifs=[];}
+  paintBell();
+}
+function unreadCount(){return (S.notifs||[]).filter(n=>!n.read).length;}
+function paintBell(){
+  const b=document.getElementById('bell');
+  if(!b)return;
+  const n=unreadCount();
+  b.innerHTML='\u{1F514}'+(n?'<span class="bell-n">'+n+'</span>':'');
+  b.title=n?(n+' unread'):'Notifications';
+}
+function openNotifs(){
+  const list=(S.notifs||[]).map(n=>{
+    const p=n.page_id?pageById(n.page_id):null;
+    return '<div class="nt'+(n.read?' read':'')+'">'
+      +'<div class="nt-b"><b>'+esc(teamName(n.actor))+'</b> '+esc(n.message||'mentioned you')
+      +(p?(' in <span class="nt-p" onclick="gotoNotif(\''+n.id+'\')">'+esc(p.title||'Untitled')+'</span>'):'')+'</div>'
+      +'<div class="nt-t">'+esc((typeof verWhen==='function')?verWhen(n.created_at):'')
+      +(n.read?'':' \u00b7 <span class="nt-a" onclick="markNotif(\''+n.id+'\')">mark read</span>')+'</div></div>';
+  }).join('')||'<div class="nx-hint">Nothing yet.</div>';
+  nxModal('Notifications',list,
+    '<button class="nx-b" onclick="markAllNotifs()">Mark all read</button>'
+    +'<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+async function markNotif(id){
+  try{await sb.from('wiki_notifications').update({read:true}).eq('id',id);}catch(e){}
+  const n=(S.notifs||[]).find(x=>x.id===id);
+  if(n)n.read=true;
+  paintBell();openNotifs();
+}
+async function markAllNotifs(){
+  const me=(S.user&&S.user.email||'').toLowerCase();
+  try{await sb.from('wiki_notifications').update({read:true}).eq('recipient',me).eq('read',false);}catch(e){}
+  (S.notifs||[]).forEach(n=>{n.read=true;});
+  paintBell();openNotifs();
+}
+function gotoNotif(id){
+  const n=(S.notifs||[]).find(x=>x.id===id);
+  if(!n)return;
+  markNotif(id);
+  nxClose();
+  if(n.page_id&&pageById(n.page_id)){
+    openPage(n.page_id);
+    if(n.block_id)setTimeout(()=>{if(typeof scrollToBlock==='function')scrollToBlock(n.block_id);},220);
+  }
+}
+
+/* ---------- people in the @ picker ---------- */
+function peopleHits(filter){
+  const f=String(filter||'').toLowerCase();
+  const me=(S.user&&S.user.email||'').toLowerCase();
+  return (S.team||[]).filter(t=>{
+    const n=String(t.display_name||'').toLowerCase(), e=String(t.email||'').toLowerCase();
+    return e!==me&&(!f||n.includes(f)||e.includes(f));
+  }).slice(0,6);
+}
+function applyPersonMention(t){
+  if(!t||!atHost)return;
+  const id=atHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
+  if(i<0){closeAt();return;}
+  const name=t.display_name||String(t.email||'').split('@')[0];
+  const plain=(typeof blockPlain==='function')?blockPlain(b[i].text):(b[i].text||'');
+  const cut=plain.replace(/@[^@]*$/,'');
+  b[i].text=esc(cut)+'<span class="person">@'+esc(name)+'</span>&nbsp;';
+  closeAt();renderBlocks();focusBlock(id);markDirty();
+  notify(t.email,'mention','mentioned you',id);
+}
+
+/* ---------- person property = a real teammate ---------- */
+function personCellHTML(r,pr){
+  const v=String((r.cells||{})[pr.id]||'');
+  const opts=['<option value="">\u2014</option>'].concat((S.team||[]).map(t=>
+    '<option value="'+esc(t.email)+'"'+(String(t.email).toLowerCase()===v.toLowerCase()?' selected':'')+'>'
+    +esc(t.display_name||t.email)+'</option>')).join('');
+  return '<select class="cin sel" onchange="assignPerson(\''+r.id+'\',\''+pr.id+'\',this.value)">'+opts+'</select>';
+}
+function assignPerson(rid,pid,email){
+  const d=db(),r=(d.rows||[]).find(x=>x.id===rid);
+  if(!r)return;
+  r.cells=r.cells||{};
+  const prev=r.cells[pid];
+  r.cells[pid]=email;
+  markDirty();renderDb();
+  if(email&&email!==prev){
+    const first=(d.props||[])[0];
+    const what=first?String((r.cells||{})[first.id]||'a row'):'a row';
+    notify(email,'assign','assigned you '+what,null);
+  }
+}
+
+window.loadTeam=loadTeam;window.teamName=teamName;window.teamByName=teamByName;
+window.notify=notify;window.loadNotifs=loadNotifs;window.openNotifs=openNotifs;window.paintBell=paintBell;
+window.markNotif=markNotif;window.markAllNotifs=markAllNotifs;window.gotoNotif=gotoNotif;window.unreadCount=unreadCount;
+window.peopleHits=peopleHits;window.applyPersonMention=applyPersonMention;
+window.personCellHTML=personCellHTML;window.assignPerson=assignPerson;
 
 </script>
 </body>
