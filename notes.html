@@ -224,6 +224,27 @@ body.dark .bk-t code{background:#2e3235}
 body.dark .gal-c,body.dark .bcard,body.dark .cal-c{background:#202325}
 body.dark .cal-dow{background:#26292c}
 body.dark .rowpanel{background:#202325}
+.th-ic{font-family:var(--mono);font-size:9px;opacity:.6;margin-right:5px}
+.g-row td{background:var(--bg2);font-weight:700;font-size:12.5px;padding:7px 10px!important;border-bottom:1px solid var(--border)}
+body.dark .g-row td{background:#26292c}
+.g-tw{cursor:pointer;color:var(--text3);margin-right:7px;font-size:10px}
+.g-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle}
+.g-n{font-family:var(--mono);font-size:10px;color:var(--text3);margin-left:9px;font-weight:400}
+.g-add{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:inherit;margin-left:12px;opacity:0}
+.g-row:hover .g-add{opacity:1}
+.g-add:hover{color:var(--teal-d)}
+.g-sum td{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--text3);padding:5px 10px 9px!important;border-bottom:1px solid var(--border)}
+.av{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
+  color:#fff;font-size:9px;font-weight:700;font-family:var(--font);vertical-align:middle;margin-right:6px}
+.av-none{background:var(--border2)}
+.av-n{font-size:12px;vertical-align:middle}
+.qf{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px;align-items:center}
+.qf-s{border:1px solid var(--border2);border-radius:20px;padding:4px 10px;font-size:11.5px;background:#fff;
+  font-family:inherit;color:var(--text2);outline:none;cursor:pointer}
+.qf-s.on{border-color:var(--teal);color:var(--teal-d);background:var(--teal-dim);font-weight:600}
+body.dark .qf-s{background:#26292c}
+.qf-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0 4px}
+.qf-x:hover{color:var(--red)}
 .ver-tag{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#6b7680;text-align:center;padding:7px 0 2px}
 body.dark .ver-tag{color:#6b7680}
 #bell{position:relative;background:none;border:none;cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
@@ -410,6 +431,7 @@ table.tb th .tb-c{font-weight:700}
       <div class="sync"><div class="l">TGK Notes</div><div class="s" id="sync-sub">workspace</div></div>
       <button class="btn btn-w" onclick="newPage(null,'doc')">+ New page</button>
       <button class="btn btn-w" onclick="newPage(null,'db')">+ New database</button>
+      <button class="btn btn-w" onclick="newTasksDb()">+ Projects &amp; Tasks</button>
       <button class="btn btn-w" onclick="openImport()">Import Markdown</button>
       <button class="btn btn-w" onclick="openTemplates(null)">Templates</button>
       <button class="btn btn-w" onclick="openTrash()">Trash</button>
@@ -447,7 +469,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.2';
+const TGK_NOTES_VERSION='v1.3';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1032,7 +1054,8 @@ function renderDb(){
   const tabs=(d.views||[]).map((vw,i)=>
     '<button class="vtab'+(i===(d.activeView||0)?' on':'')+'" onclick="setView('+i+')">'
     +(vw.kind==='board'?'\u25a4 ':vw.kind==='calendar'?'\u1F4C5 ':vw.kind==='gallery'?'\u25a6 ':'\u2637 ')+esc(vw.name)+'</button>').join('');
-  const body=v.kind==='board'?dbBoardHTML(d,v)
+  const body=(v.kind==='table'&&typeof dbGroupedTableHTML==='function')?dbGroupedTableHTML(d,v)
+    :v.kind==='board'?dbBoardHTML(d,v)
     :(v.kind==='calendar'&&typeof dbCalendarHTML==='function')?dbCalendarHTML(d,v)
     :(v.kind==='gallery'&&typeof dbGalleryHTML==='function')?dbGalleryHTML(d,v)
     :dbTableHTML(d,v);
@@ -1106,7 +1129,12 @@ function cellHTML(r,pr,first){
   if(pr.type==='url')
     return '<div class="urlc"><input class="cin" value="'+esc(v)+'" placeholder="https://" '+set+'>'
       +(v?'<a href="'+esc(v)+'" target="_blank" rel="noopener" class="thx">\u2197</a>':'')+'</div>';
-  if(pr.type==='person')return (typeof personCellHTML==='function')?personCellHTML(r,pr):'';
+  if(pr.type==='person'){
+    const _pv=String((r.cells||{})[pr.id]||'');
+    if(_pv&&!first&&typeof avatar==='function'&&!S.rowEdit)
+      return '<div class="multi" onclick="openRow(\''+r.id+'\')" title="Open the row to reassign">'+avatar(_pv)+'</div>';
+    return (typeof personCellHTML==='function')?personCellHTML(r,pr):'';
+  }
   if(pr.type==='relation')return (typeof relCellHTML==='function')?relCellHTML(r,pr):'';
   if(pr.type==='rollup')return (typeof rollupCellHTML==='function')?rollupCellHTML(r,pr):'';
   return '<input class="cin'+(first?' first':'')+'" value="'+esc(v)+'" placeholder="'+(first?'Untitled':'')+'" '+set+'>';
@@ -1368,9 +1396,10 @@ function openViewEditor(i){
       +(d.props||[]).filter(p=>p.type==='date').map(p=>'<option value="'+p.id+'"'+((v&&v.dateProp===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select>'
     +'<label class="nx-l">Image property (gallery)</label><select id="ve-img" class="nx-i"><option value="">None</option>'
       +(d.props||[]).filter(p=>p.type==='url').map(p=>'<option value="'+p.id+'"'+((v&&v.imgProp===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select>'
-    +'<label class="nx-l">Group by (board only)</label><select id="ve-group" class="nx-i">'
+    +'<label class="nx-l">Group by (table and board)</label><select id="ve-group" class="nx-i">'
       +'<option value="">None</option>'
-      +sels.map(p=>'<option value="'+p.id+'"'+((v&&v.groupBy===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')
+      +(d.props||[]).filter(p=>['select','person','check','date'].indexOf(p.type)>=0)
+        .map(p=>'<option value="'+p.id+'"'+((v&&v.groupBy===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')
     +'</select>'
     +(sels.length?'':'<div class="nx-hint">A board needs a Select property to group by.</div>'),
     ((typeof i==='number'&&(d.views||[]).length>1)?'<button class="nx-b danger" onclick="deleteView()">Delete</button>':'')
@@ -3571,6 +3600,205 @@ window.notify=notify;window.loadNotifs=loadNotifs;window.openNotifs=openNotifs;w
 window.markNotif=markNotif;window.markAllNotifs=markAllNotifs;window.gotoNotif=gotoNotif;window.unreadCount=unreadCount;
 window.peopleHits=peopleHits;window.applyPersonMention=applyPersonMention;
 window.personCellHTML=personCellHTML;window.assignPerson=assignPerson;
+
+
+/* ======================================================================
+   PHASE 13 - the Notion "Projects & Tasks" shape
+   - group a TABLE view by any select / person / date property
+   - collapsible groups with a count and a completion ratio
+   - property-type icons in headers, avatars for people
+   - quick filter chips per property
+   - a built-in Projects & Tasks database
+   ====================================================================== */
+
+const TYPE_ICON={text:'Aa',number:'#',select:'\u25c9',multi:'\u2637',date:'\u{1F4C5}',
+  check:'\u2611',url:'\u2197',person:'\u263A',relation:'\u21c4',rollup:'\u2211'};
+function propIcon(t){return TYPE_ICON[t]||'Aa';}
+
+/* ---------- avatars ---------- */
+const AV_COLORS=['#0d9488','#ea580c','#7c5cd6','#2563eb','#16a34a','#dc2626','#d97706','#0891b2'];
+function avatar(email){
+  const e=String(email||'').trim();
+  if(!e)return '<span class="av av-none">?</span>';
+  const name=(typeof teamName==='function')?teamName(e):e.split('@')[0];
+  let h=0;for(let i=0;i<e.length;i++)h=(h*31+e.charCodeAt(i))>>>0;
+  const c=AV_COLORS[h%AV_COLORS.length];
+  const initials=name.split(/[\s._-]+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'?';
+  return '<span class="av" style="background:'+c+'">'+esc(initials)+'</span>'
+    +'<span class="av-n">'+esc(name)+'</span>';
+}
+
+/* ---------- grouping ---------- */
+function groupKeyFor(r,gp){
+  if(!gp)return '';
+  const v=(r.cells||{})[gp.id];
+  if(v===true)return 'Yes';
+  if(v===false||v===''||v===undefined||v===null)return '';
+  if(gp.type==='date')return String(v).slice(0,10);
+  return String(v);
+}
+function groupOrder(d,gp,rows){
+  if(!gp)return [''];
+  if(gp.type==='select'&&Array.isArray(gp.options)){
+    const named=gp.options.map(o=>o.v);
+    const extras=[...new Set(rows.map(r=>groupKeyFor(r,gp)))].filter(k=>k&&named.indexOf(k)<0);
+    return named.concat(extras).concat(['']);
+  }
+  const seen=[...new Set(rows.map(r=>groupKeyFor(r,gp)))];
+  const named=seen.filter(Boolean).sort();
+  return named.concat(seen.indexOf('')>=0?['']:[]);
+}
+/* Completion = ticked checkboxes, else select values that look finished. */
+function groupProgress(d,rows){
+  const chk=(d.props||[]).find(p=>p.type==='check');
+  if(chk){
+    const done=rows.filter(r=>{const v=(r.cells||{})[chk.id];return v===true||v==='true';}).length;
+    return {done,total:rows.length};
+  }
+  const st=(d.props||[]).find(p=>p.type==='select'&&/status|state|stage/i.test(p.name||''));
+  if(st){
+    const done=rows.filter(r=>/^(done|complete|completed|closed|shipped)$/i.test(String((r.cells||{})[st.id]||''))).length;
+    return {done,total:rows.length};
+  }
+  return null;
+}
+function toggleGroup(key){
+  const v=activeView();
+  v.collapsed=v.collapsed||{};
+  if(v.collapsed[key])delete v.collapsed[key];else v.collapsed[key]=true;
+  markDirty();renderDb();
+}
+
+/* ---------- quick filter chips ---------- */
+function quickBarHTML(d,v){
+  const cands=(d.props||[]).filter(p=>['select','person','check'].indexOf(p.type)>=0).slice(0,4);
+  if(!cands.length)return '';
+  const cur=pid=>{
+    const f=(v.filters||[]).find(x=>x.prop===pid&&x.op==='is');
+    return f?String(f.val||''):'';
+  };
+  return '<div class="qf">'+cands.map(p=>{
+    const val=cur(p.id);
+    let opts='<option value="">'+esc(p.name)+': any</option>';
+    if(p.type==='select')opts+=((p.options)||[]).map(o=>'<option value="'+esc(o.v)+'"'+(o.v===val?' selected':'')+'>'+esc(o.v)+'</option>').join('');
+    else if(p.type==='person')opts+=((S.team)||[]).map(t=>'<option value="'+esc(t.email)+'"'+(t.email===val?' selected':'')+'>'+esc(t.display_name||t.email)+'</option>').join('');
+    else opts+='<option value="true"'+(val==='true'?' selected':'')+'>Checked</option><option value="false"'+(val==='false'?' selected':'')+'>Unchecked</option>';
+    return '<select class="qf-s'+(val?' on':'')+'" onchange="quickFilter(\''+p.id+'\',this.value)">'+opts+'</select>';
+  }).join('')
+  +((v.filters||[]).length?'<button class="qf-x" onclick="clearQuick()" title="Clear filters">&times;</button>':'')
+  +'</div>';
+}
+function quickFilter(pid,val){
+  const v=activeView();
+  v.filters=(v.filters||[]).filter(f=>!(f.prop===pid&&f.op==='is'));
+  if(val)v.filters.push({prop:pid,op:'is',val:val});
+  markDirty();renderDb();
+}
+function clearQuick(){const v=activeView();v.filters=[];markDirty();renderDb();}
+
+/* ---------- grouped table ---------- */
+function dbGroupedTableHTML(d,v){
+  const gp=dbProp(v.groupBy);
+  const rows=visibleRows(d);
+  const props=d.props||[];
+  const colCount=props.length+2;
+  const head='<th style="width:26px"><input type="checkbox" class="selbox" onchange="toggleSelAll(this.checked)" title="Select all shown"></th>'
+    +props.map(pr=>{
+      const arrow=(d.sort&&d.sort.prop===pr.id)?(d.sort.dir==='desc'?' \u25be':' \u25b4'):'';
+      return '<th><span class="th-ic">'+esc(propIcon(pr.type))+'</span>'
+        +'<span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
+        +'<button class="mv-b" title="Move left" onclick="moveProp(\''+pr.id+'\',-1)">\u2039</button>'
+        +'<button class="mv-b" title="Move right" onclick="moveProp(\''+pr.id+'\',1)">\u203a</button>'
+        +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
+    }).join('')+'<th style="width:64px"></th>';
+  const rowHTML=r=>'<tr'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
+    +'<td><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
+    +props.map((pr,ci)=>'<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
+    +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
+    +'<button class="thx del" title="Delete row" onclick="delRow(\''+r.id+'\')">\u00d7</button></td></tr>';
+  let body='';
+  if(!gp){
+    body=rows.map(rowHTML).join('')||'<tr><td colspan="'+colCount+'" class="dbempty">No rows'+(S.dbq?' match that filter':'')+'.</td></tr>';
+  }else{
+    const keys=groupOrder(d,gp,rows);
+    const collapsed=(v.collapsed||{});
+    keys.forEach(k=>{
+      const grp=rows.filter(r=>groupKeyFor(r,gp)===k);
+      if(!grp.length&&k==='')return;
+      const label=k||('No '+gp.name);
+      const dot=(gp.type==='select'&&k)?('<span class="g-dot" style="background:'+selColor(gp,k)+'"></span>'):'';
+      const who=(gp.type==='person'&&k)?avatar(k):'';
+      const open=!collapsed[k];
+      body+='<tr class="g-row"><td colspan="'+colCount+'">'
+        +'<span class="g-tw" onclick="toggleGroup(\''+esc(k).replace(/'/g,"\\'")+'\')">'+(open?'\u25be':'\u25b8')+'</span>'
+        +dot+(who||esc(label))+'<span class="g-n">'+grp.length+'</span>'
+        +'<button class="g-add" onclick="addRowTo(\''+esc(gp.id)+'\',\''+esc(k).replace(/'/g,"\\'")+'\')">+ New</button>'
+        +'</td></tr>';
+      if(open){
+        body+=grp.map(rowHTML).join('');
+        const pr=groupProgress(d,grp);
+        if(pr)body+='<tr class="g-sum"><td colspan="'+colCount+'">COMPLETE '+pr.done+'/'+pr.total+'</td></tr>';
+      }
+    });
+    if(!body)body='<tr><td colspan="'+colCount+'" class="dbempty">No rows'+(S.dbq?' match that filter':'')+'.</td></tr>';
+  }
+  return quickBarHTML(d,v)
+    +'<div class="tblwrap"><table class="dbt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+function addRowTo(pid,val){
+  const d=db(),cells={};
+  (d.props||[]).forEach(p=>{cells[p.id]=p.type==='check'?false:'';});
+  if(pid)cells[pid]=val;
+  d.rows=d.rows||[];d.rows.push({id:uid(),cells:cells,notes:[]});
+  markDirty();renderDb();
+}
+
+/* ---------- built-in Projects & Tasks database ---------- */
+function tasksDbTemplate(){
+  const P=()=>uid();
+  const name=P(),status=P(),who=P(),due=P(),pri=P(),tags=P(),proj=P();
+  return{
+    props:[
+      {id:name,name:'Task name',type:'text'},
+      {id:status,name:'Status',type:'select',options:[{v:'Not started',c:7},{v:'In progress',c:3},{v:'Done',c:4}]},
+      {id:who,name:'Assignee',type:'person'},
+      {id:due,name:'Due',type:'date'},
+      {id:pri,name:'Priority',type:'select',options:[{v:'Low',c:7},{v:'Medium',c:6},{v:'High',c:5}]},
+      {id:tags,name:'Tags',type:'multi',options:[{v:'Marketing',c:2},{v:'Branding',c:3},{v:'Production',c:0},{v:'Admin',c:7}]},
+      {id:proj,name:'Project',type:'select',options:[{v:'Product launch',c:1},{v:'Marketing campaign',c:2},{v:'Shop ops',c:0}]}
+    ],
+    rows:[
+      {id:uid(),cells:{[name]:'Define target audience',[status]:'Done',[due]:'',[pri]:'Low',[tags]:'Marketing',[proj]:'Marketing campaign'},notes:[]},
+      {id:uid(),cells:{[name]:'Develop advertising plan',[status]:'Done',[due]:'',[pri]:'Medium',[tags]:'Marketing',[proj]:'Marketing campaign'},notes:[]},
+      {id:uid(),cells:{[name]:'Report on marketing ROI',[status]:'In progress',[due]:'',[pri]:'Medium',[tags]:'Marketing',[proj]:'Marketing campaign'},notes:[]},
+      {id:uid(),cells:{[name]:'Create product positioning',[status]:'Not started',[due]:'',[pri]:'High',[tags]:'Branding',[proj]:'Product launch'},notes:[]},
+      {id:uid(),cells:{[name]:'Create product demo video',[status]:'Not started',[due]:'',[pri]:'High',[tags]:'Branding',[proj]:'Product launch'},notes:[]}
+    ],
+    views:[
+      {id:uid(),name:'By project',kind:'table',groupBy:proj,filters:[],collapsed:{}},
+      {id:uid(),name:'Board',kind:'board',groupBy:status,filters:[]},
+      {id:uid(),name:'All tasks',kind:'table',groupBy:null,filters:[]},
+      {id:uid(),name:'Calendar',kind:'calendar',dateProp:due,filters:[]}
+    ],
+    activeView:0,sort:null
+  };
+}
+async function newTasksDb(){
+  try{
+    const row={title:'Tasks',icon:'\u2611',parent_id:null,sort_order:nextSort(null),
+               page_type:'db',content:tasksDbTemplate(),created_by:S.user?S.user.email:null};
+    const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+    if(error)throw error;
+    S.pages.push(data);
+    renderTree();openPage(data.id);
+    toast('\u2713 Projects & Tasks created');
+  }catch(e){toast(writeErr(e,'create the tasks database'),9000);}
+}
+
+window.propIcon=propIcon;window.avatar=avatar;window.groupKeyFor=groupKeyFor;window.groupOrder=groupOrder;
+window.groupProgress=groupProgress;window.toggleGroup=toggleGroup;window.dbGroupedTableHTML=dbGroupedTableHTML;
+window.quickBarHTML=quickBarHTML;window.quickFilter=quickFilter;window.clearQuick=clearQuick;window.addRowTo=addRowTo;
+window.tasksDbTemplate=tasksDbTemplate;window.newTasksDb=newTasksDb;
 
 </script>
 </body>
