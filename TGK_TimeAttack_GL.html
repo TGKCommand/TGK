@@ -24,7 +24,9 @@
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v3.10';
+var TA_VER = 'v4.50';
+/* daily weather, derived from the course seed in taApplySun */
+var TA_WX = 'sun', TA_WX_LABEL = 'clear', WX_GRIP = 1, SH_K = 1, WX_SUN = 1;
 
 var TGK_SB_URL = 'https://piamamighqiielfztgic.supabase.co';
 var TGK_SB_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -529,7 +531,7 @@ function taCourseBuild(seed) {
     var wp = worldAt(p, sidePole * (COURSE_HALF + 16 + rnd() * 8));
     if (clearOfCourse(wp.x, wp.z, 11)) scenery.push({ t: 'pole', x: wp.x, z: wp.z, h: 11 + rnd() * 2 });
   }
-  for (var t2 = 0; t2 < 26; t2++) {
+  for (var t2 = 0; t2 < 38; t2++) {
     for (var att = 0; att < 8; att++) {
       var seg2 = Math.floor(rnd() * segs.length);
       var lat2 = (rnd() > 0.5 ? 1 : -1) * (COURSE_HALF + 10 + rnd() * 18);
@@ -588,6 +590,14 @@ function taCourseBuild(seed) {
   /* start gantry sits on the start gate */
   var g0 = gates[0];
   scenery.push({ t: 'gantry', x: g0.x, z: g0.z, th: g0.th });
+  /* paddock row flanking the start: tents, trailers and crews where the
+     event actually lives */
+  for (var pk = 0; pk < 6; pk++) {
+    var pw = worldAt(Math.min(pk * 6, segs.length - 1), (pk % 2 ? 1 : -1) * (COURSE_HALF + 12 + (pk % 3) * 5));
+    if (!clearOfCourse(pw.x, pw.z, 12)) continue;
+    scenery.push({ t: pk % 3 === 2 ? 'trailer' : 'tent', x: pw.x, z: pw.z, r: rnd(), th: g0.th });
+    if (pk % 2 === 0) scenery.push({ t: 'crowd', x: pw.x + 4, z: pw.z + 3, r: rnd(), th: g0.th });
+  }
 
   taBuildLine(segs, cones);
 
@@ -799,29 +809,33 @@ var HANDBRAKE = 7200;   /* N, rear only */
    honest without being undriveable. ---- */
 var CAR_SPEC = {
   s6: { name: 'Audi S6', short: 'S6', style: 'sedan', paint: [242, 240, 236], face: 'hex', exh: 4, wing: 'swan', mirror: [188, 192, 198], rails: 0, shiftT: 0.15, shiftCut: 0.10,
-    rackS: 2.9, oF: 0.92, oR: 1.09, sill: 0.14, belt: 0.72, roof: 1.32, bz: 0.66, peak: -0.38, rdrop: 0.05, clad: 0,
-    m: 1970, iz: 3400, wb: 2.92, acg: 1.31, hcg: 0.52, track: 1.64, awdF: 0.40, rearGrip: 1.06,
-    tq: 550, rpmTq: 3200, rpmLim: 6800, gears: [3.36, 2.17, 1.60, 1.26, 1.02, 0.84], fin: 3.32,
+    rackS: 3.3, oF: 0.92, oR: 1.09, sill: 0.14, belt: 0.95, roof: 1.455, bz: 1.05, peak: 0.15, beltRise: 0.030, rdrop: 0.05, clad: 0,
+    bw: 1.874, tw: 0.255,
+    m: 1995, iz: 3400, wb: 2.914, acg: 1.31, hcg: 0.52, track: 1.605, awdF: 0.40, rearGrip: 1.06,
+    box: '7-spd S tronic DCT', hp: 420, tq: 550, rpmTq: 1400, rpmTq2: 5200, tqFall: 0.22, rpmLim: 6800, gears: [3.36, 2.17, 1.60, 1.26, 1.02, 0.84, 0.67], fin: 3.32, /* DL501 7sp S tronic */
     cda: 0.78, cla: 0.50, brake: 33000, rw: 0.345,
-    hint: 'The original TGK car. 4.0T V8, quattro, 550 Nm. Fast everywhere.' },
-  cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [22, 23, 26], face: 'bars', exh: 2, wing: 'lip', mirror: [22, 23, 26], rails: 0, shiftT: 0.16, shiftCut: 0.12,
-    rackS: 2.8, oF: 0.95, oR: 1.14, sill: 0.14, belt: 0.69, roof: 1.16, bz: 0.60, peak: -0.60, rdrop: 0.11, clad: 0,
-    m: 1560, iz: 2450, wb: 2.71, acg: 1.14, hcg: 0.50, track: 1.55, awdF: 1.0, rearGrip: 1.06,
-    tq: 280, rpmTq: 2600, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94,
+    hint: 'The original TGK car. 4.0T V8, quattro, 420 hp. Fast everywhere.' },
+  cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [34, 36, 40], /* deep black pearl - true 22,23,26 swallowed every highlight */ face: 'bars', exh: 2, wing: 'lip', mirror: [34, 36, 40], rails: 0, shiftT: 0.16, shiftCut: 0.12,
+    rackS: 3.2, oF: 0.95, oR: 1.14, sill: 0.14, belt: 0.93, roof: 1.417, bz: 0.95, peak: 0.05, beltRise: 0.055, rdrop: 0.11, clad: 0,
+    bw: 1.855, tw: 0.235,
+    m: 1542, iz: 2450, wb: 2.711, acg: 1.14, hcg: 0.50, track: 1.549, awdF: 1.0, rearGrip: 1.06,
+    box: '6-spd DSG', hp: 200, tq: 280, rpmTq: 1700, rpmTq2: 5000, tqFall: 0.28, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94, /* DQ250 6sp DSG */
     cda: 0.66, cla: 0.28, brake: 25500, rw: 0.325,
     hint: '2.0T, FWD, the momentum car. Brakes deep, carries speed, hates greed.' },
-  touareg: { name: 'VW Touareg', short: 'TOUAREG', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.24, shiftCut: 0.45,
-    rackS: 2.1, oF: 0.88, oR: 1.02, sill: 0.34, belt: 1.04, roof: 1.70, bz: 0.88, peak: -0.08, rdrop: 0.0, clad: 1,
-    m: 2145, iz: 4600, wb: 2.90, acg: 1.36, hcg: 0.64, track: 1.66, awdF: 0.42, rearGrip: 1.04,
-    tq: 450, rpmTq: 2800, rpmLim: 6200, gears: [3.30, 2.10, 1.52, 1.16, 0.94, 0.78], fin: 3.70,
-    cda: 1.02, cla: 0.10, brake: 35500, rw: 0.375,
-    hint: '3.0 TSI, 2.1 tonnes, tall. Every input needs to be planned early.' },
+  tiguan: { name: 'VW Tiguan', short: 'TIGUAN', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.26, shiftCut: 0.35,
+    rackS: 2.8, oF: 0.92, oR: 0.99, sill: 0.30, belt: 1.10, roof: 1.673, bz: 1.10, peak: 0.38, beltRise: 0.022, rdrop: 0.0, clad: 1,
+    bw: 1.839, tw: 0.235,
+    m: 1750, iz: 3300, wb: 2.791, acg: 1.33, hcg: 0.60, track: 1.571, awdF: 0.58, rearGrip: 1.02,
+    box: '8-spd Aisin auto', hp: 315, tq: 420, rpmTq: 2000, rpmTq2: 5000, tqFall: 0.20, rpmLim: 6500, gears: [5.25, 3.03, 1.95, 1.46, 1.22, 1.00, 0.81, 0.67], fin: 3.33, /* Aisin AWF8F35 8sp */
+    cda: 0.94, cla: 0.08, brake: 31500, rw: 0.353,
+    hint: '2.0T 4Motion, tuned. Light on its feet for an SUV - lean on the front end.' },
   x5: { name: 'BMW X5 M50i', short: 'X5 M50i', style: 'suv', paint: [248, 249, 251], face: 'kidney', exh: 4, wing: 'roof', mirror: [30, 31, 34], rails: 1, shiftT: 0.22, shiftCut: 0.40,
-    rackS: 2.3, oF: 0.95, oR: 1.00, sill: 0.33, belt: 1.13, roof: 1.70, bz: 0.98, peak: -0.18, rdrop: 0.05, clad: 1,
-    m: 2385, iz: 5400, wb: 2.975, acg: 1.43, hcg: 0.66, track: 1.68, awdF: 0.35, rearGrip: 1.06,
-    tq: 750, rpmTq: 3000, rpmLim: 6600, gears: [3.42, 2.19, 1.60, 1.26, 1.00, 0.82], fin: 3.15,
+    rackS: 2.7, oF: 0.95, oR: 1.00, sill: 0.33, belt: 1.15, roof: 1.745, bz: 1.14, peak: 0.42, beltRise: 0.042, rdrop: 0.05, clad: 1,
+    bw: 2.004, tw: 0.275,
+    m: 2386, iz: 5400, wb: 2.975, acg: 1.43, hcg: 0.66, track: 1.6925, awdF: 0.35, rearGrip: 1.06,
+    box: '8-spd ZF 8HP76', hp: 523, tq: 750, rpmTq: 1800, rpmTq2: 4600, tqFall: 0.26, rpmLim: 6500, gears: [5.00, 3.20, 2.14, 1.72, 1.31, 1.00, 0.82, 0.64], fin: 3.154, /* ZF 8HP76 8sp */
     cda: 1.06, cla: 0.12, brake: 38500, rw: 0.385,
-    hint: '4.4 TT V8, 750 Nm, 2.4 tonnes. A freight train with a hammer.' }
+    hint: '4.4 TT V8, 553 lb-ft, 2.6 tons. A freight train with a hammer.' }
 };
 
 var car = null;
@@ -858,7 +872,7 @@ function taCarReset(opts) {
     seg: 0, lat: 0, sAlong: 0, offTime: 0, topV: 0,
     bodyRoll: 0, pitch: 0, exhaust: 0, revLimit: 0, delta: 0, absOn: 0, wheelAng: 0, fyF: 0, fyR: 0,
     absOff: (opts.abs === 'off'), lockF: 0, lockR: 0,
-    tyreT: 0.25, ayS: 0, blip: 0
+    tyreT: 0.25, ayS: 0, axS: 0, blip: 0, hbRec: 0
   };
   /* the renderer and tach follow the chosen car */
   if (typeof taBuildCar === 'function') taBuildCar(car.spec);
@@ -867,10 +881,23 @@ function taCarReset(opts) {
 }
 
 function taEngineTorque(rpm) {
+  /* Modern turbo engines do NOT make a symmetric torque hump - they spool to
+     peak by ~1500-2000 rpm, hold a FLAT PLATEAU across the published band,
+     then taper to redline. Every band below is the manufacturer's published
+     figure, and the taper is set so the model's peak POWER lands on the
+     published hp instead of hp being a decorative label. */
   var S = (car && car.spec) || CAR_SPEC.s6;
   if (rpm < RPM_IDLE) rpm = RPM_IDLE;
-  var span = S.rpmLim + 500 - 900;
-  var t = S.tq * (1 - 0.52 * Math.pow((rpm - S.rpmTq) / span, 2) - 0.20 * Math.pow(Math.max(0, rpm - S.rpmTq) / span, 3));
+  var r1 = S.rpmTq, r2 = S.rpmTq2 || (r1 + 2400), t;
+  if (rpm < r1) {
+    var k = clamp((rpm - RPM_IDLE) / Math.max(1, r1 - RPM_IDLE), 0, 1);
+    t = S.tq * (0.55 + 0.45 * Math.pow(k, 0.55));       /* spool */
+  } else if (rpm <= r2) {
+    t = S.tq;                                            /* plateau */
+  } else {
+    var d = (rpm - r2) / Math.max(1, (S.rpmLim + 200) - r2);
+    t = S.tq * (1 - (S.tqFall || 0.22) * d);             /* taper */
+  }
   if (rpm > S.rpmLim) t *= Math.max(0, 1 - (rpm - S.rpmLim) / 500);
   return Math.max(0, t);
 }
@@ -881,9 +908,10 @@ function taRpmFor(v, gear) {
 }
 
 function taSurfaceMu(absLat) {
-  if (absLat <= COURSE_HALF + 1.0) return car.mu;          /* swept, rubbered in */
-  if (absLat <= COURSE_HALF + 6.0) return car.mu * 0.74;   /* dusty off line */
-  if (absLat <= LOT_HALF) return car.mu * 0.60;            /* unswept lot */
+  var wxg = (typeof WX_GRIP !== 'undefined') ? WX_GRIP : 1;   /* rain soaks every surface */
+  if (absLat <= COURSE_HALF + 1.0) return car.mu * wxg;          /* swept, rubbered in */
+  if (absLat <= COURSE_HALF + 6.0) return car.mu * 0.74 * wxg;   /* dusty off line */
+  if (absLat <= LOT_HALF) return car.mu * 0.60 * wxg;            /* unswept lot */
   return MU_GRASS;                                          /* off the tarmac */
 }
 
@@ -913,7 +941,7 @@ function taStep(dt) {
      The rack itself slews at a finite rate: ~900 deg/s at the wheel through a
      13:1 rack is ~1.2 rad/s at the road wheels. */
   var maxDelta = clamp(
-    1.00 * (car.peakSlip || 0.14) + 1.60 * WB * G * car.mu / Math.max(absV * absV, 26),
+    1.08 * (car.peakSlip || 0.14) + 1.75 * WB * G * car.mu / Math.max(absV * absV, 26),
     0.10, 0.56);
   /* Countersteer is exempt from the grip cap: catching a slide needs the rack
      turned to roughly the body slip angle, and real hands can always reach
@@ -921,8 +949,8 @@ function taStep(dt) {
      uncatchable no matter what the driver did. */
   /* only during a genuine slide - gating on steering-vs-yaw fired on every
      slalom reversal and fed a runaway */
-  if (Math.abs(car.beta || 0) > 0.09 && car.steer * car.beta > 0.001) {
-    maxDelta = Math.max(maxDelta, clamp(Math.abs(car.beta) * 1.35 + 0.12, maxDelta, 0.60));
+  if (Math.abs(car.beta || 0) > 0.06 && car.steer * car.beta > 0.001) {
+    maxDelta = Math.max(maxDelta, clamp(Math.abs(car.beta) * 1.15 + 0.10, maxDelta, 0.55));
   }
   var slew = ((car.spec && car.spec.rackS) || 2.6) * dt;
   car.delta += clamp(car.steer * maxDelta - car.delta, -slew, slew);
@@ -995,7 +1023,8 @@ function taStep(dt) {
      neutral, and it feeds the lift-off rotation the tyre model already allows */
   if (car.thr < 0.06 && car.v > 0.6) {
     var ebT = TQ_PEAK * 0.075 * (car.rpm / RPM_LIM);
-    Fdrive -= ebT * GEARS[car.gear - 1] * FINAL * DRV_EFF / R_WHEEL * car.clutch;
+    var ebCorner = 1 - 0.60 * clamp(Math.abs(car.ay) / (0.5 * (car.mu || 1) * G), 0, 1);
+    Fdrive -= ebT * GEARS[car.gear - 1] * FINAL * DRV_EFF / R_WHEEL * car.clutch * ebCorner;
   }
 
   car.beta = Math.atan2(car.vy, Math.max(Math.abs(car.v), 2.0));
@@ -1034,8 +1063,9 @@ function taStep(dt) {
   mu = mu * clamp(muT, 0.80, 1.0);
 
   /* ---- vertical loads with longitudinal transfer ---- */
-  var FzF = M * G * B_CG / WB - M * car.ax * H_CG / WB + down * 0.45;
-  var FzR = M * G * A_CG / WB + M * car.ax * H_CG / WB + down * 0.55;
+  car.axS = (car.axS || 0) + (car.ax - (car.axS || 0)) * clamp(dt / 0.22, 0, 1);
+  var FzF = M * G * B_CG / WB - M * car.axS * H_CG / WB + down * 0.45;
+  var FzR = M * G * A_CG / WB + M * car.axS * H_CG / WB + down * 0.55;
   FzF = Math.max(300, FzF); FzR = Math.max(300, FzR);
 
   /* ---- lateral load transfer + tyre load sensitivity ----
@@ -1117,7 +1147,11 @@ function taStep(dt) {
 
   var F = axleForce(car.vy + A_CG * car.r, delta, capFe, FxF);
   var R = axleForce(car.vy - B_CG * car.r, 0, capRe, FxR);
-  if (car.hb > 0) R.fy *= (1 - 0.55 * car.hb);
+  if (car.hb > 0) { R.fy *= (1 - 0.60 * car.hb); car.hbRec = 0.35; }
+  else if (car.hbRec > 0) {
+    car.hbRec -= dt;
+    R.fy *= clamp(1 - car.hbRec / 0.35 * 0.5, 0.5, 1);   /* grip walks back in */
+  }
   if (car.lockF) F.fy *= (1 - 0.92 * car.lockF);   /* locked front = no steering */
   if (car.lockR) R.fy *= (1 - 0.80 * car.lockR);   /* locked rear  = instability */
   car.slipF = F.alpha; car.slipR = R.alpha;
@@ -1140,9 +1174,14 @@ function taStep(dt) {
   /* ---- stability control: a real system applies a yaw moment with the brakes,
      so that is what we do here rather than fudging the tyre forces ---- */
   if (car.esc !== 'off') {
-    var Kesc = car.esc === 'on' ? 26000 : 15000;
-    var Kbeta = car.esc === 'on' ? 52000 : 30000;
-    var authority = (car.esc === 'on' ? 1.15 : 0.80) * mu * (FzF + FzR) * TRACK * 0.5;
+    /* Sport is MDM, not "weak ESC": a DEADZONE lets the car move around
+       (yaw error up to 0.16 rad/s and body slip to 7 deg are ignored), but
+       beyond it the correction is nearly full strength - lively, and it
+       still catches the spin. */
+    var sportDead = car.esc === 'sport' ? 0.16 : 0;
+    var Kesc = car.esc === 'on' ? 26000 : 23000;
+    var Kbeta = car.esc === 'on' ? 52000 : 46000;
+    var authority = (car.esc === 'on' ? 1.15 : 1.00) * mu * (FzF + FzR) * TRACK * 0.5;
     var Kus = 0.0018;
     var rTarget = delta * car.v / (WB + Kus * car.v * car.v);
     /* the target must be grip-limited: chasing the raw kinematic rate at speed
@@ -1160,6 +1199,10 @@ function taStep(dt) {
        understeer, the tyres are already the limiter, and a controller that
        fights the wheel there just feels like the car refusing to turn. */
     var yerr = car.r - rTarget;
+    if (sportDead) {
+      yerr = Math.abs(yerr) < sportDead ? 0 : yerr - Math.sign(yerr) * sportDead;
+      beta = Math.abs(beta) < 0.12 ? 0 : beta - Math.sign(beta) * 0.12;
+    }
     var Ke = Kesc;
     if (yerr * rTarget < 0 && Math.abs(beta) < 0.06) Ke *= 0.18;
     var mz = -Ke * yerr + Kbeta * beta;
@@ -1498,7 +1541,7 @@ function carSilhouette(S) {
 /* ============================================================================
    PRODUCTION ASSET PIPELINE
    Drop artist-built models into /models/ in the repo:
-       models/s6.glb   models/cc.glb   models/touareg.glb   models/x5.glb
+       models/s6.glb  models/cc.glb  models/tiguan.glb  models/x5.glb  (all four supplied)
    Each is auto-fitted: scaled so its wheelbase-length matches the physics
    dimension sheet, grounded, centred, and repainted to the fleet colour.
    Per-model corrections (orientation, lift, paint override) live in
@@ -1506,17 +1549,20 @@ function carSilhouette(S) {
    instead - the game never breaks while the garage fills up.
    ========================================================================== */
 var MODEL_TWEAK = {
-  /* per-model corrections, tuned from GLB inspection:
-     paintRx  - regex for the paint material(s) to recolour
-     hideRx   - regex for node names to remove (spare parts, extra wheel sets)
-     shadowMin- only meshes with bbox diagonal above this cast shadows (perf) */
-  s6:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true,
-             paintRx: /a6c8_body|carpaint|^body$|paint/i,
+  /* Per-model corrections, VERIFIED against the packed GLBs (Aug 2026):
+     material and node names were read out of each file, not guessed.
+     paintRx  - exact paint material; repainted to the fleet colour in CAR_SPEC
+     hideRx   - node names to remove (spare parts / duplicate wheel sets)
+     spin     - whether the model exposes per-wheel nodes we can rotate       */
+  s6:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
+             paintRx: /^rs6c8$/i,
              hideRx: /steelwheel|stock2|CivicTypeR_tires_19x9(?!\.001)/i, shadowMin: 0.5 },
-  cc:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, paintRx: /paint|body|coat/i, shadowMin: 0.4 },
-  touareg: { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, paintRx: /paint|body|coat/i, shadowMin: 0.5 },
-  x5:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true,
-             paintRx: /paint1Mtl|paint/i, hideRx: null, shadowMin: 0.5 }
+  cc:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
+             paintRx: /^carpaint/i, hideRx: null, shadowMin: 0.4 },
+  tiguan:  { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
+             paintRx: /^Paint_Color/i, hideRx: null, shadowMin: 0.5 },
+  x5:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
+             paintRx: /paint1Mtl$/i, hideRx: null, shadowMin: 0.5 }
 };
 var _gltfLoader = (typeof THREE.GLTFLoader === 'function') ? new THREE.GLTFLoader() : null;
 var _modelCache = {};
@@ -1528,6 +1574,12 @@ function loadCarModel(S, key, onDone) {
   _gltfLoader.load('models/' + key + '.glb', function (g) {
     var root = g.scene || g.scenes[0];
     var tw = MODEL_TWEAK[key] || {};
+    /* cull spare parts FIRST so the auto-fit measures the car, not the junk */
+    if (tw.hideRx) {
+      var toHide = [];
+      root.traverse(function (n) { if (n.name && tw.hideRx.test(n.name)) toHide.push(n); });
+      toHide.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+    }
     /* orient: assume longest horizontal axis is the length */
     var box = new THREE.Box3().setFromObject(root);
     var size = new THREE.Vector3(); box.getSize(size);
@@ -1545,12 +1597,6 @@ function loadCarModel(S, key, onDone) {
     root.position.x -= ctr.x;
     root.position.z -= ctr.z;
     root.position.y -= box.min.y - (tw.y || 0);
-    /* node culling: spare parts and duplicate wheel sets in mashup models */
-    if (tw.hideRx) {
-      var toHide = [];
-      root.traverse(function (n) { if (n.name && tw.hideRx.test(n.name)) toHide.push(n); });
-      toHide.forEach(function (n) { if (n.parent) n.parent.remove(n); });
-    }
     /* repaint BY MATERIAL NAME - the honest way on multi-hundred-mesh models;
        fall back to largest opaque surface only if nothing matches */
     var painted = 0, bestN = null, bestArea = 0;
@@ -2000,7 +2046,7 @@ var keys = {};
 addEventListener('keydown', function (e) {
   var k = e.key.toLowerCase();
   keys[k] = 1;
-  var picks = { '1': 's6', '2': 'cc', '3': 'touareg', '4': 'x5' };
+  var picks = { '1': 's6', '2': 'cc', '3': 'tiguan', '4': 'x5' };
   if (picks[k]) {
     opts.car = picks[k];
     car = taCarReset(opts);
