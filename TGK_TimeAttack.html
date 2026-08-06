@@ -227,6 +227,66 @@ body{
 .ta-col:nth-of-type(2) h4~h4,.ta-col h4+*~h4{background-position:0 0,0 0,0 0,-2100px 0}
 .ta-seg{border-radius:4px}
 #ta-name{border-radius:4px}
+
+/* == Machined HUD pass (v3.41): realistic instrument materials ==
+   HUD plates only (menu untouched): forged carbon faces with corner
+   fastener screws, diagonal glass sheen, recessed LCD wells for all
+   digit readouts, spherical LED optics on the shift lights. */
+#ta-hud .plate{
+  background-color:var(--cb-c);background-image:var(--cb-i);
+  background-size:100% 100%,100% 100%,100% 100%,auto 160px;
+  background-position:0 0,0 0,0 0,-900px 0;
+  border:1px solid #000;
+  box-shadow:0 1px 0 rgba(255,255,255,.10) inset,0 -1px 0 rgba(0,0,0,.55) inset,0 10px 26px rgba(0,0,0,.6),0 0 0 1px rgba(216,220,223,.07);
+}
+#ta-cluster.plate{background-position:0 0,0 0,0 0,-1750px 0}
+#ta-gear-plate.plate{background-position:0 0,0 0,0 0,-260px 0}
+#ta-speed-plate.plate{background-position:0 0,0 0,0 0,-1180px 0}
+#ta-map-plate.plate{background-position:0 0,0 0,0 0,-2450px 0}
+#ta-hud .plate:before{
+  border-color:rgba(216,220,223,.09);
+  background-image:
+    radial-gradient(circle,#4a525a 0 .8px,#191d20 1.5px,#000 2.3px,transparent 3px),
+    radial-gradient(circle,#4a525a 0 .8px,#191d20 1.5px,#000 2.3px,transparent 3px),
+    radial-gradient(circle,#4a525a 0 .8px,#191d20 1.5px,#000 2.3px,transparent 3px),
+    radial-gradient(circle,#4a525a 0 .8px,#191d20 1.5px,#000 2.3px,transparent 3px);
+  background-repeat:no-repeat;background-size:7px 7px;
+  background-position:1px 1px,calc(100% - 1px) 1px,1px calc(100% - 1px),calc(100% - 1px) calc(100% - 1px);
+}
+#ta-hud .plate::after{
+  content:'';position:absolute;inset:0;border-radius:3px;pointer-events:none;
+  background:linear-gradient(115deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.03) 26%,rgba(255,255,255,0) 45%);
+}
+#ta-hud .lbl{text-shadow:0 1px 0 rgba(0,0,0,.85);color:#78828a}
+/* recessed LCD wells */
+#ta-clock,#ta-gear,#ta-speed{
+  background:linear-gradient(180deg,#040607 0%,#0c1013 100%);
+  border:1px solid #000;border-radius:3px;margin:3px 6px 0;padding:6px 0 5px;
+  box-shadow:inset 0 2px 7px rgba(0,0,0,.85),inset 0 -1px 0 rgba(255,255,255,.04),0 1px 0 rgba(255,255,255,.07);
+}
+#ta-clock{text-shadow:0 0 9px rgba(255,255,255,.30)}
+#ta-clock.hot{text-shadow:0 0 10px rgba(245,182,66,.6)}
+#ta-gear{text-shadow:0 0 12px rgba(42,191,170,.55)}
+#ta-gear.lim{text-shadow:0 0 12px rgba(220,38,38,.7)}
+#ta-speed{text-shadow:0 0 9px rgba(255,255,255,.28)}
+#ta-rpm{background:linear-gradient(180deg,#040607,#0c1013);border:1px solid #000;border-radius:2px;padding:2px 7px;box-shadow:inset 0 1px 4px rgba(0,0,0,.85);color:#f5b642!important;text-shadow:0 0 7px rgba(245,182,66,.45)}
+/* delta strip: deeper track, thicker bar */
+#ta-delta-wrap{height:7px;border-radius:3px;box-shadow:inset 0 1px 3px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.05);margin-left:6px;margin-right:6px}
+/* LED optics */
+#ta-lights i{
+  width:11px;height:11px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#23292d,#0a0d0f 68%);
+  border:1px solid #000;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.06);
+}
+#ta-lights i.on{
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),currentColor 58%,currentColor);
+  box-shadow:0 0 9px currentColor,0 0 3px currentColor,inset 0 0 2px rgba(255,255,255,.5);
+}
+/* map: recessed screen */
+#ta-map{background:#0a0d0f;border-radius:3px;box-shadow:inset 0 2px 8px rgba(0,0,0,.8),inset 0 0 0 1px #000}
+/* penalty pills: milled tags */
+#ta-pen .pill{background:linear-gradient(180deg,#1c2023,#131619);border-color:rgba(0,0,0,.9);box-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 2px 6px rgba(0,0,0,.5);border-radius:3px}
 </style>
 </head>
 <body>
@@ -292,7 +352,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-ver">v3.40</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-ver">v3.71</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -307,11 +367,11 @@ body{
             <div class="ta-seg" id="ta-seg-car">
               <button data-v="s6" class="sel">S6</button>
               <button data-v="cc">CC</button>
-              <button data-v="touareg">Touareg</button>
+              <button data-v="tiguan">Tiguan</button>
               <button data-v="x5">X5</button>
             </div>
-            <div class="ta-hint" id="ta-car-hint">The original TGK car. 4.0T V8, quattro, 550 Nm. Fast everywhere.</div>
-            <div id="ta-car-stats" style="font-family:var(--mono);font-size:10px;color:var(--teal);margin-top:2px">550 Nm &middot; 1970 kg &middot; AWD 40:60</div>
+            <div class="ta-hint" id="ta-car-hint">The original TGK car. 4.0T V8, quattro, 406 lb-ft. Fast everywhere.</div>
+            <div id="ta-car-stats" style="font-family:var(--mono);font-size:10px;color:var(--teal);margin-top:2px">450 hp &middot; 406 lb-ft &middot; AWD 40:60</div>
           </div>
           <div class="ta-opt">
             <span class="lbl">Tyre compound</span>
@@ -361,10 +421,11 @@ body{
           <h4>Entry / Car 84</h4>
           <dl class="ta-spec"><dt>Chassis</dt><dd id="ta-sp-chassis">Audi S6 (prepped)</dd></dl>
           <dl class="ta-spec"><dt>Drivetrain</dt><dd id="ta-sp-drive">AWD 40:60</dd></dl>
-          <dl class="ta-spec"><dt>Mass</dt><dd id="ta-sp-mass">1970 kg</dd></dl>
-          <dl class="ta-spec"><dt>Peak torque</dt><dd id="ta-sp-tq">550 Nm @ 3200</dd></dl>
+          <dl class="ta-spec"><dt>Power</dt><dd id="ta-sp-hp">450 hp</dd></dl>
+          <dl class="ta-spec"><dt>Gearbox</dt><dd id="ta-sp-box">7-spd S tronic DCT</dd></dl>
+          <dl class="ta-spec"><dt>Mass</dt><dd id="ta-sp-mass">4,343 lb</dd></dl>
+          <dl class="ta-spec"><dt>Peak torque</dt><dd id="ta-sp-tq">406 lb-ft @ 3200</dd></dl>
           <dl class="ta-spec"><dt>Redline</dt><dd id="ta-sp-red">6800 rpm</dd></dl>
-          <dl class="ta-spec"><dt>Gears</dt><dd>6 speed</dd></dl>
           <dl class="ta-spec" style="border-top:1px solid var(--hair);margin-top:6px;padding-top:6px"><dt>Course</dt><dd id="ta-course-len">--</dd></dl>
           <dl class="ta-spec"><dt>Gates</dt><dd id="ta-course-gates">--</dd></dl>
           <dl class="ta-spec"><dt>Cones set</dt><dd id="ta-course-cones">--</dd></dl>
@@ -437,7 +498,9 @@ body{
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v3.40';
+var TA_VER = 'v3.71';
+/* daily weather, derived from the course seed in taApplySun */
+var TA_WX = 'sun', TA_WX_LABEL = 'clear', WX_GRIP = 1, SH_K = 1, WX_SUN = 1;
 
 var TGK_SB_URL = 'https://piamamighqiielfztgic.supabase.co';
 var TGK_SB_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
@@ -945,7 +1008,7 @@ function taCourseBuild(seed) {
     var wp = worldAt(p, sidePole * (COURSE_HALF + 16 + rnd() * 8));
     if (clearOfCourse(wp.x, wp.z, 11)) scenery.push({ t: 'pole', x: wp.x, z: wp.z, h: 11 + rnd() * 2 });
   }
-  for (var t2 = 0; t2 < 26; t2++) {
+  for (var t2 = 0; t2 < 38; t2++) {
     for (var att = 0; att < 8; att++) {
       var seg2 = Math.floor(rnd() * segs.length);
       var lat2 = (rnd() > 0.5 ? 1 : -1) * (COURSE_HALF + 10 + rnd() * 18);
@@ -1004,6 +1067,14 @@ function taCourseBuild(seed) {
   /* start gantry sits on the start gate */
   var g0 = gates[0];
   scenery.push({ t: 'gantry', x: g0.x, z: g0.z, th: g0.th });
+  /* paddock row flanking the start: tents, trailers and crews where the
+     event actually lives */
+  for (var pk = 0; pk < 6; pk++) {
+    var pw = worldAt(Math.min(pk * 6, segs.length - 1), (pk % 2 ? 1 : -1) * (COURSE_HALF + 12 + (pk % 3) * 5));
+    if (!clearOfCourse(pw.x, pw.z, 12)) continue;
+    scenery.push({ t: pk % 3 === 2 ? 'trailer' : 'tent', x: pw.x, z: pw.z, r: rnd(), th: g0.th });
+    if (pk % 2 === 0) scenery.push({ t: 'crowd', x: pw.x + 4, z: pw.z + 3, r: rnd(), th: g0.th });
+  }
 
   taBuildLine(segs, cones);
 
@@ -1220,27 +1291,27 @@ var CAR_SPEC = {
   s6: { name: 'Audi S6', short: 'S6', style: 'sedan', paint: [242, 240, 236], face: 'hex', exh: 4, wing: 'swan', mirror: [188, 192, 198], rails: 0, shiftT: 0.15, shiftCut: 0.10,
     rackS: 3.3, oF: 0.92, oR: 1.09, sill: 0.14, belt: 0.72, roof: 1.32, bz: 0.66, peak: -0.38, rdrop: 0.05, clad: 0,
     m: 1970, iz: 3400, wb: 2.92, acg: 1.31, hcg: 0.52, track: 1.64, awdF: 0.40, rearGrip: 1.06,
-    tq: 550, rpmTq: 3200, rpmLim: 6800, gears: [3.36, 2.17, 1.60, 1.26, 1.02, 0.84], fin: 3.32,
+    box: '7-spd S tronic DCT', hp: 450, tq: 550, rpmTq: 3200, rpmLim: 6800, gears: [3.36, 2.17, 1.60, 1.26, 1.02, 0.84, 0.67], fin: 3.32, /* DL501 7sp S tronic */
     cda: 0.78, cla: 0.50, brake: 33000, rw: 0.345,
-    hint: 'The original TGK car. 4.0T V8, quattro, 550 Nm. Fast everywhere.' },
+    hint: 'The original TGK car. 4.0T V8, quattro, 406 lb-ft. Fast everywhere.' },
   cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [22, 23, 26], face: 'bars', exh: 2, wing: 'lip', mirror: [22, 23, 26], rails: 0, shiftT: 0.16, shiftCut: 0.12,
     rackS: 3.2, oF: 0.95, oR: 1.14, sill: 0.14, belt: 0.69, roof: 1.16, bz: 0.60, peak: -0.60, rdrop: 0.11, clad: 0,
     m: 1560, iz: 2450, wb: 2.71, acg: 1.14, hcg: 0.50, track: 1.55, awdF: 1.0, rearGrip: 1.06,
-    tq: 280, rpmTq: 2600, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94,
+    box: '6-spd DSG', hp: 200, tq: 280, rpmTq: 2600, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94, /* DQ250 6sp DSG */
     cda: 0.66, cla: 0.28, brake: 25500, rw: 0.325,
     hint: '2.0T, FWD, the momentum car. Brakes deep, carries speed, hates greed.' },
-  touareg: { name: 'VW Touareg', short: 'TOUAREG', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.24, shiftCut: 0.45,
-    rackS: 2.5, oF: 0.88, oR: 1.02, sill: 0.34, belt: 1.04, roof: 1.70, bz: 0.88, peak: -0.08, rdrop: 0.0, clad: 1,
-    m: 2145, iz: 4600, wb: 2.90, acg: 1.36, hcg: 0.64, track: 1.66, awdF: 0.42, rearGrip: 1.04,
-    tq: 450, rpmTq: 2800, rpmLim: 6200, gears: [3.30, 2.10, 1.52, 1.16, 0.94, 0.78], fin: 3.70,
-    cda: 1.02, cla: 0.10, brake: 35500, rw: 0.375,
-    hint: '3.0 TSI, 2.1 tonnes, tall. Every input needs to be planned early.' },
+  tiguan: { name: 'VW Tiguan', short: 'TIGUAN', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.26, shiftCut: 0.35,
+    rackS: 2.8, oF: 0.86, oR: 0.92, sill: 0.32, belt: 1.02, roof: 1.66, bz: 0.84, peak: -0.06, rdrop: 0.0, clad: 1,
+    m: 1810, iz: 3300, wb: 2.79, acg: 1.33, hcg: 0.60, track: 1.58, awdF: 0.58, rearGrip: 1.02,
+    box: '8-spd Aisin auto', hp: 315, tq: 420, rpmTq: 2400, rpmLim: 6500, gears: [5.25, 3.03, 1.95, 1.46, 1.22, 1.00, 0.81, 0.67], fin: 3.33, /* Aisin AWF8F35 8sp */
+    cda: 0.94, cla: 0.08, brake: 31500, rw: 0.353,
+    hint: '2.0T 4Motion, tuned. Light on its feet for an SUV - lean on the front end.' },
   x5: { name: 'BMW X5 M50i', short: 'X5 M50i', style: 'suv', paint: [248, 249, 251], face: 'kidney', exh: 4, wing: 'roof', mirror: [30, 31, 34], rails: 1, shiftT: 0.22, shiftCut: 0.40,
     rackS: 2.7, oF: 0.95, oR: 1.00, sill: 0.33, belt: 1.13, roof: 1.70, bz: 0.98, peak: -0.18, rdrop: 0.05, clad: 1,
     m: 2385, iz: 5400, wb: 2.975, acg: 1.43, hcg: 0.66, track: 1.68, awdF: 0.35, rearGrip: 1.06,
-    tq: 750, rpmTq: 3000, rpmLim: 6600, gears: [3.42, 2.19, 1.60, 1.26, 1.00, 0.82], fin: 3.15,
+    box: '8-spd ZF 8HP76', hp: 523, tq: 750, rpmTq: 3000, rpmLim: 6500, gears: [5.00, 3.20, 2.14, 1.72, 1.31, 1.00, 0.82, 0.64], fin: 3.154, /* ZF 8HP76 8sp */
     cda: 1.06, cla: 0.12, brake: 38500, rw: 0.385,
-    hint: '4.4 TT V8, 750 Nm, 2.4 tonnes. A freight train with a hammer.' }
+    hint: '4.4 TT V8, 553 lb-ft, 2.6 tons. A freight train with a hammer.' }
 };
 
 var car = null;
@@ -1300,9 +1371,10 @@ function taRpmFor(v, gear) {
 }
 
 function taSurfaceMu(absLat) {
-  if (absLat <= COURSE_HALF + 1.0) return car.mu;          /* swept, rubbered in */
-  if (absLat <= COURSE_HALF + 6.0) return car.mu * 0.74;   /* dusty off line */
-  if (absLat <= LOT_HALF) return car.mu * 0.60;            /* unswept lot */
+  var wxg = (typeof WX_GRIP !== 'undefined') ? WX_GRIP : 1;   /* rain soaks every surface */
+  if (absLat <= COURSE_HALF + 1.0) return car.mu * wxg;          /* swept, rubbered in */
+  if (absLat <= COURSE_HALF + 6.0) return car.mu * 0.74 * wxg;   /* dusty off line */
+  if (absLat <= LOT_HALF) return car.mu * 0.60 * wxg;            /* unswept lot */
   return MU_GRASS;                                          /* off the tarmac */
 }
 
@@ -1688,21 +1760,61 @@ var CAM_MODES = [
 ];
 var camMode = 0;
 var shakeX = 0, shakeY = 0;
-var skidMarks = [];      /* ring buffer of {x,z,a,w} laid down this run */
-var SKID_MAX = 1400;
+var skidMarks = [];      /* strokes: {p:[{x,z,a},..]} - one continuous ribbon per slip event per wheel */
+var skidOpen = [null, null, null, null];   /* active stroke per wheel FL FR RL RR */
+var skidPts = 0, SKID_PTS_MAX = 2400;
 var particles = [];
 var showLine = true;
 
 var SUN = [-0.42, 0.80, 0.43];
 /* the sun moves with the calendar: each daily course gets its own light -
    morning courses throw long shadows one way, afternoon ones the other */
+var SUN_WARM = 0, LI_S = [0.60, 0.58, 0.55], LI_A = [0.36, 0.38, 0.42], LI_G = [0.085, 0.085, 0.082];
+var SKY_MID = [74, 104, 132];
+var SUN_SX = -1, SUN_SY = -1, SUN_VIS = false, SUN_FZ = 0;
 function taApplySun(seed) {
   var az = ((seed % 113) / 113 - 0.5) * 2.4;            /* -69 to +69 deg */
-  var el = 0.62 + ((seed % 47) / 47) * 0.35;            /* 36 to 56 deg   */
+  var el = 0.30 + ((seed % 47) / 47) * 0.65;            /* 17 to 54 deg: low-sun days go golden */
+  /* the weather changes with the calendar too */
+  var wxRoll = seed % 10;
+  TA_WX = wxRoll === 9 ? 'rain' : (wxRoll >= 7 ? 'overcast' : (wxRoll >= 5 ? 'golden' : 'sun'));
+  if (TA_WX === 'golden') el = 0.30 + ((seed % 47) / 47) * 0.18;   /* low sun guaranteed */
+  TA_WX_LABEL = TA_WX === 'rain' ? 'light rain' : (TA_WX === 'overcast' ? 'overcast' : (TA_WX === 'golden' ? 'golden hour' : 'clear'));
+  WX_GRIP = TA_WX === 'rain' ? 0.80 : 1;
+  SH_K = TA_WX === 'rain' ? 0.20 : (TA_WX === 'overcast' ? 0.30 : 1);
+  WX_SUN = (TA_WX === 'rain' || TA_WX === 'overcast') ? 0 : 1;
   var v = [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)];
   var l = Math.hypot(v[0], v[1], v[2]);
   SUN = [v[0] / l, v[1] / l, v[2] / l];
+  /* photometric split: warm directional sun, cool sky ambient, asphalt bounce.
+     low elevation warms the sun and the horizon, cools the shade - the single
+     strongest photo cue there is */
+  var warm = clamp((0.72 - SUN[1]) / 0.45, 0, 1);
+  SUN_WARM = warm;
+  LI_S = [0.60 * (1 + 0.07 * warm), 0.58 * (1 - 0.10 * warm), 0.55 * (1 - 0.34 * warm)];
+  LI_A = [0.355 * (1 - 0.07 * warm), 0.38, 0.42 * (1 + 0.05 * warm)];
+  LI_G = [0.085 + 0.02 * warm, 0.085, 0.082 - 0.012 * warm];
+  C_SKY_TOP = [24 + 30 * warm, 44 + 12 * warm, 66 + 4 * warm];
+  C_SKY_HOR = [150 + 74 * warm, 172 + 2 * warm, 188 - 56 * warm];
+  SKY_MID = [mixc(74, 150 + 74 * warm, 0.35), mixc(104, 172, 0.35), mixc(132, 188 - 56 * warm, 0.35)];
+  C_TARMAC = [58 + 7 * warm, 60 + 2 * warm, 62 - 3 * warm];
+  C_SWEPT = [46 + 6 * warm, 47 + 1 * warm, 49 - 3 * warm];
+  if (!WX_SUN) {
+    /* flat, diffuse light: weak directional term, lifted cool ambient,
+       one-tone sky. rain also soaks and darkens the asphalt */
+    var wet = TA_WX === 'rain' ? 1 : 0;
+    SUN_WARM = 0;
+    LI_S = [0.20 - 0.04 * wet, 0.20 - 0.04 * wet, 0.20 - 0.04 * wet];
+    LI_A = [0.475 - 0.03 * wet, 0.49 - 0.03 * wet, 0.515 - 0.02 * wet];
+    LI_G = [0.05, 0.05, 0.05];
+    C_SKY_TOP = wet ? [82, 88, 95] : [96, 102, 110];
+    C_SKY_HOR = wet ? [136, 141, 146] : [158, 162, 166];
+    SKY_MID = [mixc(C_SKY_TOP[0], C_SKY_HOR[0], 0.5), mixc(C_SKY_TOP[1], C_SKY_HOR[1], 0.5), mixc(C_SKY_TOP[2], C_SKY_HOR[2], 0.5)];
+    C_TARMAC = wet ? [38, 41, 45] : [52, 54, 56];
+    C_SWEPT = wet ? [30, 32, 36] : [42, 43, 45];
+  }
 }
+function mixc(a, b, t) { return Math.round(a + (b - a) * t); }
 
 /* ---- palette ---- */
 var C_SKY_TOP = [24, 44, 66], C_SKY_HOR = [150, 172, 188];
@@ -1805,30 +1917,35 @@ function mix(a, b, t) {
 function drawSky() {
   var g = ctx.createLinearGradient(0, 0, 0, Math.max(1, HORIZON));
   g.addColorStop(0, 'rgb(' + C_SKY_TOP.join(',') + ')');
-  g.addColorStop(0.62, 'rgb(74,104,132)');
+  g.addColorStop(0.62, 'rgb(' + SKY_MID.join(',') + ')');
   g.addColorStop(1, 'rgb(' + C_SKY_HOR.join(',') + ')');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, CW, Math.max(0, HORIZON) + 1);
 
   /* sun, placed by rotating the world sun vector into camera space */
   var sx = SUN[0] * cosY - SUN[2] * sinY, sz = SUN[2] * cosY + SUN[0] * sinY;
-  if (sz > 0.05) {
+  SUN_VIS = false; SUN_FZ = sz;
+  if (WX_SUN && sz > 0.05) {
     var px = HW + PF * (sx / sz) * 0.6, py = HORIZON - PF * (SUN[1] / sz) * 0.6;
-    var gg = ctx.createRadialGradient(px, py, 0, px, py, CW * 0.42);
-    ctx.fillStyle = 'rgba(255,250,232,.95)';
+    SUN_SX = px; SUN_SY = py;
+    SUN_VIS = px > -CW * 0.2 && px < CW * 1.2 && py > -CH * 0.2 && py < CH * 0.9;
+    var w = SUN_WARM;
+    var gg = ctx.createRadialGradient(px, py, 0, px, py, CW * (0.42 + 0.16 * w));
+    ctx.fillStyle = 'rgba(255,' + (250 - 34 * w | 0) + ',' + (232 - 100 * w | 0) + ',.95)';
     ctx.beginPath();
-    ctx.arc(px, py, CW * 0.016, 0, 6.2832);
+    ctx.arc(px, py, CW * (0.016 + 0.006 * w), 0, 6.2832);
     ctx.fill();
-    gg.addColorStop(0, 'rgba(255,244,214,.55)');
-    gg.addColorStop(0.25, 'rgba(255,226,170,.16)');
+    gg.addColorStop(0, 'rgba(255,' + (244 - 40 * w | 0) + ',' + (214 - 96 * w | 0) + ',' + (0.55 + 0.12 * w) + ')');
+    gg.addColorStop(0.25, 'rgba(255,' + (226 - 48 * w | 0) + ',' + (170 - 84 * w | 0) + ',' + (0.16 + 0.07 * w) + ')');
     gg.addColorStop(1, 'rgba(255,226,170,0)');
     ctx.fillStyle = gg;
     ctx.fillRect(0, 0, CW, CH);
   }
   /* haze band */
+  var hz = (C_SKY_HOR[0] + 26) + ',' + (C_SKY_HOR[1] + 22) + ',' + (C_SKY_HOR[2] + 18);
   var hg = ctx.createLinearGradient(0, HORIZON - 40, 0, HORIZON + 4);
-  hg.addColorStop(0, 'rgba(190,205,215,0)');
-  hg.addColorStop(1, 'rgba(190,205,215,.75)');
+  hg.addColorStop(0, 'rgba(' + hz + ',0)');
+  hg.addColorStop(1, 'rgba(' + hz + ',.75)');
   ctx.fillStyle = hg;
   ctx.fillRect(0, Math.max(0, HORIZON - 40), CW, 44);
 }
@@ -1904,15 +2021,20 @@ function drawGround() {
 function drawGrain() {
   var y0 = Math.max(0, HORIZON) + 6;
   if (y0 > CH - 4) return;
+  /* at pace the asphalt speckle streaks toward the camera - screen-space
+     motion blur without the cost of one */
+  var spd = (window.car && run && run.started) ? clamp((Math.abs(car.v) - 8) / 30, 0, 1) : 0;
   ctx.fillStyle = 'rgba(210,214,218,0.05)';
   for (var i = 0; i < 44; i++) {
     var yy = y0 + Math.pow(Math.random(), 0.5) * (CH - y0);
-    ctx.fillRect(Math.random() * CW, yy, 1.5, 1.5);
+    var st = 1.5 + spd * 9 * ((yy - y0) / Math.max(1, CH - y0));
+    ctx.fillRect(Math.random() * CW, yy, 1.5, st);
   }
   ctx.fillStyle = 'rgba(8,9,10,0.06)';
   for (var j = 0; j < 30; j++) {
     var yj = y0 + Math.pow(Math.random(), 0.5) * (CH - y0);
-    ctx.fillRect(Math.random() * CW, yj, 2, 1.5);
+    var st2 = 1.5 + spd * 7 * ((yj - y0) / Math.max(1, CH - y0));
+    ctx.fillRect(Math.random() * CW, yj, 2, st2);
   }
 }
 
@@ -2055,11 +2177,16 @@ function drawConeAt(c) {
       ctx.fillRect(px - 0.7, py - 1.2, 1.4, 1.4);
       return;
     }
-    /* shadow */
-    ctx.fillStyle = 'rgba(12,13,14,' + (0.42 * f) + ')';
-    ctx.beginPath();
-    ctx.ellipse(px + wp * 0.5, py, wp * 1.9, wp * 0.65, 0, 0, 6.2832);
-    ctx.fill();
+    /* shadow: cast on the ground along the real sun azimuth, soft skirt
+       under a darker core, length set by sun elevation */
+    var cshx = -SUN[0] / Math.max(SUN[1], 0.35), cshz = -SUN[2] / Math.max(SUN[1], 0.35);
+    var csl = 0.42;
+    gquad([[c.x - 0.22, c.z - 0.06], [c.x + 0.22, c.z - 0.06],
+           [c.x + 0.26 + cshx * csl * 1.25, c.z + 0.06 + cshz * csl * 1.25],
+           [c.x - 0.26 + cshx * csl * 1.25, c.z + 0.06 + cshz * csl * 1.25]], 'rgba(10,11,12,' + (0.13 * f * SH_K) + ')');
+    gquad([[c.x - 0.16, c.z - 0.04], [c.x + 0.16, c.z - 0.04],
+           [c.x + 0.18 + cshx * csl, c.z + 0.04 + cshz * csl],
+           [c.x - 0.18 + cshx * csl, c.z + 0.04 + cshz * csl]], 'rgba(10,11,12,' + (0.34 * f * SH_K) + ')');
 
     if (c.kind === 'pointer') {
       /* an actual cone lying on its side: round base facing away from the
@@ -2154,9 +2281,12 @@ function drawScenery() {
         /* every object casts a soft sun-direction shadow - nothing floats */
         var shx = -SUN[0] / Math.max(SUN[1], 0.4), shz = -SUN[2] / Math.max(SUN[1], 0.4);
         var sw = (o.w || 1.2) * 0.9, sl = (o.h || 2) * 0.8;
+        gquad([[o.x - sw * 1.28, o.z], [o.x + sw * 1.28, o.z],
+               [o.x + sw * 1.28 + shx * sl * 1.18, o.z + shz * sl * 1.18],
+               [o.x - sw * 1.28 + shx * sl * 1.18, o.z + shz * sl * 1.18]], 'rgba(8,9,10,' + (0.07 * f * SH_K) + ')');
         gquad([[o.x - sw, o.z], [o.x + sw, o.z],
                [o.x + sw + shx * sl, o.z + shz * sl],
-               [o.x - sw + shx * sl, o.z + shz * sl]], 'rgba(8,9,10,' + (0.16 * f) + ')');
+               [o.x - sw + shx * sl, o.z + shz * sl]], 'rgba(8,9,10,' + (0.15 * f * SH_K) + ')');
         if (o.t === 'tree') {
           /* trunk, then three overlapping canopy lobes lit from the sun side */
           var hh = o.h * s, ww = o.w * s;
@@ -2453,54 +2583,65 @@ function taBuildCar(spec) {
   var ROOF = S.roof || (suv ? 1.70 : 1.30);
   var raked = suv && S.rw > 0.38;
 
-  /* ---- flanks: tuck-under, bulge, waist crease, tumblehome ---- */
+  /* ---- flanks: LOFTED through six length stations. constant width was
+     what made the shells read as blocks - a real body tapers in plan view
+     toward the nose and tail and swells slightly over the axles. same
+     vertical profile as before, now swept through a plan shape. ---- */
+  var HWF = HWID * (suv ? 0.968 : 0.962), HWR = HWID * (suv ? 0.950 : 0.935);
   (function () {
     var yb = SILL - 0.02, yg = SILL + (BELT - SILL) * 0.16;
     var yw = SILL + (BELT - SILL) * 0.52, yt = BELT;
     var wTuck = HWID - 0.055, wBul = HWID, wWai = HWID - 0.012, wIn = HWID - 0.085;
     var z0 = lenR + 0.30, z1 = lenF - 0.34;
-    function ring(zz) {
-      return [m.vx(-wTuck, yb, zz), m.vx(wTuck, yb, zz),
-              m.vx(-wBul, yg, zz), m.vx(wBul, yg, zz),
-              m.vx(-wWai, yw, zz), m.vx(wWai, yw, zz),
-              m.vx(-wIn, yt, zz), m.vx(wIn, yt, zz)];
+    var ST = suv ? [[0, 0.950], [0.16, 0.992], [0.38, 1.0], [0.62, 1.0], [0.84, 0.995], [1, 0.968]]
+                 : [[0, 0.935], [0.16, 0.988], [0.38, 1.0], [0.62, 1.0], [0.84, 0.992], [1, 0.962]];
+    function ring(zz, k) {
+      return [m.vx(-wTuck * k, yb, zz), m.vx(wTuck * k, yb, zz),
+              m.vx(-wBul * k, yg, zz), m.vx(wBul * k, yg, zz),
+              m.vx(-wWai * k, yw, zz), m.vx(wWai * k, yw, zz),
+              m.vx(-wIn * k, yt, zz), m.vx(wIn * k, yt, zz)];
     }
-    var A = ring(z0), B = ring(z1);
-    m.quad(A[0], B[0], B[2], A[2], PAINT2, 'body');   /* L tuck-under */
-    m.quad(A[2], B[2], B[4], A[4], PAINT2, 'body');   /* L lower */
-    m.quad(A[4], B[4], B[6], A[6], PAINT2, 'body');   /* L upper */
-    m.quad(A[1], A[3], B[3], B[1], PAINT2, 'body');   /* R tuck-under */
-    m.quad(A[3], A[5], B[5], B[3], PAINT2, 'body');   /* R lower */
-    m.quad(A[5], A[7], B[7], B[5], PAINT2, 'body');   /* R upper */
-    m.quad(A[6], B[6], B[7], A[7], PAINT2, 'body');   /* deck */
-    m.quad(A[0], A[1], B[1], B[0], PAINT2, 'body');   /* floor */
-    m.quad(A[0], A[2], A[4], A[6], PAINT2, 'body'); m.quad(A[6], A[7], A[5], A[3], PAINT2, 'body'); m.quad(A[3], A[1], A[0], A[6], PAINT2, 'body');
-    m.quad(B[6], B[4], B[2], B[0], PAINT2, 'body'); m.quad(B[3], B[5], B[7], B[6], PAINT2, 'body'); m.quad(B[6], B[0], B[1], B[3], PAINT2, 'body');
+    var rings = [];
+    for (var ri = 0; ri < ST.length; ri++) rings.push(ring(z0 + (z1 - z0) * ST[ri][0], ST[ri][1]));
+    for (var si = 0; si < rings.length - 1; si++) {
+      var A = rings[si], B = rings[si + 1];
+      m.quad(A[0], B[0], B[2], A[2], PAINT2, 'body');   /* L tuck-under */
+      m.quad(A[2], B[2], B[4], A[4], PAINT2, 'body');   /* L lower */
+      m.quad(A[4], B[4], B[6], A[6], PAINT2, 'body');   /* L upper */
+      m.quad(A[1], A[3], B[3], B[1], PAINT2, 'body');   /* R tuck-under */
+      m.quad(A[3], A[5], B[5], B[3], PAINT2, 'body');   /* R lower */
+      m.quad(A[5], A[7], B[7], B[5], PAINT2, 'body');   /* R upper */
+      m.quad(A[6], B[6], B[7], A[7], PAINT2, 'body');   /* deck */
+      m.quad(A[0], A[1], B[1], B[0], PAINT2, 'body');   /* floor */
+    }
+    var A0 = rings[0], BN = rings[rings.length - 1];
+    m.quad(A0[0], A0[2], A0[4], A0[6], PAINT2, 'body'); m.quad(A0[6], A0[7], A0[5], A0[3], PAINT2, 'body'); m.quad(A0[3], A0[1], A0[0], A0[6], PAINT2, 'body');
+    m.quad(BN[6], BN[4], BN[2], BN[0], PAINT2, 'body'); m.quad(BN[3], BN[5], BN[7], BN[6], PAINT2, 'body'); m.quad(BN[6], BN[0], BN[1], BN[3], PAINT2, 'body');
   })();
 
   /* ---- nose: upper band, dark lower intake, corner + top chamfers ---- */
-  var bZ = S.bz || (suv ? 0.86 : 0.66);
-  m.box(-HWID + 0.10, HWID - 0.10, SILL + (BELT - SILL) * 0.42, BELT - 0.10, lenF - 0.36, lenF, PAINT2, 'body');
-  m.box(-HWID + 0.14, HWID - 0.14, SILL, SILL + (BELT - SILL) * 0.42, lenF - 0.36, lenF - 0.04, PAINT2, 'body');
+  var bZ = S.bz || (suv ? 0.86 : 0.66);   /* nose narrowed to the loft's front station */
+  m.box(-HWF + 0.10, HWF - 0.10, SILL + (BELT - SILL) * 0.42, BELT - 0.10, lenF - 0.36, lenF, PAINT2, 'body');
+  m.box(-HWF + 0.14, HWF - 0.14, SILL, SILL + (BELT - SILL) * 0.42, lenF - 0.36, lenF - 0.04, PAINT2, 'body');
   (function () {
     var y0 = SILL, y1 = BELT - 0.10;
-    var cA = m.vx(-HWID + 0.10, y0 + 0.10, lenF), cB = m.vx(-HWID - 0.005, y0, lenF - 0.30);
-    var cC = m.vx(-HWID - 0.005, y1, lenF - 0.30), cD = m.vx(-HWID + 0.10, y1, lenF);
+    var cA = m.vx(-HWF + 0.10, y0 + 0.10, lenF), cB = m.vx(-HWF - 0.005, y0, lenF - 0.30);
+    var cC = m.vx(-HWF - 0.005, y1, lenF - 0.30), cD = m.vx(-HWF + 0.10, y1, lenF);
     m.quad(cA, cB, cC, cD, PAINT2, 'body');
-    var dA = m.vx(HWID - 0.10, y0 + 0.10, lenF), dB = m.vx(HWID + 0.005, y0, lenF - 0.30);
-    var dC = m.vx(HWID + 0.005, y1, lenF - 0.30), dD = m.vx(HWID - 0.10, y1, lenF);
+    var dA = m.vx(HWF - 0.10, y0 + 0.10, lenF), dB = m.vx(HWF + 0.005, y0, lenF - 0.30);
+    var dC = m.vx(HWF + 0.005, y1, lenF - 0.30), dD = m.vx(HWF - 0.10, y1, lenF);
     m.quad(dD, dC, dB, dA, PAINT2, 'body');
     /* bonnet leading edge rounds DOWN to the nose - no 90 deg box edge */
-    var e0 = m.vx(-HWID + 0.12, BELT - 0.10, lenF - 0.01), e1 = m.vx(HWID - 0.12, BELT - 0.10, lenF - 0.01);
-    var e2 = m.vx(HWID - 0.14, BELT - 0.02, lenF - 0.14), e3 = m.vx(-HWID + 0.14, BELT - 0.02, lenF - 0.14);
+    var e0 = m.vx(-HWF + 0.12, BELT - 0.10, lenF - 0.01), e1 = m.vx(HWF - 0.12, BELT - 0.10, lenF - 0.01);
+    var e2 = m.vx(HWF - 0.14, BELT - 0.02, lenF - 0.14), e3 = m.vx(-HWF + 0.14, BELT - 0.02, lenF - 0.14);
     m.quad(e0, e1, e2, e3, PAINT2, 'body');
   })();
 
   /* ---- tail block with top chamfer ---- */
-  m.box(-HWID + 0.02, HWID - 0.02, SILL, BELT - 0.08, lenR, lenR + 0.34, PAINT2, 'body');
+  m.box(-HWR + 0.02, HWR - 0.02, SILL, BELT - 0.08, lenR, lenR + 0.34, PAINT2, 'body');
   (function () {
-    var e0 = m.vx(-HWID + 0.04, BELT - 0.08, lenR + 0.005), e1 = m.vx(HWID - 0.04, BELT - 0.08, lenR + 0.005);
-    var e2 = m.vx(HWID - 0.05, BELT + 0.015, lenR + 0.13), e3 = m.vx(-HWID + 0.05, BELT + 0.015, lenR + 0.13);
+    var e0 = m.vx(-HWR + 0.04, BELT - 0.08, lenR + 0.005), e1 = m.vx(HWR - 0.04, BELT - 0.08, lenR + 0.005);
+    var e2 = m.vx(HWR - 0.05, BELT + 0.015, lenR + 0.13), e3 = m.vx(-HWR + 0.05, BELT + 0.015, lenR + 0.13);
     m.quad(e1, e0, e3, e2, PAINT2, 'body');
   })();
 
@@ -2547,8 +2688,8 @@ function taBuildCar(spec) {
   m.quad(r0, r3, r5, r7, GLASS, 'glass');
   m.quad(r1, r6, r4, r2, GLASS, 'glass');
   if (!suv) {
-    var d0 = m.vx(-HWID + 0.06, tailY, tailZ), d1 = m.vx(HWID - 0.06, tailY, tailZ);
-    var d2 = m.vx(HWID - 0.04, BELT + 0.02, lenR + 0.16), d3 = m.vx(-HWID + 0.04, BELT + 0.02, lenR + 0.16);
+    var d0 = m.vx(-HWR + 0.06, tailY, tailZ), d1 = m.vx(HWR - 0.06, tailY, tailZ);
+    var d2 = m.vx(HWR - 0.04, BELT + 0.02, lenR + 0.16), d3 = m.vx(-HWR + 0.04, BELT + 0.02, lenR + 0.16);
     m.quad(d0, d1, d2, d3, PAINT2, 'body');
   }
 
@@ -2598,14 +2739,7 @@ function taBuildCar(spec) {
     m.box(0.34, 0.58, SILL + 0.02, SILL + 0.11, lenR - 0.12, lenR - 0.01, EXH, 'exh');
   }
 
-  /* ---- stock rear aero per car ---- */
-  if (S.face === 'hex') {
-    m.box(-HWID + 0.10, HWID - 0.10, BELT + 0.015, BELT + 0.055, lenR + 0.14, lenR + 0.30, PAINT2, 'body');
-  } else if (S.face === 'bars') {
-    m.box(-HWID + 0.12, HWID - 0.12, BELT + 0.02, BELT + 0.045, lenR + 0.16, lenR + 0.30, PAINT2, 'body');
-  } else {
-    m.box(-HWID + 0.16, HWID - 0.16, ROOF - (raked ? 0.06 : 0.01), ROOF + 0.03, lenR + 0.12, lenR + 0.44, S.face === 'kidney' ? [22, 23, 25] : PAINT2, 'wing');
-  }
+  /* rear aero deleted: factory bodies, clean decklids and rooflines */
 
   /* ---- mirrors, rails ---- */
   var MIR = S.mirror || TRIM;
@@ -2615,6 +2749,34 @@ function taBuildCar(spec) {
     m.box(-HWID + 0.20, -HWID + 0.26, ROOF + 0.005, ROOF + 0.045, roofR + 0.10, roofF - 0.10, [172, 176, 181], 'trim');
     m.box(HWID - 0.26, HWID - 0.20, ROOF + 0.005, ROOF + 0.045, roofR + 0.10, roofF - 0.10, [172, 176, 181], 'trim');
   }
+
+  /* ---- door seams: two shut lines per flank, just proud of the paint ---- */
+  (function () {
+    var SEAM = [PAINT2[0] * 0.52 | 0, PAINT2[1] * 0.52 | 0, PAINT2[2] * 0.52 | 0];
+    var zDoors = [gF - 0.06, gF - (suv ? 1.12 : 1.04)];
+    for (var sd = -1; sd <= 1; sd += 2) {
+      for (var di = 0; di < 2; di++) {
+        var zD = zDoors[di];
+        if (zD < lenR + 0.45) continue;
+        var y0s = SILL + 0.05, y1s = BELT - 0.03, xw2 = (HWID + 0.012) * sd;
+        var q0 = m.vx(xw2, y0s, zD - 0.008), q1 = m.vx(xw2, y0s, zD + 0.008);
+        var q2 = m.vx(xw2, y1s, zD + 0.008), q3 = m.vx(xw2, y1s, zD - 0.008);
+        if (sd > 0) m.quad(q0, q1, q2, q3, SEAM, 'seam');
+        else m.quad(q1, q0, q3, q2, SEAM, 'seam');
+      }
+    }
+  })();
+  /* ---- driver: helmet-and-shoulders silhouette read through the glass ---- */
+  (function () {
+    var DRV = [26, 25, 30], VIS = [58, 60, 70];
+    function onWS(t, xr) {   /* point on the windshield plane, pushed proud of it */
+      return m.vx(xr, BELT + (ROOF - BELT) * t, gF + (roofF - gF) * t + 0.045);
+    }
+    var xD = -0.34;   /* left-hand drive */
+    m.quad(onWS(0.16, xD - 0.19), onWS(0.16, xD + 0.19), onWS(0.44, xD + 0.145), onWS(0.44, xD - 0.145), DRV, 'drv');
+    m.quad(onWS(0.44, xD - 0.115), onWS(0.44, xD + 0.115), onWS(0.68, xD + 0.085), onWS(0.68, xD - 0.085), DRV, 'drv');
+    m.quad(onWS(0.56, xD - 0.09), onWS(0.56, xD + 0.09), onWS(0.62, xD + 0.085), onWS(0.62, xD - 0.085), VIS, 'drv');
+  })();
 
   /* ---- lights, faces, tails: per-car identity ---- */
   m.box(-HWID - 0.01, -HWID + 0.46, BELT - 0.20, BELT - 0.11, lenF - 0.05, lenF + 0.01, [24, 26, 30], 'trim');
@@ -2696,35 +2858,75 @@ function taBuildWheels(S) {
     var k = (j + 1) % N;
     wm.quad(ring0[j], ring1[j], ring1[k], ring0[k], [20, 20, 22], 'tyre');
   }
-  var cIn = wm.vx(-HW2 - 0.001, 0, 0), cOut = wm.vx(HW2 + 0.006, 0, 0);
+  var cIn = wm.vx(-HW2 - 0.001, 0, 0), cOut = wm.vx(HW2 + 0.002, 0, 0);
   for (var j2 = 0; j2 < N; j2++) {
     var k2 = (j2 + 1) % N;
-    var col = (j2 % 2 === 0) ? RIM_A : RIM_B;
-    wm.quad(ring1[k2], ring1[j2], hub[j2], hub[k2], col, 'rim');
-    wm.quad(hub[k2], hub[j2], cOut, cOut, [58, 60, 64], 'rim');
+    /* dark barrel well behind the spokes; closed inner face */
+    wm.quad(ring1[k2], ring1[j2], cOut, cOut, [15, 16, 18], 'well');
     wm.quad(ring0[j2], ring0[k2], cIn, cIn, [30, 32, 34], 'rim');
+  }
+  /* real spoke sets, per car, standing proud of the well so they read
+     individually at rest and blur honestly at speed */
+  var SPK = S.face === 'kidney' ? { n: 10, w: 0.24 } : S.face === 'bars' ? { n: 5, w: 0.52 } :
+            S.face === 'tg' ? { n: 10, w: 0.22 } : { n: 10, w: 0.30 };
+  var xs = HW2 + 0.016, rIn2 = R * 0.26, rOut2 = R * 0.93;
+  for (var sp = 0; sp < SPK.n; sp++) {
+    var a0 = sp / SPK.n * 6.2832, hw3 = SPK.w * 6.2832 / SPK.n / 2;
+    var i0 = wm.vx(xs, Math.sin(a0 - hw3 * 1.6) * rIn2, Math.cos(a0 - hw3 * 1.6) * rIn2);
+    var i1 = wm.vx(xs, Math.sin(a0 + hw3 * 1.6) * rIn2, Math.cos(a0 + hw3 * 1.6) * rIn2);
+    var o0 = wm.vx(xs, Math.sin(a0 - hw3) * rOut2, Math.cos(a0 - hw3) * rOut2);
+    var o1 = wm.vx(xs, Math.sin(a0 + hw3) * rOut2, Math.cos(a0 + hw3) * rOut2);
+    wm.quad(o1, o0, i0, i1, RIM_A, 'rim');
+  }
+  /* machined hub cap */
+  var cc2 = wm.vx(HW2 + 0.020, 0, 0);
+  for (var hc = 0; hc < 8; hc++) {
+    var ha = hc / 8 * 6.2832, hb2 = (hc + 1) / 8 * 6.2832, hr = R * 0.14;
+    wm.quad(wm.vx(HW2 + 0.018, Math.sin(hb2) * hr, Math.cos(hb2) * hr),
+            wm.vx(HW2 + 0.018, Math.sin(ha) * hr, Math.cos(ha) * hr), cc2, cc2, [150, 153, 158], 'rim');
   }
   wheelMesh = wm;
 }
 
 /* near-coplanar detail faces must never lose the depth-sort coin toss */
-var MESH_PRI = { tail: 3, head: 3, marker: 3, exh: 3, stripe: 2, glass: 1, wing: 1 };
-var GLOSS = { body: 0.85, roof: 0.85, glass: 1.4, head: 0.7, tail: 0.5, wing: 0.45, stripe: 0.6, rim: 0.5, trim: 0.12, tyre: 0, arch: 0.22, marker: 0.5, well: 0, exh: 0.55 };
+var MESH_PRI = { tail: 3, head: 3, marker: 3, exh: 3, stripe: 2, glass: 1, wing: 1, rim: 2, seam: 3, drv: 2 };
+var GLOSS = { body: 0.85, roof: 0.85, glass: 1.4, head: 0.7, tail: 0.5, wing: 0.45, stripe: 0.6, rim: 0.5, trim: 0.12, tyre: 0, arch: 0.22, marker: 0.5, well: 0, exh: 0.55, seam: 0.1, drv: 0.35 };
 function shade(col, nx, ny, nz, fog, gloss, vx, vy, vz) {
   var L = nx * SUN[0] + ny * SUN[1] + nz * SUN[2];
-  var k = 0.42 + 0.58 * Math.max(0, L);
-  var sky = 0.10 * clamp(ny, 0, 1);
-  var r = col[0] * (k + sky), g = col[1] * (k + sky), b = col[2] * (k + sky);
+  var sun = Math.max(0, L);
+  var up = clamp(ny, 0, 1), dn = clamp(-ny, 0, 1);
+  /* three light terms per channel: cool sky ambient (stronger on upward
+     faces), warm directional sun, neutral asphalt bounce from below */
+  var kr = LI_A[0] * (1 + 0.22 * up) + LI_S[0] * sun + LI_G[0] * dn;
+  var kg = LI_A[1] * (1 + 0.22 * up) + LI_S[1] * sun + LI_G[1] * dn;
+  var kb = LI_A[2] * (1 + 0.22 * up) + LI_S[2] * sun + LI_G[2] * dn;
+  var r = col[0] * kr, g = col[1] * kg, b = col[2] * kb;
+  var ndv = Math.abs(nx * vx + ny * vy + nz * vz);
+  var fres = 1 - ndv; fres = fres * fres * fres;
   if (gloss) {
     /* mirror the sun about the normal and compare with the view direction */
     var d2 = 2 * L;
     var rx = d2 * nx - SUN[0], ry = d2 * ny - SUN[1], rz2 = d2 * nz - SUN[2];
     var spec = Math.max(0, -(rx * vx + ry * vy + rz2 * vz));
     spec = spec * spec; spec = spec * spec; spec = spec * spec * gloss;   /* ^8 */
-    var sk2 = 0.22 * gloss * clamp(ny, 0, 1);   /* sky reflection on upward faces */
-    r += 255 * spec + C_SKY_HOR[0] * sk2;
-    g += 250 * spec + C_SKY_HOR[1] * sk2;
-    b += 238 * spec + C_SKY_HOR[2] * sk2;
+    var sk2 = 0.20 * gloss * up;   /* sky reflection on upward faces */
+    r += (200 + 55 * (1 - SUN_WARM * 0.2)) * spec + C_SKY_HOR[0] * sk2;
+    g += (195 + 55 * (1 - SUN_WARM * 0.5)) * spec + C_SKY_HOR[1] * sk2;
+    b += (180 + 58 * (1 - SUN_WARM * 0.9)) * spec + C_SKY_HOR[2] * sk2;
+    if (gloss > 1.2) {
+      /* glass: fresnel mirror of the sky at grazing angles - the reflected
+         ray's pitch picks deep sky vs horizon haze */
+      var upness = clamp(ry, 0, 1);
+      var mr = mixc(C_SKY_HOR[0], C_SKY_TOP[0], upness);
+      var mg = mixc(C_SKY_HOR[1], C_SKY_TOP[1], upness);
+      var mb = mixc(C_SKY_HOR[2], C_SKY_TOP[2], upness);
+      var fm = 0.16 + 0.60 * fres;
+      r = lerp(r, mr, fm); g = lerp(g, mg, fm); b = lerp(b, mb, fm);
+    } else if (gloss >= 0.4) {
+      /* clearcoat rim: painted panels pick up the horizon at their silhouette */
+      var rim = 0.14 * fres * gloss;
+      r += C_SKY_HOR[0] * rim; g += C_SKY_HOR[1] * rim; b += C_SKY_HOR[2] * rim;
+    }
   }
   r = clamp(r, 0, 255); g = clamp(g, 0, 255); b = clamp(b, 0, 255);
   if (fog > 0) { r = lerp(r, C_SKY_HOR[0], fog); g = lerp(g, C_SKY_HOR[1], fog); b = lerp(b, C_SKY_HOR[2], fog); }
@@ -2773,7 +2975,7 @@ function taDrawMesh(mesh, pos, yaw, roll, pitch, alpha, tint) {
       scr.push(pp); depth += pp.z;
     }
     if (!ok) continue;
-    out.push({ d: depth / 4, s: scr, f: f, n: [nx, ny, nz], v: [vx / vl, vy2 / vl, vz / vl] });
+    out.push({ d: depth / 4, s: scr, f: f, n: [nx, ny, nz], v: [vx / vl, vy2 / vl, vz / vl], cy: cym });
   }
   out.sort(function (a, b) { return (b.d - a.d) || ((MESH_PRI[a.f.tag] || 0) - (MESH_PRI[b.f.tag] || 0)); });
   ctx.save();
@@ -2781,6 +2983,10 @@ function taDrawMesh(mesh, pos, yaw, roll, pitch, alpha, tint) {
   for (i = 0; i < out.length; i++) {
     var o = out[i], col = o.f.c;
     if (tint && tint[o.f.tag]) col = tint[o.f.tag];
+    /* ground-proximity occlusion: sills, valances and inner wheels sit in
+       bounce-light shadow on a real car */
+    var aoK = 0.70 + 0.30 * clamp((o.cy - 0.06) / 0.55, 0, 1);
+    if (aoK < 0.995) col = [col[0] * aoK, col[1] * aoK, col[2] * aoK];
     ctx.beginPath();
     ctx.moveTo(o.s[0].x, o.s[0].y);
     ctx.lineTo(o.s[1].x, o.s[1].y);
@@ -2799,21 +3005,39 @@ function taDrawCarBody(x, z, yaw, roll, pitch, steer, alpha, ghost) {
      soft contact core under the sills */
   ctx.save();
   ctx.globalAlpha = alpha;
-  var sox = -SUN[0] * 0.9, soz = -SUN[2] * 0.9;
+  var sok = 0.60 / Math.max(SUN[1], 0.45);
+  var sox = -SUN[0] * sok, soz = -SUN[2] * sok;
   var cyS = Math.cos(yaw), syS = Math.sin(yaw);
   var corners = [[-1.02, 2.30], [1.02, 2.30], [1.02, -2.35], [-1.02, -2.35]];
-  var spts = [];
+  var spts = [], spts2 = [];
   for (var sci = 0; sci < 4; sci++) {
     var scc = corners[sci];
     spts.push([x + scc[0] * cyS + scc[1] * syS + sox, z - scc[0] * syS + scc[1] * cyS + soz]);
+    spts2.push([x + scc[0] * 1.16 * cyS + scc[1] * 1.10 * syS + sox * 1.5, z - scc[0] * 1.16 * syS + scc[1] * 1.10 * cyS + soz * 1.5]);
   }
-  gquad(spts, 'rgba(10,11,12,.34)');
-  var sh = proj(x, 0.01, z);
-  if (sh) {
-    ctx.fillStyle = 'rgba(8,9,10,.42)';
-    ctx.beginPath();
-    ctx.ellipse(sh.x, sh.y, 2.3 * sh.s, 0.9 * sh.s, 0, 0, 6.2832);
-    ctx.fill();
+  gquad(spts2, 'rgba(10,11,12,' + (0.12 * SH_K) + ')');
+  gquad(spts, 'rgba(10,11,12,' + (0.32 * SH_K) + ')');
+  /* contact occlusion: yaw-aligned rings hugging the footprint, cumulative
+     toward the centreline, plus a dark patch under each tyre - replaces the
+     old screen-space disc, which did not rotate with the car */
+  var rings = [[1.00, 2.24, 0.12], [0.80, 1.86, 0.15], [0.58, 1.42, 0.17]];
+  for (var ri = 0; ri < 3; ri++) {
+    var rw2 = rings[ri][0], rl2 = rings[ri][1], ra = rings[ri][2];
+    gquad([[x - rw2 * cyS + rl2 * syS, z + rw2 * syS + rl2 * cyS],
+           [x + rw2 * cyS + rl2 * syS, z - rw2 * syS + rl2 * cyS],
+           [x + rw2 * cyS - rl2 * syS, z - rw2 * syS - rl2 * cyS],
+           [x - rw2 * cyS - rl2 * syS, z + rw2 * syS - rl2 * cyS]], 'rgba(8,9,10,' + (ra * (0.55 + 0.45 * SH_K)) + ')');
+  }
+  var SP = (window.car && car.spec) ? car.spec : { track: 1.64, wb: 2.92 };
+  var ptw = SP.track / 2, pfz = SP.wb / 2 + 0.10, prz = -SP.wb / 2 - 0.10;
+  var pads = [[-ptw, pfz], [ptw, pfz], [-ptw, prz], [ptw, prz]];
+  for (var pi = 0; pi < 4; pi++) {
+    var pxl = pads[pi][0], pzl = pads[pi][1];
+    var pcx = x + pxl * cyS + pzl * syS + sox * 0.12, pcz = z - pxl * syS + pzl * cyS + soz * 0.12;
+    gquad([[pcx - 0.20 * cyS + 0.27 * syS, pcz + 0.20 * syS + 0.27 * cyS],
+           [pcx + 0.20 * cyS + 0.27 * syS, pcz - 0.20 * syS + 0.27 * cyS],
+           [pcx + 0.20 * cyS - 0.27 * syS, pcz - 0.20 * syS - 0.27 * cyS],
+           [pcx - 0.20 * cyS - 0.27 * syS, pcz + 0.20 * syS - 0.27 * cyS]], 'rgba(6,7,8,' + (0.30 * (0.55 + 0.45 * SH_K)) + ')');
   }
   ctx.restore();
   var tint = null;
@@ -2868,6 +3092,28 @@ function drawPost() {
     ctx.fillRect(0, 0, CW, CH);
     ctx.restore();
   }
+  /* camera lens: anamorphic streak + two iris ghosts when the sun is in shot */
+  if (SUN_VIS && SUN_FZ > 0.2) {
+    var fa = clamp((SUN_FZ - 0.2) / 0.6, 0, 1) * 0.75;
+    ctx.save();
+    var fw = CW * 0.30;
+    var lg = ctx.createLinearGradient(SUN_SX - fw, SUN_SY, SUN_SX + fw, SUN_SY);
+    lg.addColorStop(0, 'rgba(255,240,214,0)');
+    lg.addColorStop(0.5, 'rgba(255,240,214,' + (0.10 * fa) + ')');
+    lg.addColorStop(1, 'rgba(255,240,214,0)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(SUN_SX - fw, SUN_SY - 1.6, fw * 2, 3.2);
+    var gvx = HW - SUN_SX, gvy = HH - SUN_SY;
+    var ghosts = [[0.45, CW * 0.012, '190,220,214'], [0.95, CW * 0.020, '224,168,120']];
+    for (var gi = 0; gi < 2; gi++) {
+      var gh = ghosts[gi];
+      ctx.fillStyle = 'rgba(' + gh[2] + ',' + (0.05 * fa) + ')';
+      ctx.beginPath();
+      ctx.arc(SUN_SX + gvx * gh[0], SUN_SY + gvy * gh[0], gh[1], 0, 6.2832);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
   /* static vignette + subtle chromatic edge */
   var v = ctx.createRadialGradient(HW, HH, CH * 0.45, HW, HH, CH * 1.0);
   v.addColorStop(0, 'rgba(0,0,0,0)');
@@ -2881,30 +3127,107 @@ function drawPost() {
   }
 }
 
+/* ---------------- weather ---------------- */
+function drawRain() {
+  if (TA_WX !== 'rain') return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(198,206,214,.13)';
+  ctx.lineWidth = 1;
+  var spd = (window.car && run && run.started) ? clamp(Math.abs(car.v) / 30, 0, 1) : 0;
+  var len = 11 + spd * 12;
+  ctx.beginPath();
+  for (var i = 0; i < 64; i++) {
+    var rx = Math.random() * CW, ry = Math.random() * CH;
+    ctx.moveTo(rx, ry);
+    ctx.lineTo(rx + len * 0.14, ry + len);
+  }
+  ctx.stroke();
+  ctx.restore();
+  /* rooster spray off the rear axle at speed */
+  if (window.car && run && run.started && Math.abs(car.v) > 9 && Math.random() < 0.5) {
+    var sy2 = Math.sin(car.yaw), cy2 = Math.cos(car.yaw);
+    taSpawnSmoke(car.x - 1.4 * sy2, car.z - 1.4 * cy2, 0.30);
+  }
+}
+
 /* ---------------- skid marks ---------------- */
 function taLayRubber() {
-  var slip = Math.max(Math.abs(car.slipR), Math.abs(car.slipF));
-  var mag = Math.max(slip * 3.2, car.wheelspin, car.locked, car.hb * 0.8);
-  if (mag < 0.35 || Math.abs(car.v) < 2) return;
-  var a = clamp((mag - 0.3) * 0.5, 0, 0.42);
-  var wx = 0.90, wz = -1.44;
-  for (var s = -1; s <= 1; s += 2) {
-    var px = car.x + (s * wx * Math.cos(car.yaw) + wz * Math.sin(car.yaw));
-    var pz = car.z + (-s * wx * Math.sin(car.yaw) + wz * Math.cos(car.yaw));
-    skidMarks.push({ t: 'skid', x: px, z: pz, len: 0.9, w: 0.30, rot: Math.PI / 2 - car.yaw, a: a });
+  /* real rubber is a continuous ribbon traced by each WHEEL'S PATH, not
+     stamps aligned to the body: during a drift the marks arc smoothly along
+     the trajectory while the car sits yawed across them. four wheels, so
+     locked fronts leave flat-spot trails and scrubbing fronts leave faint
+     understeer arcs. */
+  if (skidMarks.length === 0) { skidPts = 0; skidOpen[0] = skidOpen[1] = skidOpen[2] = skidOpen[3] = null; }
+  var spec = car.spec || { track: 1.64, wb: 2.92 };
+  var tw = spec.track / 2, fz2 = spec.wb / 2, rz2 = -spec.wb / 2;
+  var cy = Math.cos(car.yaw), sy = Math.sin(car.yaw);
+  var slipRear = Math.max(Math.abs(car.slipR) * 3.2, car.wheelspin || 0, car.locked || 0, (car.hb || 0) * 0.8);
+  var slipFront = Math.max(Math.abs(car.slipF) * 2.4, car.locked || 0);
+  var defs = [[-tw, fz2, slipFront], [tw, fz2, slipFront], [-tw, rz2, slipRear], [tw, rz2, slipRear]];
+  for (var i = 0; i < 4; i++) {
+    var d = defs[i];
+    if (d[2] < 0.35 || Math.abs(car.v) < 2) { skidOpen[i] = null; continue; }
+    var px = car.x + d[0] * cy + d[1] * sy, pz = car.z - d[0] * sy + d[1] * cy;
+    var a = clamp((d[2] - 0.3) * 0.5, 0, 0.45);
+    var st = skidOpen[i];
+    if (st) {
+      var lp = st.p[st.p.length - 1];
+      var dd = (px - lp.x) * (px - lp.x) + (pz - lp.z) * (pz - lp.z);
+      if (dd > 2.6) st = null;                                  /* gap: new stroke */
+      else if (dd < 0.078) { lp.a = Math.max(lp.a, a); continue; }  /* < 0.28 m: densify alpha only */
+    }
+    if (!st) { st = { p: [] }; skidMarks.push(st); skidOpen[i] = st; }
+    st.p.push({ x: px, z: pz, a: a });
+    skidPts++;
   }
-  if (skidMarks.length > SKID_MAX) skidMarks.splice(0, skidMarks.length - SKID_MAX);
+  while (skidPts > SKID_PTS_MAX && skidMarks.length) {
+    var old0 = skidMarks[0];
+    skidPts -= old0.p.length;
+    var oi = skidOpen.indexOf(old0);
+    if (oi >= 0) skidOpen[oi] = null;
+    skidMarks.shift();
+  }
 }
 function drawSkid() {
-  var n = skidMarks.length;
-  var from = Math.max(0, n - 900);
-  for (var i = from; i < n; i++) {
-    var d = skidMarks[i];
-    var rz = camDist(d.x, d.z);
-    if (rz < 0.8 || rz > 110) continue;
-    /* fresh rubber is darkest; older marks bake out */
-    var age = 0.35 + 0.65 * ((i - from) / 900);
-    stripe(d.x, d.z, d.len, d.w, d.rot, 'rgba(14,14,15,' + (d.a * age * (1 - fogAt(rz))) + ')');
+  /* each stroke renders as a tyre-width quad-strip ribbon: side offsets are
+     perpendicular to the local path direction, so curvature is smooth and
+     the width never aliases into blocks */
+  var HWm = 0.145;
+  for (var s = 0; s < skidMarks.length; s++) {
+    var st = skidMarks[s], P = st.p, n = P.length;
+    if (n < 2) continue;
+    if (Math.min(camDist(P[0].x, P[0].z), camDist(P[n - 1].x, P[n - 1].z)) > 115) continue;
+    var age = 0.45 + 0.55 * ((s + 1) / skidMarks.length);
+    var i0 = 0;
+    while (i0 < n - 1) {
+      var i1 = Math.min(i0 + 8, n - 1);
+      var ca = 0;
+      for (var k = i0; k <= i1; k++) if (P[k].a > ca) ca = P[k].a;
+      var mid = P[(i0 + i1) >> 1];
+      var rzm = camDist(mid.x, mid.z);
+      if (rzm > 0.8 && rzm < 112 && ca > 0.02) {
+        ctx.beginPath();
+        var okAll = true, back = [];
+        for (var k2 = i0; k2 <= i1; k2++) {
+          var kp = Math.max(0, k2 - 1), kn = Math.min(n - 1, k2 + 1);
+          var dirx = P[kn].x - P[kp].x, dirz = P[kn].z - P[kp].z;
+          var dl = Math.hypot(dirx, dirz) || 1;
+          var ox = -dirz / dl * HWm, oz = dirx / dl * HWm;
+          var q1 = proj(P[k2].x + ox, 0.012, P[k2].z + oz);
+          var q2 = proj(P[k2].x - ox, 0.012, P[k2].z - oz);
+          if (!q1 || !q2) { okAll = false; break; }
+          if (k2 === i0) ctx.moveTo(q1.x, q1.y); else ctx.lineTo(q1.x, q1.y);
+          back.push(q2);
+        }
+        if (okAll) {
+          for (var b = back.length - 1; b >= 0; b--) ctx.lineTo(back[b].x, back[b].y);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(13,13,14,' + (ca * age * (1 - fogAt(rzm))) + ')';
+          ctx.fill();
+        }
+      }
+      i0 = i1;
+    }
   }
 }
 
@@ -2939,6 +3262,7 @@ function taRenderFrame(ghostPose, rivalPose) {
   }
   flushSprites();
   drawPost();
+  drawRain();
 }
 </script>
 
@@ -2969,11 +3293,11 @@ var ENGINE_VOICE = {
   cc:      { cyl: 4, amps: [1.00, 0.90, 0.97, 0.88],
              thump: 106, tau: 0.006, nz: 0.72, f1: 195, q1: 1.3, g1: 4, f2: 430, q2: 1.5, g2: 3,
              lpB: 950, lpR: 4600, gain: 0.80, turbo: 1.00, pops: 0.15, crackle: 0.09 },
-  /* Touareg 3.0 TSI V6, SUPERCHARGED: even 120s, round, with gear-driven
-     blower whine that tracks rpm linearly whenever the throttle is open */
-  touareg: { cyl: 6, amps: [1.00, 0.93, 0.98, 0.90, 0.96, 0.92],
-             thump: 84, tau: 0.007, nz: 0.60, f1: 145, q1: 1.2, g1: 4, f2: 300, q2: 1.4, g2: 2.5,
-             lpB: 850, lpR: 3900, gain: 0.88, turbo: 0.30, super: 1, pops: 0.2, crackle: 0.11 },
+  /* Tiguan 2.0T EA888 I4: the CC's engine family in a taller body -
+     slightly deeper intake note, bigger turbo presence, no whine. */
+  tiguan:  { cyl: 4, amps: [1.02, 0.92, 0.99, 0.90],
+             thump: 96, tau: 0.006, nz: 0.66, f1: 170, q1: 1.25, g1: 4, f2: 380, q2: 1.45, g2: 2.8,
+             lpB: 900, lpR: 4300, gain: 0.84, turbo: 0.85, pops: 0.25, crackle: 0.11 },
   /* X5 M50i 4.4 TT V8: same architecture as the S6, ANGRIER everywhere */
   x5:      { cyl: 8, amps: [1.05, 0.60, 1.12, 0.55, 0.95, 1.16, 0.58, 1.00],
              thump: 58, tau: 0.011, nz: 0.62, f1: 96, q1: 1.3, g1: 6, f2: 190, q2: 1.5, g2: 5,
@@ -3203,7 +3527,7 @@ function taBoot() {
   taWireOptions();
   taRestoreOptions();
   taEl('ta-ver').textContent = TA_VER;
-  taEl('ta-course-len').textContent = Math.round(course.len) + ' m - daily #' + taDayKey();
+  taEl('ta-course-len').textContent = Math.round(course.len) + ' m - daily #' + taDayKey() + ' - ' + TA_WX_LABEL;
   taEl('ta-course-gates').textContent = course.gates.length + ' gates';
   taEl('ta-course-cones').textContent = course.cones.length + ' cones';
   taEl('ta-boot').style.display = 'none';
@@ -3254,6 +3578,7 @@ function taWireOptions() {
 function taRestoreOptions() {
   try {
     var o = JSON.parse(localStorage.getItem('ta_opts') || 'null');
+    if (o && o.car === 'touareg') o.car = 'tiguan'; /* fleet rename v3.42 */
     if (o) { opts = Object.assign(opts, o); }
   } catch (e) {}
   if (!opts.car || !CAR_SPEC[opts.car]) opts.car = 's6';
@@ -3273,13 +3598,15 @@ function taCarStats() {
   if (!el) return;
   var S = CAR_SPEC[opts.car] || CAR_SPEC.s6;
   var drv = S.awdF >= 0.99 ? 'FWD' : (S.awdF <= 0.01 ? 'RWD' : ('AWD ' + Math.round(S.awdF * 100) + ':' + Math.round((1 - S.awdF) * 100)));
-  el.innerHTML = S.tq + ' Nm &middot; ' + S.m + ' kg &middot; ' + drv;
+  el.innerHTML = (S.hp || '--') + ' hp &middot; ' + Math.round(S.tq * 0.73756) + ' lb-ft &middot; ' + drv;
   /* live spec sheet follows the selected car */
   if (taEl('ta-sp-chassis')) {
     taEl('ta-sp-chassis').textContent = S.name + ' (stock body)';
     taEl('ta-sp-drive').textContent = drv;
-    taEl('ta-sp-mass').textContent = S.m + ' kg';
-    taEl('ta-sp-tq').textContent = S.tq + ' Nm @ ' + S.rpmTq;
+    taEl('ta-sp-mass').textContent = Math.round(S.m * 2.20462).toLocaleString('en-US') + ' lb';
+    taEl('ta-sp-tq').textContent = Math.round(S.tq * 0.73756) + ' lb-ft @ ' + S.rpmTq;
+    if (taEl('ta-sp-hp')) taEl('ta-sp-hp').textContent = (S.hp || '--') + ' hp';
+    if (taEl('ta-sp-box')) taEl('ta-sp-box').textContent = S.box || (S.gears.length + '-spd');
     taEl('ta-sp-red').textContent = S.rpmLim + ' rpm';
   }
 }
@@ -3734,7 +4061,7 @@ function taHUD() {
     var col = i < 3 ? '#2ABFAA' : (i < 6 ? '#f5b642' : '#dc2626');
     if (blink) col = '#dc2626';
     lights[i].className = on ? 'on' : '';
-    lights[i].style.background = on ? col : '#101314';
+    lights[i].style.background = '';
     lights[i].style.color = col;
   }
 
