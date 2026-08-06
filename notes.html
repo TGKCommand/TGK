@@ -207,6 +207,40 @@ a.mention:hover{background:rgba(13,148,136,.18)}
 .bl-h{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
 .bl-i{display:inline-block;font-size:12.5px;color:var(--text2);background:var(--bg3);border-radius:var(--r);padding:4px 9px;margin:0 6px 6px 0;cursor:pointer;text-decoration:none}
 .bl-i:hover{background:var(--bg4);color:var(--teal-d)}
+body.dark{
+  --bg:#1b1d1f;--bg2:#202325;--bg3:#26292c;--bg4:#2e3235;
+  --field:#141618;--border:#2e3235;--border2:#3c4145;
+  --text:#e6eaed;--text2:#c2c9ce;--text3:#8b959c;
+  --teal-dim:rgba(13,148,136,.16);--orange-dim:rgba(234,88,12,.16);
+}
+body.dark .doc{background:rgba(32,35,37,.88)}
+body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #slash{background:#202325;color:var(--text)}
+body.dark .nx-i,body.dark .qs-i,body.dark .cin,body.dark .side-search{background:#191c1e;color:var(--text)}
+body.dark .nx-b{background:#26292c;color:var(--text2)}
+body.dark .nx-b:hover{background:#2e3235}
+body.dark table.tb th{background:#26292c}
+body.dark .bk-t mark{background:#6b5d1e;color:#f3ecc9}
+body.dark .bk-t code{background:#2e3235}
+body.dark .gal-c,body.dark .bcard,body.dark .cal-c{background:#202325}
+body.dark .cal-dow{background:#26292c}
+body.dark .rowpanel{background:#202325}
+.cm-pin{position:absolute;right:-6px;top:2px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;
+  font-size:10px;padding:1px 7px;cursor:pointer;color:var(--text3);font-family:inherit}
+.cm-pin:hover{color:var(--teal-d);border-color:var(--teal)}
+.cm-q{background:var(--bg3);border-left:3px solid var(--teal);border-radius:var(--r);padding:7px 10px;font-size:12px;color:var(--text2);margin-bottom:10px}
+.cm{border-bottom:1px solid var(--border);padding:8px 0}
+.cm.done{opacity:.55}
+.cm-h{display:flex;align-items:center;gap:8px;font-size:11.5px;margin-bottom:3px}
+.cm-t{color:var(--text3);font-size:10.5px}
+.cm-a{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:10.5px;font-family:inherit}
+.cm-a:hover{color:var(--teal-d)}
+.cm-a.danger{margin-left:0}.cm-a.danger:hover{color:var(--red)}
+.cm-b{font-size:12.5px;white-space:pre-wrap}
+.cm-sr{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px}
+.emb{flex:1;margin:6px 0}
+.emb-h{display:flex;align-items:center;gap:9px;margin-bottom:5px}
+.emb-t{font-size:12.5px;font-weight:700;cursor:pointer;color:var(--teal-d)}
+.emb-n{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-left:auto}
 #fmtbar{position:absolute;z-index:500;display:none;gap:1px;background:#141618;border-radius:6px;padding:3px;box-shadow:0 6px 20px rgba(14,20,24,.35)}
 #fmtbar button{background:none;border:none;color:#dfe4e8;cursor:pointer;font-family:inherit;font-size:12.5px;padding:5px 8px;border-radius:4px;min-width:28px}
 #fmtbar button:hover{background:#2b3238;color:#fff}
@@ -377,6 +411,7 @@ table.tb th .tb-c{font-weight:700}
         <div class="tb-tt">Notes</div>
       </div>
       <div class="sp">
+        <button class="fav-b" id="theme-btn" onclick="toggleTheme()" title="Switch theme">\u263D</button>
         <button class="fav-b" id="fav-btn" onclick="toggleFav(S.activeId)" title="Favourite this page">\u2606</button>
         <button class="btn btn-sm" onclick="openHistory()" title="Version history">History</button>
         <button class="btn btn-sm" onclick="openPageInfo()" title="Page info">Info</button>
@@ -397,7 +432,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.0';
+const TGK_NOTES_VERSION='v1.1';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -584,7 +619,8 @@ const BLOCKS=[
   {t:'toggle',em:'\u25b8',n:'Toggle',d:'Collapsible section - indent blocks under it'},
   {t:'table',em:'\u25a6',n:'Table',d:'A simple table inside this page'},
   {t:'toc',em:'\u2261',n:'Contents',d:'Auto list of the headings on this page'},
-  {t:'subpage',em:'\u2197',n:'Sub-page',d:'Link or create a page inside this one'}
+  {t:'subpage',em:'\u2197',n:'Sub-page',d:'Link or create a page inside this one'},
+  {t:'dbembed',em:'\u25a6',n:'Database view',d:'Embed rows from another database'}
 ];
 function curPage(){return pageById(S.activeId);}
 function isDb(p){return !!(p&&p.page_type==='db');}
@@ -601,6 +637,7 @@ function openPage(id){
   if(S.dirty)savePage();
   S.activeId=id;
   if(typeof pushRecent==='function')pushRecent(id);
+  if(typeof loadComments==='function')loadComments(id);
   renderTree();renderDoc();
   const fb=$('fav-btn');
   if(fb&&typeof isFav==='function'){
@@ -648,6 +685,7 @@ function numberFor(i){
   return n;
 }
 function renderBlocks(){
+  if(typeof paintCommentPins==='function')setTimeout(paintCommentPins,0);
   const b=blocks();
   const _hid=(typeof toggleHidden==='function')?toggleHidden(b):{};
   $('blocks').innerHTML=b.map((bl,i)=>{
@@ -666,6 +704,9 @@ function renderBlocks(){
     if(bl.type==='table')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="table" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
         +(typeof tableBlockHTML==='function'?tableBlockHTML(bl):'')+'</div>';
+    if(bl.type==='dbembed')
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="dbembed" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
+        +(typeof dbEmbedHTML==='function'?dbEmbedHTML(bl):'')+'</div>';
     if(bl.type==='subpage')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="subpage" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
         +(typeof subpageHTML==='function'?subpageHTML(bl):'')+'</div>';
@@ -895,6 +936,7 @@ function applySlash(def){
   if(def.t==='table'){b[i].text='';if(typeof ensureTable==='function')ensureTable(b[i]);closeSlash();renderBlocks();addBlockAfter(i,'p');markDirty();return;}
   if(def.t==='toc'){b[i].text='';closeSlash();renderBlocks();addBlockAfter(i,'p');markDirty();return;}
   if(def.t==='subpage'){b[i].text='';closeSlash();renderBlocks();markDirty();if(typeof pickSubpage==='function')pickSubpage(id);return;}
+  if(def.t==='dbembed'){b[i].text='';closeSlash();renderBlocks();markDirty();if(typeof pickEmbed==='function')pickEmbed(id);return;}
   if(def.t==='toggle'){
     b[i].open=true;closeSlash();renderBlocks();
     const nb=addBlockAfter(i,'p');
@@ -3124,6 +3166,217 @@ window.openBlockMenu=openBlockMenu;window.turnInto=turnInto;window.dupBlock=dupB
 window.colourBlock=colourBlock;window.delBlock=delBlock;
 window.openIconPicker=openIconPicker;window.setIcon=setIcon;window.openCoverPicker=openCoverPicker;
 window.setCover=setCover;window.coverHTML=coverHTML;
+
+
+/* ======================================================================
+   PHASE 11
+   - block-level comments with resolve
+   - dark mode
+   - embed another database's view inside a page
+   ====================================================================== */
+
+/* ---------- comments ---------- */
+async function loadComments(pageId){
+  try{
+    const{data,error}=await sb.from('wiki_comments').select('*').eq('page_id',pageId).order('created_at');
+    if(error)throw error;
+    S.comments=data||[];S._cmMissing=false;
+  }catch(e){
+    S.comments=[];
+    S._cmMissing=/does not exist|schema cache/i.test(String(e.message||e));
+  }
+  paintCommentPins();
+}
+function commentsFor(bid,includeResolved){
+  return (S.comments||[]).filter(c=>c.block_id===bid&&(includeResolved||!c.resolved));
+}
+function paintCommentPins(){
+  Array.prototype.slice.call(document.querySelectorAll('.bk')).forEach(el=>{
+    const bid=el.getAttribute('data-bid');
+    const old=el.querySelector('.cm-pin');
+    if(old)old.remove();
+    const n=commentsFor(bid).length;
+    if(!n)return;
+    const b=document.createElement('button');
+    b.className='cm-pin';
+    b.textContent='\u{1F4AC} '+n;
+    b.title=n+' comment'+(n!==1?'s':'');
+    b.onclick=ev=>{ev.stopPropagation();openComments(bid);};
+    el.appendChild(b);
+  });
+}
+function openComments(bid){
+  if(S._cmMissing){
+    nxModal('Comments','<div class="nx-hint">Comments need one migration. Run the <b>wiki_comments</b> block at the bottom of <b>sql/add_wiki_pages.sql</b>, then reload.</div>',
+      '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+    return;
+  }
+  S._cmBlock=bid;
+  const bl=blocks()[blockIndex(bid)];
+  const quoted=bl?((typeof blockPlain==='function')?blockPlain(bl.text):bl.text||''):'';
+  nxModal('Comments',
+    (quoted?'<div class="cm-q">'+esc(quoted.slice(0,140))+'</div>':'')
+    +'<div id="cm-list"></div>'
+    +'<label class="nx-l">Add a comment</label>'
+    +'<textarea id="cm-new" class="nx-i" style="height:70px;resize:vertical" placeholder="Write a comment..."></textarea>',
+    '<label class="cm-sr"><input type="checkbox" id="cm-showres" onchange="drawComments()"> Show resolved</label>'
+    +'<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>'
+    +'<button class="nx-b primary" onclick="addComment()">Comment</button>');
+  drawComments();
+  setTimeout(()=>{const f=document.getElementById('cm-new');if(f)f.focus();},40);
+}
+function drawComments(){
+  const showRes=!!(document.getElementById('cm-showres')||{}).checked;
+  const list=commentsFor(S._cmBlock,showRes);
+  const l=document.getElementById('cm-list');
+  if(!l)return;
+  l.innerHTML=list.map(c=>
+    '<div class="cm'+(c.resolved?' done':'')+'">'
+    +'<div class="cm-h"><b>'+esc(String(c.author||'someone').split('@')[0])+'</b>'
+    +'<span class="cm-t">'+esc((typeof verWhen==='function')?verWhen(c.created_at):'')+'</span>'
+    +'<button class="cm-a" onclick="resolveComment(\''+c.id+'\','+(c.resolved?'false':'true')+')">'
+      +(c.resolved?'Reopen':'Resolve')+'</button>'
+    +'<button class="cm-a danger" onclick="deleteComment(\''+c.id+'\')">Delete</button></div>'
+    +'<div class="cm-b">'+esc(c.body||'')+'</div></div>').join('')
+    ||'<div class="nx-hint">No comments on this block yet.</div>';
+}
+async function addComment(){
+  const t=document.getElementById('cm-new');
+  const body=((t||{}).value||'').trim();
+  if(!body){toast('Write something first');return;}
+  const p=curPage();
+  if(!p)return;
+  try{
+    const{data,error}=await sb.from('wiki_comments').insert({
+      page_id:p.id,block_id:S._cmBlock,body:body,
+      author:S.user?S.user.email:null}).select().single();
+    if(error)throw error;
+    S.comments=(S.comments||[]).concat([data]);
+    if(t)t.value='';
+    drawComments();paintCommentPins();
+  }catch(e){
+    const m=String(e.message||e);
+    if(/does not exist|schema cache/i.test(m)){S._cmMissing=true;nxClose();openComments(S._cmBlock);}
+    else toast('Could not add the comment: '+m,8000);
+  }
+}
+async function resolveComment(id,val){
+  try{
+    const{error}=await sb.from('wiki_comments').update({resolved:val}).eq('id',id);
+    if(error)throw error;
+    const c=(S.comments||[]).find(x=>x.id===id);
+    if(c)c.resolved=val;
+    drawComments();paintCommentPins();
+  }catch(e){toast('Could not update: '+(e.message||e),8000);}
+}
+async function deleteComment(id){
+  if(!confirm('Delete this comment?'))return;
+  try{
+    const{error}=await sb.from('wiki_comments').delete().eq('id',id);
+    if(error)throw error;
+    S.comments=(S.comments||[]).filter(x=>x.id!==id);
+    drawComments();paintCommentPins();
+  }catch(e){toast('Could not delete: '+(e.message||e),8000);}
+}
+function commentBadge(){
+  const open=(S.comments||[]).filter(c=>!c.resolved).length;
+  return open?('<span class="fbadge">'+open+'</span>'):'';
+}
+
+/* ---------- dark mode ---------- */
+const THEME_KEY='tgk_notes_theme';
+function applyTheme(t){
+  const dark=(t==='dark');
+  try{document.body.classList.toggle('dark',dark);}catch(e){}
+  try{localStorage.setItem(THEME_KEY,dark?'dark':'light');}catch(e){}
+  const b=document.getElementById('theme-btn');
+  if(b){b.textContent=dark?'\u2600':'\u263D';b.title=dark?'Switch to light':'Switch to dark';}
+}
+function toggleTheme(){
+  let cur='light';
+  try{cur=localStorage.getItem(THEME_KEY)||'light';}catch(e){}
+  applyTheme(cur==='dark'?'light':'dark');
+}
+(function initTheme(){
+  let t='light';
+  try{t=localStorage.getItem(THEME_KEY)||'light';}catch(e){}
+  setTimeout(()=>applyTheme(t),0);
+})();
+
+/* ---------- embedded database view ---------- */
+function dbEmbedHTML(bl){
+  const p=bl.dbId?pageById(bl.dbId):null;
+  if(!p||!isDb(p)){
+    return '<div class="sp-empty" onclick="pickEmbed(\''+bl.id+'\')">\u25a6 Choose a database to embed</div>';
+  }
+  const d=p.content||{};
+  const props=(d.props||[]).slice(0,bl.cols||4);
+  let rows=(d.rows||[]).slice();
+  if(bl.filterProp&&bl.filterVal){
+    rows=rows.filter(r=>String((r.cells||{})[bl.filterProp]||'').toLowerCase()===String(bl.filterVal).toLowerCase());
+  }
+  const limit=bl.limit||10;
+  const shown=rows.slice(0,limit);
+  const head=props.map(pr=>'<th>'+esc(pr.name)+'</th>').join('');
+  const body=shown.map(r=>'<tr>'+props.map(pr=>{
+    const v=(r.cells||{})[pr.id];
+    if(pr.type==='check')return '<td>'+((v===true||v==='true')?'\u2713':'')+'</td>';
+    if(pr.type==='select'&&v)return '<td><span class="chip" style="background:'+selColor(pr,v)+'22;color:'+selColor(pr,v)+'">'+esc(String(v))+'</span></td>';
+    if(pr.type==='relation'||pr.type==='rollup')return '<td class="t3xs">\u2014</td>';
+    return '<td>'+esc(String(v==null?'':v))+'</td>';
+  }).join('')+'</tr>').join('')
+    ||'<tr><td colspan="'+Math.max(1,props.length)+'" class="dbempty">No matching rows.</td></tr>';
+  return '<div class="emb">'
+    +'<div class="emb-h"><span class="emb-t" onclick="openPage(\''+p.id+'\')">\u{1F5C3} '+esc(p.title||'Untitled')+'</span>'
+      +'<span class="emb-n">'+rows.length+' row'+(rows.length!==1?'s':'')+(rows.length>limit?(' \u00b7 showing '+limit):'')+'</span>'
+      +'<button class="nx-b sm" onclick="pickEmbed(\''+bl.id+'\')">Configure</button></div>'
+    +'<div class="tblwrap"><table class="dbt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div></div>';
+}
+let _embTarget=null;
+function pickEmbed(bid){
+  _embTarget=bid;
+  const bl=blocks()[blockIndex(bid)]||{};
+  const dbs=(S.pages||[]).filter(p=>isDb(p)&&p.id!==S.activeId);
+  const cur=bl.dbId?pageById(bl.dbId):null;
+  const props=cur?(((cur.content||{}).props)||[]):[];
+  nxModal('Embed a database',
+    '<label class="nx-l">Database</label><select id="eb-db" class="nx-i" onchange="embReload()">'
+      +'<option value="">Choose...</option>'
+      +dbs.map(p=>'<option value="'+p.id+'"'+((bl.dbId===p.id)?' selected':'')+'>'+esc(p.title||'Untitled')+'</option>').join('')
+      +'</select>'+(dbs.length?'':'<div class="nx-hint">Create a database page first.</div>')
+    +'<label class="nx-l">Columns to show</label><input id="eb-cols" class="nx-i" type="number" min="1" max="8" value="'+(bl.cols||4)+'">'
+    +'<label class="nx-l">Row limit</label><input id="eb-limit" class="nx-i" type="number" min="1" max="100" value="'+(bl.limit||10)+'">'
+    +'<label class="nx-l">Only rows where (optional)</label>'
+    +'<div style="display:flex;gap:6px"><select id="eb-fp" class="nx-i">'
+      +'<option value="">Any</option>'
+      +props.map(p=>'<option value="'+p.id+'"'+((bl.filterProp===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')
+      +'</select><input id="eb-fv" class="nx-i" placeholder="equals..." value="'+esc(bl.filterVal||'')+'"></div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="saveEmbed()">Apply</button>');
+}
+function embReload(){
+  const bid=_embTarget;
+  const dbId=(document.getElementById('eb-db')||{}).value;
+  const b=blocks(),i=blockIndex(bid);
+  if(i>=0){b[i].dbId=dbId;b[i].filterProp='';b[i].filterVal='';}
+  pickEmbed(bid);
+}
+function saveEmbed(){
+  const b=blocks(),i=blockIndex(_embTarget);
+  if(i<0){nxClose();return;}
+  b[i].dbId=(document.getElementById('eb-db')||{}).value||'';
+  b[i].cols=Math.max(1,Math.min(8,parseInt((document.getElementById('eb-cols')||{}).value,10)||4));
+  b[i].limit=Math.max(1,Math.min(100,parseInt((document.getElementById('eb-limit')||{}).value,10)||10));
+  b[i].filterProp=(document.getElementById('eb-fp')||{}).value||'';
+  b[i].filterVal=((document.getElementById('eb-fv')||{}).value||'').trim();
+  nxClose();renderBlocks();markDirty();
+}
+
+window.loadComments=loadComments;window.openComments=openComments;window.drawComments=drawComments;
+window.addComment=addComment;window.resolveComment=resolveComment;window.deleteComment=deleteComment;
+window.paintCommentPins=paintCommentPins;window.commentsFor=commentsFor;window.commentBadge=commentBadge;
+window.toggleTheme=toggleTheme;window.applyTheme=applyTheme;
+window.dbEmbedHTML=dbEmbedHTML;window.pickEmbed=pickEmbed;window.saveEmbed=saveEmbed;window.embReload=embReload;
 
 </script>
 </body>
