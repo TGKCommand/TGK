@@ -147,6 +147,7 @@ table.dbt th .thn:hover{color:#fff}
 .thx.del:hover{color:var(--red)}
 table.dbt td{padding:3px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
 table.dbt tbody tr:hover{background:rgba(13,148,136,.04)}
+table.dbt tbody tr.row-sel{background:rgba(13,148,136,.09)}
 .cin{width:100%;border:1px solid transparent;border-radius:var(--r);padding:5px 6px;font-size:12.5px;background:transparent;outline:none;color:var(--text)}
 .cin:hover{border-color:var(--border)}
 .cin:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 2px var(--teal-dim)}
@@ -206,6 +207,13 @@ a.mention:hover{background:rgba(13,148,136,.18)}
 .bl-h{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
 .bl-i{display:inline-block;font-size:12.5px;color:var(--text2);background:var(--bg3);border-radius:var(--r);padding:4px 9px;margin:0 6px 6px 0;cursor:pointer;text-decoration:none}
 .bl-i:hover{background:var(--bg4);color:var(--teal-d)}
+.rel-chip{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:4px;margin:1px 3px 1px 0;background:var(--teal-dim);color:var(--teal-d)}
+.rollup{font-family:var(--mono);font-size:12px;color:var(--text2);padding:5px 6px;display:inline-block}
+.bulk{display:flex;align-items:center;gap:7px;background:var(--teal-dim);border-radius:var(--r);padding:6px 10px;margin-bottom:9px}
+.bulk-n{font-size:12px;font-weight:700;color:var(--teal-d);margin-right:4px}
+.selbox{width:14px;height:14px;accent-color:var(--teal);cursor:pointer}
+.mv-b{background:none;border:none;color:inherit;opacity:.5;cursor:pointer;font-size:11px;padding:0 2px}
+.mv-b:hover{opacity:1;color:var(--teal)}
 .sp-empty{flex:1;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:11px 14px;color:var(--text3);cursor:pointer;font-size:12.5px;background:var(--bg2)}
 .sp-empty:hover{border-color:var(--teal);color:var(--teal-d)}
 .sp-card{flex:1;display:flex;align-items:center;gap:9px;background:var(--bg2);border-radius:var(--r-lg);padding:10px 13px;cursor:pointer;text-decoration:none;color:var(--text);border-left:3px solid var(--teal)}
@@ -321,6 +329,7 @@ table.tb th .tb-c{font-weight:700}
       <div class="sync"><div class="l">TGK Notes</div><div class="s" id="sync-sub">workspace</div></div>
       <button class="btn btn-w" onclick="newPage(null,'doc')">+ New page</button>
       <button class="btn btn-w" onclick="newPage(null,'db')">+ New database</button>
+      <button class="btn btn-w" onclick="openImport()">Import Markdown</button>
       <button class="btn btn-w" onclick="openTemplates(null)">Templates</button>
       <button class="btn btn-w" onclick="openTrash()">Trash</button>
       <button class="btn btn-w" onclick="openShortcuts()">Shortcuts</button>
@@ -354,7 +363,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v0.7';
+const TGK_NOTES_VERSION='v0.9';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -556,7 +565,9 @@ function blocks(){
 
 function openPage(id){
   if(S.dirty)savePage();
-  S.activeId=id;renderTree();renderDoc();
+  S.activeId=id;
+  if(typeof pushRecent==='function')pushRecent(id);
+  renderTree();renderDoc();
   const fb=$('fav-btn');
   if(fb&&typeof isFav==='function'){
     const on=isFav(id);
@@ -869,7 +880,8 @@ const PROP_TYPES=[
   {t:'check',n:'Checkbox',em:'\u2611'},
   {t:'url',n:'URL',em:'\u2197'},
   {t:'person',n:'Person',em:'\u263a'},
-  {t:'relation',n:'Relation (page)',em:'\u21c4'}
+  {t:'relation',n:'Relation (database)',em:'\u21c4'},
+  {t:'rollup',n:'Rollup',em:'\u2211'}
 ];
 const SEL_COLORS=['#0d9488','#ea580c','#7c5cd6','#2563eb','#16a34a','#dc2626','#d97706','#64748b'];
 
@@ -916,7 +928,8 @@ function renderDb(){
     :(v.kind==='gallery'&&typeof dbGalleryHTML==='function')?dbGalleryHTML(d,v)
     :dbTableHTML(d,v);
   $('dbwrap').innerHTML=
-    '<div class="dbbar">'+tabs
+    ((typeof bulkBarHTML==='function')?bulkBarHTML():'')
+    +'<div class="dbbar">'+tabs
     +'<button class="vtab add" onclick="openViewEditor()" title="Add a view">+</button>'
     +'<button class="vtab" onclick="openViewEditor('+(d.activeView||0)+')" title="Edit this view">\u2699</button>'
     +'<input class="dbq" placeholder="Search rows..." value="'+esc(S.dbq||'')+'" oninput="S.dbq=this.value;renderDb()">'
@@ -945,12 +958,18 @@ function visibleRows(d){
 }
 function dbTableHTML(d,v){
   const rows=visibleRows(d);
-  const head=(d.props||[]).map(pr=>{
+  const _allSel=rows.length&&rows.every(r=>typeof rowSelected==='function'&&rowSelected(r.id));
+  const head='<th style="width:26px"><input type="checkbox" class="selbox"'+(_allSel?' checked':'')+' onchange="toggleSelAll(this.checked)" title="Select all shown"></th>'
+    +(d.props||[]).map(pr=>{
     const arrow=(d.sort&&d.sort.prop===pr.id)?(d.sort.dir==='desc'?' \u25be':' \u25b4'):'';
     return '<th><span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
+      +'<button class="mv-b" title="Move left" onclick="moveProp(\''+pr.id+'\',-1)">\u2039</button>'
+      +'<button class="mv-b" title="Move right" onclick="moveProp(\''+pr.id+'\',1)">\u203a</button>'
       +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
   }).join('');
-  const body=rows.map(r=>'<tr>'+(d.props||[]).map((pr,ci)=>
+  const body=rows.map(r=>'<tr'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
+    +'<td><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
+    +(d.props||[]).map((pr,ci)=>
       '<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
     +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
     +'<button class="thx del" title="Delete row" onclick="delRow(\''+r.id+'\')">\u00d7</button></td></tr>').join('');
@@ -978,11 +997,8 @@ function cellHTML(r,pr,first){
   if(pr.type==='url')
     return '<div class="urlc"><input class="cin" value="'+esc(v)+'" placeholder="https://" '+set+'>'
       +(v?'<a href="'+esc(v)+'" target="_blank" rel="noopener" class="thx">\u2197</a>':'')+'</div>';
-  if(pr.type==='relation'){
-    const opts=['<option value="">\u2014</option>'].concat(S.pages.filter(x=>x.id!==S.activeId).map(x=>
-      '<option value="'+x.id+'"'+(x.id===v?' selected':'')+'>'+esc(x.title||'Untitled')+'</option>')).join('');
-    return '<select class="cin sel" '+set+'>'+opts+'</select>';
-  }
+  if(pr.type==='relation')return (typeof relCellHTML==='function')?relCellHTML(r,pr):'';
+  if(pr.type==='rollup')return (typeof rollupCellHTML==='function')?rollupCellHTML(r,pr):'';
   return '<input class="cin'+(first?' first':'')+'" value="'+esc(v)+'" placeholder="'+(first?'Untitled':'')+'" '+set+'>';
 }
 function dbBoardHTML(d,v){
@@ -1149,7 +1165,8 @@ function openPropEditor(pid){
     +'<input id="pe-name" class="nx-i" value="'+esc(p?p.name:'')+'" placeholder="e.g. Vendor">'
     +'<label class="nx-l">Type</label>'
     +'<select id="pe-type" class="nx-i" onchange="propTypeChanged()">'+typeOpts+'</select>'
-    +'<div id="pe-opts"></div>',
+    +'<div id="pe-opts"></div>'
+    +((typeof relRollupFields==='function')?relRollupFields(p):''),
     (pid?'<button class="nx-b danger" onclick="deleteProp()">Delete</button>':'')
     +'<span style="flex:1"></span>'
     +'<button class="nx-b" onclick="nxClose()">Cancel</button>'
@@ -1158,6 +1175,7 @@ function openPropEditor(pid){
   setTimeout(()=>{const f=document.getElementById('pe-name');if(f)f.focus();},40);
 }
 function propTypeChanged(){
+  if(typeof peTypeExtras==='function')peTypeExtras();
   const t=(document.getElementById('pe-type')||{}).value;
   const box=document.getElementById('pe-opts');
   if(!box)return;
@@ -1185,12 +1203,24 @@ function saveProp(){
   if(!name){toast('Give the property a name');return;}
   const d=db();
   const opts=_propOpts.map(o=>({v:String(o.v||'').trim(),c:o.c||0})).filter(o=>o.v);
+  const _tgt=(document.getElementById('pe-target')||{}).value||null;
+  const _rel=(document.getElementById('pe-relprop')||{}).value||null;
+  const _tpr=(document.getElementById('pe-tprop')||{}).value||null;
+  const _agg=(document.getElementById('pe-agg')||{}).value||'count';
   if(_propEdit){
     const p=dbProp(_propEdit);
-    if(p){p.name=name;p.type=type;if(type==='select'||type==='multi')p.options=opts;else delete p.options;}
+    if(p){
+      p.name=name;p.type=type;
+      if(type==='select'||type==='multi')p.options=opts;else delete p.options;
+      if(type==='relation')p.targetDb=_tgt;else delete p.targetDb;
+      if(type==='rollup'){p.relProp=_rel;p.targetProp=_tpr;p.agg=_agg;}
+      else{delete p.relProp;delete p.targetProp;delete p.agg;}
+    }
   }else{
     const p={id:uid(),name:name,type:type};
     if(type==='select'||type==='multi')p.options=opts;
+    if(type==='relation')p.targetDb=_tgt;
+    if(type==='rollup'){p.relProp=_rel;p.targetProp=_tpr;p.agg=_agg;}
     d.props=d.props||[];d.props.push(p);
     (d.rows||[]).forEach(r=>{r.cells=r.cells||{};r.cells[p.id]=(type==='check')?false:'';});
   }
@@ -1269,6 +1299,7 @@ const OPS={
   number:[['eq','='],['gt','>'],['lt','<'],['empty','is empty'],['nempty','is not empty']],
   select:[['is','is'],['nis','is not'],['empty','is empty'],['nempty','is not empty']],
   multi:[['contains','contains'],['empty','is empty'],['nempty','is not empty']],
+  rollup:[['eq','='],['gt','>'],['lt','<']],
   date:[['is','on'],['gt','after'],['lt','before'],['empty','is empty'],['nempty','is not empty']],
   check:[['yes','is checked'],['no','is unchecked']],
   url:[['contains','contains'],['empty','is empty'],['nempty','is not empty']],
@@ -1819,6 +1850,9 @@ let qsOpen=false, qsSel=0, qsHits=[];
 function qsSearch(term){
   const q=String(term||'').trim().toLowerCase();
   const out=[];
+  if(!q&&typeof recentHits==='function'){
+    recentHits().forEach(h=>out.push(h));
+  }
   (S.pages||[]).forEach(p=>{
     const title=(p.title||'Untitled');
     if(!q||title.toLowerCase().includes(q))
@@ -2380,6 +2414,391 @@ window.snapshotPage=snapshotPage;window.openHistory=openHistory;window.previewVe
 window.restoreVersion=restoreVersion;window.verWhen=verWhen;
 window.subpageHTML=subpageHTML;window.pickSubpage=pickSubpage;window.applySubpage=applySubpage;window.setSubpage=setSubpage;
 window.pageStats=pageStats;window.openPageInfo=openPageInfo;window.openShortcuts=openShortcuts;
+
+
+/* ======================================================================
+   PHASE 8
+   - import Markdown (paste or file) into a new page
+   - bulk-select database rows: delete, or set a property across them
+   - reorder database columns
+   - recently-viewed pages in the quick switcher
+   ====================================================================== */
+
+/* ---------- markdown import ---------- */
+function mdToBlocks(md){
+  const lines=String(md||'').replace(/\r\n?/g,'\n').split('\n');
+  const out=[];
+  let i=0;
+  const push=(type,text,extra)=>out.push(Object.assign({id:uid(),type:type,text:text||'',indent:0},extra||{}));
+  while(i<lines.length){
+    const raw=lines[i];
+    const line=raw.replace(/\s+$/,'');
+    // fenced code
+    if(/^\s*```/.test(line)){
+      const buf=[];i++;
+      while(i<lines.length&&!/^\s*```/.test(lines[i])){buf.push(lines[i]);i++;}
+      i++;
+      push('code',buf.join('\n'));
+      continue;
+    }
+    // table: a header row followed by a separator row
+    if(/^\s*\|.*\|\s*$/.test(line)&&i+1<lines.length&&/^\s*\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      const rows=[];
+      const cells=l=>l.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(c=>c.trim().replace(/\\\|/g,'|'));
+      rows.push(cells(line));
+      i+=2;
+      while(i<lines.length&&/^\s*\|.*\|\s*$/.test(lines[i])){rows.push(cells(lines[i]));i++;}
+      const w=Math.max.apply(null,rows.map(r=>r.length));
+      rows.forEach(r=>{while(r.length<w)r.push('');});
+      push('table','',{rows:rows,head:true});
+      continue;
+    }
+    i++;
+    if(!line.trim())continue;
+    const indent=Math.floor((raw.match(/^ */)[0].length)/2);
+    let m;
+    if((m=/^\s*(#{1,3})\s+(.*)$/.exec(line))){push(m[1].length===1?'h1':m[1].length===2?'h2':'h3',m[2]);continue;}
+    if(/^\s*(---+|\*\*\*+|___+)\s*$/.test(line)){push('divider','');continue;}
+    if((m=/^\s*!\[([^\]]*)\]\(([^)]+)\)\s*$/.exec(line))){push('image',m[1],{src:m[2]});continue;}
+    if((m=/^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/.exec(line))){
+      out.push({id:uid(),type:'todo',text:m[2],indent:indent,checked:/[xX]/.test(m[1])});continue;}
+    if((m=/^\s*[-*+]\s+(.*)$/.exec(line))){out.push({id:uid(),type:'bullet',text:m[1],indent:indent});continue;}
+    if((m=/^\s*\d+[.)]\s+(.*)$/.exec(line))){out.push({id:uid(),type:'num',text:m[1],indent:indent});continue;}
+    if((m=/^\s*>\s?(.*)$/.exec(line))){push('quote',m[1]);continue;}
+    out.push({id:uid(),type:'p',text:line.trim(),indent:indent});
+  }
+  if(!out.length)out.push({id:uid(),type:'p',text:'',indent:0});
+  return out;
+}
+function firstHeading(bl){
+  const h=(bl||[]).find(b=>b.type==='h1'&&String(b.text||'').trim());
+  return h?h.text.trim():'';
+}
+function openImport(){
+  nxModal('Import Markdown',
+    '<label class="nx-l">Page title</label><input id="mi-title" class="nx-i" placeholder="Leave blank to use the first # heading">'
+    +'<label class="nx-l">Paste Markdown</label>'
+    +'<textarea id="mi-text" class="nx-i" style="height:230px;font-family:var(--mono);font-size:12px;resize:vertical" placeholder="# My SOP&#10;&#10;- step one&#10;- step two"></textarea>'
+    +'<input type="file" id="mi-file" accept=".md,.markdown,.txt,text/*" style="display:none" onchange="importFile(this)">'
+    +'<button class="nx-b sm" onclick="document.getElementById(\'mi-file\').click()">Load a .md file</button>'
+    +'<div id="mi-note" class="nx-hint"></div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="doImport()">Create page</button>');
+  setTimeout(()=>{const f=document.getElementById('mi-text');if(f)f.focus();},40);
+}
+function importFile(inp){
+  const f=inp&&inp.files&&inp.files[0];
+  if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const t=document.getElementById('mi-text');
+    if(t)t.value=String(r.result||'');
+    const ti=document.getElementById('mi-title');
+    if(ti&&!ti.value)ti.value=f.name.replace(/\.(md|markdown|txt)$/i,'');
+    const n=document.getElementById('mi-note');
+    if(n)n.textContent='Loaded '+f.name;
+  };
+  r.readAsText(f);
+  inp.value='';
+}
+async function doImport(){
+  const md=((document.getElementById('mi-text')||{}).value||'');
+  if(!md.trim()){toast('Paste some Markdown first');return;}
+  const blocksArr=mdToBlocks(md);
+  const typed=((document.getElementById('mi-title')||{}).value||'').trim();
+  const title=typed||firstHeading(blocksArr)||'Imported page';
+  // if the title came from a leading H1, don't repeat it in the body
+  if(!typed&&blocksArr.length&&blocksArr[0].type==='h1'&&blocksArr[0].text.trim()===title)blocksArr.shift();
+  try{
+    const row={title:title,icon:'',parent_id:null,sort_order:nextSort(null),page_type:'doc',
+               content:blocksArr.length?blocksArr:[{id:uid(),type:'p',text:'',indent:0}],
+               created_by:S.user?S.user.email:null};
+    const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+    if(error)throw error;
+    S.pages.push(data);
+    nxClose();renderTree();openPage(data.id);
+    toast('\u2713 Imported '+blocksArr.length+' block'+(blocksArr.length!==1?'s':''));
+  }catch(e){toast(writeErr(e,'import the page'),9000);}
+}
+
+/* ---------- bulk row selection ---------- */
+function selSet(){S.rowSel=S.rowSel||{};return S.rowSel;}
+function rowSelected(id){return !!selSet()[id];}
+function toggleRowSel(id,on){
+  const s=selSet();
+  if(on)s[id]=true;else delete s[id];
+  renderDb();
+}
+function selCount(){return Object.keys(selSet()).length;}
+function clearRowSel(){S.rowSel={};renderDb();}
+function toggleSelAll(on){
+  const d=db();
+  S.rowSel={};
+  if(on)visibleRows(d).forEach(r=>{S.rowSel[r.id]=true;});
+  renderDb();
+}
+function bulkBarHTML(){
+  const n=selCount();
+  if(!n)return '';
+  return '<div class="bulk"><span class="bulk-n">'+n+' selected</span>'
+    +'<button class="nx-b sm" onclick="openBulkSet()">Set a property</button>'
+    +'<button class="nx-b sm danger" onclick="bulkDelete()">Delete</button>'
+    +'<button class="nx-b sm" onclick="clearRowSel()">Clear</button></div>';
+}
+function bulkDelete(){
+  const n=selCount();
+  if(!n)return;
+  if(!confirm('Delete '+n+' row'+(n!==1?'s':'')+'? This cannot be undone.'))return;
+  const d=db(),s=selSet();
+  d.rows=(d.rows||[]).filter(r=>!s[r.id]);
+  if(S.rowEdit&&s[S.rowEdit])S.rowEdit=null;
+  S.rowSel={};markDirty();renderDb();
+  toast(n+' row'+(n!==1?'s':'')+' deleted');
+}
+function openBulkSet(){
+  const d=db();
+  const opts=(d.props||[]).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  nxModal('Set a property on '+selCount()+' rows',
+    '<label class="nx-l">Property</label><select id="bs-prop" class="nx-i" onchange="bulkValField()">'+opts+'</select>'
+    +'<div id="bs-val"></div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="applyBulkSet()">Apply</button>');
+  bulkValField();
+}
+function bulkValField(){
+  const p=dbProp((document.getElementById('bs-prop')||{}).value);
+  const box=document.getElementById('bs-val');
+  if(!box||!p)return;
+  let f;
+  if(p.type==='select')
+    f='<select id="bs-v" class="nx-i"><option value="">-</option>'
+      +((p.options)||[]).map(o=>'<option value="'+esc(o.v)+'">'+esc(o.v)+'</option>').join('')+'</select>';
+  else if(p.type==='check')
+    f='<select id="bs-v" class="nx-i"><option value="true">Checked</option><option value="false">Unchecked</option></select>';
+  else if(p.type==='date')
+    f='<input id="bs-v" type="date" class="nx-i">';
+  else if(p.type==='number')
+    f='<input id="bs-v" type="number" step="any" class="nx-i">';
+  else
+    f='<input id="bs-v" class="nx-i" placeholder="New value">';
+  box.innerHTML='<label class="nx-l">Value</label>'+f;
+}
+function applyBulkSet(){
+  const pid=(document.getElementById('bs-prop')||{}).value;
+  const p=dbProp(pid);
+  if(!p)return;
+  let val=(document.getElementById('bs-v')||{}).value;
+  if(p.type==='check')val=(val==='true');
+  const d=db(),s=selSet();
+  let n=0;
+  (d.rows||[]).forEach(r=>{if(s[r.id]){r.cells=r.cells||{};r.cells[pid]=val;n++;}});
+  nxClose();markDirty();renderDb();
+  toast('Updated '+n+' row'+(n!==1?'s':''));
+}
+
+/* ---------- reorder columns ---------- */
+function moveProp(pid,delta){
+  const d=db(),i=(d.props||[]).findIndex(p=>p.id===pid);
+  if(i<0)return;
+  const j=i+delta;
+  if(j<0||j>=d.props.length)return;
+  const t=d.props[i];d.props[i]=d.props[j];d.props[j]=t;
+  markDirty();
+  if(document.getElementById('nx-overlay'))nxClose();
+  renderDb();
+}
+
+/* ---------- recently viewed ---------- */
+const RECENT_KEY='tgk_notes_recent';
+function recents(){
+  try{return JSON.parse(localStorage.getItem(RECENT_KEY)||'[]');}catch(e){return [];}
+}
+function pushRecent(id){
+  if(!id)return;
+  let r=recents().filter(x=>x!==id);
+  r.unshift(id);
+  r=r.slice(0,12);
+  try{localStorage.setItem(RECENT_KEY,JSON.stringify(r));}catch(e){}
+}
+function recentHits(){
+  return recents().map(id=>pageById(id)).filter(Boolean).map(p=>({
+    kind:'page',id:p.id,icon:p.icon||(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'),
+    label:p.title||'Untitled',sub:'Recent'}));
+}
+
+window.mdToBlocks=mdToBlocks;window.openImport=openImport;window.doImport=doImport;window.importFile=importFile;
+window.toggleRowSel=toggleRowSel;window.toggleSelAll=toggleSelAll;window.clearRowSel=clearRowSel;
+window.bulkDelete=bulkDelete;window.openBulkSet=openBulkSet;window.bulkValField=bulkValField;window.applyBulkSet=applyBulkSet;
+window.bulkBarHTML=bulkBarHTML;window.rowSelected=rowSelected;window.selCount=selCount;
+window.moveProp=moveProp;window.pushRecent=pushRecent;window.recentHits=recentHits;window.recents=recents;
+
+
+/* ======================================================================
+   PHASE 9 - RELATIONS + ROLLUPS
+   A relation property points at another DATABASE page and stores the ids of
+   linked rows there. A rollup property reads through a relation and aggregates
+   one property of the linked rows (count / sum / avg / min / max / list).
+   Rollups are computed at render time - never stored - so they can never drift
+   out of date with the rows they summarise.
+   ====================================================================== */
+
+const AGGS=[['count','Count'],['sum','Sum'],['avg','Average'],['min','Minimum'],
+            ['max','Maximum'],['list','List values'],['empty','Count empty'],['filled','Count filled']];
+
+function dbPages(){return (S.pages||[]).filter(p=>isDb(p));}
+function targetDb(prop){
+  if(!prop||!prop.targetDb)return null;
+  const p=pageById(prop.targetDb);
+  return (p&&isDb(p))?p:null;
+}
+function targetRows(prop){
+  const p=targetDb(prop);
+  return p?((p.content||{}).rows||[]):[];
+}
+function rowTitle(page,row){
+  const first=((page&&page.content&&page.content.props)||[])[0];
+  if(!first)return 'Row';
+  const v=(row.cells||{})[first.id];
+  return String(v==null||v===''?'Untitled':v);
+}
+function relIds(r,pid){
+  const raw=(r.cells||{})[pid];
+  if(Array.isArray(raw))return raw;
+  if(!raw)return [];
+  return String(raw).split(',').map(x=>x.trim()).filter(Boolean);
+}
+
+/* ---------- relation cell ---------- */
+function relCellHTML(r,pr){
+  const tp=targetDb(pr);
+  if(!tp)return '<span class="ph" title="This relation has no target database yet">\u2014</span>';
+  const ids=relIds(r,pr.id);
+  const rows=targetRows(pr);
+  const chips=ids.map(id=>{
+    const tr=rows.find(x=>x.id===id);
+    if(!tr)return '';
+    return '<span class="rel-chip">'+esc(rowTitle(tp,tr))+'</span>';
+  }).filter(Boolean).join('');
+  return '<div class="multi" onclick="openRelPicker(\''+r.id+'\',\''+pr.id+'\')" title="Link rows in '+esc(tp.title||'')+'">'
+    +(chips||'<span class="ph">\u2014</span>')+'</div>';
+}
+function openRelPicker(rid,pid){
+  const pr=dbProp(pid),tp=targetDb(pr);
+  if(!pr)return;
+  if(!tp){
+    nxModal('Relation','<div class="nx-hint">This relation has no target database. Edit the property and choose one.</div>',
+      '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+    return;
+  }
+  const d=db(),r=(d.rows||[]).find(x=>x.id===rid);
+  if(!r)return;
+  const cur=relIds(r,pid);
+  const rows=targetRows(pr);
+  const list=rows.map(tr=>
+    '<label class="mp-o"><input type="checkbox" value="'+esc(tr.id)+'"'+(cur.indexOf(tr.id)>=0?' checked':'')+'>'
+    +'<span>'+esc(rowTitle(tp,tr))+'</span></label>').join('')
+    ||'<div class="nx-hint">'+esc(tp.title||'That database')+' has no rows yet.</div>';
+  nxModal('Link to '+(tp.title||'database'),
+    '<input id="rp-q" class="nx-i" placeholder="Filter..." oninput="relFilter(this.value)">'
+    +'<div id="rp-list" style="max-height:44vh;overflow-y:auto;margin-top:8px">'+list+'</div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="saveRel(\''+rid+'\',\''+pid+'\')">Apply</button>');
+}
+function relFilter(q){
+  const t=String(q||'').toLowerCase();
+  Array.prototype.slice.call(document.querySelectorAll('#rp-list .mp-o')).forEach(el=>{
+    el.style.display=(!t||el.textContent.toLowerCase().includes(t))?'':'none';
+  });
+}
+function saveRel(rid,pid){
+  const boxes=Array.prototype.slice.call(document.querySelectorAll('#rp-list input[type=checkbox]'));
+  const ids=boxes.filter(b=>b.checked).map(b=>b.value);
+  const d=db(),r=(d.rows||[]).find(x=>x.id===rid);
+  if(r){r.cells=r.cells||{};r.cells[pid]=ids;}
+  nxClose();markDirty();renderDb();
+}
+
+/* ---------- rollups ---------- */
+function rollupValue(r,pr){
+  const rel=dbProp(pr.relProp);
+  if(!rel)return {text:'\u2014',n:null};
+  const tp=targetDb(rel);
+  if(!tp)return {text:'\u2014',n:null};
+  const ids=relIds(r,rel.id);
+  const rows=targetRows(rel).filter(x=>ids.indexOf(x.id)>=0);
+  if(pr.agg==='count')return {text:String(rows.length),n:rows.length};
+  const tprops=((tp.content||{}).props)||[];
+  const tprop=tprops.find(p=>p.id===pr.targetProp);
+  if(!tprop)return {text:String(rows.length),n:rows.length};
+  const raw=rows.map(x=>(x.cells||{})[tprop.id]);
+  const vals=raw.filter(v=>v!==null&&v!==undefined&&v!=='');
+  switch(pr.agg){
+    case 'empty':  return {text:String(raw.length-vals.length),n:raw.length-vals.length};
+    case 'filled': return {text:String(vals.length),n:vals.length};
+    case 'list':   return {text:vals.map(v=>String(v)).join(', ')||'\u2014',n:null};
+    default: {
+      const nums=vals.map(v=>Number(v)).filter(v=>isFinite(v));
+      if(!nums.length)return {text:'\u2014',n:null};
+      let n;
+      if(pr.agg==='sum')n=nums.reduce((a,b)=>a+b,0);
+      else if(pr.agg==='avg')n=nums.reduce((a,b)=>a+b,0)/nums.length;
+      else if(pr.agg==='min')n=Math.min.apply(null,nums);
+      else if(pr.agg==='max')n=Math.max.apply(null,nums);
+      else n=nums.length;
+      const rounded=Math.round(n*100)/100;
+      return {text:String(rounded),n:rounded};
+    }
+  }
+}
+function rollupCellHTML(r,pr){
+  const v=rollupValue(r,pr);
+  return '<span class="rollup" title="Calculated from '+esc((dbProp(pr.relProp)||{}).name||'a relation')+'">'+esc(v.text)+'</span>';
+}
+
+/* ---------- property editor extensions ---------- */
+function relRollupFields(p){
+  const d=db();
+  const dbs=dbPages().filter(x=>x.id!==S.activeId);
+  const rels=(d.props||[]).filter(x=>x.type==='relation');
+  return '<div id="pe-rel" style="display:none">'
+      +'<label class="nx-l">Target database</label><select id="pe-target" class="nx-i">'
+      +'<option value="">Choose...</option>'
+      +dbs.map(x=>'<option value="'+x.id+'"'+((p&&p.targetDb===x.id)?' selected':'')+'>'+esc(x.title||'Untitled')+'</option>').join('')
+      +'</select>'+(dbs.length?'':'<div class="nx-hint">Create another database page first.</div>')
+    +'</div>'
+    +'<div id="pe-roll" style="display:none">'
+      +'<label class="nx-l">Through relation</label><select id="pe-relprop" class="nx-i" onchange="rollTargetProps()">'
+      +'<option value="">Choose...</option>'
+      +rels.map(x=>'<option value="'+x.id+'"'+((p&&p.relProp===x.id)?' selected':'')+'>'+esc(x.name)+'</option>').join('')
+      +'</select>'+(rels.length?'':'<div class="nx-hint">Add a Relation property first.</div>')
+      +'<label class="nx-l">Property to aggregate</label><select id="pe-tprop" class="nx-i"></select>'
+      +'<label class="nx-l">Calculation</label><select id="pe-agg" class="nx-i">'
+      +AGGS.map(a=>'<option value="'+a[0]+'"'+((p&&p.agg===a[0])?' selected':'')+'>'+a[1]+'</option>').join('')
+      +'</select>'
+    +'</div>';
+}
+function rollTargetProps(){
+  const sel=document.getElementById('pe-tprop');
+  if(!sel)return;
+  const rel=dbProp((document.getElementById('pe-relprop')||{}).value);
+  const tp=targetDb(rel);
+  const props=tp?(((tp.content||{}).props)||[]):[];
+  const cur=(_propEdit?dbProp(_propEdit):null)||{};
+  sel.innerHTML='<option value="">(row count only)</option>'
+    +props.map(p=>'<option value="'+p.id+'"'+((cur.targetProp===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+}
+function peTypeExtras(){
+  const t=(document.getElementById('pe-type')||{}).value;
+  const rel=document.getElementById('pe-rel'), roll=document.getElementById('pe-roll');
+  if(rel)rel.style.display=(t==='relation')?'':'none';
+  if(roll)roll.style.display=(t==='rollup')?'':'none';
+  if(t==='rollup')rollTargetProps();
+}
+
+window.relCellHTML=relCellHTML;window.openRelPicker=openRelPicker;window.saveRel=saveRel;window.relFilter=relFilter;
+window.rollupValue=rollupValue;window.rollupCellHTML=rollupCellHTML;window.relIds=relIds;
+window.relRollupFields=relRollupFields;window.rollTargetProps=rollTargetProps;window.peTypeExtras=peTypeExtras;
+window.targetDb=targetDb;window.targetRows=targetRows;window.rowTitle=rowTitle;window.dbPages=dbPages;window.AGGS=AGGS;
 
 </script>
 </body>
