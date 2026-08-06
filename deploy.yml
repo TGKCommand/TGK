@@ -1,0 +1,91 @@
+# .github/workflows/deploy.yml
+#
+# ─── THE BUG IN YOUR CURRENT WORKFLOW ────────────────────────────────────────
+# Your warning names:  actions/checkout@v4, actions/upload-artifact@v4
+#                                            ^^^^^^^^^^^^^^^^^^^^^^^
+# That is the WRONG ACTION for Pages.
+#
+#   actions/upload-artifact        -> a generic workflow artifact you download
+#   actions/upload-pages-artifact  -> the one Pages needs
+#
+# actions/deploy-pages looks for an artifact called "github-pages", packed in a
+# specific tar layout that ONLY upload-pages-artifact produces. With plain
+# upload-artifact that artifact never appears, so deploy-pages sits there waiting
+# for a deployment that can never start and eventually reports:
+#
+#       Timeout reached, aborting!
+#
+# which is exactly the error in your run. It is not the Node 20 warning - the log
+# says those actions are "being forced to run on Node.js 24", i.e. they still ran.
+# Swapping the upload step is the fix.
+#
+# (Two deploy errors in one run usually means it retried, or a second workflow is
+#  also deploying. If you have another .yml that publishes Pages, delete one -
+#  concurrent deployments fight over the environment and both can time out.)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Also confirm: Settings -> Pages -> Build and deployment -> Source = "GitHub Actions".
+# If that is set to "Deploy from a branch", deploy-pages also times out.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # THE FIX: upload-PAGES-artifact, not upload-artifact.
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'          # static HTML at the repo root
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10      # fail fast instead of hanging
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+# ─── ABOUT THE NODE 20 WARNING ───────────────────────────────────────────────
+# Only a warning today - the runner forces those actions onto Node 24 and they
+# work. Clear it whenever convenient by moving to the newest majors. Check the
+# real current tags rather than guessing:
+#
+#   gh api repos/actions/checkout/releases/latest --jq .tag_name
+#   gh api repos/actions/configure-pages/releases/latest --jq .tag_name
+#   gh api repos/actions/upload-pages-artifact/releases/latest --jq .tag_name
+#   gh api repos/actions/deploy-pages/releases/latest --jq .tag_name
+#
+# Fix the upload step FIRST and confirm the deploy goes green, then bump versions
+# separately - one change at a time, so you know which one did what.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# SIMPLER OPTION, NO ACTIONS AT ALL
+# You have no build step, just static HTML. Pages can serve the branch directly:
+#   Settings -> Pages -> Source: "Deploy from a branch", Branch: main, Folder: / (root)
+# Then delete this file. Nothing left to deprecate, nothing left to time out.
