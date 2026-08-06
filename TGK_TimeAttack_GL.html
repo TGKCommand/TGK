@@ -1556,7 +1556,7 @@ var MODEL_TWEAK = {
      spin     - whether the model exposes per-wheel nodes we can rotate       */
   s6:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
              paintRx: /^rs6c8$/i,
-             hideRx: /steelwheel|stock2|CivicTypeR_tires_19x9(?!\.001)/i, shadowMin: 0.5 },
+             hideRx: /steelwheel|stock2|Manta Spoiler|CivicTypeR_tires_19x9(?!\.001)/i, shadowMin: 0.5 },
   cc:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
              paintRx: /^carpaint/i, hideRx: null, shadowMin: 0.4 },
   tiguan:  { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
@@ -1567,11 +1567,36 @@ var MODEL_TWEAK = {
 var _gltfLoader = (typeof THREE.GLTFLoader === 'function') ? new THREE.GLTFLoader() : null;
 var _modelCache = {};
 
+/* Where the .glb files live. Tried in order until one loads, then the winner
+   is reused for every later car. Covers: models/ beside the page, /models/ at
+   the site root (command.tgkmotorsport.com/models), and an explicit override
+   via ?models=https://host/path/ for anything unusual. */
+var _modelBase = null;
+function _modelBases() {
+  var q = (location.search.match(/[?&]models=([^&]+)/) || [])[1];
+  var list = [];
+  if (q) { var u = decodeURIComponent(q); list.push(u.charAt(u.length - 1) === '/' ? u : u + '/'); }
+  if (_modelBase !== null) list.unshift(_modelBase);
+  list.push('models/');
+  list.push('/models/');
+  var seen = {}, out = [];
+  for (var i = 0; i < list.length; i++) if (!seen[list[i]]) { seen[list[i]] = 1; out.push(list[i]); }
+  return out;
+}
 function loadCarModel(S, key, onDone) {
   if (!_gltfLoader) { onDone(null); return; }
   if (_modelCache[key] === 'missing') { onDone(null); return; }
   if (_modelCache[key]) { onDone(_modelCache[key].clone()); return; }
-  _gltfLoader.load('models/' + key + '.glb', function (g) {
+  var bases = _modelBases(), bi = 0;
+  function attempt() {
+    if (bi >= bases.length) { modelFail(); return; }
+    var url = bases[bi++] + key + '.glb';
+    _gltfLoader.load(url, function (g) { _modelBase = bases[bi - 1]; onLoaded(g); }, undefined, function () {
+      console.warn('[TGK] no model at ' + url);
+      attempt();
+    });
+  }
+  function onLoaded(g) {
     var root = g.scene || g.scenes[0];
     var tw = MODEL_TWEAK[key] || {};
     /* cull spare parts FIRST so the auto-fit measures the car, not the junk */
@@ -1633,10 +1658,15 @@ function loadCarModel(S, key, onDone) {
     holder.userData.painted = painted;
     _modelCache[key] = holder;
     onDone(holder.clone());
-  }, undefined, function () {
+  }
+  function modelFail() {
     _modelCache[key] = 'missing';
+    console.warn('[TGK] ' + key + '.glb not found in any of: ' + bases.join(', ') +
+                 ' - falling back to the procedural car. Put the models folder beside the page ' +
+                 'or at the site root, or pass ?models=<url>/');
     onDone(null);
-  });
+  }
+  attempt();
 }
 
 function buildCarGL(S) {
