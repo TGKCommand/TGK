@@ -206,6 +206,47 @@ a.mention:hover{background:rgba(13,148,136,.18)}
 .bl-h{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
 .bl-i{display:inline-block;font-size:12.5px;color:var(--text2);background:var(--bg3);border-radius:var(--r);padding:4px 9px;margin:0 6px 6px 0;cursor:pointer;text-decoration:none}
 .bl-i:hover{background:var(--bg4);color:var(--teal-d)}
+#qs-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:400;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;backdrop-filter:blur(3px)}
+.qs-box{background:#fff;border-radius:var(--r-lg);width:620px;max-width:94vw;box-shadow:0 20px 60px rgba(14,20,24,.3);overflow:hidden}
+.qs-i{width:100%;border:none;border-bottom:1px solid var(--border);padding:15px 18px;font-size:15px;outline:none;font-family:inherit}
+.qs-list{max-height:52vh;overflow-y:auto;padding:6px}
+.qs-r{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:var(--r);cursor:pointer;font-size:13px}
+.qs-r.sel,.qs-r:hover{background:var(--teal-dim)}
+.qs-ic{width:18px;text-align:center;color:var(--text3)}
+.qs-l{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qs-s{font-size:10.5px;color:var(--text3);white-space:nowrap}
+.qs-empty{padding:22px;text-align:center;color:var(--text3);font-size:12.5px}
+.qs-foot{border-top:1px solid var(--border);padding:8px 14px;font-size:10.5px;color:var(--text3)}
+.cal-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cal-t{font-size:13px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:0 0 0 1px var(--border)}
+.cal-dow{background:var(--bg2);padding:6px 8px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);text-align:center}
+.cal-c{background:#fff;min-height:92px;padding:5px 6px}
+.cal-c.cal-out{background:var(--bg2)}
+.cal-n{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:3px}
+.cal-e{background:var(--teal-dim);color:var(--teal-d);border-radius:4px;padding:2px 5px;font-size:11px;margin-bottom:3px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-e:hover{background:rgba(13,148,136,.2)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.gal-c{background:#fff;border-radius:var(--r-lg);box-shadow:0 0 0 1px var(--border);overflow:hidden;cursor:pointer}
+.gal-c:hover{box-shadow:0 0 0 1px var(--border2),0 4px 14px rgba(14,20,24,.09)}
+.gal-i{height:118px;background:var(--bg3) center/cover no-repeat}
+.gal-i.gal-none{display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:var(--border2)}
+.gal-b{padding:9px 11px}
+.gal-t{font-size:13px;font-weight:600;margin-bottom:4px}
+.gal-m{display:block;font-size:10.5px;color:var(--text3)}
+.bk[data-type=toggle] .tg-a{background:none;border:none;cursor:pointer;color:var(--text3);font-size:10px;padding:0 2px;line-height:1.7}
+.bk[data-type=toggle] .bk-t{font-weight:600}
+.tg-n{font-size:10px;color:var(--text3);margin-left:6px}
+.img-empty{flex:1;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:22px;text-align:center;color:var(--text3);cursor:pointer;font-size:12.5px;background:var(--bg2)}
+.img-empty:hover{border-color:var(--teal);color:var(--teal-d)}
+.img-empty-i{font-size:26px;margin-bottom:4px}
+.img-fig{flex:1;margin:6px 0}
+.img-fig img{max-width:100%;border-radius:var(--r-lg);display:block;cursor:pointer;box-shadow:0 1px 3px rgba(14,20,24,.12)}
+.img-fig figcaption{font-size:11.5px;color:var(--text3);margin-top:5px;outline:none}
+.pg.dz-in{background:var(--teal-dim);box-shadow:inset 0 0 0 1px var(--teal)}
+.pg.dz-above{box-shadow:inset 0 2px 0 var(--teal)}
+.pg.dz-below{box-shadow:inset 0 -2px 0 var(--teal)}
+.pg{position:relative}
 .fbadge{background:var(--teal);color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-left:4px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#141618;color:#EDF1F0;padding:10px 18px;border-radius:5px;font-size:12.5px;z-index:200;transition:transform .25s;max-width:80vw;text-align:center}
 #toast.on{transform:translateX(-50%) translateY(0)}
@@ -245,6 +286,7 @@ a.mention:hover{background:rgba(13,148,136,.18)}
       <div class="sync"><div class="l">TGK Notes</div><div class="s" id="sync-sub">workspace</div></div>
       <button class="btn btn-w" onclick="newPage(null,'doc')">+ New page</button>
       <button class="btn btn-w" onclick="newPage(null,'db')">+ New database</button>
+      <button class="btn btn-w" onclick="openTemplates(null)">Templates</button>
       <button class="btn btn-w" onclick="openTrash()">Trash</button>
     </div>
   </div>
@@ -256,7 +298,9 @@ a.mention:hover{background:rgba(13,148,136,.18)}
         <div class="tb-tt">Notes</div>
       </div>
       <div class="sp">
-        <span class="savest" id="savest"></span>
+        <button class="btn btn-sm" onclick="openSaveTemplate()" title="Save this page as a reusable template">Template</button>
+      <button class="btn btn-sm" onclick="exportPage()" title="Export this page to Markdown">Export</button>
+      <span class="savest" id="savest"></span>
         <span class="who" id="who"></span>
         <button class="btn btn-sm" onclick="doLogout()">Sign out</button>
         <span class="ver" id="ver"></span>
@@ -270,7 +314,7 @@ a.mention:hover{background:rgba(13,148,136,.18)}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v0.3';
+const TGK_NOTES_VERSION='v0.5';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -419,7 +463,12 @@ function renderTree(){
   const walk=(pid,depth)=>childrenOf(pid).filter(p=>!q||keep.has(p.id)).map(p=>{
     const kids=childrenOf(p.id).filter(k=>!q||keep.has(k.id));
     const open=q?true:!S.collapsed[p.id];
-    return '<div class="pg'+(p.id===S.activeId?' on':'')+'" style="padding-left:'+(8+depth*13)+'px" onclick="openPage(\''+p.id+'\')">'
+    return '<div class="pg'+(p.id===S.activeId?' on':'')+'" style="padding-left:'+(8+depth*13)+'px" draggable="true"'
+      +' ondragstart="pgDragStart(event,\''+p.id+'\')"'
+      +' ondragover="pgDragOver(event,\''+p.id+'\',(event.offsetY<7?\'above\':(event.offsetY>18?\'below\':\'in\')))"'
+      +' ondragleave="pgDragLeave(event)"'
+      +' ondrop="pgDrop(event,\''+p.id+'\',(event.offsetY<7?\'above\':(event.offsetY>18?\'below\':\'in\')))"'
+      +' onclick="openPage(\''+p.id+'\')">'
       +'<span class="tw" onclick="event.stopPropagation();toggleTw(\''+p.id+'\')">'+(kids.length?(open?'\u25be':'\u25b8'):'')+'</span>'
       +'<span class="ic">'+(p.icon?esc(p.icon):(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'))+'</span>'
       +'<span class="nm">'+esc(p.title||'Untitled')+'</span>'
@@ -444,7 +493,9 @@ const BLOCKS=[
   {t:'quote',em:'\u275d',n:'Quote',d:'Callout a passage'},
   {t:'callout',em:'\u{1F4A1}',n:'Callout',d:'Highlighted note'},
   {t:'code',em:'\u2039\u203a',n:'Code',d:'Monospace block'},
-  {t:'divider',em:'\u2014',n:'Divider',d:'Horizontal rule'}
+  {t:'divider',em:'\u2014',n:'Divider',d:'Horizontal rule'},
+  {t:'image',em:'\u{1F5BC}',n:'Image',d:'Upload a photo or paste a URL'},
+  {t:'toggle',em:'\u25b8',n:'Toggle',d:'Collapsible section - indent blocks under it'}
 ];
 function curPage(){return pageById(S.activeId);}
 function isDb(p){return !!(p&&p.page_type==='db');}
@@ -499,7 +550,9 @@ function numberFor(i){
 }
 function renderBlocks(){
   const b=blocks();
+  const _hid=(typeof toggleHidden==='function')?toggleHidden(b):{};
   $('blocks').innerHTML=b.map((bl,i)=>{
+    if(_hid[i])return '';
     const pad=(bl.indent||0)*24;
     let mk='';
     if(bl.type==='bullet')mk='<span class="bk-mk">\u2022</span>';
@@ -508,6 +561,17 @@ function renderBlocks(){
     else if(bl.type==='callout')mk='<span class="bk-mk">\u{1F4A1}</span>';
     if(bl.type==='divider')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="divider" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span><div class="bk-div"></div></div>';
+    if(bl.type==='image')
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="image" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
+        +(typeof imageBlockHTML==='function'?imageBlockHTML(bl):'')+'</div>';
+    if(bl.type==='toggle'){
+      const _n=(typeof toggleCount==='function')?toggleCount(bl.id):0;
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="toggle" style="margin-left:'+pad+'px">'
+        +'<span class="bk-handle" draggable="true">\u2059</span>'
+        +'<button class="tg-a" onclick="toggleBlock(\''+bl.id+'\')" title="'+(bl.open?'Collapse':'Expand')+'">'+(bl.open?'\u25be':'\u25b8')+'</button>'
+        +'<div class="bk-t" contenteditable="true" spellcheck="true" data-ph="Toggle heading">'+(typeof mentionify==='function'?mentionify(esc(bl.text||'')):esc(bl.text||''))+'</div>'
+        +(!bl.open&&_n?'<span class="tg-n">'+_n+' hidden</span>':'')+'</div>';
+    }
     const ph=i===0?"Type '/' for commands":'';
     return '<div class="bk" data-bid="'+bl.id+'" data-type="'+bl.type+'" style="margin-left:'+pad+'px">'
       +'<span class="bk-handle" draggable="true">\u2059</span>'+mk
@@ -544,6 +608,7 @@ document.addEventListener('input',e=>{
   if(i<0)return;
   const bl=blocks()[i];
   bl.text=t.textContent;
+  if(bl.type==='image'){markDirty();return;}   // caption only - no markdown/slash handling
   // markdown shortcuts (paragraphs only)
   if(bl.type==='p'){
     const map=[['# ','h1'],['## ','h2'],['### ','h3'],['- ','bullet'],['* ','bullet'],
@@ -705,6 +770,13 @@ function applySlash(def){
   if(i<0){closeSlash();return;}
   b[i].type=def.t;b[i].text='';
   if(def.t==='divider'){closeSlash();renderBlocks();addBlockAfter(i,'p');markDirty();return;}
+  if(def.t==='image'){closeSlash();renderBlocks();markDirty();if(typeof pickImage==='function')pickImage(id);return;}
+  if(def.t==='toggle'){
+    b[i].open=true;closeSlash();renderBlocks();
+    const nb=addBlockAfter(i,'p');
+    if(nb){nb.indent=(b[i].indent||0)+1;renderBlocks();focusBlock(nb.id);}
+    markDirty();return;
+  }
   closeSlash();renderBlocks();focusBlock(id);markDirty();
 }
 
@@ -773,8 +845,11 @@ function renderDb(){
   const d=db(),v=activeView();
   const tabs=(d.views||[]).map((vw,i)=>
     '<button class="vtab'+(i===(d.activeView||0)?' on':'')+'" onclick="setView('+i+')">'
-    +(vw.kind==='board'?'\u25a4 ':'\u2637 ')+esc(vw.name)+'</button>').join('');
-  const body=v.kind==='board'?dbBoardHTML(d,v):dbTableHTML(d,v);
+    +(vw.kind==='board'?'\u25a4 ':vw.kind==='calendar'?'\u1F4C5 ':vw.kind==='gallery'?'\u25a6 ':'\u2637 ')+esc(vw.name)+'</button>').join('');
+  const body=v.kind==='board'?dbBoardHTML(d,v)
+    :(v.kind==='calendar'&&typeof dbCalendarHTML==='function')?dbCalendarHTML(d,v)
+    :(v.kind==='gallery'&&typeof dbGalleryHTML==='function')?dbGalleryHTML(d,v)
+    :dbTableHTML(d,v);
   $('dbwrap').innerHTML=
     '<div class="dbbar">'+tabs
     +'<button class="vtab add" onclick="openViewEditor()" title="Add a view">+</button>'
@@ -1081,7 +1156,13 @@ function openViewEditor(i){
     '<label class="nx-l">Name</label><input id="ve-name" class="nx-i" value="'+esc(v?v.name:'')+'" placeholder="e.g. By status">'
     +'<label class="nx-l">Layout</label><select id="ve-kind" class="nx-i">'
       +'<option value="table"'+((v&&v.kind==='table')?' selected':'')+'>Table</option>'
-      +'<option value="board"'+((v&&v.kind==='board')?' selected':'')+'>Board</option></select>'
+      +'<option value="board"'+((v&&v.kind==='board')?' selected':'')+'>Board</option>'
+      +'<option value="calendar"'+((v&&v.kind==='calendar')?' selected':'')+'>Calendar</option>'
+      +'<option value="gallery"'+((v&&v.kind==='gallery')?' selected':'')+'>Gallery</option></select>'
+    +'<label class="nx-l">Date property (calendar)</label><select id="ve-date" class="nx-i"><option value="">None</option>'
+      +(d.props||[]).filter(p=>p.type==='date').map(p=>'<option value="'+p.id+'"'+((v&&v.dateProp===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select>'
+    +'<label class="nx-l">Image property (gallery)</label><select id="ve-img" class="nx-i"><option value="">None</option>'
+      +(d.props||[]).filter(p=>p.type==='url').map(p=>'<option value="'+p.id+'"'+((v&&v.imgProp===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select>'
     +'<label class="nx-l">Group by (board only)</label><select id="ve-group" class="nx-i">'
       +'<option value="">None</option>'
       +sels.map(p=>'<option value="'+p.id+'"'+((v&&v.groupBy===p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')
@@ -1097,13 +1178,15 @@ function saveView(){
   const name=((document.getElementById('ve-name')||{}).value||'').trim()||'View';
   const kind=(document.getElementById('ve-kind')||{}).value||'table';
   const groupBy=(document.getElementById('ve-group')||{}).value||null;
+  const dateProp=(document.getElementById('ve-date')||{}).value||null;
+  const imgProp=(document.getElementById('ve-img')||{}).value||null;
   if(_viewEdit===null){
     d.views=d.views||[];
-    d.views.push({id:uid(),name:name,kind:kind,groupBy:groupBy,filters:[]});
+    d.views.push({id:uid(),name:name,kind:kind,groupBy:groupBy,dateProp:dateProp,imgProp:imgProp,filters:[]});
     d.activeView=d.views.length-1;
   }else{
     const v=d.views[_viewEdit];
-    if(v){v.name=name;v.kind=kind;v.groupBy=groupBy;}
+    if(v){v.name=name;v.kind=kind;v.groupBy=groupBy;v.dateProp=dateProp;v.imgProp=imgProp;}
   }
   nxClose();markDirty();renderDb();
 }
@@ -1376,6 +1459,490 @@ window.setFilterOp=setFilterOp;window.setFilterVal=setFilterVal;window.rmFilter=
 window.openMultiPicker=openMultiPicker;window.saveMulti=saveMulti;
 window.archivePage=archivePage;window.openTrash=openTrash;window.restorePage=restorePage;window.purgePage=purgePage;
 window.backlinksHTML=backlinksHTML;window.mentionify=mentionify;
+
+
+/* ======================================================================
+   PHASE 4
+   - image blocks (upload to storage, or paste a URL)
+   - page templates (save any page as one, create from one)
+   - drag pages in the sidebar to reorder and re-nest
+   - export a page to Markdown
+   ====================================================================== */
+
+const NOTES_BUCKET='part-files';   // reuses the bucket the ERP already has
+
+/* ---------- image blocks ---------- */
+function imageBlockHTML(bl){
+  const url=(bl.src||'').trim();
+  const cap=bl.text||'';
+  if(!url){
+    return '<div class="img-empty" onclick="pickImage(\''+bl.id+'\')">'
+      +'<div class="img-empty-i">\u{1F5BC}</div>'
+      +'<div>Click to upload an image, or paste a URL</div></div>';
+  }
+  return '<figure class="img-fig">'
+    +'<img src="'+esc(url)+'" alt="'+esc(cap)+'" onclick="pickImage(\''+bl.id+'\')" title="Click to replace">'
+    +'<figcaption class="bk-t" contenteditable="true" spellcheck="true" data-ph="Add a caption...">'+esc(cap)+'</figcaption>'
+    +'</figure>';
+}
+function pickImage(bid){
+  _imgTarget=bid;
+  nxModal('Image',
+    '<label class="nx-l">Paste an image URL</label>'
+    +'<input id="im-url" class="nx-i" placeholder="https://...">'
+    +'<div class="nx-hint">or</div>'
+    +'<input type="file" id="im-file" accept="image/*" style="display:none" onchange="uploadImage(this)">'
+    +'<button class="nx-b" onclick="document.getElementById(\'im-file\').click()">Upload from this device</button>'
+    +'<div id="im-status" class="nx-hint"></div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="applyImageUrl()">Use URL</button>');
+  setTimeout(()=>{const f=document.getElementById('im-url');if(f)f.focus();},40);
+}
+let _imgTarget=null;
+function applyImageUrl(){
+  const u=((document.getElementById('im-url')||{}).value||'').trim();
+  if(!u){toast('Paste a URL or upload a file');return;}
+  setImageSrc(_imgTarget,u);
+  nxClose();
+}
+async function uploadImage(inp){
+  const f=inp&&inp.files&&inp.files[0];
+  if(!f)return;
+  const st=document.getElementById('im-status');
+  const set=t=>{if(st)st.textContent=t;};
+  if(!/^image\//i.test(f.type||'')){set('That is not an image file');inp.value='';return;}
+  if(f.size>10*1024*1024){set('Too large (max 10MB)');inp.value='';return;}
+  set('Uploading '+f.name+'...');
+  try{
+    const safe=f.name.replace(/[^a-zA-Z0-9._\-]/g,'_');
+    const path='notes/'+(S.activeId||'page')+'/'+Date.now()+'_'+safe;
+    const up=await sb.storage.from(NOTES_BUCKET).upload(path,f,{upsert:false});
+    if(up.error)throw up.error;
+    const pub=sb.storage.from(NOTES_BUCKET).getPublicUrl(path);
+    const url=(pub&&pub.data&&pub.data.publicUrl)||'';
+    if(!url)throw new Error('no public URL returned');
+    setImageSrc(_imgTarget,url);
+    nxClose();
+  }catch(e){
+    const m=String((e&&e.message)||e||'');
+    if(/bucket|not found/i.test(m))set('Upload failed: the '+NOTES_BUCKET+' storage bucket is missing');
+    else if(/row-level security|permission|unauthor/i.test(m))set('Upload blocked by the storage policy on '+NOTES_BUCKET);
+    else set('Upload failed: '+m);
+  }finally{inp.value='';}
+}
+function setImageSrc(bid,url){
+  const b=blocks(),i=blockIndex(bid);
+  if(i<0)return;
+  b[i].src=url;
+  renderBlocks();markDirty();
+}
+
+/* ---------- templates ---------- */
+async function saveAsTemplate(){
+  const p=curPage();
+  if(!p){toast('Open a page first');return;}
+  const name=((document.getElementById('tp-name')||{}).value||'').trim()||p.title||'Template';
+  try{
+    const row={title:name,icon:p.icon||'',parent_id:null,sort_order:nextSort(null),
+               page_type:p.page_type||'doc',
+               content:JSON.parse(JSON.stringify(p.content||[])),
+               is_template:true,created_by:S.user?S.user.email:null};
+    const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+    if(error)throw error;
+    S.templates=(S.templates||[]).concat([data]);
+    nxClose();toast('\u2713 Saved as a template');
+  }catch(e){
+    const m=String(e.message||e);
+    if(/is_template/.test(m))toast('Templates need one migration - run the is_template line in sql/add_wiki_pages.sql',10000);
+    else toast(writeErr(e,'save the template'),9000);
+  }
+}
+function openSaveTemplate(){
+  const p=curPage();
+  if(!p){toast('Open a page first');return;}
+  nxModal('Save as template',
+    '<label class="nx-l">Template name</label><input id="tp-name" class="nx-i" value="'+esc(p.title||'')+'">'
+    +'<div class="nx-hint">Copies this page\'s content. Future pages can start from it.</div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="saveAsTemplate()">Save template</button>');
+}
+async function loadTemplates(){
+  try{
+    const{data,error}=await sb.from('wiki_pages').select('*').eq('is_template',true).order('title');
+    if(error)throw error;
+    S.templates=data||[];
+    return true;
+  }catch(e){
+    S.templates=[];
+    S._tplMissing=/is_template/.test(String(e.message||e));
+    return false;
+  }
+}
+async function openTemplates(parentId){
+  await loadTemplates();
+  if(S._tplMissing){
+    nxModal('Templates','<div class="nx-hint">Templates need one migration. Run the <b>is_template</b> line at the bottom of <b>sql/add_wiki_pages.sql</b>, then reload.</div>',
+      '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+    return;
+  }
+  const list=(S.templates||[]).map(t=>
+    '<div class="tr-row"><span class="tr-n">'+(t.icon?esc(t.icon):'\u{1F4C4}')+' '+esc(t.title||'Untitled')+'</span>'
+    +'<button class="nx-b sm" onclick="useTemplate(\''+t.id+'\','+(parentId?("'"+parentId+"'"):'null')+')">Use</button>'
+    +'<button class="nx-b sm danger" onclick="deleteTemplate(\''+t.id+'\')">Delete</button></div>').join('')
+    ||'<div class="nx-hint">No templates yet. Open a page and choose "Save as template".</div>';
+  nxModal('Templates', list, '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+async function useTemplate(tid,parentId){
+  const t=(S.templates||[]).find(x=>x.id===tid);
+  if(!t)return;
+  try{
+    const row={title:t.title||'Untitled',icon:t.icon||'',parent_id:parentId||null,
+               sort_order:nextSort(parentId||null),page_type:t.page_type||'doc',
+               content:JSON.parse(JSON.stringify(t.content||[])),
+               created_by:S.user?S.user.email:null};
+    // fresh block ids so the copy is independent of the template
+    if(Array.isArray(row.content))row.content.forEach(b=>{b.id=uid();});
+    const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+    if(error)throw error;
+    S.pages.push(data);
+    nxClose();renderTree();openPage(data.id);
+    toast('Created from template');
+  }catch(e){toast(writeErr(e,'create from the template'),9000);}
+}
+async function deleteTemplate(tid){
+  if(!confirm('Delete this template? Pages already created from it are unaffected.'))return;
+  try{
+    const{error}=await sb.from('wiki_pages').delete().eq('id',tid);
+    if(error)throw error;
+    S.templates=(S.templates||[]).filter(x=>x.id!==tid);
+    openTemplates(null);
+  }catch(e){toast(writeErr(e,'delete the template'),9000);}
+}
+
+/* ---------- drag pages in the sidebar ---------- */
+let _dragPage=null;
+function pgDragStart(e,id){_dragPage=id;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id);}catch(_){}}
+function pgDragOver(e,id,zone){
+  if(!_dragPage||_dragPage===id)return;
+  e.preventDefault();
+  const el=e.currentTarget;
+  el.classList.remove('dz-in','dz-above','dz-below');
+  el.classList.add(zone==='in'?'dz-in':(zone==='above'?'dz-above':'dz-below'));
+}
+function pgDragLeave(e){e.currentTarget.classList.remove('dz-in','dz-above','dz-below');}
+function isDescendant(candidateId,ofId){
+  let cur=pageById(candidateId);
+  while(cur&&cur.parent_id){
+    if(cur.parent_id===ofId)return true;
+    cur=pageById(cur.parent_id);
+  }
+  return false;
+}
+async function pgDrop(e,targetId,zone){
+  e.preventDefault();e.stopPropagation();
+  const el=e.currentTarget;el.classList.remove('dz-in','dz-above','dz-below');
+  const src=_dragPage;_dragPage=null;
+  if(!src||src===targetId)return;
+  if(isDescendant(targetId,src)){toast('A page cannot be moved inside its own sub-page');return;}
+  const sp=pageById(src),tp=pageById(targetId);
+  if(!sp||!tp)return;
+  let newParent,newSort;
+  if(zone==='in'){
+    newParent=tp.id;
+    newSort=nextSort(tp.id);
+  }else{
+    newParent=tp.parent_id||null;
+    const sibs=childrenOf(newParent).filter(x=>x.id!==src);
+    const idx=sibs.findIndex(x=>x.id===tp.id);
+    const before=zone==='above'?sibs[idx-1]:sibs[idx];
+    const after =zone==='above'?sibs[idx]  :sibs[idx+1];
+    const lo=before?(Number(before.sort_order)||0):0;
+    const hi=after?(Number(after.sort_order)||lo+2000):lo+2000;
+    newSort=(lo+hi)/2;
+  }
+  try{
+    const{error}=await sb.from('wiki_pages').update({parent_id:newParent,sort_order:newSort}).eq('id',src);
+    if(error)throw error;
+    sp.parent_id=newParent;sp.sort_order=newSort;
+    if(newParent)S.collapsed[newParent]=false;
+    renderTree();
+  }catch(err){toast(writeErr(err,'move the page'),9000);}
+}
+
+/* ---------- markdown export ---------- */
+function blocksToMd(bl){
+  const out=[];
+  (bl||[]).forEach(b=>{
+    const ind='  '.repeat(b.indent||0);
+    const t=b.text||'';
+    switch(b.type){
+      case 'h1': out.push('# '+t);break;
+      case 'h2': out.push('## '+t);break;
+      case 'h3': out.push('### '+t);break;
+      case 'bullet': out.push(ind+'- '+t);break;
+      case 'num': out.push(ind+'1. '+t);break;
+      case 'todo': out.push(ind+'- ['+(b.checked?'x':' ')+'] '+t);break;
+      case 'quote': out.push('> '+t);break;
+      case 'callout': out.push('> **Note:** '+t);break;
+      case 'code': out.push('```\n'+t+'\n```');break;
+      case 'divider': out.push('---');break;
+      case 'image': out.push('!['+(t||'image')+']('+(b.src||'')+')');break;
+      default: out.push(t);
+    }
+    out.push('');
+  });
+  return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+function pageToMd(p){
+  if(!p)return '';
+  let md='# '+(p.title||'Untitled')+'\n\n';
+  if(isDb(p)){
+    const d=p.content||{},props=d.props||[];
+    md+='| '+props.map(x=>x.name).join(' | ')+' |\n';
+    md+='| '+props.map(()=>'---').join(' | ')+' |\n';
+    (d.rows||[]).forEach(r=>{
+      md+='| '+props.map(x=>String((r.cells||{})[x.id]==null?'':(r.cells||{})[x.id]).replace(/\|/g,'\\|')).join(' | ')+' |\n';
+    });
+  }else{
+    md+=blocksToMd(Array.isArray(p.content)?p.content:[]);
+  }
+  return md.trim()+'\n';
+}
+function exportPage(){
+  const p=curPage();
+  if(!p){toast('Open a page first');return;}
+  const md=pageToMd(p);
+  nxModal('Export - '+(p.title||'Untitled'),
+    '<textarea id="ex-t" class="nx-i" style="height:280px;font-family:var(--mono);font-size:12px;resize:vertical">'+esc(md)+'</textarea>',
+    '<button class="nx-b" onclick="downloadMd()">Download .md</button><span style="flex:1"></span>'
+    +'<button class="nx-b" onclick="nxClose()">Close</button>'
+    +'<button class="nx-b primary" onclick="copyMd()">Copy</button>');
+}
+function copyMd(){
+  const t=document.getElementById('ex-t');
+  if(!t)return;
+  t.select();
+  try{document.execCommand('copy');toast('Copied to clipboard');}catch(e){toast('Select the text and copy manually');}
+}
+function downloadMd(){
+  const p=curPage();if(!p)return;
+  const blob=new Blob([pageToMd(p)],{type:'text/markdown'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(p.title||'page').replace(/[^a-zA-Z0-9._\- ]/g,'_')+'.md';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400);
+}
+
+window.pickImage=pickImage;window.applyImageUrl=applyImageUrl;window.uploadImage=uploadImage;
+window.openSaveTemplate=openSaveTemplate;window.saveAsTemplate=saveAsTemplate;
+window.openTemplates=openTemplates;window.useTemplate=useTemplate;window.deleteTemplate=deleteTemplate;
+window.pgDragStart=pgDragStart;window.pgDragOver=pgDragOver;window.pgDragLeave=pgDragLeave;window.pgDrop=pgDrop;
+window.exportPage=exportPage;window.copyMd=copyMd;window.downloadMd=downloadMd;
+window.pageToMd=pageToMd;window.blocksToMd=blocksToMd;window.isDescendant=isDescendant;
+
+
+/* ======================================================================
+   PHASE 5
+   - Ctrl/Cmd+K quick switcher across pages AND database rows
+   - calendar view (from a date property) and gallery view
+   - toggle blocks: collapsible sections inside a document
+   ====================================================================== */
+
+/* ---------- quick switcher ---------- */
+let qsOpen=false, qsSel=0, qsHits=[];
+function qsSearch(term){
+  const q=String(term||'').trim().toLowerCase();
+  const out=[];
+  (S.pages||[]).forEach(p=>{
+    const title=(p.title||'Untitled');
+    if(!q||title.toLowerCase().includes(q))
+      out.push({kind:'page',id:p.id,icon:p.icon||(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'),label:title,sub:isDb(p)?'Database':'Page'});
+  });
+  if(q){
+    (S.pages||[]).forEach(p=>{
+      if(isDb(p)){
+        const d=p.content||{},first=(d.props||[])[0];
+        (d.rows||[]).forEach(r=>{
+          const vals=Object.keys(r.cells||{}).map(k=>String(r.cells[k]==null?'':r.cells[k]));
+          if(vals.some(v=>v.toLowerCase().includes(q))){
+            const title=first?String((r.cells||{})[first.id]||'Untitled row'):'Row';
+            out.push({kind:'row',id:p.id,rowId:r.id,icon:'\u25A6',label:title,sub:'in '+(p.title||'Untitled')});
+          }
+        });
+      }else{
+        (Array.isArray(p.content)?p.content:[]).forEach(b=>{
+          if(String(b.text||'').toLowerCase().includes(q)){
+            out.push({kind:'block',id:p.id,icon:'\u00b6',
+              label:String(b.text).slice(0,70),sub:'in '+(p.title||'Untitled')});
+          }
+        });
+      }
+    });
+  }
+  const seen=new Set();
+  return out.filter(h=>{
+    const k=h.kind+':'+h.id+':'+(h.rowId||'')+':'+h.label;
+    if(seen.has(k))return false;seen.add(k);return true;
+  }).slice(0,25);
+}
+function openQuickSwitch(){
+  qsOpen=true;qsSel=0;
+  const ov=document.createElement('div');
+  ov.id='qs-overlay';
+  ov.innerHTML='<div class="qs-box" onclick="event.stopPropagation()">'
+    +'<input id="qs-i" class="qs-i" placeholder="Jump to a page, or search every page and row..." oninput="qsDraw(this.value)">'
+    +'<div id="qs-list" class="qs-list"></div>'
+    +'<div class="qs-foot">Enter to open &middot; arrows to move &middot; Esc to close</div></div>';
+  ov.addEventListener('click',closeQuickSwitch);
+  document.body.appendChild(ov);
+  qsDraw('');
+  setTimeout(()=>{const i=document.getElementById('qs-i');if(i)i.focus();},30);
+}
+function closeQuickSwitch(){qsOpen=false;const e=document.getElementById('qs-overlay');if(e)e.remove();}
+function qsDraw(term){
+  qsHits=qsSearch(term);
+  if(qsSel>=qsHits.length)qsSel=Math.max(0,qsHits.length-1);
+  const l=document.getElementById('qs-list');
+  if(!l)return;
+  l.innerHTML=qsHits.map((h,i)=>
+    '<div class="qs-r'+(i===qsSel?' sel':'')+'" data-qi="'+i+'">'
+    +'<span class="qs-ic">'+esc(h.icon)+'</span>'
+    +'<span class="qs-l">'+esc(h.label)+'</span>'
+    +'<span class="qs-s">'+esc(h.sub)+'</span></div>').join('')
+    ||'<div class="qs-empty">Nothing found.</div>';
+}
+function qsGo(i){
+  const h=qsHits[i];
+  if(!h)return;
+  closeQuickSwitch();
+  openPage(h.id);
+  if(h.kind==='row'){S.rowEdit=h.rowId;setTimeout(()=>{try{renderDb();}catch(e){}},30);}
+}
+document.addEventListener('keydown',e=>{
+  const k=(e.key||'').toLowerCase();
+  if((e.metaKey||e.ctrlKey)&&k==='k'){e.preventDefault();if(qsOpen)closeQuickSwitch();else openQuickSwitch();return;}
+  if(!qsOpen)return;
+  if(e.key==='Escape'){e.preventDefault();closeQuickSwitch();return;}
+  if(e.key==='ArrowDown'){e.preventDefault();qsSel=Math.min(qsHits.length-1,qsSel+1);qsDraw(document.getElementById('qs-i').value);return;}
+  if(e.key==='ArrowUp'){e.preventDefault();qsSel=Math.max(0,qsSel-1);qsDraw(document.getElementById('qs-i').value);return;}
+  if(e.key==='Enter'){e.preventDefault();qsGo(qsSel);}
+},true);
+document.addEventListener('click',e=>{
+  const r=e.target.closest&&e.target.closest('[data-qi]');
+  if(r&&qsOpen)qsGo(Number(r.getAttribute('data-qi')));
+},true);
+
+/* ---------- calendar view ---------- */
+function monthMeta(ym){
+  const [y,m]=String(ym||'').split('-').map(Number);
+  const d=(y&&m)?new Date(y,m-1,1):new Date();
+  const year=d.getFullYear(),mon=d.getMonth();
+  const first=new Date(year,mon,1), last=new Date(year,mon+1,0);
+  return {year,mon,firstDow:first.getDay(),days:last.getDate(),
+          key:year+'-'+String(mon+1).padStart(2,'0'),
+          label:first.toLocaleDateString(undefined,{month:'long',year:'numeric'})};
+}
+function shiftMonth(delta){
+  const v=activeView();
+  const m=monthMeta(v.month);
+  const d=new Date(m.year,m.mon+delta,1);
+  v.month=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  markDirty();renderDb();
+}
+function dbCalendarHTML(d,v){
+  const dp=dbProp(v.dateProp)||(d.props||[]).find(p=>p.type==='date');
+  if(!dp)return '<div class="dbempty" style="padding:30px">A calendar needs a Date property. Add one, then set it on this view.</div>';
+  const first=(d.props||[])[0];
+  const m=monthMeta(v.month);
+  const rows=visibleRows(d);
+  const byDay={};
+  rows.forEach(r=>{
+    const raw=String((r.cells||{})[dp.id]||'').slice(0,10);
+    if(!raw)return;
+    if(raw.slice(0,7)!==m.key)return;
+    const day=Number(raw.slice(8,10));
+    (byDay[day]=byDay[day]||[]).push(r);
+  });
+  const dows=['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+    .map(x=>'<div class="cal-dow">'+x+'</div>').join('');
+  let cells='';
+  for(let i=0;i<m.firstDow;i++)cells+='<div class="cal-c cal-out"></div>';
+  for(let day=1;day<=m.days;day++){
+    const items=(byDay[day]||[]).map(r=>{
+      const t=first?String((r.cells||{})[first.id]||'Untitled'):'Row';
+      return '<div class="cal-e" onclick="openRow(\''+r.id+'\')" title="'+esc(t)+'">'+esc(t)+'</div>';
+    }).join('');
+    cells+='<div class="cal-c"><div class="cal-n">'+day+'</div>'+items+'</div>';
+  }
+  const unscheduled=rows.filter(r=>!String((r.cells||{})[dp.id]||'').trim()).length;
+  return '<div class="cal-bar">'
+      +'<button class="nx-b sm" onclick="shiftMonth(-1)">&#8592;</button>'
+      +'<span class="cal-t">'+esc(m.label)+'</span>'
+      +'<button class="nx-b sm" onclick="shiftMonth(1)">&#8594;</button>'
+      +'<span class="t3xs" style="margin-left:auto;color:var(--text3);font-size:11px">by '+esc(dp.name)
+      +(unscheduled?(' \u00b7 '+unscheduled+' with no date'):'')+'</span></div>'
+    +'<div class="cal-grid">'+dows+cells+'</div>';
+}
+
+/* ---------- gallery view ---------- */
+function dbGalleryHTML(d,v){
+  const rows=visibleRows(d);
+  if(!rows.length)return '<div class="dbempty" style="padding:26px">No rows'+(S.dbq?' match that filter':'')+'.</div>';
+  const first=(d.props||[])[0];
+  const imgProp=dbProp(v.imgProp)||(d.props||[]).find(p=>p.type==='url');
+  const meta=(d.props||[]).filter(p=>p!==first&&(!imgProp||p.id!==imgProp.id)).slice(0,3);
+  return '<div class="gal">'+rows.map(r=>{
+    const title=first?String((r.cells||{})[first.id]||'Untitled'):'Row';
+    const src=imgProp?String((r.cells||{})[imgProp.id]||'').trim():'';
+    const chips=meta.map(p=>{
+      const val=String((r.cells||{})[p.id]==null?'':(r.cells||{})[p.id]);
+      if(!val||val==='false')return '';
+      if(p.type==='select')return '<span class="chip" style="background:'+selColor(p,val)+'22;color:'+selColor(p,val)+'">'+esc(val)+'</span>';
+      return '<span class="gal-m">'+esc(p.name)+': '+esc(val)+'</span>';
+    }).join('');
+    return '<div class="gal-c" onclick="openRow(\''+r.id+'\')">'
+      +(src?('<div class="gal-i" style="background-image:url(\''+esc(src).replace(/'/g,'%27')+'\')"></div>')
+           :'<div class="gal-i gal-none">'+esc((title||'?').slice(0,1).toUpperCase())+'</div>')
+      +'<div class="gal-b"><div class="gal-t">'+esc(title)+'</div>'+chips+'</div></div>';
+  }).join('')+'</div>';
+}
+
+/* ---------- toggle blocks ---------- */
+function toggleHidden(b){
+  // A closed toggle hides every following block indented deeper than it,
+  // stopping at the first block back at its own level or shallower.
+  const hidden={};
+  (b||[]).forEach((bl,i)=>{
+    if(bl.type!=='toggle'||bl.open)return;
+    for(let j=i+1;j<b.length;j++){
+      if((b[j].indent||0)<=(bl.indent||0))break;
+      hidden[j]=true;
+    }
+  });
+  return hidden;
+}
+function toggleBlock(bid){
+  const b=blocks(),i=blockIndex(bid);
+  if(i<0)return;
+  b[i].open=!b[i].open;
+  renderBlocks();markDirty();
+}
+function toggleCount(bid){
+  const b=blocks(),i=blockIndex(bid);
+  if(i<0)return 0;
+  let n=0;
+  for(let j=i+1;j<b.length;j++){
+    if((b[j].indent||0)<=(b[i].indent||0))break;
+    n++;
+  }
+  return n;
+}
+
+window.openQuickSwitch=openQuickSwitch;window.closeQuickSwitch=closeQuickSwitch;
+window.qsDraw=qsDraw;window.qsGo=qsGo;window.qsSearch=qsSearch;
+window.dbCalendarHTML=dbCalendarHTML;window.dbGalleryHTML=dbGalleryHTML;window.shiftMonth=shiftMonth;
+window.monthMeta=monthMeta;window.toggleHidden=toggleHidden;window.toggleBlock=toggleBlock;window.toggleCount=toggleCount;
 
 </script>
 </body>
