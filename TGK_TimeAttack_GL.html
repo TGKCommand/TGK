@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TGK Time Attack GL - Prototype 0.2</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#0d0f11;font-family:monospace}
+  #hud{position:fixed;left:14px;bottom:12px;color:#fff;font-size:15px;letter-spacing:.05em;
+       text-shadow:0 1px 3px rgba(0,0,0,.6);z-index:5}
+  #tag{position:fixed;right:14px;top:10px;color:#2ABFAA;font-size:10px;letter-spacing:.14em;z-index:5}
+  #keys{position:fixed;left:14px;top:10px;color:#9aa0a6;font-size:10px;letter-spacing:.08em;z-index:5}
+</style>
+</head>
+<body>
+<div id="tag">TGK TIME ATTACK GL &middot; PROTOTYPE 0.9 &middot; SAME PHYSICS CORE</div>
+<div id="keys">W/S drive &middot; A/D steer &middot; SPACE handbrake &middot; 1-4 pick car</div>
+<div id="hud"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+/* ============================================================================
+   TGK TIME ATTACK - core plumbing
+   Self-contained: declares every global it uses. Safe standalone or in an
+   iframe inside Command Center.
+   ========================================================================== */
+var TA_VER = 'v3.10';
+
+var TGK_SB_URL = 'https://piamamighqiielfztgic.supabase.co';
+var TGK_SB_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
+/* Everything competitive is scoped to the UTC day: a new course every day,
+   a fresh board every day, ghosts and personal bests that belong to today's
+   layout and nothing else. */
+function taDayKey() { return new Date().toISOString().slice(0, 10).replace(/-/g, ''); }
+var TA_BOARD_ID = 'arc_ta_daily_' + taDayKey();
+
+/* ---- game state globals (declared, unlike the old build) ---- */
+var _taState = 'boot';      /* boot | grid | running | over */
+var _taRAF = null;
+var _taCloudOk = false;
+
+/* --------------------------------------------------------------------------
+   Supabase
+   -------------------------------------------------------------------------- */
+async function sbFetch(p, o) {
+  var r = await fetch(TGK_SB_URL + p, Object.assign({
+    headers: {
+      'apikey': TGK_SB_KEY,
+      'Authorization': 'Bearer ' + TGK_SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }
+  }, o));
+  if (!r.ok) { var e = await r.text(); throw new Error(e); }
+  var t = await r.text();
+  return t ? JSON.parse(t) : null;
+}
+async function sbGet(id) {
+  try {
+    var r = await sbFetch('/rest/v1/workspace?id=eq.' + encodeURIComponent(id) + '&select=data&limit=1');
+    return (r && r[0]) ? r[0].data : null;
+  } catch (e) { return null; }
+}
+async function sbSet(id, data) {
+  try {
+    await sbFetch('/rest/v1/workspace', {
+      method: 'POST',
+      headers: {
+        'apikey': TGK_SB_KEY,
+        'Authorization': 'Bearer ' + TGK_SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ id: id, data: data, updated_at: new Date().toISOString() })
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+/* These two were referenced but never defined in the old arcade build. */
+async function sbLoadScores() {
+  var d = await sbGet(TA_BOARD_ID);
+  if (!d) return [];
+  _taCloudOk = true;
+  return Array.isArray(d) ? d : (d.scores || []);
+}
+async function sbSaveScores(arr) {
+  var ok = await sbSet(TA_BOARD_ID, { scores: arr.slice(0, 40) });
+  _taCloudOk = _taCloudOk || ok;
+  return ok;
+}
+
+/* --------------------------------------------------------------------------
+   Command Center bridge (all guarded - works standalone too)
+   -------------------------------------------------------------------------- */
+function taInFrame() { return !!(window.parent && window.parent !== window); }
+function bridgePost(msg) { if (taInFrame()) { try { window.parent.postMessage(msg, '*'); } catch (e) {} } }
+function bridgeToast(m, ok) { bridgePost({ source: 'TGK_MODULE', type: 'TOAST', value: { msg: m, ok: ok !== false } }); }
+function bridgeSet(k, v) { bridgePost({ source: 'TGK_MODULE', type: 'BRIDGE_SET', key: k, value: v }); }
+var _bridgeState = {};
+window.addEventListener('message', function (e) {
+  if (e.data && e.data.source === 'TGK_PARENT' && e.data.type === 'BRIDGE_STATE') {
+    _bridgeState = e.data.state || {};
+    if (typeof onBridgeUpdate === 'function') onBridgeUpdate(_bridgeState);
+  }
+});
+function onBridgeUpdate(s) {}
+setTimeout(function () { bridgePost({ source: 'TGK_MODULE', type: 'BRIDGE_GET' }); }, 300);
+
+/* --------------------------------------------------------------------------
+   Leaderboard: lowest official time wins
+   -------------------------------------------------------------------------- */
+function taGetScores() {
+  try { return JSON.parse(localStorage.getItem('ta_scores_' + taDayKey()) || '[]'); } catch (e) { return []; }
+}
+function taSetScores(arr) {
+  try { localStorage.setItem('ta_scores_' + taDayKey(), JSON.stringify(arr.slice(0, 40))); } catch (e) {}
+}
+function taSortScores(arr) {
+  arr.sort(function (a, b) { return a.ms - b.ms; });
+  var seen = {}, out = [];
+  for (var i = 0; i < arr.length; i++) {
+    var k = arr[i].name + '|' + arr[i].ms;
+    if (seen[k]) continue;
+    seen[k] = 1; out.push(arr[i]);
+  }
+  return out.slice(0, 40);
+}
+async function taSyncBoard() {
+  try {
+    var cloud = await sbLoadScores();
+    var merged = taSortScores(taGetScores().concat(cloud || []));
+    taSetScores(merged);
+    return merged;
+  } catch (e) { return taGetScores(); }
+}
+async function taSubmitScore(entry) {
+  var merged = taSortScores(taGetScores().concat([entry]));
+  taSetScores(merged);
+  try {
+    var cloud = await sbLoadScores();
+    var all = taSortScores((cloud || []).concat(merged));
+    taSetScores(all);
+    await sbSaveScores(all);
+    return all;
+  } catch (e) { return merged; }
+}
+/* ---- RIVAL GHOST: the day's fastest lap, shared through the same
+   key-value store as the board so the whole team races the leader ---- */
+function taGhostBoardId() { return 'arc_ta_ghost_' + taDayKey(); }
+async function sbSaveRivalGhost(g) {
+  try { return await sbSet(taGhostBoardId(), g); } catch (e) { return false; }
+}
+async function sbLoadRivalGhost() {
+  try {
+    var d = await sbGet(taGhostBoardId());
+    return (d && d.trace && d.trace.length > 10) ? d : null;
+  } catch (e) { return null; }
+}
+
+/* ---- SEASON: aggregate each day's podium across the current month.
+   Points 10 / 8 / 6, one score per driver per day. ---- */
+function taSeasonDayKeys() {
+  var now = new Date(), out = [];
+  var y = now.getUTCFullYear(), mo = now.getUTCMonth();
+  for (var d = 1; d <= now.getUTCDate(); d++) {
+    out.push('' + y + String(mo + 1).padStart(2, '0') + String(d).padStart(2, '0'));
+  }
+  return out;
+}
+async function taLoadSeason() {
+  var days = taSeasonDayKeys();
+  var gets = days.map(function (dk) { return sbGet('arc_ta_daily_' + dk); });
+  var all = await Promise.all(gets);
+  var pts = {}, wins = {}, played = {};
+  var PTS = [10, 8, 6];
+  for (var i = 0; i < all.length; i++) {
+    var d = all[i];
+    var scores = d ? (Array.isArray(d) ? d : (d.scores || [])) : [];
+    var seen = {}, rank = 0;
+    scores.sort(function (a, b) { return a.ms - b.ms; });
+    for (var j = 0; j < scores.length && rank < 3; j++) {
+      var nm = (scores[j].name || '?').toUpperCase();
+      if (seen[nm]) continue;
+      seen[nm] = 1;
+      pts[nm] = (pts[nm] || 0) + PTS[rank];
+      if (rank === 0) wins[nm] = (wins[nm] || 0) + 1;
+      played[nm] = (played[nm] || 0) + 1;
+      rank++;
+    }
+  }
+  var rows = [];
+  for (var k in pts) rows.push({ name: k, pts: pts[k], wins: wins[k] || 0, podiums: played[k] || 0 });
+  rows.sort(function (a, b) { return b.pts - a.pts || b.wins - a.wins; });
+  return { rows: rows, days: days.length };
+}
+
+function taPersonalBest() {
+  var s = taGetScores(), name = (localStorage.getItem('ta_driver') || '').toUpperCase();
+  var best = null;
+  for (var i = 0; i < s.length; i++) {
+    if (name && s[i].name !== name) continue;
+    if (!best || s[i].ms < best.ms) best = s[i];
+  }
+  return best;
+}
+
+/* ---- ghost trace: [t_ms, worldX, worldZ, yaw] samples of the best run ---- */
+function taSaveGhost(trace, ms) {
+  try {
+    var cur = taLoadGhost();
+    if (cur && cur.ms <= ms) return;
+    localStorage.setItem('ta_ghost_' + taDayKey(), JSON.stringify({ ms: ms, t: trace }));
+  } catch (e) {}
+}
+function taLoadGhost() {
+  try {
+    var g = JSON.parse(localStorage.getItem('ta_ghost_' + taDayKey()) || 'null');
+    return (g && g.t && g.t.length > 4) ? g : null;
+  } catch (e) { return null; }
+}
+
+/* --------------------------------------------------------------------------
+   Format + math helpers
+   -------------------------------------------------------------------------- */
+function taFmt(ms) {
+  if (ms == null || !isFinite(ms)) return '--:--.--';
+  var neg = ms < 0; ms = Math.abs(ms);
+  var m = Math.floor(ms / 60000);
+  var s = Math.floor((ms % 60000) / 1000);
+  var h = Math.floor((ms % 1000) / 10);
+  return (neg ? '-' : '') + m + ':' + (s < 10 ? '0' : '') + s + '.' + (h < 10 ? '0' : '') + h;
+}
+function taFmtDelta(ms) {
+  var sign = ms >= 0 ? '+' : '-';
+  return sign + (Math.abs(ms) / 1000).toFixed(2);
+}
+function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+function taRand(seed) {
+  /* mulberry32 - deterministic so every driver runs the same course */
+  var a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    var t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function taEl(id) { return document.getElementById(id); }
+
+/* roundRect polyfill guard for older engines */
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    if (typeof r === 'number') r = [r, r, r, r];
+    if (!r) r = [0, 0, 0, 0];
+    var tl = r[0] || 0, tr = r[1] || 0, br = r[2] || 0, bl = r[3] || 0;
+    this.moveTo(x + tl, y);
+    this.lineTo(x + w - tr, y); this.quadraticCurveTo(x + w, y, x + w, y + tr);
+    this.lineTo(x + w, y + h - br); this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+    this.lineTo(x + bl, y + h); this.quadraticCurveTo(x, y + h, x, y + h - bl);
+    this.lineTo(x, y + tl); this.quadraticCurveTo(x, y, x + tl, y);
+    return this;
+  };
+}
+
+/* ============================================================================
+   COURSE - a deterministic autocross layout on a flat tarmac lot.
+
+   The old build faked depth by accumulating a per-segment "curve" offset. That
+   caps out around 90 degrees of turn, so no hairpins. Here the centreline is
+   real 2D geometry: heading is integrated from curvature and every point has
+   true world (x,z), which the camera then projects properly.
+   ========================================================================== */
+var SEG_LEN    = 2.0;    /* m per centreline segment */
+var COURSE_HALF= 6.0;    /* m - half width of the taped course */
+var LOT_HALF   = 34.0;   /* m - half width of the tarmac lot */
+var CONE_H     = 0.46;   /* m - SCCA 18in cone */
+var CONE_R     = 0.18;
+
+var course = null;
+
+function taCourseBuild(seed) {
+  var rnd = taRand(seed || 84);
+  var segs = [];          /* centreline */
+  var cones = [];         /* every cone in the world */
+  var gates = [];         /* ordered scoring gates */
+  var decals = [];        /* lot markings, stains, sealant */
+  var scenery = [];       /* trackside objects */
+
+  var x = 0, z = 0, th = 0;     /* world position + heading (rad, 0 = +Z) */
+
+  function push(kappa) {
+    segs.push({ i: segs.length, x: x, z: z, th: th, k: kappa, s: segs.length * SEG_LEN, sector: 0, skid: null });
+    th += kappa * SEG_LEN;
+    x += Math.sin(th) * SEG_LEN;
+    z += Math.cos(th) * SEG_LEN;
+  }
+  function straight(len) { var n = Math.round(len / SEG_LEN); for (var i = 0; i < n; i++) push(0); }
+  /* The eased profile below averages 0.75 of peak curvature, so a corner that
+     turns through `deg` needs this much arc. Specifying length instead of angle
+     is how you accidentally build a 300 degree donut. */
+  function turn(deg, radius, dir) { bend(Math.abs(deg) * Math.PI / 180 * radius / 0.75, radius, dir); }
+  function bend(len, radius, dir) {
+    /* eased entry and exit so the line is drivable */
+    var n = Math.round(len / SEG_LEN), kMax = dir / radius;
+    for (var i = 0; i < n; i++) {
+      var t = i / (n - 1 || 1), e;
+      if (t < 0.25) e = smoothstep(t / 0.25);
+      else if (t > 0.75) e = smoothstep((1 - t) / 0.25);
+      else e = 1;
+      push(kMax * e);
+    }
+  }
+
+  /* ---- cone helpers: place relative to the current end of the centreline -- */
+  function segAt(idx) { return segs[clamp(idx, 0, segs.length - 1)]; }
+  function worldAt(idx, lateral) {
+    var s = segAt(idx);
+    return { x: s.x + Math.cos(s.th) * lateral, z: s.z - Math.sin(s.th) * lateral };
+  }
+  function addCone(idx, lateral, kind) {
+    var p = worldAt(idx, lateral);
+    cones.push({
+      x: p.x, z: p.z, x0: p.x, z0: p.z, y: 0, seg: clamp(idx, 0, segs.length - 1), lat: lateral,
+      kind: kind || 'std', down: false, vx: 0, vz: 0, vy: 0, spin: 0, rot: rnd() * 6.28,
+      hit: false, tumble: 0
+    });
+    return cones[cones.length - 1];
+  }
+  function addGate(idx, halfGap, label) {
+    var l = addCone(idx, -halfGap, 'gate');
+    var r = addCone(idx, halfGap, 'gate');
+    var s = segAt(idx);
+    gates.push({
+      n: gates.length, seg: s.i, x: s.x, z: s.z, th: s.th, half: halfGap,
+      L: l, R: r, done: false, missed: false, flash: 0, label: label || ''
+    });
+    /* Lying pointer cones per SCCA convention: on their sides just outside
+       each standing gate cone, aimed at the side you drive through */
+    addCone(idx - 3, -halfGap - 0.9, 'pointer');
+    var pc1 = cones[cones.length - 1]; pc1.pd = 1; pc1.pth = segAt(idx - 3).th;
+    addCone(idx - 3, halfGap + 0.9, 'pointer');
+    var pc2 = cones[cones.length - 1]; pc2.pd = -1; pc2.pth = segAt(idx - 3).th;
+  }
+  function slalom(count, spacing, side) {
+    /* single cones on alternating sides - the real autocross weave */
+    var start = segs.length;
+    for (var i = 0; i < count; i++) {
+      var idx = start + Math.round(i * spacing / SEG_LEN);
+      var sgn = ((i % 2 === 0) ? 1 : -1) * side;
+      slalomPlan.push({ idx: idx, sgn: sgn });
+    }
+  }
+  var slalomPlan = [];
+
+  /* ======================= LAYOUT =======================
+     Roughly 1.3 km, about 60-70 s for a clean run. Built as
+     four sectors so the timing tower has real splits.
+     ===================================================== */
+  var secMark = [];
+
+  /* ======================= DAILY LAYOUT GENERATOR =======================
+     A fresh course every day from the date seed, built from the same grammar
+     as a real autocross: launch straight, sweepers, a slalom, a chicane, two
+     hairpins, a technical box, and a run to the lights. Direction choice is
+     biased against the accumulated turn so layouts wander instead of
+     spiralling, and every candidate is REJECTED if any two non-neighbouring
+     points of the centreline come within 15 m - a course that crosses itself
+     breaks off-course logic and simply is not a legal autocross.
+     ===================================================================== */
+  var cum = 0;
+  function pick(lo, hi) { return lo + rnd() * (hi - lo); }
+  function dirPick() {
+    var bias = clamp(cum / 520, -0.38, 0.38);
+    var d = (rnd() < 0.5 - bias) ? 1 : -1;
+    return d;
+  }
+  function bendR(degLo, degHi, rLo, rHi) {
+    var deg = pick(degLo, degHi), d = dirPick();
+    cum += d * deg;
+    turn(deg, pick(rLo, rHi), d);
+  }
+  function genLayout() {
+    cum = 0;
+    /* Sector 1: launch, fast sweeper, the slalom */
+    straight(pick(58, 88));
+    bendR(55, 85, 34, 48);
+    straight(pick(20, 30));
+    slalom(6 + Math.floor(rnd() * 3), pick(20, 24), rnd() > 0.5 ? 1 : -1);
+    straight(pick(120, 165));
+    bendR(45, 65, 26, 34);
+    secMark.push(segs.length);
+    /* Sector 2: chicane, the long hairpin */
+    straight(pick(20, 30));
+    var cd = dirPick(), cdeg = pick(40, 55), crad = pick(20, 26);
+    turn(cdeg, crad, cd); turn(cdeg, crad, -cd);
+    straight(pick(24, 40));
+    bendR(150, 172, 12, 14);
+    straight(pick(30, 50));
+    bendR(50, 70, 22, 30);
+    secMark.push(segs.length);
+    /* Sector 3: big sweeper into a tightening corner */
+    straight(pick(24, 36));
+    bendR(80, 100, 45, 60);
+    straight(pick(30, 50));
+    bendR(60, 80, 30, 38);
+    straight(pick(28, 44));
+    bendR(90, 110, 16, 20);
+    straight(pick(40, 60));
+    secMark.push(segs.length);
+    /* Sector 4: technical box, tight hairpin, run to the lights */
+    bendR(50, 70, 18, 24);
+    straight(pick(18, 28));
+    bendR(162, 178, 11, 13);
+    straight(pick(24, 36));
+    bendR(45, 65, 22, 28);
+    straight(pick(20, 34));
+    bendR(70, 90, 26, 34);
+    straight(pick(80, 110));
+    secMark.push(segs.length);
+  }
+  function layoutValid() {
+    /* pairwise clearance on the centreline, skipping path-neighbours */
+    for (var i = 0; i < segs.length; i += 2) {
+      for (var j = i + 26; j < segs.length; j += 2) {
+        var dx = segs[i].x - segs[j].x, dz = segs[i].z - segs[j].z;
+        if (dx * dx + dz * dz < 15 * 15) return false;
+      }
+    }
+    return segs.length > 380 && segs.length < 820;
+  }
+  var attempt = 0;
+  for (attempt = 0; attempt < 60; attempt++) {
+    segs.length = 0; slalomPlan.length = 0; secMark.length = 0;
+    x = 0; z = 0; th = 0;
+    rnd = taRand((seed + attempt * 7919) >>> 0);
+    genLayout();
+    if (layoutValid()) break;
+  }
+  /* reseed so decal/scenery scatter is deterministic per accepted layout */
+  rnd = taRand(((seed + attempt * 7919) ^ 0x5bd1e995) >>> 0);
+
+  /* ---- sector tags ---- */
+  for (var i = 0; i < segs.length; i++) {
+    var sc = 0;
+    for (var k = 0; k < secMark.length; k++) if (i >= secMark[k]) sc = k + 1;
+    segs[i].sector = clamp(sc, 0, 3);
+  }
+
+  /* ---- lay the cones now that geometry exists ---- */
+  for (var sp = 0; sp < slalomPlan.length; sp++) {
+    var c = addCone(slalomPlan[sp].idx, slalomPlan[sp].sgn * 0.0, 'slalom');
+    c.slalomSide = slalomPlan[sp].sgn;
+    c.slalomN = sp;
+  }
+
+  /* gates through the interesting bits, plus start/finish */
+  addGate(6, 5.0, 'START');
+  addGate(Math.round(secMark[0] * 0.55), 3.2);
+  addGate(secMark[0] - 6, 3.6);
+  addGate(Math.round((secMark[0] + secMark[1]) / 2), 3.0);
+  addGate(secMark[1] - 8, 3.4);
+  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.35), 3.6);
+  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.75), 3.0);
+  addGate(secMark[2] - 10, 3.2);
+  addGate(Math.round(secMark[2] + (secMark[3] - secMark[2]) * 0.4), 2.9);
+  addGate(Math.round(secMark[3] - 60), 3.4);
+  addGate(segs.length - 8, 5.0, 'FINISH');
+  gates.sort(function (a, b) { return a.seg - b.seg; });
+  for (var g = 0; g < gates.length; g++) gates[g].n = g;
+
+  /* boundary cones every 14 m so the course edge reads at a glance */
+  for (var b = 8; b < segs.length - 4; b += 7) {
+    addCone(b, -COURSE_HALF, 'edge');
+    addCone(b, COURSE_HALF, 'edge');
+  }
+
+  /* ---- parking lot decals: faded stall lines give real speed cues ---- */
+  var minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+  for (var q = 0; q < segs.length; q++) {
+    if (segs[q].x < minX) minX = segs[q].x;
+    if (segs[q].x > maxX) maxX = segs[q].x;
+    if (segs[q].z < minZ) minZ = segs[q].z;
+    if (segs[q].z > maxZ) maxZ = segs[q].z;
+  }
+  var padX = 30, padZ = 30;
+  var lot = { x0: minX - padX, x1: maxX + padX, z0: minZ - padZ, z1: maxZ + padZ };
+
+  /* rows of stalls across the whole lot */
+  var rowGap = 17, stallGap = 2.9, stallLen = 5.2;
+  for (var rz = Math.ceil(lot.z0 / rowGap) * rowGap; rz < lot.z1; rz += rowGap) {
+    for (var sx = Math.ceil(lot.x0 / stallGap) * stallGap; sx < lot.x1; sx += stallGap) {
+      decals.push({ t: 'stall', x: sx, z: rz, len: stallLen, w: 0.11, a: 0.14 + rnd() * 0.10 });
+    }
+    decals.push({ t: 'aisle', x: (lot.x0 + lot.x1) / 2, z: rz + stallLen + 0.6, len: lot.x1 - lot.x0, w: 0.10, a: 0.06 });
+  }
+  /* sealant snakes + oil stains */
+  for (var sc2 = 0; sc2 < 340; sc2++) {
+    decals.push({
+      t: 'seal', x: lot.x0 + rnd() * (lot.x1 - lot.x0), z: lot.z0 + rnd() * (lot.z1 - lot.z0),
+      len: 3 + rnd() * 12, w: 0.16 + rnd() * 0.12, rot: rnd() * 3.14, a: 0.30 + rnd() * 0.25
+    });
+  }
+  for (var oi = 0; oi < 120; oi++) {
+    decals.push({
+      t: 'stain', x: lot.x0 + rnd() * (lot.x1 - lot.x0), z: lot.z0 + rnd() * (lot.z1 - lot.z0),
+      len: 1.2 + rnd() * 3.2, w: 1.0 + rnd() * 2.4, a: 0.12 + rnd() * 0.14
+    });
+  }
+
+  /* Nothing may sit on or near the racing surface. The course folds back on
+     itself, so an offset from ONE segment can still land on top of ANOTHER -
+     every placement is checked against the whole centreline. */
+  function clearOfCourse(x, z, d) {
+    var dd = d * d;
+    for (var q = 0; q < segs.length; q += 3) {
+      var dx = segs[q].x - x, dz = segs[q].z - z;
+      if (dx * dx + dz * dz < dd) return false;
+    }
+    return true;
+  }
+
+  /* ---- trackside: light poles, trailers, banners, spectators ---- */
+  for (var p = 0; p < segs.length; p += 40) {
+    var sidePole = (p / 40) % 2 === 0 ? 1 : -1;
+    var wp = worldAt(p, sidePole * (COURSE_HALF + 16 + rnd() * 8));
+    if (clearOfCourse(wp.x, wp.z, 11)) scenery.push({ t: 'pole', x: wp.x, z: wp.z, h: 11 + rnd() * 2 });
+  }
+  for (var t2 = 0; t2 < 26; t2++) {
+    for (var att = 0; att < 8; att++) {
+      var seg2 = Math.floor(rnd() * segs.length);
+      var lat2 = (rnd() > 0.5 ? 1 : -1) * (COURSE_HALF + 10 + rnd() * 18);
+      var wp2 = worldAt(seg2, lat2);
+      if (!clearOfCourse(wp2.x, wp2.z, 13)) continue;
+      var kinds = ['trailer', 'tent', 'crowd', 'crowd', 'banner', 'stack'];
+      scenery.push({ t: kinds[Math.floor(rnd() * kinds.length)], x: wp2.x, z: wp2.z, r: rnd(), th: segAt(seg2).th });
+      break;
+    }
+  }
+  /* warehouse rows outside the paved area: this venue belongs to somebody */
+  for (var sh = 0; sh < 5; sh++) {
+    scenery.push({ t: 'shed', x: lot.x0 - 30 - rnd() * 10, z: lot.z0 + (sh + 0.5) * (lot.z1 - lot.z0) / 5 + rnd() * 6, w: 26 + rnd() * 10, h: 8 + rnd() * 2 });
+  }
+  for (var sh2 = 0; sh2 < 4; sh2++) {
+    scenery.push({ t: 'shed', x: lot.x0 + (sh2 + 0.5) * (lot.x1 - lot.x0) / 4 + rnd() * 8, z: lot.z1 + 36 + rnd() * 12, w: 30 + rnd() * 12, h: 9 + rnd() * 2 });
+  }
+
+  /* treeline ring sized from the actual course footprint, and every tree is
+     still clearance-checked - a ring radius alone put trees on the track */
+  var cxm = (minX + maxX) / 2, czm = (minZ + maxZ) / 2;
+  var ringR = Math.hypot(maxX - minX, maxZ - minZ) / 2 + 36;
+  for (var tr = 0; tr < 260; tr++) {
+    var ang = rnd() * Math.PI * 2, rad = ringR + rnd() * 130;
+    var tx = cxm + Math.cos(ang) * rad, tz = czm + Math.sin(ang) * rad;
+    if (!clearOfCourse(tx, tz, 16)) continue;
+    scenery.push({ t: 'tree', x: tx, z: tz, h: 9 + rnd() * 9, w: 4 + rnd() * 5, r: rnd() });
+  }
+
+  /* Big tonal patches across the whole apron - resurfaced sections, faded
+     sealant fields, sun-bleached areas. Uniform tarmac to the horizon is the
+     single biggest tell that a ground plane is fake. */
+  for (var tp = 0; tp < 64; tp++) {
+    var light = rnd() > 0.5;
+    decals.push({
+      t: light ? 'tonel' : 'toned',
+      x: lot.x0 + rnd() * (lot.x1 - lot.x0), z: lot.z0 + rnd() * (lot.z1 - lot.z0),
+      len: 8 + rnd() * 9, w: 6 + rnd() * 8, rot: (rnd() - 0.5) * 0.3,
+      a: 0.035 + rnd() * 0.05
+    });
+  }
+  /* the venue is an airfield apron: a faded dashed runway centreline runs
+     across the far side of the lot */
+  var rlz = lot.z0 + (lot.z1 - lot.z0) * 0.82;
+  for (var rl = 0; rl < 22; rl++) {
+    decals.push({ t: 'paint', x: lot.x0 + 6 + rl * ((lot.x1 - lot.x0 - 12) / 22), z: rlz, len: (lot.x1 - lot.x0 - 12) / 22 * 0.55, w: 0.9, rot: 0, a: 0.16 });
+  }
+
+  /* painted start line and staging box, chalked like a real event */
+  var sg0 = segs[0];
+  decals.push({ t: 'paint', x: sg0.x, z: sg0.z, len: COURSE_HALF * 2 + 1.2, w: 0.45, rot: Math.PI / 2 - sg0.th, a: 0.62 });
+  decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 5.4, z: sg0.z - Math.cos(sg0.th) * 5.4, len: COURSE_HALF * 2 + 1.2, w: 0.16, rot: Math.PI / 2 - sg0.th, a: 0.40 });
+  decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 2.7 + Math.cos(sg0.th) * 2.2, z: sg0.z - Math.cos(sg0.th) * 2.7 - Math.sin(sg0.th) * 2.2, len: 5.4, w: 0.14, rot: -sg0.th, a: 0.40 });
+  decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 2.7 - Math.cos(sg0.th) * 2.2, z: sg0.z - Math.cos(sg0.th) * 2.7 + Math.sin(sg0.th) * 2.2, len: 5.4, w: 0.14, rot: -sg0.th, a: 0.40 });
+
+  /* start gantry sits on the start gate */
+  var g0 = gates[0];
+  scenery.push({ t: 'gantry', x: g0.x, z: g0.z, th: g0.th });
+
+  taBuildLine(segs, cones);
+
+  course = {
+    segs: segs, cones: cones, gates: gates, decals: decals, scenery: scenery, lot: lot,
+    len: segs.length * SEG_LEN, secMark: secMark, seed: seed || 84,
+    startTh: segs[0].th, startX: segs[0].x, startZ: segs[0].z
+  };
+  taCourseIndex();
+  return course;
+}
+
+/* --------------------------------------------------------------------------
+   Racing line: a lateral offset per segment.
+
+   Corner offsets come from curvature (smoothing an apex bias naturally produces
+   out-in-out), slalom cones are hard constraints since they sit on the
+   centreline and have to be passed on a given side, then the whole thing is
+   relaxed so it is actually a line and not a zigzag.
+   -------------------------------------------------------------------------- */
+function taBuildLine(segs, cones) {
+  var n = segs.length, line = new Array(n), fixed = new Array(n), i;
+  var LIM = COURSE_HALF - 1.5;
+
+  for (i = 0; i < n; i++) {
+    line[i] = clamp(-Math.sign(segs[i].k) * Math.abs(segs[i].k) * 62, -LIM, LIM);
+    fixed[i] = 0;
+  }
+  /* slalom cones are non-negotiable */
+  for (i = 0; i < cones.length; i++) {
+    var c = cones[i];
+    if (c.kind !== 'slalom') continue;
+    var at = c.seg;
+    for (var d = -2; d <= 2; d++) {
+      var j = clamp(at + d, 0, n - 1);
+      line[j] = c.slalomSide * 2.5;
+      fixed[j] = 1;
+    }
+  }
+  for (var pass = 0; pass < 220; pass++) {
+    var prev = line.slice();
+    for (i = 1; i < n - 1; i++) {
+      if (fixed[i]) continue;
+      line[i] = clamp((prev[i - 1] + prev[i + 1] + prev[i] * 0.7) / 2.7, -LIM, LIM);
+    }
+  }
+  for (i = 0; i < n; i++) segs[i].line = line[i];
+
+  /* Curvature of the line itself, from the circle through three consecutive
+     points. This is what actually limits speed - the centreline is dead
+     straight through the slalom while the line through it is not. */
+  var px = new Array(n), pz = new Array(n);
+  for (i = 0; i < n; i++) {
+    px[i] = segs[i].x + Math.cos(segs[i].th) * line[i];
+    pz[i] = segs[i].z - Math.sin(segs[i].th) * line[i];
+  }
+  var STEP = 3;
+  for (i = 0; i < n; i++) {
+    var a = clamp(i - STEP, 0, n - 1), b = i, c2 = clamp(i + STEP, 0, n - 1);
+    var ax = px[a], az = pz[a], bx = px[b], bz = pz[b], cx2 = px[c2], cz2 = pz[c2];
+    var d1 = Math.hypot(bx - ax, bz - az), d2 = Math.hypot(cx2 - bx, cz2 - bz), d3 = Math.hypot(cx2 - ax, cz2 - az);
+    var cross = (bx - ax) * (cz2 - az) - (bz - az) * (cx2 - ax);
+    var den = d1 * d2 * d3;
+    segs[i].kLine = den > 0.001 ? (2 * cross / den) : 0;
+  }
+  /* smooth it so the guide colour does not flicker segment to segment */
+  for (var sp2 = 0; sp2 < 6; sp2++) {
+    var tmp = new Array(n);
+    for (i = 0; i < n; i++) {
+      var lo = clamp(i - 1, 0, n - 1), hi2 = clamp(i + 1, 0, n - 1);
+      tmp[i] = (segs[lo].kLine + segs[i].kLine + segs[hi2].kLine) / 3;
+    }
+    for (i = 0; i < n; i++) segs[i].kLine = tmp[i];
+  }
+  return line;
+}
+
+/* fastest theoretical speed at a point on the line, for the guide and the HUD */
+function taLineVmax(i, mu) {
+  var k = Math.abs(course.segs[clamp(i, 0, course.segs.length - 1)].kLine || 0);
+  if (k < 0.0008) return 60;
+  return Math.min(60, Math.sqrt(mu * 9.81 / k));
+}
+
+/* spatial buckets so we never loop the full cone/decal list per frame */
+var TA_BUCKET = 24;
+function taKey(x, z) { return Math.floor(x / TA_BUCKET) + ':' + Math.floor(z / TA_BUCKET); }
+function taCourseIndex() {
+  var b = {};
+  function put(kind, o) {
+    var k = taKey(o.x, o.z);
+    if (!b[k]) b[k] = { cones: [], decals: [], scenery: [] };
+    b[k][kind].push(o);
+  }
+  var i;
+  for (i = 0; i < course.cones.length; i++) put('cones', course.cones[i]);
+  for (i = 0; i < course.decals.length; i++) put('decals', course.decals[i]);
+  for (i = 0; i < course.scenery.length; i++) put('scenery', course.scenery[i]);
+  course.buckets = b;
+}
+function taNear(kind, x, z, radius) {
+  var out = [], bx = Math.floor(x / TA_BUCKET), bz = Math.floor(z / TA_BUCKET);
+  var n = Math.ceil(radius / TA_BUCKET);
+  for (var i = -n; i <= n; i++) for (var j = -n; j <= n; j++) {
+    var cell = course.buckets[(bx + i) + ':' + (bz + j)];
+    if (cell) { var a = cell[kind]; for (var q = 0; q < a.length; q++) out.push(a[q]); }
+  }
+  return out;
+}
+
+/* nearest centreline point: returns progress + signed lateral offset */
+function taLocate(wx, wz, hintSeg) {
+  var segs = course.segs, best = -1, bestD = 1e18;
+  var lo = clamp((hintSeg == null ? 0 : hintSeg) - 14, 0, segs.length - 1);
+  var hi = clamp((hintSeg == null ? segs.length - 1 : hintSeg) + 40, 0, segs.length - 1);
+  if (hintSeg == null) { lo = 0; hi = segs.length - 1; }
+  for (var i = lo; i <= hi; i++) {
+    var dx = wx - segs[i].x, dz = wz - segs[i].z, d = dx * dx + dz * dz;
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  var s = segs[best];
+  var dx2 = wx - s.x, dz2 = wz - s.z;
+  /* right-hand normal of the tangent (sin th, cos th) is (cos th, -sin th) */
+  var lat = dx2 * Math.cos(s.th) - dz2 * Math.sin(s.th);
+  var along = dx2 * Math.sin(s.th) + dz2 * Math.cos(s.th);
+  return { seg: best, lat: lat, s: s.s + along, d: Math.sqrt(bestD) };
+}
+
+/* ============================================================================
+   VEHICLE DYNAMICS
+
+   Full 2D rigid body in world coordinates - not a scroller with a lateral
+   nudge. Three degrees of freedom (surge, sway, yaw), simplified Pacejka
+   tyres sharing a friction circle with the longitudinal load, longitudinal
+   weight transfer feeding back into axle grip, aero drag and downforce, and a
+   6-speed box with a torque curve and clutch cut on shift.
+
+   Integrated at a fixed 240 Hz in substeps so the tyre model stays stable no
+   matter what the display refresh is doing.
+   ========================================================================== */
+
+/* ---- chassis ---- */
+var M      = 1450;      /* kg */
+var IZ     = 2150;      /* kg m^2 yaw inertia */
+var WB     = 2.65;      /* m wheelbase */
+var A_CG   = 1.16;      /* m front axle to CG */
+var B_CG   = WB - A_CG;
+var H_CG   = 0.50;      /* m CG height */
+var TRACK  = 1.62;      /* m */
+var G      = 9.81;
+
+/* ---- tyres (per axle) ---- */
+/* Falloff shape per compound: sin(C * atan(b * a)). Larger C = sharper drop
+   past the peak. b is derived so the curve peaks exactly at the compound's
+   stated peak slip angle: b * alphaPeak = tan(pi / (2 * C)). */
+/* Staggered tyres - wider rears. A widebody build runs these, and it is what
+   gives the car a mild understeer bias at the limit instead of snapping. */
+var REAR_GRIP = 1.07;
+/* Tyre scrub and relaxation damp yaw. Crucially this damps the yaw rate in
+   EXCESS of the rate the velocity vector is already rotating at - damping
+   absolute yaw rate would apply a phantom moment in steady cornering and quietly
+   cost about 40 percent of peak lateral grip. */
+var CYAW = 6200;
+var R_MAX = 5.0;        /* rad/s - a real car cannot exceed this */
+var RS_FRONT = 0.54;    /* share of roll stiffness on the front axle */
+var LOAD_SENS = 0.55;   /* tyre grip falloff with lateral load transfer */
+
+/* Temperature sensitivity per compound: street rubber barely cares, sport
+   wants some heat, R-comp is nothing special until it is HOT - exactly why
+   real first runs on R-comps are treacherous. Overheating in long slides
+   costs grip too. */
+var TYRE_TEMP_SENS = { street: 0.03, sport: 0.07, rcomp: 0.14 };
+var TYRE_SPEC = {
+  /* Post-peak retention set from real tyre data: passenger rubber keeps about
+     95 percent of peak past the peak, sport about 92, slicks about 85. The old
+     values (79 and 65 percent) turned breakaway into a cliff no keyboard could
+     stand on - which is exactly why ESC-off felt impossible. */
+  street: { mu: 1.02, peak: 0.157, fall: 1.15, name: 'Street',  wear: 0.00, hint: 'Forgiving, slides early, plenty of warning.' },
+  sport:  { mu: 1.24, peak: 0.140, fall: 1.25, name: 'Sport',   wear: 0.00, hint: 'Balanced. The reference setup for the board.' },
+  rcomp:  { mu: 1.46, peak: 0.113, fall: 1.38, name: 'R-Comp',  wear: 0.00, hint: 'Fastest and least patient. Snaps with little warning.' }
+};
+var MU_GRASS = 0.48;   /* beyond the lot entirely */
+
+/* ---- driveline ---- */
+var GEARS   = [3.18, 2.04, 1.48, 1.14, 0.94, 0.78];
+var FINAL   = 3.94;
+var R_WHEEL = 0.335;    /* m rolling radius */
+var DRV_EFF = 0.88;
+var AWD_FRONT = 0.45;   /* quattro-ish torque split */
+var RPM_IDLE = 900, RPM_TQ = 3600, RPM_LIM = 7000, RPM_MAX = 7600;
+var TQ_PEAK = 392;      /* Nm */
+var SHIFT_TIME = 0.22;  /* s of torque interrupt */
+
+/* ---- aero ---- */
+var RHO = 1.225;
+var CDA = 0.76;         /* drag area */
+var CLA = 0.62;         /* downforce area */
+var ROLL_RES = 0.014;
+
+/* ---- brakes ---- */
+var BRAKE_MAX = 19500;  /* N total clamp force at the contact patch */
+var BRAKE_SPLIT_F = 0.63;
+var HANDBRAKE = 7200;   /* N, rear only */
+
+/* ---- the garage: five cars, five different problems to solve ---- */
+/* ---- the actual TGK fleet, race-prepped: flares, wings, competition brakes.
+   Real curb weights, wheelbases, torque and drivetrains per car; SUV CG
+   heights trimmed ~10 percent from stock (roll cage + lowered) so they read
+   honest without being undriveable. ---- */
+var CAR_SPEC = {
+  s6: { name: 'Audi S6', short: 'S6', style: 'sedan', paint: [242, 240, 236], face: 'hex', exh: 4, wing: 'swan', mirror: [188, 192, 198], rails: 0, shiftT: 0.15, shiftCut: 0.10,
+    rackS: 2.9, oF: 0.92, oR: 1.09, sill: 0.14, belt: 0.72, roof: 1.32, bz: 0.66, peak: -0.38, rdrop: 0.05, clad: 0,
+    m: 1970, iz: 3400, wb: 2.92, acg: 1.31, hcg: 0.52, track: 1.64, awdF: 0.40, rearGrip: 1.06,
+    tq: 550, rpmTq: 3200, rpmLim: 6800, gears: [3.36, 2.17, 1.60, 1.26, 1.02, 0.84], fin: 3.32,
+    cda: 0.78, cla: 0.50, brake: 33000, rw: 0.345,
+    hint: 'The original TGK car. 4.0T V8, quattro, 550 Nm. Fast everywhere.' },
+  cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [22, 23, 26], face: 'bars', exh: 2, wing: 'lip', mirror: [22, 23, 26], rails: 0, shiftT: 0.16, shiftCut: 0.12,
+    rackS: 2.8, oF: 0.95, oR: 1.14, sill: 0.14, belt: 0.69, roof: 1.16, bz: 0.60, peak: -0.60, rdrop: 0.11, clad: 0,
+    m: 1560, iz: 2450, wb: 2.71, acg: 1.14, hcg: 0.50, track: 1.55, awdF: 1.0, rearGrip: 1.06,
+    tq: 280, rpmTq: 2600, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94,
+    cda: 0.66, cla: 0.28, brake: 25500, rw: 0.325,
+    hint: '2.0T, FWD, the momentum car. Brakes deep, carries speed, hates greed.' },
+  touareg: { name: 'VW Touareg', short: 'TOUAREG', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.24, shiftCut: 0.45,
+    rackS: 2.1, oF: 0.88, oR: 1.02, sill: 0.34, belt: 1.04, roof: 1.70, bz: 0.88, peak: -0.08, rdrop: 0.0, clad: 1,
+    m: 2145, iz: 4600, wb: 2.90, acg: 1.36, hcg: 0.64, track: 1.66, awdF: 0.42, rearGrip: 1.04,
+    tq: 450, rpmTq: 2800, rpmLim: 6200, gears: [3.30, 2.10, 1.52, 1.16, 0.94, 0.78], fin: 3.70,
+    cda: 1.02, cla: 0.10, brake: 35500, rw: 0.375,
+    hint: '3.0 TSI, 2.1 tonnes, tall. Every input needs to be planned early.' },
+  x5: { name: 'BMW X5 M50i', short: 'X5 M50i', style: 'suv', paint: [248, 249, 251], face: 'kidney', exh: 4, wing: 'roof', mirror: [30, 31, 34], rails: 1, shiftT: 0.22, shiftCut: 0.40,
+    rackS: 2.3, oF: 0.95, oR: 1.00, sill: 0.33, belt: 1.13, roof: 1.70, bz: 0.98, peak: -0.18, rdrop: 0.05, clad: 1,
+    m: 2385, iz: 5400, wb: 2.975, acg: 1.43, hcg: 0.66, track: 1.68, awdF: 0.35, rearGrip: 1.06,
+    tq: 750, rpmTq: 3000, rpmLim: 6600, gears: [3.42, 2.19, 1.60, 1.26, 1.00, 0.82], fin: 3.15,
+    cda: 1.06, cla: 0.12, brake: 38500, rw: 0.385,
+    hint: '4.4 TT V8, 750 Nm, 2.4 tonnes. A freight train with a hammer.' }
+};
+
+var car = null;
+
+function taCarReset(opts) {
+  var s0 = course.segs[0];
+  car = {
+    /* world state */
+    x: s0.x, z: s0.z, yaw: s0.th,
+    v: 0,          /* m/s longitudinal (body frame) */
+    vy: 0,         /* m/s lateral (body frame, + = right) */
+    r: 0,          /* rad/s yaw rate */
+    ax: 0, ay: 0,
+
+    /* driveline */
+    gear: 1, rpm: RPM_IDLE, shiftT: 0, clutch: 1,
+    autoBox: (opts.box !== 'manual'),
+
+    /* inputs */
+    thr: 0, brk: 0, steer: 0, hb: 0,
+
+    /* setup */
+    carKey: opts.car || 's6',
+    spec: CAR_SPEC[opts.car] || CAR_SPEC.s6,
+    mu: TYRE_SPEC[opts.tyre].mu,
+    peakSlip: TYRE_SPEC[opts.tyre].peak,
+    pacC: TYRE_SPEC[opts.tyre].fall,
+    pacShape: Math.tan(Math.PI / (2 * TYRE_SPEC[opts.tyre].fall)),
+    tyre: opts.tyre,
+    esc: opts.esc,
+
+    /* derived / telemetry */
+    slipF: 0, slipR: 0, gripUse: 0, offLine: false, wheelspin: 0, locked: 0,
+    seg: 0, lat: 0, sAlong: 0, offTime: 0, topV: 0,
+    bodyRoll: 0, pitch: 0, exhaust: 0, revLimit: 0, delta: 0, absOn: 0, wheelAng: 0, fyF: 0, fyR: 0,
+    absOff: (opts.abs === 'off'), lockF: 0, lockR: 0,
+    tyreT: 0.25, ayS: 0, blip: 0
+  };
+  /* the renderer and tach follow the chosen car */
+  if (typeof taBuildCar === 'function') taBuildCar(car.spec);
+  if (typeof taBuildTach === 'function') taBuildTach();
+  return car;
+}
+
+function taEngineTorque(rpm) {
+  var S = (car && car.spec) || CAR_SPEC.s6;
+  if (rpm < RPM_IDLE) rpm = RPM_IDLE;
+  var span = S.rpmLim + 500 - 900;
+  var t = S.tq * (1 - 0.52 * Math.pow((rpm - S.rpmTq) / span, 2) - 0.20 * Math.pow(Math.max(0, rpm - S.rpmTq) / span, 3));
+  if (rpm > S.rpmLim) t *= Math.max(0, 1 - (rpm - S.rpmLim) / 500);
+  return Math.max(0, t);
+}
+function taRpmFor(v, gear) {
+  var S = (car && car.spec) || CAR_SPEC.s6;
+  var wheelRps = Math.abs(v) / (2 * Math.PI * (S.rw || R_WHEEL));
+  return clamp(wheelRps * 60 * S.gears[gear - 1] * S.fin, RPM_IDLE, S.rpmLim + 500);
+}
+
+function taSurfaceMu(absLat) {
+  if (absLat <= COURSE_HALF + 1.0) return car.mu;          /* swept, rubbered in */
+  if (absLat <= COURSE_HALF + 6.0) return car.mu * 0.74;   /* dusty off line */
+  if (absLat <= LOT_HALF) return car.mu * 0.60;            /* unswept lot */
+  return MU_GRASS;                                          /* off the tarmac */
+}
+
+/* --------------------------------------------------------------------------
+   One physics substep
+   -------------------------------------------------------------------------- */
+function taStep(dt) {
+  /* every chassis figure comes from the chosen car; the module-level constants
+     above are only the GT-S reference values */
+  var S = car.spec || CAR_SPEC.s6;
+  var M = S.m, IZ = S.iz, WB = S.wb, A_CG = S.acg, B_CG = S.wb - S.acg;
+  var H_CG = S.hcg, TRACK = S.track, AWD_FRONT = S.awdF, REAR_GRIP = S.rearGrip;
+  var CDA = S.cda, CLA = S.cla, BRAKE_MAX = S.brake, GEARS = S.gears, FINAL = S.fin;
+  var TQ_PEAK = S.tq, RPM_LIM = S.rpmLim;
+  var R_WHEEL = S.rw || 0.335;
+
+  var v = car.v, vy = car.vy, r = car.r;
+  var absV = Math.abs(v);
+
+  /* ---- steering ----
+     Grip-limited: the old 0.55/(1+kv) curve allowed ~4x more steering angle
+     than the tyres could use at speed, so any full press at 55 mph pitched the
+     car into a slide instead of a corner. The useful angle at speed v is the
+     kinematic requirement WB/R at the grip-limited radius plus the front slip
+     angle, so full input now lands just past the limit at every speed - you
+     can provoke the car, but you cannot ask it for the geometrically absurd.
+     The rack itself slews at a finite rate: ~900 deg/s at the wheel through a
+     13:1 rack is ~1.2 rad/s at the road wheels. */
+  var maxDelta = clamp(
+    1.00 * (car.peakSlip || 0.14) + 1.60 * WB * G * car.mu / Math.max(absV * absV, 26),
+    0.10, 0.56);
+  /* Countersteer is exempt from the grip cap: catching a slide needs the rack
+     turned to roughly the body slip angle, and real hands can always reach
+     opposite lock. Without this, a slide past the cap was mathematically
+     uncatchable no matter what the driver did. */
+  /* only during a genuine slide - gating on steering-vs-yaw fired on every
+     slalom reversal and fed a runaway */
+  if (Math.abs(car.beta || 0) > 0.09 && car.steer * car.beta > 0.001) {
+    maxDelta = Math.max(maxDelta, clamp(Math.abs(car.beta) * 1.35 + 0.12, maxDelta, 0.60));
+  }
+  var slew = ((car.spec && car.spec.rackS) || 2.6) * dt;
+  car.delta += clamp(car.steer * maxDelta - car.delta, -slew, slew);
+  var delta = car.delta;
+
+  /* ---- surface ---- */
+  var loc = taLocate(car.x, car.z, car.seg);
+  car.seg = loc.seg; car.lat = loc.lat; car.sAlong = loc.s;
+  var absLat = Math.abs(loc.lat);
+  var mu = taSurfaceMu(absLat);
+  car.offLine = absLat > COURSE_HALF + 1.0;
+  var offLot = absLat > LOT_HALF;
+
+  /* ---- aero ---- */
+  var q = 0.5 * RHO * absV * absV;
+  var drag = q * CDA;
+  var down = q * CLA;
+  var rollRes = ROLL_RES * M * G * (offLot ? 4.2 : 1.0);
+
+  /* ---- engine / gearbox ---- */
+  if (car.shiftT > 0) { car.shiftT -= dt; car.clutch = (car.spec && car.spec.shiftCut) || 0; }
+  else car.clutch = Math.min(1, car.clutch + dt * 8);
+
+  /* The engine is a spinning mass, not a gauge chained to the wheels: it revs
+     free at a standstill, flares when the driven wheels break loose, and takes
+     real time to climb and fall. This is what makes a launch feel like a
+     launch, and it is what the audio synth keys off. */
+  var rpmWheel = taRpmFor(absV, car.gear);
+  var rpmTarget = rpmWheel;
+  if (car.clutch < 1 || absV < 1.5) {
+    rpmTarget = Math.max(rpmWheel, RPM_IDLE + (RPM_LIM - RPM_IDLE) * 0.52 * car.thr);
+  }
+  if (car.wheelspin > 0.05 && car.thr > 0.2) {
+    rpmTarget = Math.min(RPM_LIM + 120, rpmWheel + car.wheelspin * 2400);
+  }
+  if (car.blip > 0) car.blip -= dt;
+  var rpmRate = rpmTarget > car.rpm ? (3800 + 9500 * car.thr + (car.blip > 0 ? 12000 : 0)) : 6200;
+  car.rpm = clamp(car.rpm + clamp(rpmTarget - car.rpm, -rpmRate * dt, rpmRate * dt), RPM_IDLE, RPM_LIM + 150);
+  if (car.rpm < RPM_IDLE + 120 && Math.abs(car.v) < 0.5 && car.thr < 0.03) {
+    car.rpm += Math.sin(Date.now() * 0.013) * 14 + (Math.random() - 0.5) * 10;   /* idle breathe */
+  }
+  car.revLimit = 0;
+  if (car.rpm >= RPM_LIM - 20) { car.revLimit = 1; }
+
+  if (car.autoBox && car.shiftT <= 0) {
+    /* A performance box holds its gear under lateral load instead of shuffling
+       mid-corner; it will still grab the next gear on the limiter, and it
+       kicks down hard when you demand it */
+    var cornerHold = Math.abs(car.ay) > 0.45 * mu * G;
+    if (car.rpm > RPM_LIM - 250 && car.gear < GEARS.length) taShift(1);
+    else if (!cornerHold && car.thr > 0.85 && car.rpm < RPM_LIM * 0.55 && car.gear > 1) taShift(-1);
+    else if (!cornerHold && car.rpm < RPM_LIM * 0.42 && car.gear > 1 && car.thr < 0.9) taShift(-1);
+    else if (car.rpm < RPM_LIM * 0.27 && car.gear > 1) taShift(-1);
+  }
+
+  /* traction control rides with stability control: wheelspin cuts throttle.
+     On cuts hard, Sport lets the tyres work before stepping in. */
+  if (car.esc !== 'off' && car.wheelspin > 0.10) {
+    var tcK = car.esc === 'sport' ? 0.38 : 0.78;
+    car.tcCut = clamp(car.wheelspin * tcK, 0, 0.8);
+  } else { car.tcCut = 0; }
+  var thr = car.thr * car.clutch * (1 - (car.tcCut || 0));
+  if (car.revLimit) thr *= 0.15;               /* limiter stutter */
+  var driveT = taEngineTorque(car.rpm) * thr;
+  var Fdrive = driveT * GEARS[car.gear - 1] * FINAL * DRV_EFF / R_WHEEL;
+  /* clutch take-up: no instant peak torque off the line */
+  if (car.gear === 1) Fdrive *= clamp(0.34 + Math.abs(car.v) / 2.4, 0, 1);
+  /* engine braking: closed throttle drags the driveline. This is what makes a
+     lift actually settle the nose instead of the car coasting like it is in
+     neutral, and it feeds the lift-off rotation the tyre model already allows */
+  if (car.thr < 0.06 && car.v > 0.6) {
+    var ebT = TQ_PEAK * 0.075 * (car.rpm / RPM_LIM);
+    Fdrive -= ebT * GEARS[car.gear - 1] * FINAL * DRV_EFF / R_WHEEL * car.clutch;
+  }
+
+  car.beta = Math.atan2(car.vy, Math.max(Math.abs(car.v), 2.0));
+
+  /* stability control trims power when the rear is loose */
+  if (car.esc !== 'off') {
+    /* trigger on sideslip as well as rear slip - by the time the rear axle is
+       fully gone, cutting power is too late to be the only intervention */
+    var slipMag = Math.max(Math.abs(car.slipR), Math.abs(car.beta || 0));
+    /* threshold sits past the compound's peak slip - the old fixed 0.11 rad
+       was BELOW an R-Comp's peak, so ESC cut power in normal limit cornering */
+    var thresh = (car.peakSlip || 0.14) * (car.esc === 'sport' ? 1.9 : 1.35);
+    if (slipMag > thresh) {
+      var cut = clamp((slipMag - thresh) * (car.esc === 'sport' ? 2.2 : 4.0), 0, 0.85);
+      Fdrive *= (1 - cut);
+    }
+  }
+
+  /* ---- braking ---- */
+  var sgn = car.v >= 0 ? 1 : -1;
+  var Fbrake = BRAKE_MAX * car.brk;
+  var FbF = Fbrake * BRAKE_SPLIT_F;
+  var FbR = Fbrake * (1 - BRAKE_SPLIT_F);
+
+  /* ---- tyre temperature: slip work heats the rubber, air cools it.
+     Starts COLD on the grid; optimum is 1.0; past ~1.15 it goes greasy. ---- */
+  var slipWork = (Math.abs(car.slipF || 0) + Math.abs(car.slipR || 0)) * Math.abs(car.v) * 0.012
+               + (car.wheelspin || 0) * 0.25 + (car.locked || 0) * 0.20;
+  car.tyreT += (slipWork * 0.55 + Math.abs(car.v) * 0.0016) * dt;
+  car.tyreT -= (car.tyreT - 0.18) * 0.030 * dt * (1 + Math.abs(car.v) * 0.02);
+  car.tyreT = clamp(car.tyreT, 0.15, 1.45);
+  var tSens = TYRE_TEMP_SENS[car.tyre] || 0.07;
+  var cold = 1 - Math.min(car.tyreT, 1.0);
+  var hot = Math.max(car.tyreT - 1.15, 0);
+  var muT = 1 - tSens * cold * cold * 3.2 - 0.10 * hot * 2.2;
+  mu = mu * clamp(muT, 0.80, 1.0);
+
+  /* ---- vertical loads with longitudinal transfer ---- */
+  var FzF = M * G * B_CG / WB - M * car.ax * H_CG / WB + down * 0.45;
+  var FzR = M * G * A_CG / WB + M * car.ax * H_CG / WB + down * 0.55;
+  FzF = Math.max(300, FzF); FzR = Math.max(300, FzR);
+
+  /* ---- lateral load transfer + tyre load sensitivity ----
+     Cornering shifts weight to the outside wheels, and because tyre grip
+     coefficient falls with load, a loaded-up axle is worth LESS than the sum of
+     its static parts. This is the single biggest thing separating a sim from an
+     arcade model: it is why real cars corner below tyre mu, why anti-roll bar
+     split sets balance, and why kerbing one side mid-corner unsettles the car.
+     Front carries 55 percent of roll stiffness -> transient understeer bias. */
+  /* the body rolls onto its springs over ~0.22 s - lateral load transfer is
+     NOT instantaneous, which is why a fast flick is more forgiving than a
+     held corner at the same g */
+  car.ayS += (car.ay - car.ayS) * clamp(dt / 0.22, 0, 1);
+  var latW = M * Math.abs(car.ayS) * H_CG / TRACK;
+  var dWf = latW * RS_FRONT, dWr = latW * (1 - RS_FRONT);
+  var lossF = clamp(LOAD_SENS * (dWf / FzF) * (dWf / FzF), 0, 0.40);
+  var lossR = clamp(LOAD_SENS * (dWr / FzR) * (dWr / FzR), 0, 0.40);
+  var capF = mu * FzF * (1 - lossF), capR = mu * FzR * REAR_GRIP * (1 - lossR);
+
+  /* ---- ABS on the service brakes ----
+     Modulates brake force short of lockup, releasing more as steering demand
+     rises so the front axle keeps lateral capacity. Without this a full-brake
+     corner entry consumed the whole friction circle longitudinally and the car
+     went straight on regardless of steering - the single biggest reason the
+     old model felt undrivable. The handbrake bypasses ABS entirely. */
+  var FbFe, FbRe;
+  car.lockF = 0; car.lockR = 0;
+  if (car.absOff) {
+    /* ABS OFF: the pedal is a straight line to the calipers. Demand past
+       the tyre's cap LOCKS the wheel: a locked tyre slides at reduced
+       friction and - critically - a locked FRONT cannot steer at all. */
+    FbFe = FbF; FbRe = FbR + HANDBRAKE * car.hb;
+    if (FbF > capF * 0.98) { car.lockF = clamp((FbF - capF) / (capF * 0.6 + 1) + 0.35, 0, 1); FbFe = capF * (1 - 0.22 * car.lockF); }
+    if (FbR + HANDBRAKE * car.hb > capR * 0.98) { car.lockR = clamp((FbR + HANDBRAKE * car.hb - capR) / (capR * 0.6 + 1) + 0.35, 0, 1); FbRe = capR * (1 - 0.22 * car.lockR); }
+    car.absOn = 0;
+  } else {
+    var absK = Math.max(0.52, 0.965 - 0.42 * Math.abs(delta) / 0.55);
+    FbFe = Math.min(FbF, capF * absK);
+    FbRe = Math.min(FbR, capR * absK) + HANDBRAKE * car.hb;
+    car.absOn = (FbFe < FbF - 5) ? 1 : 0;
+  }
+
+  /* ---- longitudinal force per axle ----
+     Excess drive torque does not just clip: a spinning tyre falls to its
+     dynamic grip. This is what gives the RWD cars genuine power oversteer,
+     the FWD car power-on push, and street tyres a real launch problem. */
+  var demF = Fdrive * AWD_FRONT - FbFe * sgn;
+  var demR = Fdrive * (1 - AWD_FRONT) - FbRe * sgn;
+  var capFe = capF, capRe = capR;
+  if (demF > capF) capFe = capF * 0.80;
+  if (demR > capR) capRe = capR * 0.78;
+  var FxF = clamp(demF, -capFe, capFe);
+  var FxR = clamp(demR, -capRe, capRe);
+  car.wheelspin = clamp(Math.max(demR - capR, demF - capF) / (Math.max(capF, capR) * 0.5 + 1), 0, 1);
+  car.locked = Math.max(car.absOn * 0.45, car.lockF || 0, car.lockR || 0, clamp((HANDBRAKE * car.hb - capR * 0.9) / (capR * 0.5 + 1), 0, 1));
+
+  /* ---- lateral force per axle, resolved in the wheel frame ----
+     Working in the wheel frame rather than approximating with small-angle body
+     slip means spins, reverse and stationary-but-rotating all behave, and the
+     speed fade removes the low-speed singularity that otherwise lets yaw rate
+     diverge without bound. */
+  function axleForce(uy, steerAng, cap, Fx) {
+    var cd = Math.cos(steerAng), sd = Math.sin(steerAng);
+    var wx = car.v * cd + uy * sd;         /* along the wheel */
+    var wy = -car.v * sd + uy * cd;        /* across the wheel */
+    var alpha = Math.atan2(wy, Math.abs(wx) + 0.6);
+    var patch = Math.sqrt(wx * wx + wy * wy);
+    var fade = clamp(patch / 1.4, 0, 1);
+    var latCap = Math.sqrt(Math.max(0, cap * cap - Fx * Fx));
+    var bb = car.pacShape / (car.peakSlip || 0.140);
+    var fyw = -latCap * Math.sin(car.pacC * Math.atan(bb * alpha)) * fade;
+    /* back into body axes */
+    return {
+      fx: Fx * cd - fyw * sd,
+      fy: Fx * sd + fyw * cd,
+      alpha: alpha
+    };
+  }
+
+  var F = axleForce(car.vy + A_CG * car.r, delta, capFe, FxF);
+  var R = axleForce(car.vy - B_CG * car.r, 0, capRe, FxR);
+  if (car.hb > 0) R.fy *= (1 - 0.55 * car.hb);
+  if (car.lockF) F.fy *= (1 - 0.92 * car.lockF);   /* locked front = no steering */
+  if (car.lockR) R.fy *= (1 - 0.80 * car.lockR);   /* locked rear  = instability */
+  car.slipF = F.alpha; car.slipR = R.alpha;
+
+  /* relaxation length: the contact patch has to roll ~0.55 m before the
+     lateral force fully develops. Turn-in takes a set instead of snapping,
+     and 240 Hz keyboard flicker stops reaching the chassis directly. */
+  var relK = clamp((Math.abs(car.v) + 1.5) * dt / 0.55, 0, 1);
+  car.fyF = (car.fyF || 0) + (F.fy - (car.fyF || 0)) * relK;
+  car.fyR = (car.fyR || 0) + (R.fy - (car.fyR || 0)) * relK;
+  F.fy = car.fyF; R.fy = car.fyR;
+
+  var sumFx = F.fx + R.fx - (drag + rollRes) * sgn;
+  var sumFy = F.fy + R.fy;
+  /* rate at which the velocity vector itself is turning */
+  var speedMag = Math.max(Math.sqrt(car.v * car.v + car.vy * car.vy), 2.0);
+  var rPath = car.ay / speedMag;
+  var sumMz = A_CG * F.fy - B_CG * R.fy - CYAW * (car.r - rPath);
+
+  /* ---- stability control: a real system applies a yaw moment with the brakes,
+     so that is what we do here rather than fudging the tyre forces ---- */
+  if (car.esc !== 'off') {
+    var Kesc = car.esc === 'on' ? 26000 : 15000;
+    var Kbeta = car.esc === 'on' ? 52000 : 30000;
+    var authority = (car.esc === 'on' ? 1.15 : 0.80) * mu * (FzF + FzR) * TRACK * 0.5;
+    var Kus = 0.0018;
+    var rTarget = delta * car.v / (WB + Kus * car.v * car.v);
+    /* the target must be grip-limited: chasing the raw kinematic rate at speed
+       would have ESC actively driving the car INTO a slide */
+    var rCap = 0.92 * mu * G / Math.max(speedMag, 4);
+    rTarget = clamp(rTarget, -rCap, rCap);
+    /* the sideslip term is only meaningful inside the system's design envelope */
+    var beta = clamp(car.beta, -0.50, 0.50);
+    /* In a right-hand spin the yaw rate is positive but the body slip angle is
+       NEGATIVE, so both terms must be signed to push the same way - subtracting
+       beta here would have the sideslip term cancel the yaw-rate correction. */
+    /* Asymmetric intervention, like the real system: full authority pulling
+       DOWN excess rotation (that is a spin forming), but only a whisper when
+       the driver is asking for more yaw than grip allows - that is plain
+       understeer, the tyres are already the limiter, and a controller that
+       fights the wheel there just feels like the car refusing to turn. */
+    var yerr = car.r - rTarget;
+    var Ke = Kesc;
+    if (yerr * rTarget < 0 && Math.abs(beta) < 0.06) Ke *= 0.18;
+    var mz = -Ke * yerr + Kbeta * beta;
+    /* real ESC stands down below walking pace; without this fade it would
+       actively unwind the car's heading while it slides to a stop */
+    mz *= clamp((speedMag - 2.5) / 5, 0, 1);
+    sumMz += clamp(mz, -authority, authority);
+  }
+
+  /* ---- equations of motion in the body frame ---- */
+  var vdot = sumFx / M + car.vy * car.r;
+  var vydot = sumFy / M - car.v * car.r;
+  var rdot = sumMz / IZ;
+
+  car.v += vdot * dt;
+  car.vy += vydot * dt;
+  car.r = clamp(car.r + rdot * dt, -R_MAX, R_MAX);
+
+  /* No reverse gear: a spin can shove the car backwards briefly, but nothing
+     can sustain it. Unconditional clamp plus scrub, otherwise holding throttle
+     at full lock could settle into an endless backwards pirouette. */
+  if (car.v < 0) {
+    car.v = Math.max(car.v, -1.5);
+    car.v = Math.min(0, car.v + 2.2 * dt);
+  }
+  if (Math.abs(car.v) < 0.06 && car.thr < 0.02 && Math.abs(car.vy) < 0.5) {
+    car.v = 0; car.vy *= 0.2; car.r *= 0.2;
+  }
+
+  car.ax = vdot;
+  car.ay = sumFy / M;
+
+  /* ---- integrate world pose: forward = (sin yaw, cos yaw) ---- */
+  var wvx = car.v * Math.sin(car.yaw) + car.vy * Math.cos(car.yaw);
+  var wvz = car.v * Math.cos(car.yaw) - car.vy * Math.sin(car.yaw);
+  car.x += wvx * dt;
+  car.z += wvz * dt;
+  car.yaw += car.r * dt;
+
+  /* wheel rotation for the renderer */
+  car.wheelAng = (car.wheelAng + car.v / R_WHEEL * dt) % 6.2832;
+
+  /* ---- telemetry ---- */
+  car.gripUse = clamp(Math.sqrt(sumFy * sumFy + sumFx * sumFx) / ((capF + capR) || 1), 0, 1.4);
+  if (Math.abs(car.v) > car.topV) car.topV = Math.abs(car.v);
+  /* Roll gradient ~2.3 deg per g on motorsport coilovers, capped at 3.5 deg.
+     Pitch ~0.9 deg per g of accel/braking. Anything bigger reads as a boat. */
+  /* the body is a sprung mass: second-order response with real overshoot,
+     softer and slower on the tall air-sprung cars, tighter on the sedans */
+  var rollK = 0.040 * (H_CG / 0.50);
+  var rollTgt = clamp(-car.ay / G * rollK, -rollK * 1.55, rollK * 1.55);
+  var wn = (H_CG > 0.58 ? 8.5 : 11.5), zeta = 0.62;
+  car.rollV = (car.rollV || 0) + ((rollTgt - car.bodyRoll) * wn * wn - 2 * zeta * wn * (car.rollV || 0)) * dt;
+  car.bodyRoll += car.rollV * dt;
+  var pitTgt = clamp(car.ax / G * 0.016, -0.030, 0.030);
+  car.pitchV = (car.pitchV || 0) + ((pitTgt - car.pitch) * 90 - 11.4 * (car.pitchV || 0)) * dt;
+  car.pitch += car.pitchV * dt;
+}
+
+function taShift(dir) {
+  var g = car.gear + dir;
+  if (g < 1 || g > car.spec.gears.length) return false;
+  car.gear = g;
+  car.shiftT = (car.spec && car.spec.shiftT) || SHIFT_TIME;
+  if (dir < 0) car.blip = 0.30;   /* rev-match blip on the way down */
+  car.clutch = 0;
+  if (dir < 0) car.exhaust = 1;          /* overrun pop on the downshift */
+  if (typeof taAudioShift === 'function') taAudioShift(dir);
+  return true;
+}
+
+function taSpeedMph() { return Math.abs(car.v) * 2.2369363; }
+
+
+/* ============================================================================
+   TGK TIME ATTACK GL 0.2 - three.js on the PROVEN physics core.
+   New in 0.2: real per-car bodywork. Each car's side silhouette is built as a
+   2D shape from its dimension sheet - wheel arches punched through as actual
+   holes - extruded across its track width with bevelled (rounded) edges and
+   plan-tapered nose and tail. Plus lap timing, brake lights, 1-4 car switch.
+   ========================================================================== */
+var scene, camera, renderer, carGroup, wheelMeshes = [], sunLight;
+var tailMat = null, drlMat = null;
+
+function glInit() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9db4c8);
+  scene.fog = new THREE.Fog(0x9db4c8, 120, 420);
+  camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 600);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(1.5, devicePixelRatio || 1));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+  addEventListener('resize', function () {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  /* procedural environment cubemap: every paint and glass surface reflects
+     a sky-and-horizon world. This is THE ingredient that makes game cars
+     read as real - matte materials never do. */
+  function envFace(top, bottom) {
+    var cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    var cx = cv.getContext('2d');
+    var g = cx.createLinearGradient(0, 0, 0, 64);
+    g.addColorStop(0, top); g.addColorStop(1, bottom);
+    cx.fillStyle = g; cx.fillRect(0, 0, 64, 64);
+    return cv;
+  }
+  var side = envFace('#bcd2e4', '#5c6168');
+  var envTex = new THREE.CubeTexture([side, side,
+    envFace('#dbe9f4', '#bcd2e4'), envFace('#4a4d52', '#3c3f44'), side, side]);
+  envTex.needsUpdate = true;
+  scene.environment = envTex;
+
+  var hemi = new THREE.HemisphereLight(0xcfe4f4, 0x5a5f52, 0.75);
+  scene.add(hemi);
+  sunLight = new THREE.DirectionalLight(0xfff2dd, 1.15);
+  sunLight.position.set(-90, 140, 95);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(2048, 2048);
+  sunLight.shadow.camera.left = -80; sunLight.shadow.camera.right = 80;
+  sunLight.shadow.camera.top = 80; sunLight.shadow.camera.bottom = -80;
+  scene.add(sunLight);
+
+  var ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(2000, 2000),
+    new THREE.MeshStandardMaterial({ color: 0x4c4f53, roughness: 0.94 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  /* road ribbon: triangle strip from the centreline with true edge offsets.
+     polygonOffset keeps it a clean layer above the apron - the squashed-tube
+     approach z-fought the ground and lumped at every curve. */
+  function ribbonFrom(halfW, y, mat) {
+    var P = [], I = [];
+    for (var i = 0; i < course.segs.length; i += 2) {
+      var g2 = course.segs[i];
+      var px = Math.cos(g2.th), pz = -Math.sin(g2.th);   /* left perp in world */
+      P.push(-(g2.x + px * halfW), y, g2.z + pz * halfW);
+      P.push(-(g2.x - px * halfW), y, g2.z - pz * halfW);
+    }
+    var n = P.length / 3 / 2;
+    for (var q = 0; q < n - 1; q++) {
+      var a = q * 2, b = q * 2 + 1, c = q * 2 + 2, d = q * 2 + 3;
+      I.push(a, c, b, b, c, d);
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    geo.setIndex(I);
+    geo.computeVertexNormals();
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.receiveShadow = true;
+    return mesh;
+  }
+  var roadM = new THREE.MeshStandardMaterial({ color: 0x3b3e42, roughness: 0.92,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  scene.add(ribbonFrom(3.6, 0.02, roadM));
+  var edgeM = new THREE.MeshBasicMaterial({ color: 0xd8dce0, transparent: true, opacity: 0.35,
+    polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  [3.45, -3.45].forEach(function (off) {
+    var eP = [], eI = [];
+    for (var i2 = 0; i2 < course.segs.length; i2 += 4) {
+      var g3 = course.segs[i2];
+      var px2 = Math.cos(g3.th), pz2 = -Math.sin(g3.th);
+      eP.push(-(g3.x + px2 * (off + 0.10)), 0.03, g3.z + pz2 * (off + 0.10));
+      eP.push(-(g3.x + px2 * (off - 0.10)), 0.03, g3.z + pz2 * (off - 0.10));
+    }
+    var n2 = eP.length / 3 / 2;
+    for (var q2 = 0; q2 < n2 - 1; q2++) {
+      var a2 = q2 * 2, b2 = q2 * 2 + 1, c2 = q2 * 2 + 2, d2 = q2 * 2 + 3;
+      eI.push(a2, c2, b2, b2, c2, d2);
+    }
+    var eg = new THREE.BufferGeometry();
+    eg.setAttribute('position', new THREE.Float32BufferAttribute(eP, 3));
+    eg.setIndex(eI);
+    scene.add(new THREE.Mesh(eg, edgeM));
+  });
+
+  /* real pylons: square base plate, tapered body, white reflective band */
+  var nC = course.cones.length;
+  var baseI = new THREE.InstancedMesh(new THREE.BoxGeometry(0.30, 0.025, 0.30),
+    new THREE.MeshStandardMaterial({ color: 0xc2470a, roughness: 0.8 }), nC);
+  var bodyI = new THREE.InstancedMesh(new THREE.ConeGeometry(0.145, 0.44, 12),
+    new THREE.MeshStandardMaterial({ color: 0xf25c05, roughness: 0.62 }), nC);
+  var bandI = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.102, 0.118, 0.075, 12),
+    new THREE.MeshStandardMaterial({ color: 0xf2f3ef, roughness: 0.4 }), nC);
+  var m4 = new THREE.Matrix4();
+  for (var c = 0; c < nC; c++) {
+    var cx2 = -course.cones[c].x, cz2 = course.cones[c].z;
+    m4.setPosition(cx2, 0.0125, cz2); baseI.setMatrixAt(c, m4);
+    m4.setPosition(cx2, 0.245, cz2);  bodyI.setMatrixAt(c, m4);
+    m4.setPosition(cx2, 0.235, cz2);  bandI.setMatrixAt(c, m4);
+  }
+  bodyI.castShadow = true;
+  scene.add(baseI); scene.add(bodyI); scene.add(bandI);
+
+  buildEnvironment();
+  buildCarGL(CAR_SPEC[opts.car] || CAR_SPEC.s6);
+}
+
+/* the world: everything comes from the same course data the canvas game
+   uses - decals as ground planes, scenery as instanced low-poly objects */
+function buildEnvironment() {
+  /* apron markings: tone patches, stall lines, painted lines */
+  var mats = {
+    paint: new THREE.MeshBasicMaterial({ color: 0xeaeef0, transparent: true, opacity: 0.35, depthWrite: false }),
+    tonel: new THREE.MeshBasicMaterial({ color: 0xd6dade, transparent: true, opacity: 0.06, depthWrite: false }),
+    toned: new THREE.MeshBasicMaterial({ color: 0x090a0b, transparent: true, opacity: 0.07, depthWrite: false }),
+    stall: new THREE.MeshBasicMaterial({ color: 0xc9cdd1, transparent: true, opacity: 0.14, depthWrite: false })
+  };
+  var dg = new THREE.PlaneGeometry(1, 1);
+  var counts = {}, lists = {};
+  for (var i = 0; i < course.decals.length; i++) {
+    var t = course.decals[i].t;
+    if (!mats[t]) continue;
+    counts[t] = (counts[t] || 0) + 1;
+    (lists[t] = lists[t] || []).push(course.decals[i]);
+  }
+  for (var k in lists) {
+    var im = new THREE.InstancedMesh(dg, mats[k], lists[k].length);
+    var M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler();
+    for (var j = 0; j < lists[k].length; j++) {
+      var d = lists[k][j];
+      E.set(-Math.PI / 2, 0, -(d.rot || 0));
+      Q.setFromEuler(E);
+      M.compose(new THREE.Vector3(-d.x, 0.012 + j * 0.00002, d.z), Q,
+                new THREE.Vector3(d.w || 1, d.len || 1, 1));
+      im.setMatrixAt(j, M);
+    }
+    scene.add(im);
+  }
+
+  /* scenery: conifer trees, sheds, poles - instanced */
+  var trees = [], sheds = [];
+  for (var sIdx = 0; sIdx < course.scenery.length; sIdx++) {
+    var o = course.scenery[sIdx];
+    if (o.t === 'tree') trees.push(o);
+    else if (o.t === 'shed' || o.t === 'trailer') sheds.push(o);
+  }
+  if (trees.length) {
+    var canopyG = new THREE.ConeGeometry(1.6, 4.6, 7);
+    var canopyM = new THREE.MeshStandardMaterial({ color: 0x35502e, roughness: 0.95, flatShading: true });
+    var ti = new THREE.InstancedMesh(canopyG, canopyM, trees.length);
+    var trunkG = new THREE.CylinderGeometry(0.16, 0.22, 1.4, 6);
+    var trunkM = new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 1 });
+    var tr = new THREE.InstancedMesh(trunkG, trunkM, trees.length);
+    var M2 = new THREE.Matrix4();
+    for (var ta = 0; ta < trees.length; ta++) {
+      var sc = 0.8 + ((trees[ta].x * 7919) % 100) / 160;
+      M2.makeScale(sc, sc, sc);
+      M2.setPosition(-trees[ta].x, 3.4 * sc, trees[ta].z);
+      ti.setMatrixAt(ta, M2);
+      M2.makeScale(sc, sc, sc);
+      M2.setPosition(-trees[ta].x, 0.7 * sc, trees[ta].z);
+      tr.setMatrixAt(ta, M2);
+    }
+    ti.castShadow = true;
+    scene.add(ti); scene.add(tr);
+  }
+  if (sheds.length) {
+    var shG = new THREE.BoxGeometry(6, 3, 4);
+    var shM = new THREE.MeshStandardMaterial({ color: 0x7a7f85, roughness: 0.85, flatShading: true });
+    var si = new THREE.InstancedMesh(shG, shM, sheds.length);
+    var M3 = new THREE.Matrix4();
+    for (var sh = 0; sh < sheds.length; sh++) {
+      M3.identity();
+      M3.setPosition(-sheds[sh].x, 1.5, sheds[sh].z);
+      si.setMatrixAt(sh, M3);
+    }
+    si.castShadow = true;
+    scene.add(si);
+  }
+
+  /* start gantry over the line */
+  var s0 = course.segs[2];
+  var gantM = new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.6 });
+  [-1, 1].forEach(function (sd) {
+    var post = new THREE.Mesh(new THREE.BoxGeometry(0.22, 5.2, 0.22), gantM);
+    post.position.set(-s0.x + sd * Math.cos(s0.th) * 7, 2.6, s0.z + sd * Math.sin(s0.th) * 7);
+    post.castShadow = true;
+    scene.add(post);
+  });
+  var beam = new THREE.Mesh(new THREE.BoxGeometry(14.2, 0.5, 0.4), gantM);
+  beam.position.set(-s0.x, 5.0, s0.z);
+  beam.rotation.y = s0.th;
+  beam.castShadow = true;
+  scene.add(beam);
+}
+
+/* ---- the car: extruded real silhouette with arch holes ---- */
+function carSilhouette(S) {
+  var wb = S.wb, oF = S.oF || 0.9, oR = S.oR || 1.05;
+  var lenF = wb / 2 + oF, lenR = -(wb / 2 + oR);
+  var SILL = S.sill != null ? S.sill : 0.14;
+  var BELT = S.belt || 0.72, ROOF = S.roof || 1.30;
+  var peak = S.peak != null ? S.peak : -0.2;
+  var rdrop = S.rdrop || 0;
+  var suv = S.style === 'suv';
+  var gF = (S.bz || 0.66) - 0.02;
+  var roofR = S.style === 'cc' ? -1.16 : (suv ? lenR + 0.6 : -1.10);
+  var tailZ = S.style === 'cc' ? lenR + 0.42 : (suv ? lenR + 0.18 : -1.78);
+  var tailY = suv ? BELT + 0.05 : BELT + 0.02;
+
+  var sh = new THREE.Shape();
+  /* run the outline clockwise: under the nose, up the tail, over the roof */
+  sh.moveTo(lenF - 0.10, SILL - 0.02);
+  sh.lineTo(lenR + 0.22, SILL - 0.02);
+  sh.quadraticCurveTo(lenR + 0.02, SILL + 0.02, lenR, SILL + 0.30);
+  sh.lineTo(lenR, BELT - 0.28);
+  sh.quadraticCurveTo(lenR + 0.01, BELT - 0.04, lenR + 0.14, BELT);
+  sh.lineTo(tailZ, tailY);
+  sh.quadraticCurveTo(roofR - 0.10, ROOF - rdrop, roofR, ROOF - rdrop);
+  if (Math.abs(peak - roofR) > 0.1) sh.quadraticCurveTo((peak + roofR) / 2, ROOF + 0.045 - rdrop / 2, peak, ROOF);
+  sh.quadraticCurveTo(peak + (gF - peak) * 0.45, ROOF - (ROOF - BELT) * 0.18, gF, BELT + 0.005);
+  sh.lineTo(S.bz || 0.66, BELT);
+  sh.quadraticCurveTo(lenF - 0.30, BELT - 0.05, lenF - 0.06, BELT - 0.16);
+  sh.quadraticCurveTo(lenF, BELT - 0.22, lenF, BELT - 0.42);
+  sh.lineTo(lenF, SILL + 0.14);
+  sh.quadraticCurveTo(lenF, SILL - 0.02, lenF - 0.10, SILL - 0.02);
+
+  /* the wheel arches are HOLES in the silhouette */
+  var rw2 = (S.rw || 0.335) + 0.06;
+  [wb / 2, -wb / 2].forEach(function (zc) {
+    var hole = new THREE.Path();
+    hole.absarc(zc, S.rw ? S.rw * 0.92 : 0.30, rw2, 0, Math.PI * 2, true);
+    sh.holes.push(hole);
+  });
+  return { shape: sh, lenF: lenF, lenR: lenR, BELT: BELT, ROOF: ROOF, SILL: SILL, gF: gF, roofR: roofR, tailZ: tailZ, tailY: tailY, peak: peak };
+}
+
+/* ============================================================================
+   PRODUCTION ASSET PIPELINE
+   Drop artist-built models into /models/ in the repo:
+       models/s6.glb   models/cc.glb   models/touareg.glb   models/x5.glb
+   Each is auto-fitted: scaled so its wheelbase-length matches the physics
+   dimension sheet, grounded, centred, and repainted to the fleet colour.
+   Per-model corrections (orientation, lift, paint override) live in
+   MODEL_TWEAK. If a model is missing or fails, the procedural body builds
+   instead - the game never breaks while the garage fills up.
+   ========================================================================== */
+var MODEL_TWEAK = {
+  /* per-model corrections, tuned from GLB inspection:
+     paintRx  - regex for the paint material(s) to recolour
+     hideRx   - regex for node names to remove (spare parts, extra wheel sets)
+     shadowMin- only meshes with bbox diagonal above this cast shadows (perf) */
+  s6:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true,
+             paintRx: /a6c8_body|carpaint|^body$|paint/i,
+             hideRx: /steelwheel|stock2|CivicTypeR_tires_19x9(?!\.001)/i, shadowMin: 0.5 },
+  cc:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, paintRx: /paint|body|coat/i, shadowMin: 0.4 },
+  touareg: { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, paintRx: /paint|body|coat/i, shadowMin: 0.5 },
+  x5:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true,
+             paintRx: /paint1Mtl|paint/i, hideRx: null, shadowMin: 0.5 }
+};
+var _gltfLoader = (typeof THREE.GLTFLoader === 'function') ? new THREE.GLTFLoader() : null;
+var _modelCache = {};
+
+function loadCarModel(S, key, onDone) {
+  if (!_gltfLoader) { onDone(null); return; }
+  if (_modelCache[key] === 'missing') { onDone(null); return; }
+  if (_modelCache[key]) { onDone(_modelCache[key].clone()); return; }
+  _gltfLoader.load('models/' + key + '.glb', function (g) {
+    var root = g.scene || g.scenes[0];
+    var tw = MODEL_TWEAK[key] || {};
+    /* orient: assume longest horizontal axis is the length */
+    var box = new THREE.Box3().setFromObject(root);
+    var size = new THREE.Vector3(); box.getSize(size);
+    if (size.x > size.z) root.rotation.y = Math.PI / 2;
+    root.rotation.y += tw.rotY || 0;
+    root.updateMatrixWorld(true);
+    box.setFromObject(root); box.getSize(size);
+    /* fit: length to the dimension sheet */
+    var targetL = S.wb + (S.oF || 0.9) + (S.oR || 1.05);
+    var sc = (targetL / Math.max(size.z, 0.01)) * (tw.scaleMul || 1);
+    root.scale.setScalar(sc);
+    root.updateMatrixWorld(true);
+    box.setFromObject(root);
+    var ctr = new THREE.Vector3(); box.getCenter(ctr);
+    root.position.x -= ctr.x;
+    root.position.z -= ctr.z;
+    root.position.y -= box.min.y - (tw.y || 0);
+    /* node culling: spare parts and duplicate wheel sets in mashup models */
+    if (tw.hideRx) {
+      var toHide = [];
+      root.traverse(function (n) { if (n.name && tw.hideRx.test(n.name)) toHide.push(n); });
+      toHide.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+    }
+    /* repaint BY MATERIAL NAME - the honest way on multi-hundred-mesh models;
+       fall back to largest opaque surface only if nothing matches */
+    var painted = 0, bestN = null, bestArea = 0;
+    root.traverse(function (n) {
+      if (!n.isMesh) return;
+      var bb = new THREE.Box3().setFromObject(n);
+      var sz = new THREE.Vector3(); bb.getSize(sz);
+      var diag = sz.length();
+      n.castShadow = diag > (tw.shadowMin || 0);   /* perf: small bits do not shadow */
+      var mats = Array.isArray(n.material) ? n.material : [n.material];
+      mats.forEach(function (mm) {
+        if (!mm) return;
+        if (tw.repaint !== false && tw.paintRx && mm.name && tw.paintRx.test(mm.name) && mm.color) {
+          mm.color.setRGB(S.paint[0] / 255, S.paint[1] / 255, S.paint[2] / 255);
+          if (mm.metalness !== undefined) { mm.metalness = 0.72; mm.roughness = 0.30; }
+          if (mm.clearcoat !== undefined) { mm.clearcoat = 0.8; }
+          painted++;
+        }
+      });
+      if (!n.material.transparent && diag * diag > bestArea) { bestArea = diag * diag; bestN = n; }
+    });
+    if (tw.repaint !== false && painted === 0 && bestN && bestN.material && bestN.material.color) {
+      bestN.material.color.setRGB(S.paint[0] / 255, S.paint[1] / 255, S.paint[2] / 255);
+    }
+    /* wheel rig: collect spinnable nodes by name, grouped for the animator */
+    var spinners = [];
+    root.traverse(function (n) {
+      if (n.name && /(wheel|tire|tyre|rim|rotor)/i.test(n.name) && n.isMesh === false) return;
+      if (n.name && /(tire|tyre|rim|rotor|wheel)/i.test(n.name)) spinners.push(n);
+    });
+    var holder = new THREE.Group();
+    holder.add(root);
+    holder.userData.spinners = spinners;
+    holder.userData.painted = painted;
+    _modelCache[key] = holder;
+    onDone(holder.clone());
+  }, undefined, function () {
+    _modelCache[key] = 'missing';
+    onDone(null);
+  });
+}
+
+function buildCarGL(S) {
+  if (carGroup) scene.remove(carGroup);
+  carGroup = new THREE.Group();
+  var thisKey = opts.car;
+  loadCarModel(S, thisKey, function (model) {
+    if (model && opts.car === thisKey && carGroup) {
+      /* production model arrived: replace the procedural body, keep wheels
+         only if the model looks wheel-less (heuristic: bbox min above hub) */
+      while (carGroup.children.length) carGroup.remove(carGroup.children[0]);
+      carGroup.add(model);
+      wheelMeshes = [];
+      carGroup.userData.glbSpinners = (model.userData && model.userData.spinners) || [];
+      var hudTag = document.getElementById('tag');
+      if (hudTag) hudTag.textContent = 'TGK TIME ATTACK GL 0.9 [GLB ' + thisKey.toUpperCase() +
+        ' | painted ' + ((model.userData && model.userData.painted) || 0) + ' mats | ' +
+        carGroup.userData.glbSpinners.length + ' wheel nodes]';
+      /* probe mode: ?probe=1 dumps the model's top-level structure so Jon can
+         name what to hide, and I turn it into hideRx next round */
+      if (location.search.indexOf('probe') >= 0) {
+        var lines = [];
+        model.children[0].children.forEach(function (ch) {
+          var bb = new THREE.Box3().setFromObject(ch);
+          var sz = new THREE.Vector3(); bb.getSize(sz);
+          lines.push(ch.name + '  [' + sz.x.toFixed(1) + ' x ' + sz.y.toFixed(1) + ' x ' + sz.z.toFixed(1) + ']');
+        });
+        var pd = document.createElement('div');
+        pd.style.cssText = 'position:fixed;right:10px;bottom:10px;max-height:60vh;overflow:auto;background:rgba(10,11,13,.9);color:#2ABFAA;font:10px monospace;padding:10px;z-index:99;white-space:pre';
+        pd.textContent = 'MODEL PROBE ' + thisKey + '\n' + lines.join('\n');
+        document.body.appendChild(pd);
+      }
+    }
+  });
+  var W = S.track - 0.08;
+  var paint = new THREE.MeshPhysicalMaterial({
+    color: (S.paint[0] << 16) | (S.paint[1] << 8) | S.paint[2],
+    metalness: 0.72, roughness: 0.34, clearcoat: 0.85, clearcoatRoughness: 0.15
+  });
+  var dk = new THREE.MeshStandardMaterial({ color: 0x141517, roughness: 0.55 });
+  var glass = new THREE.MeshPhysicalMaterial({
+    color: 0x1b2430, metalness: 0.1, roughness: 0.04,
+    transparent: true, opacity: 0.5, envMapIntensity: 1.4, side: THREE.DoubleSide });
+
+  var P = carSilhouette(S);
+  var geo = new THREE.ExtrudeGeometry(P.shape, {
+    depth: W, bevelEnabled: true, bevelThickness: 0.075, bevelSize: 0.065,
+    bevelSegments: 3, curveSegments: 14
+  });
+  geo.rotateY(-Math.PI / 2);
+  geo.translate(W / 2, 0, 0);   /* rotateY maps depth onto -X: recenter */
+  /* plan taper: nose and tail pull inward, tumblehome above the waist */
+  var pos = geo.attributes.position, pc = +pos.count || 0;
+  var span = P.lenF - P.lenR;
+  for (var i = 0; i < pc; i++) {
+    var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    var zn = (z - P.lenR) / span;                        /* 0 tail .. 1 nose */
+    var taper = 1 - 0.14 * Math.pow(Math.abs(zn - 0.5) * 2, 2.6);
+    var tumble = y > P.BELT ? 1 - 0.16 * Math.min(1, (y - P.BELT) / Math.max(0.2, P.ROOF - P.BELT)) : 1;
+    pos.setX(i, x * taper * tumble);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  var body = new THREE.Mesh(geo, paint);
+  body.castShadow = true;
+  carGroup.add(body);
+
+  /* greenhouse: inset extrusion of the glass profile */
+  var gs = new THREE.Shape();
+  gs.moveTo(P.gF - 0.02, P.BELT + 0.01);
+  gs.quadraticCurveTo(P.peak + (P.gF - P.peak) * 0.45, P.ROOF - 0.045, P.peak, P.ROOF - 0.028);
+  gs.lineTo(P.roofR, P.ROOF - 0.028 - (S.rdrop || 0));
+  gs.lineTo(P.tailZ + 0.02, P.tailY + 0.005);
+  gs.lineTo(P.gF - 0.02, P.BELT + 0.01);
+  var gGeo = new THREE.ExtrudeGeometry(gs, { depth: W * 0.72, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 2, curveSegments: 10 });
+  gGeo.rotateY(-Math.PI / 2);
+  gGeo.translate(W * 0.72 / 2, 0.004, 0);
+  var canopy = new THREE.Mesh(gGeo, glass);
+  canopy.castShadow = true;
+  carGroup.add(canopy);
+
+  /* the glasshouse reads as one BLACK BAND on the real cars: gloss-black
+     belt trim under the glass, roofline trim above it, and covered A/D
+     pillars. The body colour reads AGAINST this band - photo-confirmed. */
+  var bandM = new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 0.22, metalness: 0.3 });
+  var beltLen = Math.abs(P.tailZ - P.gF) + 0.12;
+  [-1, 1].forEach(function (sd) {
+    var belt = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.045, beltLen), bandM);
+    belt.position.set(sd * W * 0.371, P.BELT + 0.012, (P.tailZ + P.gF) / 2 - 0.02);
+    carGroup.add(belt);
+    var apil = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.03, Math.hypot(P.ROOF - P.BELT, P.gF - P.peak) * 0.96), bandM);
+    apil.position.set(sd * W * 0.345, (P.BELT + P.ROOF) / 2 + 0.01, (P.gF + P.peak) / 2 + 0.01);
+    apil.rotation.x = Math.atan2(P.ROOF - P.BELT, P.gF - P.peak);
+    apil.rotation.z = sd * -0.12;
+    carGroup.add(apil);
+    var dpil = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, Math.hypot(P.ROOF - (S.rdrop || 0) - P.tailY, P.roofR - P.tailZ) * 0.96), bandM);
+    dpil.position.set(sd * W * 0.345, (P.tailY + P.ROOF) / 2, (P.tailZ + P.roofR) / 2);
+    dpil.rotation.x = Math.atan2(P.ROOF - (S.rdrop || 0) - P.tailY, P.roofR - P.tailZ);
+    dpil.rotation.z = sd * -0.10;
+    carGroup.add(dpil);
+  });
+
+  /* the interior you can now SEE through the glass: dash, seats, wheel */
+  var intM = new THREE.MeshStandardMaterial({ color: 0x17181b, roughness: 0.85 });
+  var dash = new THREE.Mesh(new THREE.BoxGeometry(W * 0.66, 0.13, 0.34), intM);
+  dash.position.set(0, P.BELT - 0.05, P.gF - 0.26);
+  carGroup.add(dash);
+  [-1, 1].forEach(function (sd) {
+    var seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.46, 0.44), intM);
+    seat.position.set(sd * W * 0.21, P.BELT - 0.18, P.gF - 0.95);
+    carGroup.add(seat);
+    var hr = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.12), intM);
+    hr.position.set(sd * W * 0.21, P.BELT + 0.16, P.gF - 1.02);
+    carGroup.add(hr);
+  });
+  var sw = new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.022, 8, 18), intM);
+  sw.position.set(W * 0.21, P.BELT + 0.02, P.gF - 0.44);
+  sw.rotation.x = -0.6;
+  carGroup.add(sw);
+
+  /* ---- sculpted per-car face and tail ---- */
+  drlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.9 });
+  tailMat = new THREE.MeshStandardMaterial({ color: 0x5a0d0d, emissive: 0xff2a20, emissiveIntensity: 0.15 });
+  var chrome = new THREE.MeshStandardMaterial({ color: 0xb7bcc2, metalness: 0.92, roughness: 0.18 });
+  var zF = P.lenF + 0.082, zR = P.lenR - 0.082;
+  var faceY = (P.SILL + P.BELT) / 2;
+
+  if (S.face === 'kidney') {
+    /* photo-accurate: ONE connected kidney pair in a single bright frame,
+       vertical slats inside, standing proud of the nose */
+    var kFrame = new THREE.Mesh(new THREE.TorusGeometry(0.30, 0.024, 8, 12), chrome);
+    kFrame.scale.set(1.65, 0.78, 1);
+    kFrame.position.set(0, faceY + 0.16, zF + 0.055);
+    carGroup.add(kFrame);
+    var kFill = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.42, 0.07),
+      new THREE.MeshStandardMaterial({ color: 0x0d0e10, roughness: 0.45 }));
+    kFill.position.set(0, faceY + 0.16, zF + 0.01);
+    carGroup.add(kFill);
+    var kDiv = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.40, 0.075), bandM);
+    kDiv.position.set(0, faceY + 0.16, zF + 0.02);
+    carGroup.add(kDiv);
+    for (var kv = -1; kv <= 1; kv += 2) {
+      for (var sl = 1; sl <= 3; sl++) {
+        var slat = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.36, 0.078),
+          new THREE.MeshStandardMaterial({ color: 0x2c2e33, roughness: 0.35, metalness: 0.5 }));
+        slat.position.set(kv * sl * 0.115, faceY + 0.16, zF + 0.015);
+        carGroup.add(slat);
+      }
+    }
+    /* three-section black lower intake with splitter lip */
+    var intake = new THREE.Mesh(new THREE.BoxGeometry(W * 0.66, 0.17, 0.06), dk);
+    intake.position.set(0, P.SILL + 0.13, zF);
+    carGroup.add(intake);
+    var lip = new THREE.Mesh(new THREE.BoxGeometry(W * 0.72, 0.035, 0.10), bandM);
+    lip.position.set(0, P.SILL - 0.01, zF + 0.02);
+    carGroup.add(lip);
+  } else if (S.face === 'bars') {
+    var slim = new THREE.Mesh(new THREE.BoxGeometry(W * 0.60, 0.13, 0.055), dk);
+    slim.position.set(0, P.BELT - 0.24, zF);
+    carGroup.add(slim);
+    var bar = new THREE.Mesh(new THREE.BoxGeometry(W * 0.60, 0.022, 0.06), chrome);
+    bar.position.set(0, P.BELT - 0.235, zF + 0.004);
+    carGroup.add(bar);
+  } else if (S.face === 'tg') {
+    var wide = new THREE.Mesh(new THREE.BoxGeometry(W * 0.66, 0.22, 0.055), dk);
+    wide.position.set(0, faceY + 0.16, zF);
+    carGroup.add(wide);
+    var cb = new THREE.Mesh(new THREE.BoxGeometry(W * 0.66, 0.026, 0.06), chrome);
+    cb.position.set(0, faceY + 0.19, zF + 0.004);
+    carGroup.add(cb);
+    var skid = new THREE.Mesh(new THREE.BoxGeometry(W * 0.5, 0.12, 0.07),
+      new THREE.MeshStandardMaterial({ color: 0xb0b4b8, metalness: 0.6, roughness: 0.4 }));
+    skid.position.set(0, P.SILL + 0.03, zF + 0.01);
+    carGroup.add(skid);
+  } else {
+    /* Audi singleframe: RECESSED dark hexagonal volume with a chrome frame */
+    var sf = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.34, 0.10, 6, 1),
+      new THREE.MeshStandardMaterial({ color: 0x0e0e10, roughness: 0.45 }));
+    sf.rotation.x = Math.PI / 2; sf.rotation.y = Math.PI / 2;
+    sf.scale.set(1.75, 1, 1.05);
+    sf.position.set(0, faceY + 0.05, zF - 0.02);
+    carGroup.add(sf);
+    var frame = new THREE.Mesh(new THREE.TorusGeometry(0.335, 0.018, 6, 6), chrome);
+    frame.scale.set(1.75, 1.05, 1);
+    frame.rotation.z = Math.PI / 2;
+    frame.position.set(0, faceY + 0.05, zF + 0.035);
+    carGroup.add(frame);
+    [-0.05, 0.09].forEach(function (yy) {
+      var slat = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.016, 0.05), chrome);
+      slat.position.set(0, faceY + yy, zF + 0.02);
+      carGroup.add(slat);
+    });
+  }
+
+  [-1, 1].forEach(function (sd) {
+    /* headlight housings with the DRL element inside */
+    var slim = S.face === 'kidney';
+    var hh = new THREE.Mesh(new THREE.BoxGeometry(slim ? 0.50 : 0.42, slim ? 0.085 : 0.115, 0.10),
+      new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.25, metalness: 0.4 }));
+    hh.position.set(sd * (W / 2 - 0.30) * 0.86, P.BELT - (slim ? 0.10 : 0.13), zF - 0.02);
+    hh.rotation.y = sd * -0.20;
+    carGroup.add(hh);
+    var drl = new THREE.Mesh(new THREE.BoxGeometry(slim ? 0.44 : 0.36, 0.020, 0.03), drlMat);
+    drl.position.set(sd * (W / 2 - 0.30) * 0.86, P.BELT - (slim ? 0.082 : 0.105), zF + 0.028);
+    drl.rotation.y = sd * -0.20;
+    carGroup.add(drl);
+    if (slim) {
+      var blu = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.016, 0.032),
+        new THREE.MeshStandardMaterial({ color: 0x2a6fd6, emissive: 0x2a6fd6, emissiveIntensity: 0.8 }));
+      blu.position.set(sd * (W / 2 - 0.22) * 0.86, P.BELT - (slim ? 0.10 : 0.13), zF + 0.030);
+      blu.rotation.y = sd * -0.20;
+      carGroup.add(blu);
+    }
+
+    /* tail clusters per car */
+    if (S.face === 'tg') {
+      var tv = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.34, 0.08), tailMat);
+      tv.position.set(sd * (W / 2 - 0.14) * 0.9, P.BELT - 0.18, zR + 0.02);
+      carGroup.add(tv);
+    } else if (S.face === 'kidney') {
+      /* wraparound corner unit: rear face + side face in an L, darkened lens */
+      var tr2 = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.075, 0.06), tailMat);
+      tr2.position.set(sd * (W / 2 - 0.24) * 0.88, P.BELT - 0.09, zR + 0.015);
+      carGroup.add(tr2);
+      var ts = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.065, 0.22), tailMat);
+      ts.position.set(sd * (W / 2 + 0.045) * 0.90, P.BELT - 0.09, zR + 0.20);
+      carGroup.add(ts);
+    } else {
+      var tw = new THREE.Mesh(new THREE.BoxGeometry(S.face === 'hex' ? 0.52 : 0.44, 0.07, 0.07), tailMat);
+      tw.position.set(sd * (W / 2 - (S.face === 'hex' ? 0.30 : 0.28)) * 0.88, P.BELT - 0.085, zR + 0.015);
+      carGroup.add(tw);
+    }
+    var mir = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.09, 0.13),
+      new THREE.MeshStandardMaterial({ color: (S.mirror[0] << 16) | (S.mirror[1] << 8) | S.mirror[2], roughness: 0.4 }));
+    mir.position.set(sd * (W / 2 + 0.09), P.BELT + 0.11, P.gF - 0.14);
+    carGroup.add(mir);
+  });
+  if (S.face === 'bars') {
+    var bstrip = new THREE.Mesh(new THREE.BoxGeometry(W * 0.42, 0.028, 0.05), chrome);
+    bstrip.position.set(0, P.BELT - 0.075, zR + 0.01);
+    carGroup.add(bstrip);
+  }
+  if (S.face === 'kidney') {
+    var diff = new THREE.Mesh(new THREE.BoxGeometry(W * 0.80, 0.30, 0.07),
+      new THREE.MeshStandardMaterial({ color: 0x0e0f11, roughness: 0.4 }));
+    diff.position.set(0, P.SILL + 0.16, zR + 0.005);
+    carGroup.add(diff);
+    var skid2 = new THREE.Mesh(new THREE.BoxGeometry(W * 0.34, 0.05, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xb4b8bc, metalness: 0.6, roughness: 0.35 }));
+    skid2.position.set(0, P.SILL + 0.04, zR + 0.02);
+    carGroup.add(skid2);
+  }
+  if (S.rails) {
+    [-1, 1].forEach(function (sd) {
+      var rail = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, Math.abs(P.roofR - P.peak) + 0.7),
+        new THREE.MeshStandardMaterial({ color: 0xacb0b5, metalness: 0.7, roughness: 0.35 }));
+      rail.position.set(sd * W * 0.30, P.ROOF + 0.015, (P.roofR + P.peak) / 2);
+      carGroup.add(rail);
+    });
+  }
+  var fin = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.09, 4),
+    new THREE.MeshStandardMaterial({ color: 0x1a1b1e, roughness: 0.5 }));
+  fin.scale.z = 3.2;
+  fin.position.set(0, P.ROOF + 0.02 - (S.rdrop || 0), P.roofR + 0.35);
+  carGroup.add(fin);
+  /* exhausts */
+  var exN = S.face === 'bars' ? 2 : (S.exh === 4 ? 4 : 2);
+  var exXs = S.face === 'bars' ? [-0.56, -0.32] : (exN === 4 ? [-0.54, -0.32, 0.32, 0.54] : [-0.46, 0.46]);
+  exXs.forEach(function (ex) {
+    var tip = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.10, 12),
+      new THREE.MeshStandardMaterial({ color: 0x9a9da2, metalness: 0.9, roughness: 0.25 }));
+    tip.rotation.x = Math.PI / 2;
+    tip.position.set(ex, P.SILL + 0.06, P.lenR - 0.09);
+    carGroup.add(tip);
+    var bore = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.02, 12),
+      new THREE.MeshBasicMaterial({ color: 0x060606 }));
+    bore.rotation.x = Math.PI / 2;
+    bore.position.set(ex, P.SILL + 0.06, P.lenR - 0.135);
+    carGroup.add(bore);
+  });
+
+  /* ---- detail pass: the cues eyes lock onto ---- */
+  var seamM = new THREE.MeshBasicMaterial({ color: 0x0c0d0e, transparent: true, opacity: 0.55 });
+  function taperAt(z) {
+    var zn = (z - P.lenR) / (P.lenF - P.lenR);
+    return 1 - 0.14 * Math.pow(Math.abs(zn - 0.5) * 2, 2.6);
+  }
+  /* panel shutlines: bonnet, boot, and two door seams per side */
+  var bonSeam = new THREE.Mesh(new THREE.BoxGeometry(W * 0.78 * taperAt(P.gF + 0.06), 0.012, 0.012), seamM);
+  bonSeam.position.set(0, P.BELT + 0.045, P.gF + 0.06);
+  carGroup.add(bonSeam);
+  var bootSeam = new THREE.Mesh(new THREE.BoxGeometry(W * 0.72 * taperAt(P.tailZ - 0.03), 0.012, 0.012), seamM);
+  bootSeam.position.set(0, (S.style === 'suv' ? P.BELT + 0.02 : P.BELT + 0.04), P.tailZ - 0.03);
+  carGroup.add(bootSeam);
+  [-1, 1].forEach(function (sd) {
+    [0.58, -0.42].forEach(function (zz) {
+      var t = taperAt(zz);
+      var seam = new THREE.Mesh(new THREE.BoxGeometry(0.012, (P.BELT - P.SILL) * 0.78, 0.012), seamM);
+      seam.position.set(sd * (W / 2 + 0.068) * t, (P.SILL + P.BELT) / 2 + 0.03, zz);
+      carGroup.add(seam);
+    });
+    /* door handles at the beltline */
+    [0.30, -0.68].forEach(function (zz) {
+      var t2 = taperAt(zz);
+      var hd = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.028, 0.17),
+        S.face === 'hex' ? chrome : new THREE.MeshStandardMaterial({ color: 0x1c1d20, roughness: 0.5 }));
+      hd.position.set(sd * (W / 2 + 0.072) * t2, P.BELT - 0.13, zz);
+      carGroup.add(hd);
+    });
+    /* B-pillar: dark vertical between the door glasses */
+    var bp = new THREE.Mesh(new THREE.BoxGeometry(0.03, (P.ROOF - P.BELT) * 0.82, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x0a0b0d, roughness: 0.3 }));
+    bp.position.set(sd * W * 0.352, (P.BELT + P.ROOF) / 2 - 0.02, 0.02);
+    bp.rotation.z = sd * -0.13;
+    carGroup.add(bp);
+    /* fog-light inset at the bumper corner */
+    var fog = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.35 }));
+    fog.position.set(sd * (W / 2 - 0.17) * 0.86, P.SILL + 0.15, zF - 0.005);
+    carGroup.add(fog);
+  });
+  /* horizontal character line: a body-colour crease standing 8mm proud so
+     the environment reflection breaks across it, like the photos */
+  [-1, 1].forEach(function (sd) {
+    var chY = S.style === 'suv' ? P.BELT - 0.34 : P.BELT - 0.22;
+    var crease = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.030, (P.lenF - P.lenR) * 0.60), paint);
+    crease.position.set(sd * (W / 2 + 0.072) * 0.97, chY, 0.02);
+    carGroup.add(crease);
+    if (S.clad) {
+      /* gloss-black rocker band, per the photos */
+      var rock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, (P.lenF - P.lenR) * 0.55), bandM);
+      rock.position.set(sd * (W / 2 + 0.055) * 0.96, P.SILL + 0.05, 0.0);
+      carGroup.add(rock);
+    }
+    if (S.face === 'kidney') {
+      /* front-arch gill vent, black insert */
+      var gill = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.20, 0.09), bandM);
+      gill.position.set(sd * (W / 2 + 0.058) * taperAt(S.wb / 2 - 0.62), (P.SILL + P.BELT) / 2 + 0.06, S.wb / 2 - 0.62);
+      carGroup.add(gill);
+    }
+  });
+
+  /* wipers parked at the screen base */
+  [-0.26, 0.14].forEach(function (wx) {
+    var wip = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.014, 0.42),
+      new THREE.MeshStandardMaterial({ color: 0x121316, roughness: 0.6 }));
+    wip.position.set(wx, P.BELT + 0.035, P.gF - 0.03);
+    wip.rotation.y = 0.5;
+    wip.rotation.x = -0.35;
+    carGroup.add(wip);
+  });
+  /* licence plates: the single cheapest thing that says ROAD CAR */
+  var plateM = new THREE.MeshStandardMaterial({ color: 0xf2f3f0, roughness: 0.5 });
+  var plateF = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.115, 0.018), plateM);
+  plateF.position.set(0, P.SILL + 0.26, zF + (S.face === 'kidney' ? 0.09 : 0.05));
+  carGroup.add(plateF);
+  var plateR = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.115, 0.018), plateM);
+  plateR.position.set(0, S.style === 'suv' ? P.BELT - 0.42 : P.BELT - 0.26, zR + 0.02);
+  carGroup.add(plateR);
+
+  /* wheels: torus tyre + disc rim */
+  wheelMeshes = [];
+  var R = S.rw || 0.33;
+  var tyreM = new THREE.MeshStandardMaterial({ color: 0x161618, roughness: 0.92 });
+  var rimM = new THREE.MeshStandardMaterial({
+    color: S.face === 'kidney' ? 0x3c4046 : 0x9ba0a6, metalness: 0.85, roughness: 0.3 });
+  var pos4 = [[-S.track / 2, S.wb / 2], [S.track / 2, S.wb / 2], [-S.track / 2, -S.wb / 2], [S.track / 2, -S.wb / 2]];
+  for (var w = 0; w < 4; w++) {
+    var wide = 0.115 + (S.face === 'kidney' && w >= 2 ? 0.035 : 0);
+    var g = new THREE.Group();
+    var ty = new THREE.Mesh(new THREE.TorusGeometry(R * 0.83, R * 0.19, 10, 24), tyreM);
+    ty.rotation.y = Math.PI / 2;
+    ty.scale.x = wide / 0.115;
+    ty.castShadow = true;
+    g.add(ty);
+    var rim = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.22, R * 0.22, wide * 2.2, 10), rimM);
+    rim.rotation.z = Math.PI / 2;
+    g.add(rim);
+    var nSp = S.face === 'kidney' ? 10 : 5;
+    for (var sp = 0; sp < nSp; sp++) {
+      var spoke = new THREE.Mesh(new THREE.BoxGeometry(wide * 1.9, R * 1.30, R * (nSp === 10 ? 0.085 : 0.16)), rimM);
+      spoke.userData.baseRot = sp / nSp * Math.PI * 2 + (nSp === 10 && sp % 2 ? 0.10 : 0);
+      spoke.rotation.x = spoke.userData.baseRot;
+      g.add(spoke);
+    }
+    /* brake disc and caliper sit STILL behind the rotating spokes - one of
+       the most convincing motion cues a wheel can have */
+    var disc = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.52, R * 0.52, wide * 0.5, 18),
+      new THREE.MeshStandardMaterial({ color: 0x8d9196, metalness: 0.9, roughness: 0.45 }));
+    disc.rotation.z = Math.PI / 2;
+    g.userData.staticParts = [];
+    var cal = new THREE.Mesh(new THREE.BoxGeometry(wide * 1.1, R * 0.36, R * 0.42),
+      new THREE.MeshStandardMaterial({
+        color: S.face === 'kidney' ? 0x1a4fa0 : (S.face === 'hex' ? 0x8d1515 : 0x2c2e32),
+        roughness: 0.45 }));
+    cal.position.set(0, R * 0.30, R * 0.42);
+    g.add(disc); g.add(cal);
+    g.userData.staticParts.push(disc, cal);
+    g.position.set(pos4[w][0], R, pos4[w][1]);
+    carGroup.add(g);
+    wheelMeshes.push(g);
+  }
+  scene.add(carGroup);
+}
+
+var keys = {};
+addEventListener('keydown', function (e) {
+  var k = e.key.toLowerCase();
+  keys[k] = 1;
+  var picks = { '1': 's6', '2': 'cc', '3': 'touareg', '4': 'x5' };
+  if (picks[k]) {
+    opts.car = picks[k];
+    car = taCarReset(opts);
+    buildCarGL(CAR_SPEC[opts.car]);
+    lap = { on: false, t0: 0, best: null };
+  }
+});
+addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = 0; });
+addEventListener('keydown', function (e) { if (e.key.indexOf('Arrow') === 0 || e.key === ' ') e.preventDefault(); });
+
+/* minimal lap timing on the physics arc-length */
+var lap = { on: false, t0: 0, best: null };
+
+var last = performance.now(), acc = 0, DT = 1 / 240;
+function glLoop(now) {
+  requestAnimationFrame(glLoop);
+  var dt = Math.min(0.05, (now - last) / 1000); last = now;
+
+  var sT = ((keys['a'] || keys['arrowleft']) ? -1 : 0) + ((keys['d'] || keys['arrowright']) ? 1 : 0);
+  var rate = sT === 0 ? (11 + Math.min(9, Math.abs(car.v) * 0.28)) : 9;
+  car.steer += clamp(sT - car.steer, -rate * dt, rate * dt);
+  car.steer = clamp(car.steer, -1, 1);
+  car.thr = lerp(car.thr, (keys['w'] || keys['arrowup']) ? 1 : 0, 1 - Math.pow(0.002, dt));
+  car.brk = lerp(car.brk, (keys['s'] || keys['arrowdown']) ? 1 : 0, 1 - Math.pow(0.0005, dt));
+  car.hb = keys[' '] ? 1 : 0;
+
+  acc += dt;
+  while (acc > DT) { taStep(DT); acc -= DT; }
+
+  if (!lap.on && car.sAlong > 2 && Math.abs(car.v) > 1) { lap.on = true; lap.t0 = now; }
+  if (lap.on && car.sAlong > course.len - 4) {
+    var t = (now - lap.t0) / 1000;
+    if (!lap.best || t < lap.best) lap.best = t;
+    lap.on = false;
+    car = taCarReset(opts);
+  }
+
+  carGroup.position.set(-car.x, 0, car.z);
+  /* reflection conjugation: yaw and roll negate, pitch does not */
+  carGroup.rotation.set(car.pitch, -car.yaw, -car.bodyRoll);
+  if (carGroup.userData.glbSpinners && carGroup.userData.glbSpinners.length) {
+    for (var gs = 0; gs < carGroup.userData.glbSpinners.length; gs++) {
+      carGroup.userData.glbSpinners[gs].rotation.x = car.wheelAng;
+    }
+  }
+  for (var w = 0; w < 4; w++) {
+    wheelMeshes[w].children.forEach(function (ch) {
+      if (wheelMeshes[w].userData.staticParts && wheelMeshes[w].userData.staticParts.indexOf(ch) >= 0) return;
+      ch.rotation.x = ch.rotation.x % (Math.PI * 2);
+      ch.rotation.x = car.wheelAng + (ch.userData.baseRot || 0);
+    });
+    if (w < 2) wheelMeshes[w].rotation.y = -car.delta;
+  }
+  if (tailMat) tailMat.emissiveIntensity = car.brk > 0.1 ? 1.6 : 0.15;
+
+  var back = 6.4, h = 1.9 + (((car.spec && car.spec.roof) || 1.32) - 1.32) * 0.6;
+  var cx = -(car.x - Math.sin(car.yaw) * back), cz = car.z - Math.cos(car.yaw) * back;
+  camera.position.lerp(new THREE.Vector3(cx, h, cz), 1 - Math.pow(0.001, dt));
+  camera.lookAt(-(car.x + Math.sin(car.yaw) * 3), 0.7, car.z + Math.cos(car.yaw) * 3);
+
+  sunLight.position.set(-car.x - 90, 140, car.z + 95);
+  sunLight.target.position.set(-car.x, 0, car.z);
+  sunLight.target.updateMatrixWorld();
+
+  var hud = document.getElementById('hud');
+  var lt = lap.on ? ((now - lap.t0) / 1000).toFixed(1) : (lap.best ? 'best ' + lap.best.toFixed(2) : '--');
+  hud.textContent = Math.round(Math.abs(car.v) * 2.23694) + ' mph  gear ' + car.gear + '  ' +
+    (car.rpm | 0) + ' rpm  |  ' + (CAR_SPEC[opts.car] || {}).name + '  |  lap ' + lt;
+  renderer.render(scene, camera);
+}
+
+var opts = { car: 's6', tyre: 'sport', box: 'auto', esc: 'on', abs: 'on', line: 'off' };
+var daySeed = parseInt(taDayKey(), 10) % 2147483647;
+taCourseBuild(daySeed);
+var car = taCarReset(opts);
+glInit();
+requestAnimationFrame(glLoop);
+
+</script>
+</body>
+</html>
