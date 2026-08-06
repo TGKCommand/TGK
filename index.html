@@ -3834,26 +3834,40 @@ async function callAI(prompt,maxTokens=1200){let r,d;try{r=await tgkAIFetch({mod
 async function callAILong(prompt,maxTokens,maxCont){
   maxTokens=maxTokens||8000;
   maxCont=(maxCont===undefined||maxCont===null)?3:maxCont;
+  // The anthropic-proxy edge function returns an empty 200 body (no content, no
+  // stop_reason, no error) when the requested max_tokens is above its hard cap.
+  // That empty reply is indistinguishable from a clean-but-empty completion, so a
+  // convert used to fail with a bogus TRUNCATED even on tiny input. Keep every pass
+  // under a known-safe ceiling and step it down further if a pass still comes back
+  // empty; the continuation loop stitches long output regardless of the per-pass cap.
+  var cap=Math.min(maxTokens,4000);
   var msgs=[{role:'user',content:prompt}];
   var acc='';
   for(var pass=0;pass<=maxCont;pass++){
-    var r,d;
-    try{r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages:msgs});}
-    catch(fe){throw new Error('NETWORK_ERROR');}
-    try{d=await r.json();}catch(je){throw new Error('NETWORK_ERROR');}
-    if(d.error){
-      if(d.error.type==='authentication_error'||d.error.type==='proxy_not_configured')throw new Error('AUTH_ERROR');
-      if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');
-      throw new Error('API: '+d.error.message);
+    var chunk='',d=null,stepped=false;
+    for(var attempt=0;attempt<4;attempt++){
+      var r;
+      try{r=await tgkAIFetch({model:'claude-sonnet-4-6',max_tokens:cap,messages:msgs});}
+      catch(fe){throw new Error('NETWORK_ERROR');}
+      try{d=await r.json();}catch(je){throw new Error('NETWORK_ERROR');}
+      if(d.error){
+        if(d.error.type==='authentication_error'||d.error.type==='proxy_not_configured')throw new Error('AUTH_ERROR');
+        if(d.error.type==='rate_limit_error')throw new Error('RATE_ERROR');
+        throw new Error('API: '+d.error.message);
+      }
+      // Join EVERY text block. Reading only content[0] silently dropped output whenever the
+      // response came back as more than one block, which looks identical to truncation.
+      chunk=(d.content||[]).filter(function(b){return b&&b.type==='text'&&b.text;})
+                           .map(function(b){return b.text;}).join('');
+      if(!chunk&&d.content&&d.content[0]&&d.content[0].text)chunk=d.content[0].text;
+      // Empty body with no stop_reason is the proxy rejecting max_tokens. Halve and retry.
+      if(!chunk&&!(d&&d.stop_reason)&&cap>500){cap=Math.floor(cap/2);stepped=true;continue;}
+      break;
     }
-    // Join EVERY text block. Reading only content[0] silently dropped output whenever the
-    // response came back as more than one block, which looks identical to truncation.
-    var chunk=(d.content||[]).filter(function(b){return b&&b.type==='text'&&b.text;})
-                             .map(function(b){return b.text;}).join('');
-    if(!chunk&&d.content&&d.content[0]&&d.content[0].text)chunk=d.content[0].text;
     acc+=chunk;
-    _lastAIDiag={passes:pass+1,chars:acc.length,stop:d.stop_reason||'(none)',lastChunk:chunk.length};
-    if(d.stop_reason!=='max_tokens')return acc;
+    _lastAIDiag={passes:pass+1,chars:acc.length,stop:(d&&d.stop_reason)||'(none)',lastChunk:chunk.length,cap:cap};
+    if(stepped)_lastAIDiag.steppedCap=true;
+    if(!d||d.stop_reason!=='max_tokens')return acc;
     // A continuation that returns nothing will never finish - stop instead of burning passes.
     if(pass>0&&!chunk){_lastAIDiag.stalled=true;return acc;}
     var prefill=acc.replace(/\s+$/,'');
@@ -16258,7 +16272,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.14';
+var TGK_CC_VERSION='v2.15';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
