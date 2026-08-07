@@ -1078,6 +1078,29 @@ function taCourseBuild(seed) {
     if (pk % 2 === 0) scenery.push({ t: 'crowd', x: pw.x + 4, z: pw.z + 3, r: rnd(), th: g0.th });
   }
 
+  /* ---- FINAL CLEARANCE PASS ------------------------------------------------
+     Individual placement rules each checked clearance their own way, and
+     clearOfCourse() only sampled every THIRD segment - so an object could sit
+     in a gap and land squarely on the driving line. A course that doubles
+     back also brings later segments near scenery that was clear of the
+     segment it was placed against. One authoritative sweep at the end: no
+     solid object may sit within the course corridor plus a margin, measured
+     against EVERY segment. The gantry is an arch you drive through and decals
+     are paint, so both are exempt. */
+  var _sceneryCulled = 0;
+  (function () {
+    var MARGIN = COURSE_HALF + 7.5, m2 = MARGIN * MARGIN, removed = 0;
+    for (var i = scenery.length - 1; i >= 0; i--) {
+      var o = scenery[i];
+      if (o.t === 'decal' || o.t === 'gantry') continue;
+      for (var q2 = 0; q2 < segs.length; q2++) {
+        var dx = segs[q2].x - o.x, dz = segs[q2].z - o.z;
+        if (dx * dx + dz * dz < m2) { scenery.splice(i, 1); removed++; break; }
+      }
+    }
+    _sceneryCulled = removed;
+  })();
+
   taBuildLine(segs, cones);
 
   course = {
@@ -1620,22 +1643,32 @@ function taStep(dt) {
      Roll and pitch are then DERIVED from the four corner heights, so the body
      genuinely sits on its springs: a stiffer car rolls less because its
      springs compress less, not because a constant was tuned lower. */
+  /* A real quarter-car: sprung mass on a spring and damper.
+         m*x'' = k*(x_eq - x) - c*x'
+     The previous version was a RATE LIMITER with no mass and no spring - it
+     could only lag toward a target, never settle, and because the body
+     attitude was simultaneously being driven by the old oscillator, the two
+     integrators fought each other every step. That fight is what showed up
+     as wheel wobble. With real dynamics the corner has a natural frequency
+     (~1.3 Hz on the S6) and a damping ratio (~0.44), so it compresses, settles
+     once, and stops - which is what a damper is for. */
+  var M_CORNER = M / 4;
   function susSolve(nm, Fz, Fz0, k, c) {
-    var xTgt = (Fz - Fz0) / k;
     var lim = TRV;
-    if (xTgt > lim * 0.85) {                 /* bump stop: progressive, not a wall */
-      var over = xTgt - lim * 0.85;
-      xTgt = lim * 0.85 + over / (1 + over / (lim * 0.15) * 4);
+    var xEq = (Fz - Fz0) / k;
+    if (xEq > lim * 0.85) {                  /* bump stop: progressive, not a wall */
+      var over = xEq - lim * 0.85;
+      xEq = lim * 0.85 + over / (1 + over / (lim * 0.15) * 4);
     }
-    xTgt = clamp(xTgt, -lim, lim);
-    var prev = car[nm] || 0;
-    var v = (xTgt - prev) / Math.max(dt, 1e-4);
-    /* critical-ish damping: the damper limits how fast the corner can move */
-    var vMax = (c / k) > 0 ? (lim * 12) / (1 + c / k * 8) : lim * 12;
-    v = clamp(v, -vMax, vMax);
-    var x = prev + v * dt;
+    xEq = clamp(xEq, -lim, lim);
+    var x = car[nm] || 0, v = car[nm + 'V'] || 0;
+    var a = (k * (xEq - x) - c * v) / M_CORNER;
+    v += a * dt;
+    x += v * dt;
+    if (x > lim) { x = lim; if (v > 0) v = 0; }        /* hit the stop, kill motion */
+    if (x < -lim) { x = -lim; if (v < 0) v = 0; }
     car[nm + 'V'] = v;
-    return clamp(x, -lim, lim);
+    return x;
   }
   /* The spring datum is the STATIC corner load - not the current axle load.
      Referencing the live axle load cancelled the longitudinal term out, so
@@ -1856,12 +1889,13 @@ function taStep(dt) {
   var pitTgt = clamp(car.ax / G * 0.016, -0.030, 0.030);
   car.pitchV = (car.pitchV || 0) + ((pitTgt - car.pitch) * 90 - 11.4 * (car.pitchV || 0)) * dt;
   car.pitch += car.pitchV * dt;
-  /* blend the geometric attitude in: the springs now decide most of how the
-     body sits, with the old oscillator retained as a small transient term so
-     the validated feel and its 0.22 s roll lag are preserved. */
+  /* Attitude is now WHOLLY the suspension's business. Running the old
+     oscillator as well meant two integrators pushing the same value in the
+     same step, which oscillated. The dampers supply the settling behaviour
+     the oscillator used to fake. */
   if (car.rollGeo != null) {
-    car.bodyRoll = car.bodyRoll * 0.25 + car.rollGeo * 0.75;
-    car.pitch = car.pitch * 0.35 + car.pitchGeo * 0.65;
+    car.bodyRoll = car.rollGeo;
+    car.pitch = car.pitchGeo;
   }
 }
 
