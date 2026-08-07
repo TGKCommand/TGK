@@ -1891,7 +1891,9 @@ var MODEL_TWEAK = {
      spin     - whether the model exposes per-wheel nodes we can rotate       */
   s6:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
              paintRx: /^rs6c8$/i,
-             hideRx: /steelwheel|stock2|Manta Spoiler|CivicTypeR_tires_19x9(?!\.001)/i, shadowMin: 0.5 },
+             hideRx: /Manta Spoiler/i,   /* ONLY the bolt-on wing: the 'stock2' and
+                CivicTypeR nodes are the car's actual four wheels, and the old
+                pattern was deleting them */ shadowMin: 0.5 },
   cc:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
              paintRx: /^carpaint/i, hideRx: null, shadowMin: 0.4 },
   tiguan:  { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
@@ -2025,6 +2027,13 @@ function loadCarModel(S, key, onDone) {
         if (!mm.transparent) mm.side = THREE.DoubleSide;
         if (tw.repaint !== false && tw.paintRx && mm.name && tw.paintRx.test(mm.name) && mm.color) {
           mm.color.setRGB(S.paint[0] / 255, S.paint[1] / 255, S.paint[2] / 255);
+          /* the model bakes its factory colour into COLOR_0 vertex colours,
+             which THREE multiplies against material.color - so repainting a
+             bronze car just gave a bronze-tinted result. Turn them off on
+             the panels we are repainting. */
+          mm.vertexColors = false;
+          if (mm.map) mm.map = null;
+          mm.needsUpdate = true;
           if (mm.metalness !== undefined) { mm.metalness = 0.72; mm.roughness = 0.30; }
           if (mm.clearcoat !== undefined) { mm.clearcoat = 0.8; }
           painted++;
@@ -2169,6 +2178,16 @@ function taResize() {
     renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    /* ---- COLOUR PIPELINE -------------------------------------------------
+       This is the single biggest reason a THREE scene reads flat and grey.
+       By default the renderer writes LINEAR values straight to an sRGB
+       display, so midtones wash out and highlights clip hard. Filmic tone
+       mapping plus sRGB output gives real highlight rolloff, saturated
+       shadows and paint that actually looks like paint. */
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.physicallyCorrectLights = true;
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x1a2430, 60, 320);
     camera = new THREE.PerspectiveCamera(74, 1, 0.2, 1200);
@@ -2180,6 +2199,30 @@ function taResize() {
     var sc = sunLight.shadow.camera;
     sc.left = -60; sc.right = 60; sc.top = 60; sc.bottom = -60; sc.far = 400;
     scene.add(sunLight); scene.add(sunLight.target);
+    /* ---- REFLECTION ENVIRONMENT ------------------------------------------
+       Car paint is a mirror. With nothing to reflect, clearcoat reads as flat
+       plastic no matter how good the material is. A tiny procedural sky/ground
+       cube costs almost nothing and transforms how metal and glass look. */
+    try {
+      var cv = document.createElement('canvas'); cv.width = cv.height = 128;
+      var g = cv.getContext('2d');
+      var grd = g.createLinearGradient(0, 0, 0, 128);
+      grd.addColorStop(0.00, '#20456e');
+      grd.addColorStop(0.48, '#9db6c8');
+      grd.addColorStop(0.52, '#6a6d70');
+      grd.addColorStop(1.00, '#2e3033');
+      g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+      var faces = [];
+      for (var f = 0; f < 6; f++) faces.push(cv.toDataURL());
+      var ldr = new THREE.CubeTextureLoader();
+      ldr.load(faces, function (tex) {
+        tex.encoding = THREE.sRGBEncoding;
+        scene.environment = tex;
+      });
+    } catch (e) {
+      /* reflections are a nicety - never let them stop the game booting */
+      console.warn('[TGK] environment map unavailable:', e && e.message);
+    }
     _glReady = true;
   }
   var w = window.innerWidth, h = window.innerHeight;
@@ -2220,6 +2263,7 @@ function glMakeAsphalt() {
     g.beginPath(); g.moveTo(x, 298); g.lineTo(x, 472); g.stroke();
   }
   var t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
@@ -2231,7 +2275,7 @@ function glMakeSmoke() {
   grd.addColorStop(0.45, 'rgba(240,242,244,0.45)');
   grd.addColorStop(1.00, 'rgba(230,235,240,0)');
   g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(c);
+  var _t = new THREE.CanvasTexture(c); _t.encoding = THREE.sRGBEncoding; return _t;
 }
 function glMakeSkid() {
   /* a tyre does not print a hard rectangle: dark down the middle, feathered
@@ -2251,7 +2295,7 @@ function glMakeSkid() {
     g.fillStyle = 'rgba(0,0,0,' + (0.05 + Math.random() * 0.18) + ')';
     g.fillRect(Math.random() * 32, Math.random() * 64, 1 + Math.random() * 3, 1 + Math.random() * 2);
   }
-  return new THREE.CanvasTexture(c);
+  var _t = new THREE.CanvasTexture(c); _t.encoding = THREE.sRGBEncoding; return _t;
 }
 function glMakeChalk() {
   var c = document.createElement('canvas'); c.width = c.height = 64;
@@ -2259,7 +2303,7 @@ function glMakeChalk() {
   g.clearRect(0, 0, 64, 64);
   g.strokeStyle = 'rgba(236,236,228,0.75)'; g.lineWidth = 5;
   g.strokeRect(9, 9, 46, 46);
-  return new THREE.CanvasTexture(c);
+  var _t = new THREE.CanvasTexture(c); _t.encoding = THREE.sRGBEncoding; return _t;
 }
 function glMakeSky() {
   var c = document.createElement('canvas'); c.width = 8; c.height = 256;
@@ -2271,6 +2315,7 @@ function glMakeSky() {
   grd.addColorStop(1.00, '#c3cdd2');
   g.fillStyle = grd; g.fillRect(0, 0, 8, 256);
   var t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
 }
@@ -2703,9 +2748,13 @@ function buildCarInto(grp, S, tint) {
   grp.add(cab);
   grp.userData.placeholder = [body, cab];
 
-  var key = null;
-  for (var kk in CAR_SPEC) if (CAR_SPEC[kk] === S) key = kk;
-  if (!key) key = opts.car;
+  /* opts.car is AUTHORITATIVE. Reverse-looking the key up by object identity
+     silently returns the wrong car whenever the spec object is not the exact
+     one in CAR_SPEC, which is how the CC ended up rendering the S6's model. */
+  var key = (typeof opts !== 'undefined' && opts && CAR_SPEC[opts.car]) ? opts.car : null;
+  if (!key) { for (var kk in CAR_SPEC) if (CAR_SPEC[kk] === S) key = kk; }
+  if (!key) key = 's6';
+  grp.userData.carKey = key;
   if (typeof loadCarModel !== 'function') return;
   loadCarModel(S, key, function (model) {
     if (!model) return;                       /* keep the stand-in */
