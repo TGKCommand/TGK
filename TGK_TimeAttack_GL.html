@@ -1869,7 +1869,11 @@ function loadCarModel(S, key, onDone) {
   var bases = _modelBases(), bi = 0;
   function attempt() {
     if (bi >= bases.length) { modelFail(); return; }
-    var url = bases[bi++] + key + '.glb';
+    /* ?v= busts a cached 404: a browser that requested this file BEFORE it
+       was uploaded will happily keep serving the failure from cache. Pass
+       ?nocache=1 to force a fresh fetch on every load while debugging. */
+    var bust = /[?&]nocache=1/.test(location.search) ? ('?v=' + Date.now()) : '';
+    var url = bases[bi++] + key + '.glb' + bust;
     _gltfLoader.load(url, function (g) {
       _modelBase = bases[bi - 1];
       try { onLoaded(g); }
@@ -1953,10 +1957,43 @@ function loadCarModel(S, key, onDone) {
   }
   function modelFail() {
     _modelCache[key] = 'missing';
-    var msg = key + '.glb not found in any of: ' + bases.join(', ') + ' - falling back to the procedural car.';
+    var msg = key + '.glb: could not load from ' + bases.join(' or ');
     console.warn('[TGK] ' + msg);
-    _glReportFail(key, msg);
+    _glReportFail(key, msg + ' (probing...)');
     onDone(null);
+    /* GLTFLoader's error callback fires for BOTH a 404 and a parse failure,
+       so "not found" is a guess. Fetch the file ourselves and report what is
+       actually there: the HTTP status, the size, and whether the first four
+       bytes are the glTF magic. That distinguishes a missing file from a
+       Git-LFS pointer, an HTML error page, or a genuinely corrupt model. */
+    if (typeof fetch !== 'function') return;
+    var probeUrl = bases[bases.length - 1] + key + '.glb';
+    fetch(probeUrl).then(function (res) {
+      if (!res.ok) {
+        _glReportFail(key, key + '.glb: HTTP ' + res.status + ' at ' + probeUrl + ' - file is not being served');
+        return;
+      }
+      return res.arrayBuffer().then(function (buf) {
+        var n = buf.byteLength, head = new Uint8Array(buf, 0, Math.min(64, n));
+        var magic = String.fromCharCode(head[0], head[1], head[2], head[3]);
+        var asText = '';
+        for (var i = 0; i < head.length; i++) asText += String.fromCharCode(head[i]);
+        var why;
+        if (magic === 'glTF') {
+          why = 'HTTP 200, ' + (n / 1e6).toFixed(1) + ' MB, valid glTF magic - the file is fine, so this is a PARSE error (see console)';
+        } else if (asText.indexOf('git-lfs') >= 0 || asText.indexOf('oid sha256') >= 0) {
+          why = 'served as a Git LFS POINTER (' + n + ' bytes), not the model. GitHub Pages does not resolve LFS - re-add the file without LFS.';
+        } else if (asText.charAt(0) === '<') {
+          why = 'server returned HTML (' + n + ' bytes), not a model - wrong path or a redirect';
+        } else {
+          why = 'HTTP 200 but first bytes are ' + JSON.stringify(magic) + ' (' + n + ' bytes) - not a GLB';
+        }
+        _glReportFail(key, key + '.glb: ' + why);
+        console.warn('[TGK] ' + key + '.glb diagnosis: ' + why);
+      });
+    }).catch(function (e) {
+      _glReportFail(key, key + '.glb: network error - ' + e.message);
+    });
   }
   attempt();
 }
