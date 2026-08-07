@@ -1924,12 +1924,6 @@ function loadCarModel(S, key, onDone) {
       var mats = Array.isArray(n.material) ? n.material : [n.material];
       mats.forEach(function (mm) {
         if (!mm) return;
-        /* Scanned/converted car models are frequently single-sided with
-           inconsistent winding, which shows up as HOLES in the bodywork from
-           certain angles. Rendering opaque panels double-sided costs little
-           and closes them. Glass is left alone - double-siding transparent
-           surfaces causes sorting artefacts. */
-        if (!mm.transparent) mm.side = THREE.DoubleSide;
         if (tw.repaint !== false && tw.paintRx && mm.name && tw.paintRx.test(mm.name) && mm.color) {
           mm.color.setRGB(S.paint[0] / 255, S.paint[1] / 255, S.paint[2] / 255);
           if (mm.metalness !== undefined) { mm.metalness = 0.72; mm.roughness = 0.30; }
@@ -2023,7 +2017,7 @@ var renderer = null, scene = null, camera = null, sunLight = null, hemi = null;
 var carGroup = null, wheelPivots = [], ghostGroup = null, rivalGroup = null;
 var coneMesh = null, coneCollar = null, coneBase = null, coneChalk = null;
 var coneDown = null, gateGroup = null, lineGroup = null;
-var _asphaltTex = null, _skyMesh = null, _smokeTex = null, _skidTex = null;
+var _asphaltTex = null, _skyMesh = null;
 var tailMats = [], skidGroup = null, smokeGroup = null;
 var camX = 0, camZ = 0, camYaw = 0;
 /* SAME SHAPE as the canvas renderer: 60_game.js reads CAM_MODES[camMode].back
@@ -2130,36 +2124,6 @@ function glMakeAsphalt() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
-function glMakeSmoke() {
-  var c = document.createElement('canvas'); c.width = c.height = 64;
-  var g = c.getContext('2d');
-  var grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grd.addColorStop(0.00, 'rgba(255,255,255,0.95)');
-  grd.addColorStop(0.45, 'rgba(240,242,244,0.45)');
-  grd.addColorStop(1.00, 'rgba(230,235,240,0)');
-  g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(c);
-}
-function glMakeSkid() {
-  /* a tyre does not print a hard rectangle: dark down the middle, feathered
-     at both shoulders, with a little tread mottling along its length */
-  var c = document.createElement('canvas'); c.width = 32; c.height = 64;
-  var g = c.getContext('2d');
-  g.clearRect(0, 0, 32, 64);
-  var grd = g.createLinearGradient(0, 0, 32, 0);
-  grd.addColorStop(0.00, 'rgba(10,10,11,0)');
-  grd.addColorStop(0.22, 'rgba(10,10,11,0.85)');
-  grd.addColorStop(0.50, 'rgba(10,10,11,1)');
-  grd.addColorStop(0.78, 'rgba(10,10,11,0.85)');
-  grd.addColorStop(1.00, 'rgba(10,10,11,0)');
-  g.fillStyle = grd; g.fillRect(0, 0, 32, 64);
-  g.globalCompositeOperation = 'destination-out';
-  for (var i = 0; i < 90; i++) {
-    g.fillStyle = 'rgba(0,0,0,' + (0.05 + Math.random() * 0.18) + ')';
-    g.fillRect(Math.random() * 32, Math.random() * 64, 1 + Math.random() * 3, 1 + Math.random() * 2);
-  }
-  return new THREE.CanvasTexture(c);
-}
 function glMakeChalk() {
   var c = document.createElement('canvas'); c.width = c.height = 64;
   var g = c.getContext('2d');
@@ -2201,15 +2165,15 @@ function glEnsureWorld() {
 }
 function glBuildWorld() {
   if (!_asphaltTex) _asphaltTex = glMakeAsphalt();
-  _asphaltTex.repeat.set(224, 224);   /* keep ~11.6 m per tile on the bigger lot */
+  _asphaltTex.repeat.set(60, 60);
   var lotMat = new THREE.MeshStandardMaterial({ map: _asphaltTex, color: 0xffffff, roughness: 0.95 });
-  var lot = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), lotMat);
+  var lot = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), lotMat);
   lot.rotation.x = -Math.PI / 2; lot.receiveShadow = true;
   worldGroup.add(lot);
 
   /* sky dome: a flat background colour is most of what read as "grey" */
   if (!_skyMesh) {
-    _skyMesh = new THREE.Mesh(new THREE.SphereGeometry(1800, 24, 16),
+    _skyMesh = new THREE.Mesh(new THREE.SphereGeometry(600, 24, 16),
       new THREE.MeshBasicMaterial({ map: glMakeSky(), side: THREE.BackSide, fog: false, depthWrite: false }));
     scene.add(_skyMesh);
   }
@@ -2519,9 +2483,8 @@ function taLayRubber() {
     skidMarks.push({ x: px, z: pz });
     var q = _skidPool[_skidNext];
     if (!q) {
-      if (!_skidTex) _skidTex = glMakeSkid();
-      q = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.50),
-        new THREE.MeshBasicMaterial({ map: _skidTex, transparent: true, opacity: 0.5,
+      q = new THREE.Mesh(new THREE.PlaneGeometry(0.29, 0.42),
+        new THREE.MeshBasicMaterial({ color: 0x0d0d0e, transparent: true, opacity: 0.5,
           depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
       q.rotation.x = -Math.PI / 2;
       _skidPool[_skidNext] = q; skidGroup.add(q);
@@ -2558,9 +2521,7 @@ function taParticles(dt) {
   for (var s = 0; s < Math.max(particles.length, _smokePool.length); s++) {
     var m = _smokePool[s];
     if (!m && s < particles.length) {
-      if (!_smokeTex) _smokeTex = glMakeSmoke();
-      m = new THREE.Sprite(new THREE.SpriteMaterial({ map: _smokeTex, color: 0xdfe2e5,
-        transparent: true, depthWrite: false, opacity: 0.85 }));
+      m = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xdfe2e5, transparent: true, depthWrite: false }));
       _smokePool[s] = m; smokeGroup.add(m);
     }
     if (!m) continue;
@@ -2932,7 +2893,6 @@ function taBoot() {
   var daySeed = parseInt(taDayKey(), 10) % 2147483647;
   taCourseBuild(daySeed);
   if (typeof taApplySun === 'function') taApplySun(daySeed);
-  /* built again after taRestoreOptions() below, once the saved car is known */
   taBuildCar(CAR_SPEC.s6);
   taBuildTach();
   taBuildMap();
@@ -3006,14 +2966,10 @@ function taRestoreOptions() {
   if (taEl('ta-car-hint')) taEl('ta-car-hint').textContent = CAR_SPEC[opts.car].hint;
   taCarStats();
 }
-var _statsCar = null;
 function taCarStats() {
   var el = taEl('ta-car-stats');
   if (!el) return;
   var S = CAR_SPEC[opts.car] || CAR_SPEC.s6;
-  /* the renderer must follow the garage selection - without this the GL build
-     kept whatever car was built at boot, so every car rendered as the S6 */
-  if (_statsCar !== opts.car) { _statsCar = opts.car; taBuildCar(S); }
   var drv = S.awdF >= 0.99 ? 'FWD' : (S.awdF <= 0.01 ? 'RWD' : ('AWD ' + Math.round(S.awdF * 100) + ':' + Math.round((1 - S.awdF) * 100)));
   el.innerHTML = (S.hp || '--') + ' hp &middot; ' + Math.round(S.tq * 0.73756) + ' lb-ft &middot; ' + drv;
   /* live spec sheet follows the selected car */
