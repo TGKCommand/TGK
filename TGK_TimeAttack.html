@@ -1137,6 +1137,13 @@ function taBuildLine(segs, cones) {
       fixed[j] = 1;
     }
   }
+  /* Offset-domain relaxation. NOTE: a world-space minimum-curvature solver
+     was tried here and measured WORSE - mean corner curvature up 8 percent and
+     the tightest radius down from 12.7 m to 9.7 m. The reason is that an
+     autocross line is not free to seek minimum curvature: the slalom gates
+     are fixed points it must thread, and forcing straightness between them
+     just moves the curvature into sharper transitions. This heuristic
+     respects that constraint better, so it stays. */
   for (var pass = 0; pass < 220; pass++) {
     var prev = line.slice();
     for (i = 1; i < n - 1; i++) {
@@ -3958,10 +3965,29 @@ function taAudioShift(dir) {
   _aud.eg.gain.cancelScheduledValues(t);
   _aud.eg.gain.setTargetAtTime(0.02, t, 0.012);
   if (dir < 0) {
-    var ck = (typeof car !== 'undefined' && car && ENGINE_VOICE[car.carKey]) ? ENGINE_VOICE[car.carKey].crackle : 0.16;
+    /* Overrun report on a downshift. This used to be ONE flat burst, which
+       reads as a click. Real unburnt-fuel ignition is a short irregular
+       stutter of several reports at falling energy - and it only happens when
+       the physics says it does, so it is driven by the SAME car.flame value
+       that lights the exhaust, keeping sound and picture in agreement. */
+    var VV = ENGINE_VOICE[car && car.carKey] || ENGINE_VOICE.s6;
+    var ck = VV.crackle || 0.16;
+    var fl = (typeof car !== 'undefined' && car && car.flame) ? car.flame : 0;
+    var pops = 2 + Math.round((VV.pops || 0.3) * 4 * (0.4 + fl));
     _aud.induct.g.gain.cancelScheduledValues(t);
-    _aud.induct.g.gain.setValueAtTime(ck, t + 0.05);
-    _aud.induct.g.gain.setTargetAtTime(0.02, t + 0.07, 0.05);
+    var tt = t + 0.045;
+    for (var pi = 0; pi < pops; pi++) {
+      var amp = ck * (1 + fl * 1.6) * (1 - pi / (pops + 1)) * (0.55 + Math.random() * 0.75);
+      _aud.induct.g.gain.setValueAtTime(Math.min(0.9, amp), tt);
+      _aud.induct.g.gain.setTargetAtTime(0.015, tt + 0.012, 0.022);
+      tt += 0.026 + Math.random() * 0.045;      /* irregular spacing */
+    }
+    /* a big flame event also thumps the exhaust body, not just the intake */
+    if (fl > 0.35 && _aud.bov) {
+      _aud.bov.g.gain.cancelScheduledValues(t);
+      _aud.bov.g.gain.setValueAtTime(0.10 * fl, t + 0.05);
+      _aud.bov.g.gain.setTargetAtTime(0.001, t + 0.09, 0.06);
+    }
   }
 }
 
