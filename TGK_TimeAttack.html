@@ -352,7 +352,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-ver">v4.50</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-ver">v4.70</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -498,7 +498,7 @@ body{
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v4.50';
+var TA_VER = 'v4.70';
 /* daily weather, derived from the course seed in taApplySun */
 var TA_WX = 'sun', TA_WX_LABEL = 'clear', WX_GRIP = 1, SH_K = 1, WX_SUN = 1;
 
@@ -3361,7 +3361,12 @@ function taDentField(mesh) {
   return out;
 }
 
-function taDrawMesh(mesh, pos, yaw, roll, pitch, alpha, tint) {
+/* axleFirst: apply PITCH before ROLL. A wheel must spin about its OWN axle
+   and only then be tilted by camber. Doing it the other way - camber first,
+   then spinning about the world lateral axis - makes the wheel trace a cone,
+   i.e. it precesses. That was the wheel wobble: not too much camber, but
+   camber and spin composed in the wrong order. Bodies keep roll-then-pitch. */
+function taDrawMesh(mesh, pos, yaw, roll, pitch, alpha, tint, axleFirst) {
   var cy2r = Math.cos(yaw), sy2r = Math.sin(yaw);
   var cy = Math.cos(yaw), sy = Math.sin(yaw);
   var cr = Math.cos(roll), sr = Math.sin(roll);
@@ -3370,10 +3375,17 @@ function taDrawMesh(mesh, pos, yaw, roll, pitch, alpha, tint) {
   var _MV = taDentField(mesh) || mesh.v;
   for (i = 0; i < _MV.length; i++) {
     var v = _MV[i];
-    /* roll about the longitudinal axis */
-    var x1 = v[0] * cr - v[1] * sr, y1 = v[0] * sr + v[1] * cr, z1 = v[2];
-    /* pitch about the lateral axis */
-    var y2 = y1 * cp - z1 * sp, z2 = y1 * sp + z1 * cp;
+    var x1, y1, z1, y2, z2;
+    if (axleFirst) {
+      /* spin about the axle first, then tilt the whole wheel by camber */
+      var ya = v[1] * cp - v[2] * sp, za = v[1] * sp + v[2] * cp;
+      x1 = v[0] * cr - ya * sr; y2 = v[0] * sr + ya * cr; z2 = za;
+    } else {
+      /* roll about the longitudinal axis */
+      x1 = v[0] * cr - v[1] * sr; y1 = v[0] * sr + v[1] * cr; z1 = v[2];
+      /* pitch about the lateral axis */
+      y2 = y1 * cp - z1 * sp; z2 = y1 * sp + z1 * cp;
+    }
     /* yaw: forward is +z mapped to (sin yaw, cos yaw) */
     var wx = pos[0] + x1 * cy + z2 * sy;
     var wz = pos[2] - x1 * sy + z2 * cy;
@@ -3551,7 +3563,7 @@ function taDrawCarBody(x, z, yaw, roll, pitch, steer, alpha, ghost) {
     var sideS = (i === 0 || i === 2) ? -1 : 1;
     var wy = (SS.rw || 0.33);
     var wRoll = (sideS < 0 ? -sCamb[i] : sCamb[i]);
-    taDrawMesh(wheelMesh, [wxx, wy, wzz], yaw + w[2], wRoll, spin, alpha, wTint);
+    taDrawMesh(wheelMesh, [wxx, wy, wzz], yaw + w[2], wRoll, spin, alpha, wTint, true);
   }
   taDrawMesh(carMesh, [x, 0.02, z], yaw, roll, pitch, alpha, tint);
 

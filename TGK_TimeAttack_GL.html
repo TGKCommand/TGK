@@ -354,7 +354,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v4.50</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v4.70</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -500,7 +500,7 @@ body{
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v4.50';
+var TA_VER = 'v4.70';
 /* daily weather, derived from the course seed in taApplySun */
 var TA_WX = 'sun', TA_WX_LABEL = 'clear', WX_GRIP = 1, SH_K = 1, WX_SUN = 1;
 
@@ -2126,7 +2126,12 @@ function _glProbePaint() {
       'border:1px solid rgba(255,255,255,.15);max-width:420px;white-space:pre-wrap;pointer-events:none';
     document.body.appendChild(el);
   }
-  var lines = ['[TGK model probe]  base: ' + (_modelBase || '(none resolved yet)')];
+  var haveDec = (typeof MeshoptDecoder !== 'undefined');
+  var lines = [
+    '[TGK model probe]  build ' + (typeof TA_VER !== 'undefined' ? TA_VER : '?') +
+      '   meshopt decoder: ' + (haveDec ? 'PRESENT' : 'MISSING - models cannot parse'),
+    'base: ' + (_modelBase || '(none resolved yet)')
+  ];
   ['s6', 'cc', 'tiguan', 'x5'].forEach(function (k) {
     if (_glFails[k]) lines.push(k + ': FAILED - ' + _glFails[k]);
     else if (_glProbeOK && _glProbeOK[k]) lines.push(k + ': OK - ' + _glProbeOK[k].mats + ' mats painted, ' + _glProbeOK[k].wheels + ' wheel nodes');
