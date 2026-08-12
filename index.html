@@ -3827,10 +3827,12 @@ async function callAI(prompt,maxTokens=1200){let r,d;try{r=await tgkAIFetch({mod
 /* ===== Long-form AI calls. Sonnet stops with stop_reason 'max_tokens' when the
    requested ceiling is reached. The TGK template (inline SVG icons, specs table,
    6 feature blocks, 5 FAQ items, all JSON-escaped) routinely exceeds a single
-   response window, so callAILong feeds the partial answer back as an assistant
-   prefill and lets the model continue where it stopped, then stitches the pieces
+   response window. claude-sonnet-4-6 does not support assistant-message prefill,
+   so callAILong sends the partial answer as a completed assistant turn followed
+   by a user turn asking for the continuation only, then stitches the pieces
    back together. Works even if the edge function clamps max_tokens, because the
    loop keys off stop_reason rather than the requested number. ===== */
+var CC_AI_CONTINUE='The previous assistant message was cut off because it reached the output length limit. Continue it from exactly where it stopped (mid-word or mid-tag if necessary). Do not repeat any earlier text, do not restate or summarize, and do not add any preamble, explanation, or code fences. Output only the raw continuation.';
 async function callAILong(prompt,maxTokens,maxCont){
   maxTokens=maxTokens||8000;
   maxCont=(maxCont===undefined||maxCont===null)?3:maxCont;
@@ -3870,10 +3872,14 @@ async function callAILong(prompt,maxTokens,maxCont){
     if(!d||d.stop_reason!=='max_tokens')return acc;
     // A continuation that returns nothing will never finish - stop instead of burning passes.
     if(pass>0&&!chunk){_lastAIDiag.stalled=true;return acc;}
-    var prefill=acc.replace(/\s+$/,'');
-    if(!prefill)throw new Error('TRUNCATED');
-    acc=prefill;
-    msgs=[{role:'user',content:prompt},{role:'assistant',content:prefill}];
+    var sofar=acc.replace(/\s+$/,'');
+    if(!sofar)throw new Error('TRUNCATED');
+    acc=sofar;
+    // claude-sonnet-4-6 rejects assistant-message prefill, so the partial answer
+    // is sent as a completed assistant turn followed by a user turn requesting the
+    // continuation only. The array ends on a user turn (valid); the next chunk is
+    // appended to acc, matching the previous stitching behaviour.
+    msgs=[{role:'user',content:prompt},{role:'assistant',content:sofar},{role:'user',content:CC_AI_CONTINUE}];
   }
   _lastAIDiag.exhausted=true;
   return acc;
@@ -16272,7 +16278,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.15';
+var TGK_CC_VERSION='v2.16';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
