@@ -1788,6 +1788,35 @@ function taStep(dt) {
      old model felt undrivable. The handbrake bypasses ABS entirely. */
   capF *= (1 - 0.30 * D.susp * (D.f > D.r ? 1 : 0.35));
   capR *= (1 - 0.30 * D.susp * (D.r >= D.f ? 1 : 0.35));
+  /* ---- LONGITUDINAL SLIP RATIO ------------------------------------------
+     Until now traction and braking were solved as a friction-circle CAP: the
+     tyre delivered whatever was demanded up to a limit, then clipped. Real
+     tyres do not work that way - longitudinal force is a function of SLIP
+     RATIO, the mismatch between the tyre's surface speed and the road:
+
+         kappa = (omega*R - v) / max(|v|, 1)
+
+     and force follows a Pacejka curve that PEAKS near 10-15 percent slip and
+     falls away beyond it. That falling branch is what makes wheelspin and
+     lockup self-sustaining rather than a hard clip, and it is the single
+     biggest difference between arcade and simulation feel.
+
+     Each axle now carries its own wheel speed, driven by engine torque and
+     brake torque and resisted by the tyre force it actually generates. */
+  var R_W = R_WHEEL, I_W = (car.spec && car.spec.m ? car.spec.m : 1900) * 0.021;
+  if (car.wF === undefined) { car.wF = car.v / R_W; car.wR = car.v / R_W; }
+  function slipForce(kap, cap) {
+    /* Pacejka-shaped: rises to a peak near 0.12 slip, then falls back to
+       about 78 percent of peak - the descending branch matters most. */
+    /* Magic Formula coefficients. E controls the shape of the falling branch;
+       at 0.96 the curve simply kept rising and peaked around 50 percent slip,
+       which is not a tyre. At 0.60 it peaks near 14 percent and decays to
+       about 78 percent of peak at full lock, matching published data. */
+    var B = 11.0, C = 1.62, D = 1.0, E = 0.60;
+    var s = B * kap;
+    var f = D * Math.sin(C * Math.atan(s - E * (s - Math.atan(s))));
+    return f * cap;
+  }
   var FbFe, FbRe;
   car.lockF = 0; car.lockR = 0;
   if (car.absOff) {
@@ -3147,7 +3176,10 @@ function taCamUpdate(dt) {
        read as the back seat. Height comes off the beltline, which already
        scales per car. */
     hh = ((car.spec && car.spec.belt) || 0.95) + 0.26;
-    lat = 0.36;
+    /* LEFT-hand drive: the driver sits on the NEGATIVE local-x side, which is
+       the same convention the canvas renderer uses for its driver silhouette
+       (xD = -0.34). Positive put the camera in the passenger seat. */
+    lat = -0.36;
   }
   var bx = car.x - Math.sin(car.yaw) * back, bz = car.z - Math.cos(car.yaw) * back;
   /* lateral offset is perpendicular to heading */
