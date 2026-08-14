@@ -62,7 +62,8 @@ input,select,textarea{font-family:inherit}
 .pg{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:5px;cursor:pointer;font-size:12.5px;color:#b9c1c8;user-select:none}
 .pg:hover{background:#1e2225;color:#e6ebef}
 .pg.on{background:rgba(13,148,136,.16);color:#5fe0cc;font-weight:600}
-.pg .tw{width:13px;text-align:center;font-size:9px;color:#6b7680;flex-shrink:0}
+.pg .tw{width:17px;height:17px;line-height:17px;text-align:center;font-size:12px;color:#8b959c;flex-shrink:0;border-radius:4px}
+.pg .tw:hover{color:var(--teal);background:#23272b}
 .pg .ic{width:16px;text-align:center;flex-shrink:0}
 .pg .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg .act{opacity:0;background:none;border:none;color:#6b7680;font-size:13px;padding:0 3px;line-height:1}
@@ -71,6 +72,12 @@ input,select,textarea{font-family:inherit}
 .side-foot{padding:9px 10px;border-top:1px solid #23272b;display:flex;flex-direction:column;gap:7px}
 .side-foot .btn{background:#1c1f22;border-color:#2b2f33;color:#c9d1d6}
 .side-foot .btn:hover{background:#23272b}
+.sf-primary{font-weight:600}
+.sf-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sf-grid .btn{padding:6px 8px}
+.sf-sep{height:1px;background:#23272b;margin:4px 2px 2px}
+.sf-tools .btn{font-size:11.5px;font-weight:500;color:#9aa4ab}
+.sf-tools .btn:hover{color:#e6ebef}
 .sync{background-color:var(--cb-c);background-image:var(--cb-i);background-size:100% 100%,100% 100%,100% 100%,auto 120px;
   border-radius:5px;padding:7px 10px;box-shadow:0 2px 6px rgba(17,24,39,.3),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.55)}
 .sync .l{font-size:11px;font-weight:600;color:#E2E8EB}
@@ -455,14 +462,18 @@ table.tb th .tb-c{font-weight:700}
       <div id="tree"></div>
     </div>
     <div class="side-foot">
-      <div class="sync"><div class="l">TGK Notes</div><div class="s" id="sync-sub">workspace</div></div>
-      <button class="btn btn-w" onclick="newPage(null,'doc')">+ New page</button>
-      <button class="btn btn-w" onclick="newPage(null,'db')">+ New database</button>
-      <button class="btn btn-w" onclick="newTasksDb()">+ Projects &amp; Tasks</button>
-      <button class="btn btn-w" onclick="openImport()">Import Markdown</button>
-      <button class="btn btn-w" onclick="openTemplates(null)">Templates</button>
-      <button class="btn btn-w" onclick="openTrash()">Trash</button>
-      <button class="btn btn-w" onclick="openShortcuts()">Shortcuts</button>
+      <button class="btn btn-w sf-primary" onclick="newPage(null,'doc')">+ New page</button>
+      <div class="sf-grid">
+        <button class="btn" onclick="newPage(null,'db')">Database</button>
+        <button class="btn" onclick="newTasksDb()">Tasks</button>
+      </div>
+      <div class="sf-sep"></div>
+      <div class="sf-grid sf-tools">
+        <button class="btn" onclick="openTemplates(null)" title="Browse and apply templates">Templates</button>
+        <button class="btn" onclick="openImport()" title="Import Markdown">Import</button>
+        <button class="btn" onclick="openTrash()" title="Deleted pages">Trash</button>
+        <button class="btn" onclick="openShortcuts()" title="Keyboard shortcuts">Shortcuts</button>
+      </div>
       <div class="ver-tag" id="ver-tag"></div>
     </div>
   </div>
@@ -497,7 +508,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.6';
+const TGK_NOTES_VERSION='v1.7';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
