@@ -55,6 +55,10 @@ input,select,textarea{font-family:inherit}
 .side-search:focus{border-color:var(--teal)}
 .side-scroll{flex:1;overflow-y:auto;padding:2px 8px 8px}
 .side-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:#6b7680;text-transform:uppercase;padding:8px 6px 5px}
+.ws-tabs{display:flex;gap:4px;padding:2px 6px 5px}
+.ws-t{flex:1;font-size:10.5px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:5px 6px;border-radius:6px;border:1px solid #2b2f33;background:#1c1f22;color:#8b959c;cursor:pointer}
+.ws-t:hover{color:#c9d1d6}
+.ws-t.on{background:var(--teal-dim);border-color:var(--teal);color:#d9f2ee}
 .pg{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:5px;cursor:pointer;font-size:12.5px;color:#b9c1c8;user-select:none}
 .pg:hover{background:#1e2225;color:#e6ebef}
 .pg.on{background:rgba(13,148,136,.16);color:#5fe0cc;font-weight:600}
@@ -221,6 +225,12 @@ body.dark .nx-b:hover{background:#2e3235}
 body.dark table.tb th{background:#26292c}
 body.dark .bk-t mark{background:#6b5d1e;color:#f3ecc9}
 body.dark .bk-t code{background:#2e3235}
+body.dark .tx-gray,body.dark .tx-grey{color:#9b9a97}body.dark .tx-brown{color:#ba856a}
+body.dark .tx-orange{color:#d9853b}body.dark .tx-yellow{color:#dfab01}body.dark .tx-green{color:#6a9d7d}
+body.dark .tx-blue{color:#5e97c0}body.dark .tx-purple{color:#a684c9}body.dark .tx-pink{color:#d15b98}body.dark .tx-red{color:#e06b62}
+body.dark .bg-gray{background:#37393b}body.dark .bg-brown{background:#3a2e28}body.dark .bg-orange{background:#402d1c}
+body.dark .bg-yellow{background:#3d3418}body.dark .bg-green{background:#1f342a}body.dark .bg-blue{background:#1c3541}
+body.dark .bg-purple{background:#2f2842}body.dark .bg-pink{background:#3c2733}body.dark .bg-red{background:#3d2626}
 body.dark .gal-c,body.dark .bcard,body.dark .cal-c{background:#202325}
 body.dark .cal-dow{background:#26292c}
 body.dark .rowpanel{background:#202325}
@@ -282,10 +292,21 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 .bk-t code{background:var(--bg4);border-radius:3px;padding:1px 4px;font-family:var(--mono);font-size:.92em}
 .bk-t mark{background:#f9edb0;border-radius:2px;padding:0 2px}
 .bk-t a:not(.mention){color:var(--teal-d);text-decoration:underline}
-.tx-grey{color:var(--text3)}.tx-teal{color:var(--teal-d)}.tx-orange{color:var(--orange-d)}
-.tx-red{color:var(--red)}.tx-green{color:var(--green)}
-.bg-yellow{background:#fdf6d8;border-radius:4px;padding:1px 5px}
-.bg-teal{background:var(--teal-dim);border-radius:4px;padding:1px 5px}
+/* full Notion colour palette - text + background (tx-grey/bg-teal kept as legacy aliases) */
+.tx-default{color:inherit}.tx-teal{color:var(--teal-d)}
+.tx-gray,.tx-grey{color:#787774}.tx-brown{color:#9f6b53}.tx-orange{color:#cc782f}
+.tx-yellow{color:#c29343}.tx-green{color:#548164}.tx-blue{color:#477da5}
+.tx-purple{color:#8a67ab}.tx-pink{color:#b4497f}.tx-red{color:#d44c47}
+.bg-gray{background:#f1f0ef}.bg-brown{background:#f3eeee}.bg-orange{background:#faebdd}
+.bg-yellow{background:#fbf3db}.bg-green{background:#eef3ed}.bg-blue{background:#e7f3f8}
+.bg-purple{background:#f6f3f9}.bg-pink{background:#faf1f5}.bg-red{background:#fdebec}
+.bg-teal{background:var(--teal-dim)}
+.bg-gray,.bg-brown,.bg-orange,.bg-yellow,.bg-green,.bg-blue,.bg-purple,.bg-pink,.bg-red,.bg-teal{border-radius:4px;padding:1px 5px}
+#fmtpop{position:fixed;z-index:540;background:#fff;border-radius:10px;box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);padding:5px;width:172px;max-height:300px;overflow-y:auto}
+#fmtpop .fp-h{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--text3);padding:6px 8px 3px}
+#fmtpop .fp-i{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12.5px}
+#fmtpop .fp-i:hover{background:var(--teal-dim)}
+#fmtpop .fp-sw{width:18px;height:18px;border-radius:4px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;padding:0}
 #bmenu{position:absolute;z-index:520;background:#fff;border-radius:var(--r-lg);box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);width:212px;padding:5px;max-height:70vh;overflow-y:auto}
 .bm-h{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--text3);padding:6px 9px 3px}
 .bm-i{padding:6px 9px;border-radius:var(--r);cursor:pointer;font-size:12.5px}
@@ -296,9 +317,14 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 .bm-sep{height:1px;background:var(--border);margin:4px 0}
 .bm-c{display:flex;gap:5px;padding:4px 9px 7px;flex-wrap:wrap}
 .bm-sw{width:20px;height:20px;border-radius:4px;border:1px solid var(--border2);cursor:pointer}
-.bm-sw.none{background:#fff}.bm-sw.tx-grey{background:var(--text3)}.bm-sw.tx-teal{background:var(--teal)}
-.bm-sw.tx-orange{background:var(--orange)}.bm-sw.tx-red{background:var(--red)}.bm-sw.tx-green{background:var(--green)}
-.bm-sw.bg-yellow{background:#fdf6d8}.bm-sw.bg-teal{background:var(--teal-dim)}
+.bm-sw.none{background:#fff}
+.bm-sw.tx-gray{background:#787774}.bm-sw.tx-brown{background:#9f6b53}.bm-sw.tx-orange{background:#cc782f}
+.bm-sw.tx-yellow{background:#c29343}.bm-sw.tx-green{background:#548164}.bm-sw.tx-blue{background:#477da5}
+.bm-sw.tx-purple{background:#8a67ab}.bm-sw.tx-pink{background:#b4497f}.bm-sw.tx-red{background:#d44c47}
+.bm-sw.bg-gray{background:#f1f0ef}.bm-sw.bg-brown{background:#f3eeee}.bm-sw.bg-orange{background:#faebdd}
+.bm-sw.bg-yellow{background:#fbf3db}.bm-sw.bg-green{background:#eef3ed}.bm-sw.bg-blue{background:#e7f3f8}
+.bm-sw.bg-purple{background:#f6f3f9}.bm-sw.bg-pink{background:#faf1f5}.bm-sw.bg-red{background:#fdebec}
+.bm-sw[class*="bg-"]{padding:0}
 .emo{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:6px}
 .emo-b{background:none;border:1px solid transparent;border-radius:var(--r);font-size:20px;cursor:pointer;padding:4px}
 .emo-b:hover{background:var(--bg3);border-color:var(--border2)}
@@ -425,6 +451,7 @@ table.tb th .tb-c{font-weight:700}
     <div class="side-scroll">
       <div id="favs"></div>
       <div class="side-lbl">Workspace</div>
+      <div class="ws-tabs"><button id="ws-team" class="ws-t on" onclick="setWorkspace('team')">Team</button><button id="ws-priv" class="ws-t" onclick="setWorkspace('private')">Private</button></div>
       <div id="tree"></div>
     </div>
     <div class="side-foot">
@@ -453,6 +480,7 @@ table.tb th .tb-c{font-weight:700}
         <button class="btn btn-sm" onclick="openHistory()" title="Version history">History</button>
         <button class="btn btn-sm" onclick="openPageInfo()" title="Page info">Info</button>
         <button class="btn btn-sm" onclick="duplicatePage()" title="Duplicate this page">Duplicate</button>
+        <button class="btn btn-sm" id="share-btn" onclick="toggleShare()" title="Move between your private space and the team space">Make private</button>
         <button class="btn btn-sm" onclick="openSaveTemplate()" title="Save this page as a reusable template">Template</button>
       <button class="btn btn-sm" onclick="exportPage()" title="Export this page to Markdown">Export</button>
       <span class="savest" id="savest"></span>
@@ -469,12 +497,12 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.3';
+const TGK_NOTES_VERSION='v1.6';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-const S={user:null,pages:[],activeId:null,collapsed:{},dirty:false,saving:false};
+const S={user:null,pages:[],activeId:null,collapsed:{},dirty:false,saving:false,workspace:'team',_hasVisibility:false};
 const $=id=>document.getElementById(id);
 const uid=()=>'b'+Math.random().toString(36).slice(2,10);
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -515,7 +543,10 @@ async function loadPages(){
   try{
     const{data,error}=await sb.from('wiki_pages').select('*').eq('archived',false).order('sort_order');
     if(error)throw error;
-    S.pages=data||[];
+    const _mine=(S.user&&S.user.email)||'';
+    S.pages=(data||[]).filter(p=>!(p.visibility==='private'&&(p.created_by||'')!==_mine));
+    S._hasVisibility=!!(data&&data.length&&Object.prototype.hasOwnProperty.call(data[0],'visibility'));
+    if(data&&!data.length){try{const _r=await sb.from('wiki_pages').select('visibility').limit(1);S._hasVisibility=!_r.error;}catch(_e){S._hasVisibility=false;}}
   }catch(e){
     const m=String(e.message||e);
     if(/does not exist|schema cache/i.test(m)){
@@ -544,6 +575,8 @@ async function newPage(parentId,kind){
              sort_order:nextSort(parentId||null),page_type:isDb?'db':'doc',
              content:isDb?blankDb():[{id:uid(),type:'p',text:'',indent:0}],
              created_by:S.user?S.user.email:null};
+  const _par=parentId?pageById(parentId):null;
+  if(S._hasVisibility)row.visibility=_par?(_par.visibility||'team'):(S.workspace==='private'?'private':'team');
   try{
     const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
     if(error)throw error;
@@ -619,8 +652,12 @@ function renderTree(){
       }
     });
   }
-  const walk=(pid,depth)=>childrenOf(pid).filter(p=>!q||keep.has(p.id)).map(p=>{
-    const kids=childrenOf(p.id).filter(k=>!q||keep.has(k.id));
+  const mine=(S.user&&S.user.email)||'';
+  const inWs=p=>{const priv=(p.visibility==='private');return S.workspace==='private'?(priv&&(p.created_by||'')===mine):(!priv);};
+  const vis=new Set(S.pages.filter(p=>inWs(p)&&(!q||keep.has(p.id))).map(p=>p.id));
+  const wsKids=pid=>S.pages.filter(p=>(p.parent_id||null)===(pid||null)&&vis.has(p.id)).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const walk=(pid,depth)=>wsKids(pid).map(p=>{
+    const kids=wsKids(p.id);
     const open=q?true:!S.collapsed[p.id];
     return '<div class="pg'+(p.id===S.activeId?' on':'')+'" style="padding-left:'+(8+depth*13)+'px" draggable="true"'
       +' ondragstart="pgDragStart(event,\''+p.id+'\')"'
@@ -636,7 +673,8 @@ function renderTree(){
       +'</div>'+(open&&kids.length?walk(p.id,depth+1):'');
   }).join('');
   const html=walk(null,0);
-  $('tree').innerHTML=html||'<div style="padding:10px 9px;font-size:11.5px;color:var(--text3)">'+(q?'No matches.':'No pages yet.')+'</div>';
+  const _emptyMsg=q?'No matches.':(S.workspace==='private'?(S._hasVisibility?'No private pages yet. Open any page and use Make private in the header.':'<span onclick="openWorkspaceSetup()" style="cursor:pointer;text-decoration:underline">Enable your private workspace (needs one migration)</span>'):'No pages yet.');
+  $('tree').innerHTML=html||'<div style="padding:10px 9px;font-size:11.5px;color:var(--text3)">'+_emptyMsg+'</div>';
   const fv=$('favs');
   if(fv)fv.innerHTML=(typeof favTreeHTML==='function')?favTreeHTML():'';
 }
@@ -676,6 +714,7 @@ function blocks(){
 function openPage(id){
   if(S.dirty)savePage();
   S.activeId=id;
+  S.rowEdit=null;   // row-detail is page-scoped; drop it so a stale id can't misrender
   if(typeof pushRecent==='function')pushRecent(id);
   if(typeof loadComments==='function')loadComments(id);
   renderTree();renderDoc();
@@ -686,6 +725,7 @@ function openPage(id){
     fb.className='fav-b'+(on?' on':'');
     fb.title=on?'Remove from favourites':'Favourite this page';
   }
+  if(typeof refreshShareBtn==='function')refreshShareBtn();
 }
 function renderDoc(){
   const p=curPage();
@@ -725,6 +765,7 @@ function numberFor(i){
   return n;
 }
 function renderBlocks(){
+  if(!document.getElementById('blocks'))return;   // no target on non-document layouts
   if(typeof paintCommentPins==='function')setTimeout(paintCommentPins,0);
   const b=blocks();
   const _hid=(typeof toggleHidden==='function')?toggleHidden(b):{};
@@ -826,6 +867,16 @@ document.addEventListener('keydown',e=>{
   if(!t.classList||!t.classList.contains('bk-t'))return;
   const host=t.closest('.bk'),id=host.getAttribute('data-bid'),i=blockIndex(id),b=blocks(),bl=b[i];
   if(i<0)return;
+  if((e.metaKey||e.ctrlKey)&&!e.altKey){
+    const _k=(e.key||'').toLowerCase();
+    if(_k==='d'&&!e.shiftKey){e.preventDefault();dupBlock(id);return;}
+    if(e.shiftKey&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
+      e.preventDefault();
+      moveBlock(id,e.key==='ArrowUp'?-1:1);
+      setTimeout(function(){focusBlock(id);},0);
+      return;
+    }
+  }
   if(e.key==='Enter'&&!e.shiftKey){
     if(bl.type==='code'){return;} // newlines inside code
     e.preventDefault();
@@ -1053,7 +1104,7 @@ function renderDb(){
   const d=db(),v=activeView();
   const tabs=(d.views||[]).map((vw,i)=>
     '<button class="vtab'+(i===(d.activeView||0)?' on':'')+'" onclick="setView('+i+')">'
-    +(vw.kind==='board'?'\u25a4 ':vw.kind==='calendar'?'\u1F4C5 ':vw.kind==='gallery'?'\u25a6 ':'\u2637 ')+esc(vw.name)+'</button>').join('');
+    +(vw.kind==='board'?'\u25a4 ':vw.kind==='calendar'?'\u25a3 ':vw.kind==='gallery'?'\u25a6 ':'\u2637 ')+esc(vw.name)+'</button>').join('');
   const body=(v.kind==='table'&&typeof dbGroupedTableHTML==='function')?dbGroupedTableHTML(d,v)
     :v.kind==='board'?dbBoardHTML(d,v)
     :(v.kind==='calendar'&&typeof dbCalendarHTML==='function')?dbCalendarHTML(d,v)
@@ -1070,7 +1121,7 @@ function renderDb(){
     +'<button class="btn btn-sm btn-primary" onclick="addRow()">+ Row</button></div>'
     +body
     +(S.rowEdit?rowPanelHTML():'');
-  if(S.rowEdit)renderBlocks();
+  if(S.rowEdit&&document.getElementById('blocks'))renderBlocks();
 }
 function visibleRows(d){
   const q=(S.dbq||'').trim().toLowerCase();
@@ -2990,7 +3041,7 @@ function cleanInlineHTML(html){
         const n=a.name.toLowerCase();
         // 'person' must survive: an @teammate chip is a span carrying that class, and
         // stripping it on the next keystroke would silently un-style every mention.
-        const keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^(tx-|person$)/.test(a.value));
+        const keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^(tx-|bg-|person$)/.test(a.value));
         if(!keep)ch.removeAttribute(a.name);
       });
       if(tag==='A'){
@@ -3033,6 +3084,7 @@ function fmtBar(){
     +'<button onmousedown="event.preventDefault()" onclick="fmtCode()" title="Inline code">&lt;/&gt;</button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtMark()" title="Highlight"><span class="hl">H</span></button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtLink()" title="Link">&#128279;</button>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmtColorMenu(this)" title="Text colour"><span style="border-bottom:2px solid #cc782f;line-height:1">A</span></button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtClear()" title="Clear formatting">&#10005;</button>';
   document.body.appendChild(el);
   return el;
@@ -3055,6 +3107,8 @@ function showFmtBar(){
 document.addEventListener('mouseup',()=>setTimeout(showFmtBar,10),true);
 document.addEventListener('keyup',e=>{if(e.shiftKey||['ArrowLeft','ArrowRight'].indexOf(e.key)>=0)setTimeout(showFmtBar,10);},true);
 document.addEventListener('scroll',hideFmt,true);
+document.addEventListener('scroll',closeFmtPop,true);
+document.addEventListener('mousedown',function(e){var t=e.target;if(t&&t.closest&&(t.closest('#fmtpop')||t.closest('#fmtbar')))return;closeFmtPop();},true);
 
 function syncFmt(){
   if(!_fmtEl)return;
@@ -3089,7 +3143,47 @@ function fmtLink(){
   try{document.execCommand('createLink',false,url);}catch(e){}
   syncFmt();hideFmt();
 }
-function fmtClear(){try{document.execCommand('removeFormat',false,null);}catch(e){}syncFmt();hideFmt();}
+function fmtClear(){try{document.execCommand('removeFormat',false,null);}catch(e){}clearInlineColor(null);syncFmt();hideFmt();}
+/* ---------- colour palette (shared by block menu + selection toolbar) ---------- */
+const NX_COLORS=[{k:'default',n:'Default'},{k:'gray',n:'Gray'},{k:'brown',n:'Brown'},{k:'orange',n:'Orange'},{k:'yellow',n:'Yellow'},{k:'green',n:'Green'},{k:'blue',n:'Blue'},{k:'purple',n:'Purple'},{k:'pink',n:'Pink'},{k:'red',n:'Red'}];
+function closeFmtPop(){var e=document.getElementById('fmtpop');if(e)e.remove();}
+function fmtColorMenu(btn){
+  closeFmtPop();
+  var el=document.createElement('div');el.id='fmtpop';
+  var html='<div class="fp-h">Text</div>';
+  html+=NX_COLORS.map(function(c){var cl=c.k==='default'?'':'tx-'+c.k;return '<div class="fp-i" onmousedown="event.preventDefault()" onclick="applyInlineColor(\''+cl+'\')"><span class="fp-sw '+(cl||'tx-default')+'">A</span>'+c.n+'</div>';}).join('');
+  html+='<div class="fp-h">Background</div>';
+  html+=NX_COLORS.slice(1).map(function(c){var cl='bg-'+c.k;return '<div class="fp-i" onmousedown="event.preventDefault()" onclick="applyInlineColor(\''+cl+'\')"><span class="fp-sw '+cl+'">A</span>'+c.n+'</div>';}).join('');
+  el.innerHTML=html;document.body.appendChild(el);
+  var r=btn.getBoundingClientRect();
+  el.style.left=Math.max(8,Math.min(r.left,window.innerWidth-184))+'px';
+  el.style.top=Math.min(r.bottom+6,window.innerHeight-Math.min(el.offsetHeight,300)-8)+'px';
+}
+/* Strip tx-/bg- colour classes from any span that the range touches; unwrap empties. */
+function clearInlineColor(range){
+  if(!_fmtEl)return;
+  var spans=Array.prototype.slice.call(_fmtEl.querySelectorAll('span'));
+  spans.forEach(function(sp){
+    var hit=true;if(range){try{hit=range.intersectsNode(sp);}catch(_e){hit=true;}}
+    if(!hit)return;
+    var keep=(sp.className||'').split(/\s+/).filter(function(c){return c&&!/^(tx-|bg-)/.test(c);});
+    if(keep.length){sp.className=keep.join(' ');}
+    else{while(sp.firstChild)sp.parentNode.insertBefore(sp.firstChild,sp);sp.remove();}
+  });
+}
+/* Wrap the current selection in a colour span (or clear, when cls is empty). */
+function applyInlineColor(cls){
+  var sel=window.getSelection();
+  if(!sel||!sel.rangeCount||sel.isCollapsed){closeFmtPop();return;}
+  var range=sel.getRangeAt(0);
+  if(!cls){clearInlineColor(range);}
+  else{
+    var span=document.createElement('span');span.className=cls;
+    try{range.surroundContents(span);}
+    catch(_e){try{span.appendChild(range.extractContents());range.insertNode(span);}catch(__e){}}
+  }
+  syncFmt();closeFmtPop();hideFmt();
+}
 document.addEventListener('keydown',e=>{
   if(!(e.metaKey||e.ctrlKey))return;
   const k=(e.key||'').toLowerCase();
@@ -3122,9 +3216,10 @@ function openBlockMenu(bid,x,y){
     +'<div class="bm-i" onclick="dupBlock(\''+bid+'\')">Duplicate</div>'
     +'<div class="bm-i" onclick="moveBlock(\''+bid+'\',-1)">Move up</div>'
     +'<div class="bm-i" onclick="moveBlock(\''+bid+'\',1)">Move down</div>'
-    +'<div class="bm-sep"></div><div class="bm-h">Colour</div>'
-    +'<div class="bm-c">'+['','tx-grey','tx-teal','tx-orange','tx-red','tx-green','bg-yellow','bg-teal']
-      .map(c=>'<button class="bm-sw '+(c||'none')+'" onclick="colourBlock(\''+bid+'\',\''+c+'\')" title="'+(c||'Default')+'"></button>').join('')+'</div>'
+    +'<div class="bm-sep"></div><div class="bm-h">Text colour</div>'
+    +'<div class="bm-c">'+NX_COLORS.map(function(c){var cl=c.k==='default'?'':'tx-'+c.k;return '<button class="bm-sw '+(cl||'none')+'" onclick="colourBlock(\''+bid+'\',\''+cl+'\')" title="'+c.n+'"></button>';}).join('')+'</div>'
+    +'<div class="bm-h">Background</div>'
+    +'<div class="bm-c">'+NX_COLORS.slice(1).map(function(c){var cl='bg-'+c.k;return '<button class="bm-sw '+cl+'" onclick="colourBlock(\''+bid+'\',\''+cl+'\')" title="'+c.n+'"></button>';}).join('')+'</div>'
     +'<div class="bm-sep"></div>'
     +'<div class="bm-i danger" onclick="delBlock(\''+bid+'\')">Delete</div>';
   document.body.appendChild(el);
@@ -3224,8 +3319,71 @@ function coverHTML(p){
   return '<div class="cov" style="'+style+'"><button class="cov-x" onclick="openCoverPicker()">Change cover</button></div>';
 }
 
+/* ---------- workspaces: Team (shared) vs Private (owner-only) ---------- */
+function setWorkspace(ws){
+  S.workspace=(ws==='private')?'private':'team';
+  var t=document.getElementById('ws-team'),p=document.getElementById('ws-priv');
+  if(t)t.className='ws-t'+(S.workspace==='team'?' on':'');
+  if(p)p.className='ws-t'+(S.workspace==='private'?' on':'');
+  renderTree();
+}
+function refreshShareBtn(){
+  var b=document.getElementById('share-btn'),p=curPage();
+  if(!b)return;
+  if(!p){b.style.display='none';return;}
+  b.style.display='';
+  var priv=(p.visibility==='private');
+  b.textContent=priv?'Share to team':'Make private';
+  b.title=priv?'Move this page (and its sub-pages) to the shared team workspace':'Move this page (and its sub-pages) to your private workspace';
+}
+function toggleShare(){var p=curPage();if(!p)return;setPageVisibility(p.visibility==='private'?'team':'private');}
+async function setPageVisibility(vis){
+  var p=curPage();if(!p)return;
+  if(!S._hasVisibility){openWorkspaceSetup();return;}
+  // Cascade to every descendant so a subtree never straddles two workspaces.
+  var ids=new Set([p.id]),grew=true;
+  while(grew){grew=false;S.pages.forEach(function(x){if(x.parent_id&&ids.has(x.parent_id)&&!ids.has(x.id)){ids.add(x.id);grew=true;}});}
+  var idList=Array.from(ids),prev={};
+  idList.forEach(function(id){var pg=pageById(id);if(pg){prev[id]=pg.visibility||'team';pg.visibility=vis;}});
+  try{
+    const{error}=await sb.from('wiki_pages').update({visibility:vis}).in('id',idList);
+    if(error)throw error;
+    var extra=(idList.length>1)?(' with '+(idList.length-1)+' sub-page(s)'):'';
+    setWorkspace(vis==='private'?'private':'team');
+    refreshShareBtn();
+    toast((vis==='private'?'\u2713 Moved to your private workspace':'\u2713 Shared with the team')+extra);
+  }catch(e){
+    idList.forEach(function(id){var pg=pageById(id);if(pg)pg.visibility=prev[id];});
+    var m=String((e&&e.message)||e||'');
+    if(/visibility/.test(m)&&/does not exist|schema cache|column/i.test(m)){S._hasVisibility=false;openWorkspaceSetup();}
+    else toast(writeErr(e,'change sharing'),9000);
+  }
+}
+function openWorkspaceSetup(){
+  var sql=
+     "-- 1) Workspace column: every existing page defaults to the shared Team space\n"
+    +"alter table public.wiki_pages\n"
+    +"  add column if not exists visibility text not null default 'team';\n\n"
+    +"-- 2) Enforce privacy in the database. Client-side hiding is NOT security.\n"
+    +"--    Assumes created_by holds the user's email; adjust to your auth setup.\n"
+    +"alter table public.wiki_pages enable row level security;\n\n"
+    +"drop policy if exists wiki_pages_workspace_read on public.wiki_pages;\n"
+    +"create policy wiki_pages_workspace_read on public.wiki_pages\n"
+    +"  for select using (\n"
+    +"    visibility &lt;&gt; 'private' or created_by = auth.jwt() -&gt;&gt; 'email'\n"
+    +"  );\n\n"
+    +"notify pgrst, 'reload schema';";
+  nxModal('Enable private workspaces',
+    '<div class="nx-hint">Run this once in the Supabase SQL editor. It adds a <b>visibility</b> column (defaulting every current page to the shared Team space) plus a read policy so private pages are only returned to their owner. Merge the policy with any existing SELECT policy on wiki_pages. Until this runs, everything stays in the shared Team space.</div>'
+    +'<pre style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:8px;overflow:auto">'+sql+'</pre>',
+    '<button class="nx-b primary" onclick="nxClose()">Got it</button>');
+}
+window.setWorkspace=setWorkspace;window.refreshShareBtn=refreshShareBtn;window.toggleShare=toggleShare;
+window.setPageVisibility=setPageVisibility;window.openWorkspaceSetup=openWorkspaceSetup;
+
 window.cleanInlineHTML=cleanInlineHTML;window.blockPlain=blockPlain;window.richHTML=richHTML;
 window.fmt=fmt;window.fmtCode=fmtCode;window.fmtMark=fmtMark;window.fmtLink=fmtLink;window.fmtClear=fmtClear;
+window.fmtColorMenu=fmtColorMenu;window.applyInlineColor=applyInlineColor;window.clearInlineColor=clearInlineColor;window.closeFmtPop=closeFmtPop;
 window.openBlockMenu=openBlockMenu;window.turnInto=turnInto;window.dupBlock=dupBlock;window.moveBlock=moveBlock;
 window.colourBlock=colourBlock;window.delBlock=delBlock;
 window.openIconPicker=openIconPicker;window.setIcon=setIcon;window.openCoverPicker=openCoverPicker;
@@ -3787,6 +3945,7 @@ async function newTasksDb(){
   try{
     const row={title:'Tasks',icon:'\u2611',parent_id:null,sort_order:nextSort(null),
                page_type:'db',content:tasksDbTemplate(),created_by:S.user?S.user.email:null};
+    if(S._hasVisibility)row.visibility=(S.workspace==='private'?'private':'team');
     const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
     if(error)throw error;
     S.pages.push(data);
