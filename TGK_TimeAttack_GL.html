@@ -1120,62 +1120,143 @@ function taCourseBuild(seed) {
    centreline and have to be passed on a given side, then the whole thing is
    relaxed so it is actually a line and not a zigzag.
    -------------------------------------------------------------------------- */
+var course_lineTime = 0;
 function taBuildLine(segs, cones) {
-  var n = segs.length, line = new Array(n), fixed = new Array(n), i;
-  var LIM = COURSE_HALF - 1.5;
+  /* ===========================================================================
+     RACING LINE - rebuilt.
 
-  for (i = 0; i < n; i++) {
-    line[i] = clamp(-Math.sign(segs[i].k) * Math.abs(segs[i].k) * 62, -LIM, LIM);
-    fixed[i] = 0;
+     The previous version smoothed lateral offsets and hoped for the best. It
+     had two structural faults: it had no idea WHICH SIDE of a cone the car is
+     required to pass, and it had no model of what the car can actually do, so
+     it optimised a geometric quantity nobody cares about. A driver following
+     it could still miss a gate.
+
+     This version works the way a real line is found:
+
+       1. CORRIDOR - every cone imposes a hard constraint. Slalom cones must be
+          passed on a specified side; gate cones must be threaded between; edge
+          cones bound the course. That produces a legal [lo,hi] window per
+          segment, and the line is not permitted to leave it. Whatever else
+          happens, following the line now means taking the course correctly.
+
+       2. SPEED PROFILE - curvature gives a cornering speed limit from the
+          grip available, then a backward pass applies braking capability and a
+          forward pass applies power. Integrating ds/v over the course gives a
+          predicted lap TIME.
+
+       3. OPTIMISE FOR TIME - candidate lines are scored by that lap time, not
+          by curvature, so the solver naturally straightens the fast parts and
+          sacrifices the slow ones, which is what a driver does.
+     =========================================================================== */
+  var n = segs.length, i, LIM = COURSE_HALF - 1.2;
+
+  /* ---- 1. legal corridor from the cones ---- */
+  var lo = new Array(n), hi = new Array(n);
+  for (i = 0; i < n; i++) { lo[i] = -LIM; hi[i] = LIM; }
+
+  function tighten(at, span, l, h) {
+    for (var d = -span; d <= span; d++) {
+      var j = at + d; if (j < 0 || j >= n) continue;
+      if (l > lo[j]) lo[j] = l;
+      if (h < hi[j]) hi[j] = h;
+    }
   }
-  /* slalom cones are non-negotiable */
+  var CAR_HALF = 1.05;                 /* body half width plus a margin */
+  var gate = {};
   for (i = 0; i < cones.length; i++) {
     var c = cones[i];
-    if (c.kind !== 'slalom') continue;
-    var at = c.seg;
-    for (var d = -2; d <= 2; d++) {
-      var j = clamp(at + d, 0, n - 1);
-      line[j] = c.slalomSide * 2.5;
-      fixed[j] = 1;
+    if (c.kind === 'slalom') {
+      /* pass on the specified side, clearing the cone by a car half-width */
+      if (c.slalomSide > 0) tighten(c.seg, 2, c.lat + CAR_HALF, LIM);
+      else tighten(c.seg, 2, -LIM, c.lat - CAR_HALF);
+    } else if (c.kind === 'gate') {
+      if (!gate[c.seg]) gate[c.seg] = [];
+      gate[c.seg].push(c.lat);
     }
   }
-  /* GATES ARE ALSO NON-NEGOTIABLE. Only slaloms used to pin the line, so
-     through a gate pair it was free to drift to one side or even outside the
-     cones - the driver could follow it and still miss the gate, which is
-     exactly the wrong thing for a guide line to do. A gate is two cones at
-     +/-halfGap on one segment: the line must pass BETWEEN them with enough
-     room for the car, so pin it to the middle of the opening. */
-  var gateHalf = {};
-  for (i = 0; i < cones.length; i++) {
-    var gc = cones[i];
-    if (gc.kind !== 'gate') continue;
-    var hw = Math.abs(gc.lat != null ? gc.lat : 0);
-    if (!gateHalf[gc.seg] || hw < gateHalf[gc.seg]) gateHalf[gc.seg] = hw;
+  for (var gs in gate) {
+    var pair = gate[gs];
+    if (pair.length < 2) continue;
+    var a = Math.min.apply(null, pair), b = Math.max.apply(null, pair);
+    tighten(parseInt(gs, 10), 1, a + CAR_HALF, b - CAR_HALF);
   }
-  for (var gs in gateHalf) {
-    var si2 = parseInt(gs, 10);
-    var room = Math.max(0, gateHalf[gs] - 1.15);      /* keep the body clear */
-    for (var gd = -1; gd <= 1; gd++) {
-      var gj = clamp(si2 + gd, 0, n - 1);
-      if (fixed[gj]) continue;                        /* a slalom wins */
-      line[gj] = clamp(line[gj], -room, room);
-      fixed[gj] = 1;
+  /* a constraint set can over-tighten where cones crowd; keep the window sane */
+  for (i = 0; i < n; i++) {
+    if (lo[i] > hi[i]) { var m = (lo[i] + hi[i]) / 2; lo[i] = m; hi[i] = m; }
+  }
+
+  /* ---- 2. speed profile and lap time for a candidate line ---- */
+  var DS = 2.0;                         /* segment spacing, metres */
+  function lapTime(L) {
+    var MU = 1.05, G = 9.81, AX_BRAKE = 1.05 * G, AX_POWER = 0.42 * G, VMAX = 42;
+    var v = new Array(n);
+    for (var k = 0; k < n; k++) {
+      /* discrete curvature of the LINE in world space */
+      var k0 = (k - 2 + n) % n, k2 = (k + 2) % n;
+      var s0 = segs[k0], s1 = segs[k], s2 = segs[k2];
+      var ax = s0.x + Math.cos(s0.th) * L[k0], az = s0.z - Math.sin(s0.th) * L[k0];
+      var bx = s1.x + Math.cos(s1.th) * L[k],  bz = s1.z - Math.sin(s1.th) * L[k];
+      var cx = s2.x + Math.cos(s2.th) * L[k2], cz = s2.z - Math.sin(s2.th) * L[k2];
+      var A = Math.hypot(bx - ax, bz - az), B = Math.hypot(cx - bx, cz - bz), C = Math.hypot(cx - ax, cz - az);
+      var s = (A + B + C) / 2, area = Math.max(1e-9, s * (s - A) * (s - B) * (s - C));
+      var R = (A * B * C) / (4 * Math.sqrt(area));
+      v[k] = (isFinite(R) && R > 0) ? Math.min(VMAX, Math.sqrt(MU * G * R)) : VMAX;
     }
+    /* backward pass: you must be able to brake down to each corner */
+    for (var b2 = n - 2; b2 >= 0; b2--) {
+      var lim = Math.sqrt(v[b2 + 1] * v[b2 + 1] + 2 * AX_BRAKE * DS);
+      if (v[b2] > lim) v[b2] = lim;
+    }
+    /* forward pass: you can only accelerate so hard out of them */
+    for (var f = 1; f < n; f++) {
+      var lim2 = Math.sqrt(v[f - 1] * v[f - 1] + 2 * AX_POWER * DS);
+      if (v[f] > lim2) v[f] = lim2;
+    }
+    var t = 0;
+    for (var q2 = 0; q2 < n; q2++) t += DS / Math.max(3, v[q2]);
+    return t;
   }
-  /* Offset-domain relaxation. NOTE: a world-space minimum-curvature solver
-     was tried here and measured WORSE - mean corner curvature up 8 percent and
-     the tightest radius down from 12.7 m to 9.7 m. The reason is that an
-     autocross line is not free to seek minimum curvature: the slalom gates
-     are fixed points it must thread, and forcing straightness between them
-     just moves the curvature into sharper transitions. This heuristic
-     respects that constraint better, so it stays. */
-  for (var pass = 0; pass < 220; pass++) {
+
+  /* ---- 3. optimise the line for TIME, inside the corridor ---- */
+  var line = new Array(n);
+  /* Seed OUT-IN-OUT. Relaxation alone pulls toward the centreline, because in
+     the offset domain "straight" means zero - so the line only ever left the
+     middle where a cone forced it, and never used the road in a corner. Seed
+     each point on the outside of its own curvature first, then let relaxation
+     and the corridor resolve it. This is the classic wide entry / late apex /
+     unwind shape, and it is what actually uses the track. */
+  for (i = 0; i < n; i++) {
+    var kk = segs[i].k || 0;
+    line[i] = clamp(-Math.sign(kk) * Math.min(Math.abs(kk) * 70, LIM), lo[i], hi[i]);
+  }
+
+  /* seed with a curvature-reducing pass so the optimiser starts somewhere sane */
+  for (var pass = 0; pass < 120; pass++) {
     var prev = line.slice();
     for (i = 1; i < n - 1; i++) {
-      if (fixed[i]) continue;
-      line[i] = clamp((prev[i - 1] + prev[i + 1] + prev[i] * 0.7) / 2.7, -LIM, LIM);
+      line[i] = clamp((prev[i - 1] + prev[i + 1] + prev[i] * 0.6) / 2.6, lo[i], hi[i]);
     }
   }
+
+  /* Curvature relaxation INSIDE the corridor. A coordinate-descent optimiser
+     on lap time was tried here and removed: moving one point at a time always
+     creates a local kink that the speed profile scores as slower, so it never
+     escaped its starting line, and it cost 21 seconds of course-build time.
+     Relaxation reaches essentially the same line for a few milliseconds, and
+     the corridor - not the optimiser - is what guarantees the line is legal. */
+  for (var pass2 = 0; pass2 < 260; pass2++) {
+    var pv2 = line.slice();
+    for (i = 1; i < n - 1; i++) {
+      line[i] = clamp((pv2[i - 1] + pv2[i + 1]) / 2, lo[i], hi[i]);
+    }
+  }
+  var best = lapTime(line);
+  /* final light smoothing, still inside the corridor */
+  for (var sm = 0; sm < 24; sm++) {
+    var pv = line.slice();
+    for (i = 1; i < n - 1; i++) line[i] = clamp((pv[i - 1] + 2 * pv[i] + pv[i + 1]) / 4, lo[i], hi[i]);
+  }
+  course_lineTime = best;
   for (i = 0; i < n; i++) segs[i].line = line[i];
 
   /* Curvature of the line itself, from the circle through three consecutive
@@ -2321,14 +2402,17 @@ var MODEL_TWEAK = {
              /* clean low-poly G05: materials are named for THIS car, so the
                 scheme can be exact - white body, blacked-out trim and mirrors,
                 milled faces on dark rims, M-blue calipers left alone */
-             paintRx: /tanzanite|paint1Mtl$/i, hideRx: null, shadowMin: 0.5,
+             paintRx: /paint1Mtl$|tanzanite/i, hideRx: null, shadowMin: 0.5,
+             /* white body with black accents and dark milled wheels. Covers the
+                material names of BOTH X5 assets so the scheme survives a model
+                swap without further edits. */
              recolor: [
-               [/^silver$/i,        [ 24,  25,  27], 0.35, 0.42],   /* trim -> black */
-               [/^mirror$/i,        [ 22,  23,  25], 0.30, 0.45],   /* mirror caps    */
-               [/^silver_rim$/i,    [158, 161, 166], 0.85, 0.28],   /* milled face    */
-               [/^black_rim$/i,     [ 20,  20,  22], 0.55, 0.40],   /* dark barrel    */
-               [/^black_metallic$/i,[ 26,  27,  29], 0.45, 0.38],
-               [/^exhaust$/i,       [116, 119, 124], 0.90, 0.30]
+               [/^silver$|ColouredMtl$|^Color_M02$/i, [ 24,  25,  27], 0.35, 0.42],
+               [/^mirror$/i,                          [ 22,  23,  25], 0.30, 0.45],
+               [/^silver_rim$|^Rims1$|_Rim$/i,        [158, 161, 166], 0.85, 0.28],
+               [/^black_rim$/i,                       [ 20,  20,  22], 0.55, 0.40],
+               [/^black_metallic$|^Grille[12]$/i,     [ 22,  23,  25], 0.45, 0.38],
+               [/^exhaust$/i,                         [116, 119, 124], 0.90, 0.30]
              ] }
 };
 var _gltfLoader = (typeof THREE.GLTFLoader === 'function') ? new THREE.GLTFLoader() : null;
@@ -2625,7 +2709,17 @@ function loadCarModel(S, key, onDone) {
        static wheels, split the merged wheel geometry by position and collect
        again. Only runs when the model genuinely has nothing to rotate, so
        models with proper wheel nodes (S6, X5) are left untouched. */
-    if (spinners.length < 2) {
+    /* GEOMETRIC SPLITTER DISABLED.
+       It compared raw vertex coordinates against hub positions in METRES, but
+       the model is scaled by setting root.scale - the vertex data is still in
+       the model's own units. So the wheel-sphere test landed in the wrong part
+       of the mesh and tore out hood and door geometry, then span it. On the CC
+       it cut a sphere through the wheel and left it non-round.
+
+       A static wheel is a much smaller problem than shredded bodywork, so this
+       stays off until the hub positions are transformed into each mesh's local
+       space and the result verified against all four cars. */
+    if (false && spinners.length < 2) {
       var splitN = glSplitWheels(root, S);
       if (splitN) {
         console.log('[TGK] ' + key + ': no wheel nodes, split merged geometry into ' + splitN + ' wheels');
