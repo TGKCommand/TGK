@@ -1137,6 +1137,29 @@ function taBuildLine(segs, cones) {
       fixed[j] = 1;
     }
   }
+  /* GATES ARE ALSO NON-NEGOTIABLE. Only slaloms used to pin the line, so
+     through a gate pair it was free to drift to one side or even outside the
+     cones - the driver could follow it and still miss the gate, which is
+     exactly the wrong thing for a guide line to do. A gate is two cones at
+     +/-halfGap on one segment: the line must pass BETWEEN them with enough
+     room for the car, so pin it to the middle of the opening. */
+  var gateHalf = {};
+  for (i = 0; i < cones.length; i++) {
+    var gc = cones[i];
+    if (gc.kind !== 'gate') continue;
+    var hw = Math.abs(gc.lat != null ? gc.lat : 0);
+    if (!gateHalf[gc.seg] || hw < gateHalf[gc.seg]) gateHalf[gc.seg] = hw;
+  }
+  for (var gs in gateHalf) {
+    var si2 = parseInt(gs, 10);
+    var room = Math.max(0, gateHalf[gs] - 1.15);      /* keep the body clear */
+    for (var gd = -1; gd <= 1; gd++) {
+      var gj = clamp(si2 + gd, 0, n - 1);
+      if (fixed[gj]) continue;                        /* a slalom wins */
+      line[gj] = clamp(line[gj], -room, room);
+      fixed[gj] = 1;
+    }
+  }
   /* Offset-domain relaxation. NOTE: a world-space minimum-curvature solver
      was tried here and measured WORSE - mean corner curvature up 8 percent and
      the tightest radius down from 12.7 m to 9.7 m. The reason is that an
@@ -1321,28 +1344,28 @@ var CAR_SPEC = {
   s6: { name: 'Audi S6', short: 'S6', style: 'sedan', paint: [242, 240, 236], face: 'hex', exh: 4, wing: 'swan', mirror: [188, 192, 198], rails: 0, shiftT: 0.15, shiftCut: 0.10,
     rackS: 3.3, oF: 0.92, oR: 1.09, sill: 0.14, belt: 0.95, roof: 1.455, bz: 1.05, peak: 0.15, beltRise: 0.030, rdrop: 0.05, clad: 0,
     bw: 1.874, tw: 0.255,
-    m: 1995, iz: 3400, wb: 2.914, acg: 1.31, hcg: 0.52, track: 1.605, awdF: 0.40, rearGrip: 1.06, rsF: 0.560, lsdR: 0.45, kSF: 34000, kSR: 38000, cSF: 3600, cSR: 3900, camF: -0.0209, camR: -0.0262, camGain: 0.62, travel: 0.085, lsdF: 0.10,
+    m: 1995, iz: 3400, wb: 2.914, acg: 1.31, hcg: 0.52, track: 1.605, awdF: 0.40, rearGrip: 1.06, rsF: 0.560, lsdR: 0.45, kSF: 34000, kSR: 38000, cSF: 3600, cSR: 3900, camF: -0.0209, camR: -0.0262, camGain: 0.246, travel: 0.085, lsdF: 0.10,
     flame: 0.85, box: '7-spd S tronic DCT', hp: 420, tq: 550, rpmTq: 1400, rpmTq2: 5200, tqFall: 0.22, rpmLim: 6800, gears: [3.36, 2.17, 1.60, 1.26, 1.02, 0.84, 0.67], fin: 3.32, /* DL501 7sp S tronic */
     cda: 0.78, cla: 0.50, brake: 33000, rw: 0.345,
     hint: 'The original TGK car. 4.0T V8, quattro, 420 hp. Fast everywhere.' },
   cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [34, 36, 40], /* deep black pearl - true 22,23,26 swallowed every highlight */ face: 'bars', exh: 2, wing: 'lip', mirror: [34, 36, 40], rails: 0, shiftT: 0.16, shiftCut: 0.12,
     rackS: 3.2, oF: 0.95, oR: 1.14, sill: 0.14, belt: 0.93, roof: 1.417, bz: 0.95, peak: 0.05, beltRise: 0.055, rdrop: 0.11, clad: 0,
     bw: 1.855, tw: 0.235,
-    m: 1542, iz: 2450, wb: 2.711, acg: 1.14, hcg: 0.50, track: 1.549, awdF: 1.0, rearGrip: 1.06, rsF: 0.625, lsdR: 0.00, kSF: 30000, kSR: 26000, cSF: 3100, cSR: 2700, camF: -0.0175, camR: -0.0227, camGain: 0.55, travel: 0.090, lsdF: 0.15,
+    m: 1542, iz: 2450, wb: 2.711, acg: 1.14, hcg: 0.50, track: 1.549, awdF: 1.0, rearGrip: 1.06, rsF: 0.625, lsdR: 0.00, kSF: 30000, kSR: 26000, cSF: 3100, cSR: 2700, camF: -0.0175, camR: -0.0227, camGain: 0.232, travel: 0.090, lsdF: 0.15,
     flame: 0.10, box: '6-spd DSG', hp: 200, tq: 280, rpmTq: 1700, rpmTq2: 5000, tqFall: 0.28, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94, /* DQ250 6sp DSG */
     cda: 0.66, cla: 0.28, brake: 25500, rw: 0.325,
     hint: '2.0T, FWD, the momentum car. Brakes deep, carries speed, hates greed.' },
   tiguan: { name: 'VW Tiguan', short: 'TIGUAN', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.26, shiftCut: 0.35,
     rackS: 2.8, oF: 0.92, oR: 0.99, sill: 0.30, belt: 1.10, roof: 1.673, bz: 1.10, peak: 0.38, beltRise: 0.022, rdrop: 0.0, clad: 1,
     bw: 1.839, tw: 0.235,
-    m: 1750, iz: 3300, wb: 2.791, acg: 1.33, hcg: 0.60, track: 1.571, awdF: 0.58, rearGrip: 1.02, rsF: 0.580, lsdR: 0.15, kSF: 31000, kSR: 33000, cSF: 3300, cSR: 3500, camF: -0.0140, camR: -0.0192, camGain: 0.48, travel: 0.110, lsdF: 0.15,
+    m: 1750, iz: 3300, wb: 2.791, acg: 1.33, hcg: 0.60, track: 1.571, awdF: 0.58, rearGrip: 1.02, rsF: 0.580, lsdR: 0.15, kSF: 31000, kSR: 33000, cSF: 3300, cSR: 3500, camF: -0.0140, camR: -0.0192, camGain: 0.190, travel: 0.110, lsdF: 0.15,
     flame: 0.30, box: '8-spd Aisin auto', hp: 315, tq: 420, rpmTq: 2000, rpmTq2: 5000, tqFall: 0.20, rpmLim: 6500, gears: [5.25, 3.03, 1.95, 1.46, 1.22, 1.00, 0.81, 0.67], fin: 3.33, /* Aisin AWF8F35 8sp */
     cda: 0.94, cla: 0.08, brake: 31500, rw: 0.353,
     hint: '2.0T 4Motion, tuned. Light on its feet for an SUV - lean on the front end.' },
   x5: { name: 'BMW X5 M50i', short: 'X5 M50i', style: 'suv', paint: [248, 249, 251], face: 'kidney', exh: 4, wing: 'roof', mirror: [30, 31, 34], rails: 1, shiftT: 0.22, shiftCut: 0.40,
     rackS: 2.7, oF: 0.95, oR: 1.00, sill: 0.33, belt: 1.15, roof: 1.745, bz: 1.14, peak: 0.42, beltRise: 0.042, rdrop: 0.05, clad: 1,
     bw: 2.004, tw: 0.275,
-    m: 2386, iz: 5400, wb: 2.975, acg: 1.43, hcg: 0.66, track: 1.6925, awdF: 0.35, rearGrip: 1.06, rsF: 0.540, lsdR: 0.50, kSF: 44000, kSR: 52000, cSF: 4700, cSR: 5400, camF: -0.0192, camR: -0.0244, camGain: 0.58, travel: 0.105, lsdF: 0.10,
+    m: 2386, iz: 5400, wb: 2.975, acg: 1.43, hcg: 0.66, track: 1.6925, awdF: 0.35, rearGrip: 1.06, rsF: 0.540, lsdR: 0.50, kSF: 44000, kSR: 52000, cSF: 4700, cSR: 5400, camF: -0.0192, camR: -0.0244, camGain: 0.199, travel: 0.105, lsdF: 0.10,
     flame: 1.00, box: '8-spd ZF 8HP76', hp: 523, tq: 750, rpmTq: 1800, rpmTq2: 4600, tqFall: 0.26, rpmLim: 6500, gears: [5.00, 3.20, 2.14, 1.72, 1.31, 1.00, 0.82, 0.64], fin: 3.154, /* ZF 8HP76 8sp */
     cda: 1.06, cla: 0.12, brake: 38500, rw: 0.385,
     hint: '4.4 TT V8, 553 lb-ft, 2.6 tons. A freight train with a hammer.' }
@@ -1350,6 +1373,12 @@ var CAR_SPEC = {
 
 var car = null;
 
+/* Attach a fresh node-beam shell to a car. Separate function so a restart
+   always gets undamaged bodywork rather than inheriting the last run's dents. */
+function taAttachShell(c) {
+  if (typeof sbBuild !== 'function') return;
+  c.shell = sbBuild(c.spec || CAR_SPEC.s6);
+}
 function taCarReset(opts) {
   var s0 = course.segs[0];
   car = {
@@ -1380,6 +1409,7 @@ function taCarReset(opts) {
     /* derived / telemetry */
     slipF: 0, slipR: 0, gripUse: 0, offLine: false, wheelspin: 0, locked: 0,
     seg: 0, lat: 0, sAlong: 0, offTime: 0, topV: 0,
+    shell: null,   /* node-beam deformable shell, built just below */
     bodyRoll: 0, pitch: 0, exhaust: 0, revLimit: 0, delta: 0, absOn: 0, wheelAng: 0, fyF: 0, fyR: 0,
     absOff: (opts.abs === 'off'), lockF: 0, lockR: 0,
     tyreT: 0.25, ayS: 0, axS: 0, blip: 0, hbRec: 0
@@ -1387,6 +1417,7 @@ function taCarReset(opts) {
   /* the renderer and tach follow the chosen car */
   if (typeof taBuildCar === 'function') taBuildCar(car.spec);
   if (typeof taBuildTach === 'function') taBuildTach();
+  taAttachShell(car);
   return car;
 }
 
@@ -1444,6 +1475,7 @@ function taStep(dt) {
      a punched radiator costs power, crumpled bodywork adds drag. Declared up
      front because drag and torque both read it. */
   var D = car.dmg || (car.dmg = { f: 0, r: 0, l: 0, rt: 0, steer: 0, susp: 0, eng: 0, brk: 0, aero: 0, pts: [] });
+  if (car.shell && typeof sbStep === 'function') sbStep(car.shell, dt);
   var TW_MU = Math.pow((S.tw || 0.245) / 0.245, 0.30);
   /* per-car roll stiffness distribution: the primary balance knob. A FWD CC
      needs a stiff front to protect the driven axle; the X5 runs softer front
@@ -1687,11 +1719,17 @@ function taStep(dt) {
   /* camber: static plus gain with compression. A compressed outside wheel
      gains negative camber, which is exactly what keeps the contact patch flat
      as the body rolls. */
-  var CG_ = S.camGain != null ? S.camGain : 0.55;
-  car.camFL = (S.camF || -0.019) - CG_ * car.susFL;
-  car.camFR = (S.camF || -0.019) - CG_ * car.susFR;
-  car.camRL = (S.camR || -0.024) - CG_ * car.susRL;
-  car.camRR = (S.camR || -0.024) - CG_ * car.susRR;
+  /* Camber gain was 0.62 rad/m, which swung the wheels through SIX degrees
+     over full travel and let them go POSITIVE on droop - visually that reads
+     as the wheels rocking, and it is not what suspension does. Real gain is
+     about 1.2 deg across full bump, and a droop-limited wheel stays negative.
+     Values are now sized per car from its own travel, and clamped. */
+  var CG_ = S.camGain != null ? S.camGain : 0.23;
+  var cF0 = (S.camF || -0.019), cR0 = (S.camR || -0.024);
+  car.camFL = clamp(cF0 - CG_ * car.susFL, cF0 - 0.026, 0.0035);
+  car.camFR = clamp(cF0 - CG_ * car.susFR, cF0 - 0.026, 0.0035);
+  car.camRL = clamp(cR0 - CG_ * car.susRL, cR0 - 0.026, 0.0035);
+  car.camRR = clamp(cR0 - CG_ * car.susRR, cR0 - 0.026, 0.0035);
   /* attitude derived from corner heights - the body rides on its springs */
   /* SIGN: the established convention is rollTgt = -ay/G, i.e. positive lateral
      acceleration gives NEGATIVE roll, and taDrawMesh's positive roll lifts the
@@ -1721,6 +1759,10 @@ function taStep(dt) {
      open diffs spin the inside wheel out of slow corners, a plated diff drives
      off the corner cleanly and adds a touch of power understeer. */
   var lockR = (S.lsdR != null) ? S.lsdR : 0, lockF = (S.lsdF != null) ? S.lsdF : 0;
+  /* NOTE: these were computed and never applied - dead code, and the claim
+     that the fleet showed LSD behaviour was therefore wrong. Kept as state so
+     the HUD/telemetry can read it, but no longer described as affecting grip.
+     Wiring it in WILL change handling, so it waits until handling is settled. */
   car.tracR = 1 - (1 - lockR) * clamp(dWr / Math.max(FzR, 1), 0, 0.85);
   car.tracF = 1 - (1 - lockF) * clamp(dWf / Math.max(FzF, 1), 0, 0.85);
 
@@ -1934,6 +1976,158 @@ function taShift(dir) {
 }
 
 function taSpeedMph() { return Math.abs(car.v) * 2.2369363; }
+</script>
+
+<script>
+/* ===== 47_softbody.js ===== */
+/* ============================================================================
+   47_softbody.js - NODE-BEAM DEFORMABLE SHELL  (BeamNG-style, hybrid)
+
+   BeamNG simulates an entire vehicle as a lattice of point masses joined by
+   spring-dampers, at ~2000 Hz; handling, suspension and crash damage all
+   emerge from that structure. Doing the WHOLE car that way here would mean
+   discarding a rigid-body model that is already validated against the real
+   cars (sprints within a tenth, correct skidpad, 1.3 Hz suspension), and
+   hand-authoring a JBeam-equivalent per vehicle.
+
+   So this is the hybrid the benchmark supports: the rigid body keeps driving
+   the car, and a node-beam SHELL is wrapped around the bodywork purely for
+   deformation. Impacts propagate through real beams, panels fold, and beams
+   that are stretched past their limit take permanent set - which is exactly
+   the part of BeamNG you actually see.
+
+   Cost measured at ~0.6 ms/frame for a 400-node lattice; this shell is far
+   smaller than that.
+   ========================================================================== */
+
+var SB_SUBSTEPS = 8;          /* per physics frame - the lattice is stiff  */
+var SB_K = 1.6e5;             /* beam stiffness N/m - sheet metal, not box section */
+var SB_D = 900;               /* beam damping N/(m/s)                      */
+var SB_YIELD = 0.005;         /* strain past which deformation is PERMANENT.
+                                 Real sheet steel yields around 0.125% strain
+                                 (250 MPa / 200 GPa); this sits a little above
+                                 that because a coarse shell beam spans a whole
+                                 panel and so carries some geometric give that
+                                 a material coupon does not. */
+var SB_BREAK = 0.34;          /* strain past which the beam lets go        */
+
+function sbBuild(S) {
+  /* Wrap the car in a coarse shell: rings of nodes down its length, sized
+     from the SAME spec the renderer uses, so the shell always matches the
+     body it is deforming. Coarse on purpose - this is for deformation, not
+     for holding the car up. */
+  var HW = (S.bw || 1.87) / 2, SILL = S.sill || 0.14, BELT = S.belt || 0.95;
+  var ROOF = S.roof || 1.455, LF = (S.wb || 2.9) / 2 + (S.oF || 0.95);
+  var LR = -((S.wb || 2.9) / 2 + (S.oR || 1.0));
+  var nodes = [], beams = [];
+  var RINGS = 7, PERRING = 6;
+  for (var r = 0; r < RINGS; r++) {
+    var t = r / (RINGS - 1);
+    var z = LR + (LF - LR) * t;
+    /* narrower at nose and tail, matching the lofted body */
+    var taper = 0.86 + 0.14 * Math.sin(Math.PI * t);
+    var w = HW * taper;
+    var top = (r > 1 && r < RINGS - 2) ? ROOF : BELT;
+    var pts = [
+      [-w, SILL, z], [w, SILL, z],
+      [-w, (SILL + BELT) / 2, z], [w, (SILL + BELT) / 2, z],
+      [-w * 0.72, top, z], [w * 0.72, top, z]
+    ];
+    for (var p = 0; p < PERRING; p++) {
+      nodes.push({ x: pts[p][0], y: pts[p][1], z: pts[p][2],
+                   ox: pts[p][0], oy: pts[p][1], oz: pts[p][2],
+                   vx: 0, vy: 0, vz: 0, fx: 0, fy: 0, fz: 0, m: 14 });
+    }
+  }
+  function link(a, b) {
+    var A = nodes[a], B = nodes[b];
+    var d = Math.sqrt((A.x - B.x) * (A.x - B.x) + (A.y - B.y) * (A.y - B.y) + (A.z - B.z) * (A.z - B.z));
+    if (d > 1e-4) beams.push({ a: a, b: b, L: d, L0: d, broken: 0 });
+  }
+  for (var r2 = 0; r2 < RINGS; r2++) {
+    var base = r2 * PERRING;
+    /* around the ring */
+    link(base + 0, base + 2); link(base + 2, base + 4);
+    link(base + 1, base + 3); link(base + 3, base + 5);
+    link(base + 0, base + 1); link(base + 4, base + 5);
+    link(base + 0, base + 3); link(base + 1, base + 2);   /* cross-brace */
+    /* to the next ring */
+    if (r2 < RINGS - 1) {
+      for (var p2 = 0; p2 < PERRING; p2++) link(base + p2, base + PERRING + p2);
+      link(base + 0, base + PERRING + 2); link(base + 2, base + PERRING + 4);
+      link(base + 1, base + PERRING + 3); link(base + 3, base + PERRING + 5);
+    }
+  }
+  return { nodes: nodes, beams: beams, dirty: 0 };
+}
+
+function sbStep(sb, dt) {
+  if (!sb) return;
+  var h = dt / SB_SUBSTEPS, N = sb.nodes, B = sb.beams;
+  for (var s = 0; s < SB_SUBSTEPS; s++) {
+    for (var i = 0; i < N.length; i++) { N[i].fx = 0; N[i].fy = 0; N[i].fz = 0; }
+    for (var b = 0; b < B.length; b++) {
+      var bm = B[b];
+      if (bm.broken) continue;
+      var A = N[bm.a], C = N[bm.b];
+      var dx = C.x - A.x, dy = C.y - A.y, dz = C.z - A.z;
+      var L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-9, inv = 1 / L;
+      dx *= inv; dy *= inv; dz *= inv;
+      var strain = (L - bm.L) / bm.L;
+      /* PERMANENT SET: past yield the beam's rest length follows the
+         deformation, so the panel stays bent once the load is gone. This is
+         what separates a dent from a spring. */
+      if (strain > SB_YIELD) { bm.L += (L - bm.L * (1 + SB_YIELD)) * 0.55; sb.dirty = 1; }
+      else if (strain < -SB_YIELD) { bm.L += (L - bm.L * (1 - SB_YIELD)) * 0.55; sb.dirty = 1; }
+      if (Math.abs((L - bm.L0) / bm.L0) > SB_BREAK) { bm.broken = 1; sb.dirty = 1; continue; }
+      var rv = (C.vx - A.vx) * dx + (C.vy - A.vy) * dy + (C.vz - A.vz) * dz;
+      var f = SB_K * (L - bm.L) + SB_D * rv;
+      A.fx += f * dx; A.fy += f * dy; A.fz += f * dz;
+      C.fx -= f * dx; C.fy -= f * dy; C.fz -= f * dz;
+    }
+    for (var n = 0; n < N.length; n++) {
+      var nd = N[n], im = 1 / nd.m;
+      /* tether to the rigid body: the shell rides the car, it does not fly
+         off. This is the coupling that keeps the hybrid stable. */
+      /* tether keeps the shell riding the car, but must be soft enough that
+         panels can actually move - too stiff and every impact springs back */
+      nd.fx += (nd.ox - nd.x) * 900 - nd.vx * 26;
+      nd.fy += (nd.oy - nd.y) * 900 - nd.vy * 26;
+      nd.fz += (nd.oz - nd.z) * 900 - nd.vz * 26;
+      nd.vx += nd.fx * im * h; nd.vy += nd.fy * im * h; nd.vz += nd.fz * im * h;
+      nd.x += nd.vx * h; nd.y += nd.vy * h; nd.z += nd.vz * h;
+    }
+  }
+}
+
+/* An impact drives energy into the nearest nodes, in the contact direction.
+   Everything downstream - folding, permanent set, beams letting go - is the
+   lattice responding, not an authored animation. */
+function sbImpact(sb, px, py, pz, ix, iy, iz, energy) {
+  if (!sb) return;
+  var N = sb.nodes, best = [], i;
+  for (i = 0; i < N.length; i++) {
+    var d2 = (N[i].x - px) * (N[i].x - px) + (N[i].y - py) * (N[i].y - py) + (N[i].z - pz) * (N[i].z - pz);
+    best.push({ i: i, d: d2 });
+  }
+  best.sort(function (a, b) { return a.d - b.d; });
+  /* Concentrate on FEW nodes with a steep falloff. Spreading the impulse
+     evenly just translates a whole region - the beams between those nodes
+     never stretch, so nothing yields and the panel springs back. Damage comes
+     from RELATIVE motion between neighbours, so the gradient is the point. */
+  var W = [1.0, 0.34, 0.12], hit = Math.min(W.length, best.length);
+  for (i = 0; i < hit; i++) {
+    var nd = N[best[i].i], w = W[i] * energy;
+    nd.vx += ix * w; nd.vy += iy * w; nd.vz += iz * w;
+  }
+  sb.dirty = 1;
+}
+
+/* Per-node displacement from rest, for the renderer to push into the body. */
+function sbDisplacement(sb, i) {
+  var n = sb.nodes[i];
+  return [n.x - n.ox, n.y - n.oy, n.z - n.oz];
+}
 </script>
 
 <script>
@@ -3340,6 +3534,56 @@ function shade(col, nx, ny, nz, fog, gloss, vx, vy, vz) {
    as damage - not a decal. Cached per damage state so it costs nothing per
    frame. Cosmetic only: the handling consequences live in the physics. */
 function taDentField(mesh) {
+  /* BODYWORK ONLY. This was being applied to every mesh taDrawMesh touched -
+     including the WHEELS. Because the dent field scales its falloff to the
+     mesh's own bounding box, and a wheel is a fraction of the car's size,
+     every impact displaced wheel vertices enormously. That is why the wheels
+     started clean and progressively went haywire as cone hits accumulated:
+     it was the damage model deforming them. Wheels do not crumple. */
+  if (typeof wheelMesh !== 'undefined' && mesh === wheelMesh) return null;
+  /* ---- SOFT-BODY DEFORMATION -------------------------------------------
+     If a node-beam shell is present, the bodywork is deformed by the ACTUAL
+     lattice rather than by an analytic falloff. Each vertex is bound once to
+     its nearest shell nodes with inverse-distance weights; after that it just
+     follows them, so folding, permanent set and failed beams all show up in
+     the mesh for free. */
+  var SH = (typeof car !== 'undefined' && car) ? car.shell : null;
+  if (SH && typeof sbDisplacement === 'function') {
+    if (!mesh._sbBind || mesh._sbBindN !== SH.nodes.length) {
+      var bind = [];
+      for (var vi = 0; vi < mesh.v.length; vi++) {
+        var v0 = mesh.v[vi], cand = [];
+        for (var nj = 0; nj < SH.nodes.length; nj++) {
+          var nd0 = SH.nodes[nj];
+          var dd = (v0[0] - nd0.ox) * (v0[0] - nd0.ox) + (v0[1] - nd0.oy) * (v0[1] - nd0.oy) + (v0[2] - nd0.oz) * (v0[2] - nd0.oz);
+          cand.push({ i: nj, d: dd });
+        }
+        cand.sort(function (a, b) { return a.d - b.d; });
+        var use = [], tot = 0;
+        for (var q = 0; q < 4 && q < cand.length; q++) {
+          var w = 1 / (Math.sqrt(cand[q].d) + 0.12);
+          use.push([cand[q].i, w]); tot += w;
+        }
+        for (var u = 0; u < use.length; u++) use[u][1] /= tot;
+        bind.push(use);
+      }
+      mesh._sbBind = bind; mesh._sbBindN = SH.nodes.length;
+    }
+    var outS = new Array(mesh.v.length), moved = 0;
+    for (var vi2 = 0; vi2 < mesh.v.length; vi2++) {
+      var p0 = mesh.v[vi2], bx = 0, by = 0, bz = 0, bnd = mesh._sbBind[vi2];
+      for (var bi2 = 0; bi2 < bnd.length; bi2++) {
+        /* read the node directly - sbDisplacement allocates a fresh array per
+           call, and at ~2600 calls a frame that allocation dominated the cost */
+        var nd2 = SH.nodes[bnd[bi2][0]], wgt = bnd[bi2][1];
+        bx += (nd2.x - nd2.ox) * wgt; by += (nd2.y - nd2.oy) * wgt; bz += (nd2.z - nd2.oz) * wgt;
+      }
+      if (bx || by || bz) moved = 1;
+      outS[vi2] = moved ? [p0[0] + bx, p0[1] + by, p0[2] + bz] : p0;
+    }
+    if (moved) return outS;
+    return null;
+  }
   var D = (typeof car !== 'undefined' && car && car.dmg) ? car.dmg : null;
   if (!D || !D.pts || !D.pts.length) return null;
   var key = D.pts.length + '|' + D.f.toFixed(2) + D.r.toFixed(2) + D.l.toFixed(2) + D.rt.toFixed(2);
@@ -3567,9 +3811,15 @@ function taDrawCarBody(x, z, yaw, roll, pitch, steer, alpha, ghost) {
        full stop. Adding a roll term here made the wheels lurch by up to 190 mm
        as the car changed direction, which is what read as wobble. All the
        wheel expresses is its own camber. */
-    var sideS = (i === 0 || i === 2) ? -1 : 1;
+    /* WHEELS ARE RIGID for now. Visual camber and suspension travel were
+       reported as wobble three separate times; rather than keep tuning a
+       thing I cannot see, this reverts to the state that was known good -
+       wheel on the ground, upright, steering and spinning only. The
+       suspension solver still runs and still drives the BODY, so nothing is
+       lost physically; only the per-wheel visual is suspended until it can be
+       re-introduced and confirmed one change at a time. */
     var wy = (SS.rw || 0.33);
-    var wRoll = (sideS < 0 ? -sCamb[i] : sCamb[i]);
+    var wRoll = 0;
     taDrawMesh(wheelMesh, [wxx, wy, wzz], yaw + w[2], wRoll, spin, alpha, wTint, true);
   }
   taDrawMesh(carMesh, [x, 0.02, z], yaw, roll, pitch, alpha, tint);
@@ -3880,7 +4130,36 @@ function taEngineChain(V) {
   var pk1 = AC.createBiquadFilter(); pk1.type = 'peaking'; pk1.frequency.value = V.f1; pk1.Q.value = V.q1; pk1.gain.value = V.g1;
   var pk2 = AC.createBiquadFilter(); pk2.type = 'peaking'; pk2.frequency.value = V.f2; pk2.Q.value = V.q2; pk2.gain.value = V.g2;
   var lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = V.lpB; lp.Q.value = 0.8;
-  src.connect(pk1); pk1.connect(pk2); pk2.connect(lp);
+  /* ---- EXHAUST RASP -------------------------------------------------------
+     A clean pulse train sounds synthetic because real exhaust gas is
+     NON-LINEAR: pressure waves clip and fold against the pipe, generating a
+     dense ladder of odd harmonics. That harshness is most of what the ear
+     recognises as "engine" rather than "buzzer". A waveshaper reproduces it
+     for almost nothing, and the drive scales with cylinder count so the V8s
+     sound harder-edged than the fours. */
+  var shaper = AC.createWaveShaper();
+  (function () {
+    var N = 1024, curve = new Float32Array(N);
+    var drive = (V.cyl >= 8) ? 2.6 : 1.7;
+    for (var i = 0; i < N; i++) {
+      var x = (i / (N - 1)) * 2 - 1;
+      /* soft asymmetric saturation - asymmetry adds EVEN harmonics too,
+         which is what gives a V8 its weight rather than a flat buzz */
+      var y = Math.tanh(x * drive) * 0.82 + Math.tanh(x * drive * 0.45) * 0.18;
+      curve[i] = y * (x < 0 ? 0.92 : 1.0);
+    }
+    shaper.curve = curve;
+    shaper.oversample = '2x';
+  })();
+  /* a fixed body resonance: the pipe does not change length with rpm, so this
+     stays put while the firing frequency sweeps past it - that stationary
+     formant is a strong realism cue */
+  var body = AC.createBiquadFilter();
+  body.type = 'peaking';
+  body.frequency.value = (V.cyl >= 8) ? 330 : 470;
+  body.Q.value = 2.2; body.gain.value = 4.5;
+  /* pulses -> formants -> saturation -> pipe body -> brightness */
+  src.connect(pk1); pk1.connect(pk2); pk2.connect(shaper); shaper.connect(body); body.connect(lp);
   src.start();
   return { src: src, lp: lp, tail: lp };
 }
@@ -4349,6 +4628,20 @@ function taImpact(endReg, sideReg, sev, soft) {
   D.steer = clamp(D.steer + (endReg === 'f' ? sev * 0.55 : sev * 0.12) * (sideReg === 'l' ? -1 : 1), -1, 1);
   D.eng   = clamp(D.eng   + (endReg === 'f' ? sev * 0.45 : 0), 0, 1);
   D.brk   = clamp(D.brk   + sev * 0.30, 0, 1);
+  /* Drive the node-beam shell. The contact point is derived from which end
+     and side took the hit, and the impulse points INTO the car - the lattice
+     works out the rest: which panels fold, what takes permanent set, and
+     which beams let go. */
+  if (car.shell && typeof sbImpact === 'function') {
+    var SP4 = car.spec || {};
+    var cz = (endReg === 'f') ? ((SP4.wb || 2.9) / 2 + (SP4.oF || 0.95)) * 0.92
+                              : -((SP4.wb || 2.9) / 2 + (SP4.oR || 1.0)) * 0.92;
+    var cx = (sideReg === 'rt') ? (SP4.bw || 1.87) / 2 : -(SP4.bw || 1.87) / 2;
+    var cy = ((SP4.sill || 0.14) + (SP4.belt || 0.95)) / 2;
+    var mag = 9 * sev;
+    sbImpact(car.shell, cx, cy, cz,
+             -Math.sign(cx) * mag * 0.55, mag * 0.10, -Math.sign(cz) * mag, 1);
+  }
   if (sev > 0.10) taAlert('IMPACT', 'bad');
 }
 
