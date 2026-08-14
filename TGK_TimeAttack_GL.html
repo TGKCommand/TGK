@@ -2318,7 +2318,18 @@ var MODEL_TWEAK = {
   tiguan:  { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
              paintRx: /^Paint_Color/i, hideRx: null, shadowMin: 0.5 },
   x5:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
-             paintRx: /paint1Mtl$/i, hideRx: null, shadowMin: 0.5 }
+             /* clean low-poly G05: materials are named for THIS car, so the
+                scheme can be exact - white body, blacked-out trim and mirrors,
+                milled faces on dark rims, M-blue calipers left alone */
+             paintRx: /tanzanite|paint1Mtl$/i, hideRx: null, shadowMin: 0.5,
+             recolor: [
+               [/^silver$/i,        [ 24,  25,  27], 0.35, 0.42],   /* trim -> black */
+               [/^mirror$/i,        [ 22,  23,  25], 0.30, 0.45],   /* mirror caps    */
+               [/^silver_rim$/i,    [158, 161, 166], 0.85, 0.28],   /* milled face    */
+               [/^black_rim$/i,     [ 20,  20,  22], 0.55, 0.40],   /* dark barrel    */
+               [/^black_metallic$/i,[ 26,  27,  29], 0.45, 0.38],
+               [/^exhaust$/i,       [116, 119, 124], 0.90, 0.30]
+             ] }
 };
 var _gltfLoader = (typeof THREE.GLTFLoader === 'function') ? new THREE.GLTFLoader() : null;
 /* The models are packed with EXT_meshopt_compression (roughly 2.5x smaller).
@@ -2563,6 +2574,24 @@ function loadCarModel(S, key, onDone) {
           mm.side = THREE.FrontSide;
         }
         mm.needsUpdate = true;
+        /* RECOLOUR TABLE: paintRx handles the body, but a car scheme needs
+           more than one colour - blacked-out trim, milled wheel faces, dark
+           mirrors. Each entry is [regex, [r,g,b], metalness, roughness] and
+           the first match wins. Applied before the paint pass so paintRx
+           stays authoritative for the body itself. */
+        if (tw.recolor && mm.name && mm.color) {
+          for (var rc = 0; rc < tw.recolor.length; rc++) {
+            var RC = tw.recolor[rc];
+            if (RC[0].test(mm.name)) {
+              mm.color.setRGB(RC[1][0] / 255, RC[1][1] / 255, RC[1][2] / 255);
+              if (RC[2] !== undefined && mm.metalness !== undefined) mm.metalness = RC[2];
+              if (RC[3] !== undefined && mm.roughness !== undefined) mm.roughness = RC[3];
+              mm.vertexColors = false;
+              mm.needsUpdate = true;
+              break;
+            }
+          }
+        }
         if (tw.repaint !== false && tw.paintRx && mm.name && tw.paintRx.test(mm.name) && mm.color) {
           mm.color.setRGB(S.paint[0] / 255, S.paint[1] / 255, S.paint[2] / 255);
           /* the model bakes its factory colour into COLOR_0 vertex colours,
