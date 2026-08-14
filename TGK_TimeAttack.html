@@ -1656,7 +1656,13 @@ function taStep(dt) {
      (verified symbolically: difference is exactly 0), so validated handling
      is preserved. It only diverges where the old model was wrong - at or
      near wheel lift. */
-  var latW = M * car.ayS * H_CG / TRACK;          /* SIGNED: direction matters now */
+  /* SIGN: load transfers to the OUTSIDE of the corner, i.e. OPPOSITE to the
+     lateral acceleration. In the body frame the inertial reaction on the
+     sprung mass points outward, and that is what loads the outer wheels.
+     The pre-refactor code took Math.abs(ay) so it never had a side at all;
+     when this was made signed the direction went in backwards, and the car
+     loaded - and leaned onto - the INSIDE of every corner. */
+  var latW = -M * car.ayS * H_CG / TRACK;
   /* suspension hardware for this car */
   var KSF = S.kSF || 33000, KSR = S.kSR || 35000;
   var CSF = S.cSF || 3400, CSR = S.cSR || 3600;
@@ -1738,7 +1744,13 @@ function taStep(dt) {
      wrong way AND made the wheel compensation double the error instead of
      cancelling it - which is what showed up as violent wheel wobble. */
   car.rollGeo = ((car.susFL + car.susRL) - (car.susFR + car.susRR)) / (2 * TRACK);
-  car.pitchGeo = ((car.susRL + car.susRR) - (car.susFL + car.susFR)) / (2 * WB);
+  /* SIGN: taDrawMesh's positive pitch rotates the NOSE DOWN (a point at +z
+     moves to y - z*sin(pitch)). So dive must be POSITIVE and squat NEGATIVE.
+     This had the terms the other way round, which is why the car leaned
+     forward under power and lifted its nose under braking - the loads and the
+     suspension travel were correct all along, only the attitude they were
+     reported as was inverted. */
+  car.pitchGeo = ((car.susFL + car.susFR) - (car.susRL + car.susRR)) / (2 * WB);
 
   function cornerCap(Fz, Fz0) {
     if (Fz <= 0) return 0;                        /* airborne wheel makes nothing */
@@ -3811,15 +3823,15 @@ function taDrawCarBody(x, z, yaw, roll, pitch, steer, alpha, ghost) {
        full stop. Adding a roll term here made the wheels lurch by up to 190 mm
        as the car changed direction, which is what read as wobble. All the
        wheel expresses is its own camber. */
-    /* WHEELS ARE RIGID for now. Visual camber and suspension travel were
-       reported as wobble three separate times; rather than keep tuning a
-       thing I cannot see, this reverts to the state that was known good -
-       wheel on the ground, upright, steering and spinning only. The
-       suspension solver still runs and still drives the BODY, so nothing is
-       lost physically; only the per-wheel visual is suspended until it can be
-       re-introduced and confirmed one change at a time. */
+    /* STEP 1 of reintroducing the wheel visual: CAMBER ONLY.
+       The wheel is drawn in world space and is always in contact with the
+       road, so its height never changes - only its lean does. Camber now
+       comes from the corrected gain (about 1.2 deg across full travel rather
+       than the 6 deg that caused the visible rocking) and is clamped so a
+       drooping wheel can never take positive camber. */
+    var sideS = (i === 0 || i === 2) ? -1 : 1;
     var wy = (SS.rw || 0.33);
-    var wRoll = 0;
+    var wRoll = (sideS < 0 ? -sCamb[i] : sCamb[i]);
     taDrawMesh(wheelMesh, [wxx, wy, wzz], yaw + w[2], wRoll, spin, alpha, wTint, true);
   }
   taDrawMesh(carMesh, [x, 0.02, z], yaw, roll, pitch, alpha, tint);

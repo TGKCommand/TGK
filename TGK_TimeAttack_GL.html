@@ -1658,7 +1658,13 @@ function taStep(dt) {
      (verified symbolically: difference is exactly 0), so validated handling
      is preserved. It only diverges where the old model was wrong - at or
      near wheel lift. */
-  var latW = M * car.ayS * H_CG / TRACK;          /* SIGNED: direction matters now */
+  /* SIGN: load transfers to the OUTSIDE of the corner, i.e. OPPOSITE to the
+     lateral acceleration. In the body frame the inertial reaction on the
+     sprung mass points outward, and that is what loads the outer wheels.
+     The pre-refactor code took Math.abs(ay) so it never had a side at all;
+     when this was made signed the direction went in backwards, and the car
+     loaded - and leaned onto - the INSIDE of every corner. */
+  var latW = -M * car.ayS * H_CG / TRACK;
   /* suspension hardware for this car */
   var KSF = S.kSF || 33000, KSR = S.kSR || 35000;
   var CSF = S.cSF || 3400, CSR = S.cSR || 3600;
@@ -1740,7 +1746,13 @@ function taStep(dt) {
      wrong way AND made the wheel compensation double the error instead of
      cancelling it - which is what showed up as violent wheel wobble. */
   car.rollGeo = ((car.susFL + car.susRL) - (car.susFR + car.susRR)) / (2 * TRACK);
-  car.pitchGeo = ((car.susRL + car.susRR) - (car.susFL + car.susFR)) / (2 * WB);
+  /* SIGN: taDrawMesh's positive pitch rotates the NOSE DOWN (a point at +z
+     moves to y - z*sin(pitch)). So dive must be POSITIVE and squat NEGATIVE.
+     This had the terms the other way round, which is why the car leaned
+     forward under power and lifted its nose under braking - the loads and the
+     suspension travel were correct all along, only the attitude they were
+     reported as was inverted. */
+  car.pitchGeo = ((car.susFL + car.susFR) - (car.susRL + car.susRR)) / (2 * WB);
 
   function cornerCap(Fz, Fz0) {
     if (Fz <= 0) return 0;                        /* airborne wheel makes nothing */
@@ -2308,63 +2320,88 @@ var _modelCache = {};
    position, emitting one mesh per quadrant that shares the ORIGINAL vertex
    buffers and differs only in its index buffer. That is cheap in memory and
    gives the pivot builder four real nodes to work with. */
-function glSplitWheels(root) {
+function glSplitWheels(root, S) {
+  /* GEOMETRIC extraction. Material names cannot be trusted: the CC calls its
+     wheels 'tire.068' but the Tiguan calls everything 'Index_0_1', so a
+     name-driven split finds nothing on one car and the wrong thing on the
+     other. Wheel POSITIONS, however, are known exactly from the spec the
+     loader already scaled the model to. So: pull out the triangles that sit
+     inside a wheel-sized sphere at each of the four hubs, and leave every
+     other triangle in the body mesh where it belongs. */
+  if (!S) return 0;
+  var tw = (S.track || 1.6) / 2, wb = (S.wb || 2.9) / 2, rw = S.rw || 0.34;
+  var hubs = [[-tw, rw, wb], [tw, rw, wb], [-tw, rw, -wb], [tw, rw, -wb]];
+  var R2 = (rw * 1.25) * (rw * 1.25);
   var cand = [];
   root.traverse(function (n) {
-    if (!n.isMesh || !n.geometry || !n.geometry.attributes) return;
-    var ms = Array.isArray(n.material) ? n.material : [n.material];
-    var tag = ms.map(function (m) { return (m && m.name) || ''; }).join(' ') + ' ' + (n.name || '');
-    /* deliberately NOT matching brake/disc/rotor: those words appear on body
-       and trim materials in some exports, and shredding a panel into four
-       'wheels' is far worse than a static wheel. */
-    if (/\btire|\btyre|\brim\b|wheel/i.test(tag)) cand.push(n);
+    if (n.isMesh && n.geometry && n.geometry.attributes && n.geometry.attributes.position) cand.push(n);
   });
   var made = 0;
   for (var ci = 0; ci < cand.length; ci++) {
     var m = cand[ci], g = m.geometry, pos = g.attributes.position;
-    if (!pos || !m.parent) continue;
+    if (!m.parent) continue;
     var idx = g.index ? g.index.array : null;
     var tris = idx ? (idx.length / 3) : (pos.count / 3);
     if (tris < 24) continue;
-    var bbChk = new THREE.Box3().setFromBufferAttribute(pos);
-    /* a real wheel mesh spans BOTH sides of the car; a single-corner part or a
-       body panel does not, and must not be split */
-    if ((bbChk.max.x - bbChk.min.x) < 0.9 || (bbChk.max.z - bbChk.min.z) < 0.9) continue;
-    var bb = new THREE.Box3().setFromBufferAttribute(pos);
-    var midX = (bb.min.x + bb.max.x) / 2, midZ = (bb.min.z + bb.max.z) / 2;
-    var buckets = [[], [], [], []];
+    var buckets = [[], [], [], []], rest = [], any = 0;
     for (var t = 0; t < tris; t++) {
-      var a = idx ? idx[t * 3] : t * 3, b = idx ? idx[t * 3 + 1] : t * 3 + 1, c = idx ? idx[t * 3 + 2] : t * 3 + 2;
-      var cx = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3;
-      var cz = (pos.getZ(a) + pos.getZ(b) + pos.getZ(c)) / 3;
-      buckets[(cz > midZ ? 0 : 2) + (cx > midX ? 1 : 0)].push(a, b, c);
+      var a1 = idx ? idx[t * 3] : t * 3, b1 = idx ? idx[t * 3 + 1] : t * 3 + 1, c1 = idx ? idx[t * 3 + 2] : t * 3 + 2;
+      var cx = (pos.getX(a1) + pos.getX(b1) + pos.getX(c1)) / 3;
+      var cy = (pos.getY(a1) + pos.getY(b1) + pos.getY(c1)) / 3;
+      var cz = (pos.getZ(a1) + pos.getZ(b1) + pos.getZ(c1)) / 3;
+      var hit = -1;
+      for (var h = 0; h < 4; h++) {
+        var dx = cx - hubs[h][0], dy = cy - hubs[h][1], dz = cz - hubs[h][2];
+        if (dx * dx + dy * dy + dz * dz < R2) { hit = h; break; }
+      }
+      if (hit >= 0) { buckets[hit].push(a1, b1, c1); any++; }
+      else rest.push(a1, b1, c1);
     }
-    var built = 0;
-    for (var q = 0; q < 4; q++) {
-      if (buckets[q].length < 36) continue;      /* ignore stray slivers */
+    /* only worth splitting if this mesh actually contains wheels */
+    if (any < 48) continue;
+    function mk(indices, name) {
       var ng = new THREE.BufferGeometry();
       ng.setAttribute('position', pos);
       if (g.attributes.normal) ng.setAttribute('normal', g.attributes.normal);
       if (g.attributes.uv) ng.setAttribute('uv', g.attributes.uv);
-      ng.setIndex(buckets[q]);
+      ng.setIndex(indices);
       var nm = new THREE.Mesh(ng, m.material);
-      nm.name = 'wheelsplit_' + ['FL', 'FR', 'RL', 'RR'][q];
+      nm.name = name;
       nm.castShadow = true;
       nm.position.copy(m.position); nm.rotation.copy(m.rotation); nm.scale.copy(m.scale);
       m.parent.add(nm);
+      return nm;
+    }
+    var built = 0;
+    for (var q = 0; q < 4; q++) {
+      if (buckets[q].length < 36) continue;
+      mk(buckets[q], 'wheelsplit_' + ['FL', 'FR', 'RL', 'RR'][q]);
       built++;
     }
-    if (built >= 2) { m.parent.remove(m); made += built; }
+    if (built) {
+      /* everything that was NOT a wheel stays as ordinary bodywork */
+      if (rest.length >= 3) mk(rest, (m.name || 'part') + '_bodyshell');
+      m.parent.remove(m);
+      made += built;
+    }
   }
   return made;
 }
-
 function glFindSpinners(root) {
-  var out = [];
+  var all = [];
   root.traverse(function (n) {
-    if (n.name && /(tire|tyre|rim|rotor|wheel)/i.test(n.name)) out.push(n);
+    if (n.name && /(tire|tyre|rim|rotor|wheel)/i.test(n.name)) all.push(n);
   });
-  return out;
+  /* DROP ANCESTORS. On the S6, 8 of 21 matches are parent nodes that also
+     contain matched children - so both parent and child ended up in the list
+     and both got re-parented into a hub, which corrupts the hierarchy and
+     leaves a node rotating about the wrong point. Only the innermost matched
+     node is a real wheel part. */
+  return all.filter(function (n) {
+    var inner = false;
+    n.traverse(function (m) { if (m !== n && all.indexOf(m) >= 0) inner = true; });
+    return !inner;
+  });
 }
 var _modelBase = null;
 var _glFails = {}, _glProbeOK = {};
@@ -2531,7 +2568,7 @@ function loadCarModel(S, key, onDone) {
        again. Only runs when the model genuinely has nothing to rotate, so
        models with proper wheel nodes (S6, X5) are left untouched. */
     if (spinners.length < 2) {
-      var splitN = glSplitWheels(root);
+      var splitN = glSplitWheels(root, S);
       if (splitN) {
         console.log('[TGK] ' + key + ': no wheel nodes, split merged geometry into ' + splitN + ' wheels');
         collectSpinners();
@@ -3147,11 +3184,27 @@ function taRenderFrame(ghostPose, rivalPose) {
     var sideSign = U.isLeft ? -1 : 1;        /* car-space X: left is negative */
     var frontSign = U.isFront ? 1 : -1;
     if (U.isFront) P.rotation.y = -(car.delta || 0);
-    /* RIGID for now - see the matching note in the canvas renderer. The pivot
-       still steers and spins; it simply does not take up suspension travel or
-       camber until that visual can be verified. */
-    P.position.y = U.baseY;
-    P.rotation.z = 0;
+    /* STEP 2: GL wheels DO need compensation, unlike the canvas ones, because
+       the pivot is a child of carGroup and inherits its rotation.
+
+       carGroup.rotation.set(pitch, -yaw, -roll), so for a pivot at local
+       (lx, lz) the small-angle world height is
+           y_world ~= ly - lx*roll - lz*pitch
+       Setting ly = baseY + lx*roll + lz*pitch therefore holds the contact
+       patch on the road exactly, whatever the body does. Suspension travel is
+       then the body moving relative to the wheel, and the pivot must undo the
+       inherited roll before applying the wheel's own camber. */
+    var localX = -sideSign * halfTrack;      /* world X is negated in GL */
+    var localZ = frontSign * halfWb;
+    var travL = 0, cambL = 0;
+    if (hasSus) {
+      travL = U.isFront ? (U.isLeft ? car.susFL : car.susFR)
+                        : (U.isLeft ? car.susRL : car.susRR);
+      cambL = U.isFront ? (U.isLeft ? car.camFL : car.camFR)
+                        : (U.isLeft ? car.camRL : car.camRR);
+    }
+    P.position.y = U.baseY + localX * roll + localZ * pitch + travL;
+    P.rotation.z = roll + (U.isLeft ? -cambL : cambL);
     if (U.spin) U.spin.rotation.x = spin;
   }
   for (var t = 0; t < tailMats.length; t++) tailMats[t].emissiveIntensity = car.brk > 0.1 ? 1.7 : 0.12;
