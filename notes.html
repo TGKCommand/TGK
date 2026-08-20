@@ -624,7 +624,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.32';
+const TGK_NOTES_VERSION='v1.33';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -5173,7 +5173,11 @@ function parseImport(text){
   if(text.charAt(0)==='['||text.charAt(0)==='{'){
     try{
       var j=JSON.parse(text);
-      var arr=Array.isArray(j)?j:(j&&Array.isArray(j.data)?j.data:null);
+      var arr=Array.isArray(j)?j:null;
+      if(!arr&&j&&typeof j==='object'){
+        if(Array.isArray(j.data))arr=j.data;
+        else{var _ak=Object.keys(j).filter(function(k){return Array.isArray(j[k])&&j[k].length&&typeof j[k][0]==='object'&&j[k][0]!==null;});_ak.sort(function(a,c){return j[c].length-j[a].length;});if(_ak.length)arr=j[_ak[0]];}
+      }
       if(arr){
         if(arr.length&&(typeof arr[0]!=='object'||arr[0]===null))
           return {cols:['Value'],rows:arr.map(function(x){return [x==null?'':String(x)];})};
