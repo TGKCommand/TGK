@@ -380,6 +380,13 @@ body.dark .g-row td{background:#26292c}
   font-family:inherit;color:var(--text2);outline:none;cursor:pointer}
 .qf-s.on{border-color:var(--teal);color:var(--teal-d);background:var(--teal-dim);font-weight:600}
 body.dark .qf-s{background:#26292c}
+body.dark .btn:not(.btn-primary){background:#26292c;border-color:#33383c;color:var(--text)}
+body.dark .dbq{background:#191c1e;color:var(--text)}
+body.dark .vtab.on{background:#2e3235;color:#5fe0cc}
+body.dark #fmtpop{background:#202325;color:var(--text)}
+body.dark .tb-c:focus{background:#191c1e}
+body.dark .fld{background:#191c1e;color:var(--text)}
+body.dark .vtab.add{color:var(--text2)}
 .qf-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0 4px}
 .qf-x:hover{color:var(--red)}
 .ver-tag{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#6b7680;text-align:center;padding:7px 0 2px}
@@ -629,7 +636,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.39';
+const TGK_NOTES_VERSION='v1.40';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1098,6 +1105,7 @@ document.addEventListener('keydown',e=>{
   }
   if(e.key==='Enter'&&!e.shiftKey){
     if(bl.type==='code'){return;} // newlines inside code
+    if(bl.type==='callout'||bl.type==='quote'){e.preventDefault();try{document.execCommand('insertLineBreak');}catch(_){try{document.execCommand('insertHTML',false,'<br>');}catch(__){}}return;}
     e.preventDefault();
     let before,after;
     try{
