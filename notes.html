@@ -116,12 +116,15 @@ input,select,textarea{font-family:inherit}
 .bk:hover .bk-plus{opacity:1}
 .bk-plus:hover{background:rgba(13,148,136,.12);color:var(--teal)}
 .bk-handle:hover{color:var(--teal)}
-.col-row{display:flex;gap:22px;align-items:flex-start;margin:2px 0}
+.col-row{display:flex;gap:0;align-items:flex-start;margin:2px 0}
 .col{flex:1 1 0;min-width:0}
 .col>.bk{margin-left:0!important}
+.col-rz{flex:0 0 22px;align-self:stretch;cursor:col-resize;position:relative}
+.col-rz::before{content:'';position:absolute;left:50%;transform:translateX(-50%);top:2px;bottom:2px;width:3px;border-radius:3px;background:transparent;transition:background .1s}
+.col-rz:hover::before{background:var(--teal)}
 .bk.col-left{box-shadow:inset 3px 0 0 var(--teal);border-radius:4px}
 .bk.col-right{box-shadow:inset -3px 0 0 var(--teal);border-radius:4px}
-@media(max-width:720px){.col-row{flex-direction:column;gap:0}}
+@media(max-width:720px){.col-row{flex-direction:column;gap:0}.col-rz{display:none}}
 .bk-mk{flex-shrink:0;min-width:18px;text-align:right;color:var(--text3);user-select:none;font-size:14px;line-height:1.65}
 .bk-t{flex:1;outline:none;line-height:1.65;min-height:1.65em;word-break:break-word;padding:1px 2px}
 .bk-t:empty::before{content:attr(data-ph);color:#c8cdd5;pointer-events:none}
@@ -611,7 +614,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.22';
+const TGK_NOTES_VERSION='v1.23';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -3924,6 +3927,46 @@ window.cleanInlineHTML=cleanInlineHTML;window.blockPlain=blockPlain;window.richH
 window.fmt=fmt;window.fmtCode=fmtCode;window.fmtMark=fmtMark;window.fmtLink=fmtLink;window.fmtClear=fmtClear;
 window.fmtColorMenu=fmtColorMenu;window.applyInlineColor=applyInlineColor;window.clearInlineColor=clearInlineColor;window.closeFmtPop=closeFmtPop;
 /* ---------- multi-column layouts ---------- */
+var _crz=null;
+function colResizeStart(e,cg,lc,rc){
+  e.preventDefault();
+  var row=e.target.closest('.col-row');if(!row)return;
+  var lEl=null,rEl=null;
+  Array.prototype.slice.call(row.children).forEach(function(x){
+    if(!x.classList||!x.classList.contains('col'))return;
+    var cc=Number(x.getAttribute('data-col'));
+    if(cc===lc)lEl=x;if(cc===rc)rEl=x;
+  });
+  if(!lEl||!rEl)return;
+  var lw=parseFloat(getComputedStyle(lEl).flexGrow)||1;
+  var rw=parseFloat(getComputedStyle(rEl).flexGrow)||1;
+  _crz={cg:cg,lc:lc,rc:rc,lEl:lEl,rEl:rEl,x0:e.clientX,lw:lw,rw:rw,rowW:row.getBoundingClientRect().width||1,nl:null,nr:null};
+  document.body.style.userSelect='none';
+  document.addEventListener('mousemove',colResizeMove);
+  document.addEventListener('mouseup',colResizeEnd);
+}
+function colResizeMove(e){
+  if(!_crz)return;
+  var total=_crz.lw+_crz.rw;
+  var d=(e.clientX-_crz.x0)/_crz.rowW*total;
+  var nl=Math.max(0.25,Math.min(total-0.25,_crz.lw+d));
+  var nr=total-nl;
+  _crz.lEl.style.flex=nl+' 1 0';_crz.rEl.style.flex=nr+' 1 0';
+  _crz.nl=nl;_crz.nr=nr;
+}
+function colResizeEnd(){
+  document.removeEventListener('mousemove',colResizeMove);
+  document.removeEventListener('mouseup',colResizeEnd);
+  document.body.style.userSelect='';
+  if(_crz&&_crz.nl!=null){
+    var b=blocks();
+    var setw=function(ci,w){for(var k=0;k<b.length;k++){if(b[k].cg===_crz.cg&&(b[k].col||0)===ci){b[k].cw=Math.round(w*1000)/1000;break;}}};
+    setw(_crz.lc,_crz.nl);setw(_crz.rc,_crz.nr);
+    markDirty();
+  }
+  _crz=null;
+}
+window.colResizeStart=colResizeStart;
 function normalizeColumns(b){
   var i=0;
   while(i<b.length){
@@ -3954,10 +3997,12 @@ function colRowHTML(b,start,end,_hid){
   }
   cols.sort(function(a,c){return a.c-c.c;});
   var out='<div class="col-row" data-cg="'+esc(cg)+'">';
-  cols.forEach(function(col){
-    out+='<div class="col" data-cg="'+esc(cg)+'" data-col="'+col.c+'">';
+  cols.forEach(function(col,ci){
+    var w=Number(b[col.items[0]].cw)||1;
+    out+='<div class="col" data-cg="'+esc(cg)+'" data-col="'+col.c+'" style="flex:'+w+' 1 0">';
     col.items.forEach(function(k){out+=(_hid[k]?'':blockHTML(b[k],k));});
     out+='</div>';
+    if(ci<cols.length-1)out+='<div class="col-rz" onmousedown="colResizeStart(event,\''+esc(cg)+'\','+col.c+','+cols[ci+1].c+')" title="Drag to resize columns"></div>';
   });
   return out+'</div>';
 }
