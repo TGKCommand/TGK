@@ -327,7 +327,7 @@ body.dark .emb-bar{background:rgba(255,255,255,.04)}
 .nc-o span{font-size:11px;color:var(--text3)}
 .rpage{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 2px}
 .rpage-l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
-body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #slash{background:#202325;color:var(--text)}
+body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #pgmenu,body.dark #slash{background:#202325;color:var(--text)}
 body.dark .nx-i,body.dark .qs-i,body.dark .cin,body.dark .side-search{background:#191c1e;color:var(--text)}
 body.dark .nx-b{background:#26292c;color:var(--text2)}
 body.dark .nx-b:hover{background:#2e3235}
@@ -416,7 +416,7 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 #fmtpop .fp-i{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12.5px}
 #fmtpop .fp-i:hover{background:var(--teal-dim)}
 #fmtpop .fp-sw{width:18px;height:18px;border-radius:4px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;padding:0}
-#bmenu{position:absolute;z-index:520;background:#fff;border-radius:var(--r-lg);box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);width:212px;padding:5px;max-height:70vh;overflow-y:auto}
+#bmenu,#pgmenu{position:absolute;z-index:520;background:#fff;border-radius:var(--r-lg);box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);width:212px;padding:5px;max-height:70vh;overflow-y:auto}
 .bm-h{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--text3);padding:6px 9px 3px}
 .bm-i{padding:6px 9px;border-radius:var(--r);cursor:pointer;font-size:12.5px}
 .bm-i:hover{background:var(--teal-dim)}
@@ -597,15 +597,9 @@ table.tb th .tb-c{font-weight:700}
         <button class="fav-b" id="fav-btn" onclick="toggleFav(S.activeId)" title="Favourite this page">&#9734;</button>
         <button class="fav-b" id="undo-btn" onclick="undoDoc()" title="Undo (Ctrl+Z)" disabled>&#8630;</button>
         <button class="fav-b" id="redo-btn" onclick="redoDoc()" title="Redo (Ctrl+Shift+Z)" disabled>&#8631;</button>
-        <button class="btn btn-sm" onclick="openHistory()" title="Version history">History</button>
-        <button class="btn btn-sm" onclick="openPageInfo()" title="Page info">Info</button>
-        <button class="btn btn-sm" onclick="duplicatePage()" title="Duplicate this page">Duplicate</button>
-        <button class="btn btn-sm" id="share-btn" onclick="toggleShare()" title="Move between your private space and the team space">Make private</button>
-        <button class="btn btn-sm" onclick="openSaveTemplate()" title="Save this page as a reusable template">Template</button>
-      <button class="btn btn-sm" onclick="exportPage()" title="Export this page to Markdown">Export</button>
-      <span class="savest" id="savest"></span>
+        <span class="savest" id="savest"></span>
+        <button class="btn btn-sm" id="more-btn" onclick="openPageMenu(event)" title="More actions">&#8943;</button>
         <span class="who" id="who"></span>
-        <button class="btn btn-sm" onclick="doLogout()">Sign out</button>
         <span class="ver" id="ver"></span>
       </div>
     </div>
@@ -617,7 +611,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.20';
+const TGK_NOTES_VERSION='v1.21';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -3830,6 +3824,35 @@ function setWorkspace(ws){
   if(p)p.className='ws-t'+(S.workspace==='private'?' on':'');
   renderTree();
 }
+/* ---------- page overflow menu ---------- */
+function closePageMenu(){var e=document.getElementById('pgmenu');if(e)e.remove();}
+function openPageMenu(ev){
+  var ex=document.getElementById('pgmenu');if(ex){ex.remove();return;}
+  var p=(typeof curPage==='function')?curPage():null;
+  var priv=!!(p&&p.visibility==='private');
+  var btn=ev&&(ev.currentTarget||ev.target);
+  var r=(btn&&btn.getBoundingClientRect)?btn.getBoundingClientRect():{right:window.innerWidth-10,bottom:56};
+  var el=document.createElement('div');el.id='pgmenu';
+  el.style.right=Math.max(8,(window.innerWidth-r.right))+'px';
+  el.style.top=(r.bottom+window.scrollY+6)+'px';
+  function it(label,fn,cls){return '<div class="bm-i'+(cls?(' '+cls):'')+'" data-run="'+fn+'">'+esc(label)+'</div>';}
+  el.innerHTML='<div class="bm-h">Page</div>'
+    +it('Version history','openHistory')
+    +it('Page info','openPageInfo')
+    +it('Duplicate','duplicatePage')
+    +it('Save as template','openSaveTemplate')
+    +it('Export to Markdown','exportPage')
+    +'<div class="bm-sep"></div>'
+    +it(priv?'Move to team space':'Make private','toggleShare')
+    +'<div class="bm-sep"></div>'
+    +it('Sign out','doLogout','danger');
+  document.body.appendChild(el);
+  Array.prototype.slice.call(el.querySelectorAll('[data-run]')).forEach(function(row){
+    row.onclick=function(){var fn=row.getAttribute('data-run');closePageMenu();if(typeof window[fn]==='function'){try{window[fn]();}catch(e){}}};
+  });
+  setTimeout(function(){document.addEventListener('click',closePageMenu,{once:true});},10);
+}
+window.openPageMenu=openPageMenu;window.closePageMenu=closePageMenu;
 function refreshShareBtn(){
   var b=document.getElementById('share-btn'),p=curPage();
   if(!b)return;
