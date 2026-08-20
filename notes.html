@@ -203,6 +203,11 @@ table.dbt tbody tr.row-sel{background:rgba(13,148,136,.09)}
 .cin.first{font-weight:600}
 .cin.num{font-family:var(--mono);text-align:right}
 .fx-cell{color:var(--text2);cursor:default;font-variant-numeric:tabular-nums}
+.dbt th[draggable]{cursor:grab}
+.dbt th.col-dz{box-shadow:inset 3px 0 0 var(--teal)}
+.g-ed{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;margin-left:8px;padding:2px 6px;border-radius:5px;opacity:0}
+.g-row:hover .g-ed{opacity:1}
+.g-ed:hover{background:rgba(255,255,255,.08);color:var(--teal)}
 .cin.sel{font-weight:600}
 .dbt tfoot td{padding:4px 6px;border-top:1px solid var(--border);background:rgba(13,148,136,.03)}
 .agg-sel{border:none;background:transparent;color:var(--text3);font-size:10.5px;font-family:var(--mono);cursor:pointer;max-width:100px;outline:none}
@@ -595,7 +600,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.15';
+const TGK_NOTES_VERSION='v1.17';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1278,9 +1283,7 @@ function dbTableHTML(d,v){
   const head='<th style="width:26px"><input type="checkbox" class="selbox"'+(_allSel?' checked':'')+' onchange="toggleSelAll(this.checked)" title="Select all shown"></th>'
     +(d.props||[]).map(pr=>{
     const arrow=(d.sort&&d.sort.prop===pr.id)?(d.sort.dir==='desc'?' \u25be':' \u25b4'):'';
-    return '<th><span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
-      +'<button class="mv-b" title="Move left" onclick="moveProp(\''+pr.id+'\',-1)">\u2039</button>'
-      +'<button class="mv-b" title="Move right" onclick="moveProp(\''+pr.id+'\',1)">\u203a</button>'
+    return '<th draggable="true" ondragstart="colDragStart(event,\''+pr.id+'\')" ondragover="colDragOver(event,\''+pr.id+'\')" ondrop="colDrop2(event,\''+pr.id+'\')" ondragend="colDragEnd()"><span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
       +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
   }).join('');
   const body=rows.map(r=>'<tr'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
@@ -2272,8 +2275,11 @@ let qsOpen=false, qsSel=0, qsHits=[];
 function qsSearch(term){
   const q=String(term||'').trim().toLowerCase();
   const out=[];
+  const _cmds=(typeof paletteCommands==='function')?paletteCommands():[];
+  if(q){_cmds.forEach(c=>{if(c.key.indexOf(q)>=0||c.label.toLowerCase().indexOf(q)>=0)out.push({kind:'cmd',icon:c.icon,label:c.label,sub:'Command',run:c.run});});}
   if(!q&&typeof recentHits==='function'){
     recentHits().forEach(h=>out.push(h));
+    _cmds.slice(0,4).forEach(c=>out.push({kind:'cmd',icon:c.icon,label:c.label,sub:'Command',run:c.run}));
   }
   (S.pages||[]).forEach(p=>{
     const title=(p.title||'Untitled');
@@ -2293,9 +2299,12 @@ function qsSearch(term){
         });
       }else{
         (Array.isArray(p.content)?p.content:[]).forEach(b=>{
-          if(String(b.text||'').toLowerCase().includes(q)){
-            out.push({kind:'block',id:p.id,icon:'\u00b6',
-              label:String(b.text).slice(0,70),sub:'in '+(p.title||'Untitled')});
+          const _pl=(typeof blockPlain==='function')?blockPlain(b.text||''):String(b.text||'');
+          const _ix=_pl.toLowerCase().indexOf(q);
+          if(_ix>=0){
+            const _st=Math.max(0,_ix-24);
+            const _sn=(_st>0?'\u2026':'')+_pl.slice(_st,_st+80).trim()+((_pl.length>_st+80)?'\u2026':'');
+            out.push({kind:'block',id:p.id,bid:b.id,icon:'\u00b6',label:_sn,sub:'in '+(p.title||'Untitled')});
           }
         });
       }
@@ -2307,12 +2316,31 @@ function qsSearch(term){
     if(seen.has(k))return false;seen.add(k);return true;
   }).slice(0,25);
 }
+function paletteCommands(){
+  var C=[];
+  function add(key,icon,label,fn){C.push({key:key,icon:icon,label:label,run:fn});}
+  add('new page','+','New page',function(){if(typeof newPage==='function')newPage(null,'doc');});
+  add('new database','\u25a6','New database',function(){if(typeof newPage==='function')newPage(null,'db');});
+  add('new projects tasks','\u2611','New Projects & Tasks',function(){if(typeof newTasksDb==='function')newTasksDb();});
+  add('import data csv json spreadsheet','\u2913','Import data as database',function(){if(typeof openDataImport==='function')openDataImport();});
+  add('import markdown','\u2913','Import Markdown',function(){if(typeof openImport==='function')openImport();});
+  add('templates','\u25a4','Templates',function(){if(typeof openTemplates==='function')openTemplates(null);});
+  add('trash deleted archive','\u2717','Trash',function(){if(typeof openTrash==='function')openTrash();});
+  add('theme dark light mode','\u263d','Toggle theme',function(){if(typeof toggleTheme==='function')toggleTheme();});
+  add('full width wide','\u2194','Toggle full width',function(){if(typeof toggleWide==='function')toggleWide();});
+  add('export markdown download','\u2913','Export this page',function(){if(typeof exportPage==='function')exportPage();});
+  add('undo','\u21b6','Undo',function(){if(typeof undoDoc==='function')undoDoc();});
+  add('redo','\u21b7','Redo',function(){if(typeof redoDoc==='function')redoDoc();});
+  add('shortcuts keyboard help keys','\u2318','Keyboard shortcuts',function(){if(typeof openShortcuts==='function')openShortcuts();});
+  return C;
+}
+window.paletteCommands=paletteCommands;
 function openQuickSwitch(){
   qsOpen=true;qsSel=0;
   const ov=document.createElement('div');
   ov.id='qs-overlay';
   ov.innerHTML='<div class="qs-box" onclick="event.stopPropagation()">'
-    +'<input id="qs-i" class="qs-i" placeholder="Jump to a page, or search every page and row..." oninput="qsDraw(this.value)">'
+    +'<input id="qs-i" class="qs-i" placeholder="Search pages, rows, content, or type a command..." oninput="qsDraw(this.value)">'
     +'<div id="qs-list" class="qs-list"></div>'
     +'<div class="qs-foot">Enter to open &middot; arrows to move &middot; Esc to close</div></div>';
   ov.addEventListener('click',closeQuickSwitch);
@@ -2337,6 +2365,7 @@ function qsGo(i){
   const h=qsHits[i];
   if(!h)return;
   closeQuickSwitch();
+  if(h.kind==='cmd'){if(typeof h.run==='function'){try{h.run();}catch(e){}}return;}
   openPage(h.id);
   if(h.kind==='row'){S.rowEdit=h.rowId;setTimeout(()=>{try{renderDb();}catch(e){}},30);}
 }
@@ -4452,10 +4481,8 @@ function dbGroupedTableHTML(d,v){
   const head='<th style="width:26px"><input type="checkbox" class="selbox" onchange="toggleSelAll(this.checked)" title="Select all shown"></th>'
     +props.map(pr=>{
       const arrow=(d.sort&&d.sort.prop===pr.id)?(d.sort.dir==='desc'?' \u25be':' \u25b4'):'';
-      return '<th><span class="th-ic">'+esc(propIcon(pr.type))+'</span>'
+      return '<th draggable="true" ondragstart="colDragStart(event,\''+pr.id+'\')" ondragover="colDragOver(event,\''+pr.id+'\')" ondrop="colDrop2(event,\''+pr.id+'\')" ondragend="colDragEnd()"><span class="th-ic">'+esc(propIcon(pr.type))+'</span>'
         +'<span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
-        +'<button class="mv-b" title="Move left" onclick="moveProp(\''+pr.id+'\',-1)">\u2039</button>'
-        +'<button class="mv-b" title="Move right" onclick="moveProp(\''+pr.id+'\',1)">\u203a</button>'
         +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
     }).join('')+'<th style="width:64px"></th>';
   const rowHTML=r=>'<tr'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
@@ -4480,6 +4507,7 @@ function dbGroupedTableHTML(d,v){
         +'<span class="g-tw" onclick="toggleGroup(\''+esc(k).replace(/'/g,"\\'")+'\')">'+(open?'\u25be':'\u25b8')+'</span>'
         +dot+(who||esc(label))+'<span class="g-n">'+grp.length+'</span>'
         +'<button class="g-add" onclick="addRowTo(\''+esc(gp.id)+'\',\''+esc(k).replace(/'/g,"\\'")+'\')">+ New</button>'
+        +((gp.type==='select'&&k)?'<button class="g-ed" onclick="openGroupEditor(\''+esc(gp.id)+'\',\''+esc(k).replace(/'/g,"\\'")+'\')" title="Rename or delete this group">\u270e</button>':'')
         +'</td></tr>';
       if(open){
         body+=grp.map(rowHTML).join('');
@@ -4611,6 +4639,54 @@ function aggGroupHTML(d,v,rows,colCount){
   return '<tr class="agg-grow">'+cells+'</tr>';
 }
 window.setAgg=setAgg;window.aggFootHTML=aggFootHTML;window.aggGroupHTML=aggGroupHTML;window.aggCompute=aggCompute;
+/* ---------- column drag-reorder + group-value edit ---------- */
+var _colDrag=null;
+function colDragStart(e,pid){_colDrag=pid;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',pid);}catch(_){}}
+function colDragOver(e,pid){if(!_colDrag)return;e.preventDefault();var th=e.target.closest&&e.target.closest('th');document.querySelectorAll('th.col-dz').forEach(function(x){x.classList.remove('col-dz');});if(th&&_colDrag!==pid)th.classList.add('col-dz');}
+function colDrop2(e,pid){if(!_colDrag)return;e.preventDefault();document.querySelectorAll('th.col-dz').forEach(function(x){x.classList.remove('col-dz');});var dragId=_colDrag;_colDrag=null;if(dragId!==pid)moveColTo(dragId,pid);}
+function colDragEnd(){_colDrag=null;document.querySelectorAll('th.col-dz').forEach(function(x){x.classList.remove('col-dz');});}
+function moveColTo(dragId,targetId){
+  var d=db(),props=d.props||[],from=-1;
+  for(var i=0;i<props.length;i++){if(props[i].id===dragId){from=i;break;}}
+  if(from<0)return;
+  var m=props.splice(from,1)[0],to=-1;
+  for(var j=0;j<props.length;j++){if(props[j].id===targetId){to=j;break;}}
+  if(to<0){props.splice(from,0,m);return;}
+  props.splice(to,0,m);
+  markDirty();renderDb();
+}
+function openGroupEditor(gid,val){
+  S._geGp=gid;S._geVal=val;
+  nxModal('Edit "'+esc(val)+'"',
+    '<label class="nx-l">Rename value</label><input id="ge-name" class="nx-i" value="'+esc(val)+'">'
+    +'<div class="nx-hint">Renaming updates every row using this value. Deleting clears it from those rows (the rows are kept).</div>',
+    '<button class="nx-b danger" onclick="deleteGroupOption()">Delete</button><span style="flex:1"></span>'
+    +'<button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="saveGroupOption()">Save</button>');
+  setTimeout(function(){var f=document.getElementById('ge-name');if(f){f.focus();f.select();}},40);
+}
+function saveGroupOption(){
+  var d=db(),gp=dbProp(S._geGp);if(!gp)return;
+  var nv=((document.getElementById('ge-name')||{}).value||'').trim();
+  if(!nv){toast('Give it a name');return;}
+  var old=S._geVal;
+  if(nv!==old){
+    (gp.options||[]).forEach(function(o){if(o.v===old)o.v=nv;});
+    (d.rows||[]).forEach(function(r){if(r.cells&&r.cells[gp.id]===old)r.cells[gp.id]=nv;});
+    (d.views||[]).forEach(function(v){if(v.collapsed&&v.collapsed[old]!=null){v.collapsed[nv]=v.collapsed[old];delete v.collapsed[old];}});
+  }
+  nxClose();markDirty();renderDb();
+}
+function deleteGroupOption(){
+  var d=db(),gp=dbProp(S._geGp);if(!gp)return;
+  var old=S._geVal;
+  if(!confirm('Delete the "'+old+'" option? Rows using it will be cleared (the rows are kept).'))return;
+  gp.options=(gp.options||[]).filter(function(o){return o.v!==old;});
+  (d.rows||[]).forEach(function(r){if(r.cells&&r.cells[gp.id]===old)r.cells[gp.id]='';});
+  nxClose();markDirty();renderDb();
+}
+window.colDragStart=colDragStart;window.colDragOver=colDragOver;window.colDrop2=colDrop2;window.colDragEnd=colDragEnd;window.moveColTo=moveColTo;
+window.openGroupEditor=openGroupEditor;window.saveGroupOption=saveGroupOption;window.deleteGroupOption=deleteGroupOption;
 function addRowTo(pid,val){
   const d=db(),cells={};
   (d.props||[]).forEach(p=>{cells[p.id]=p.type==='check'?false:'';});
