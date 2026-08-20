@@ -622,7 +622,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.28';
+const TGK_NOTES_VERSION='v1.29';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1156,7 +1156,7 @@ document.addEventListener('paste',e=>{
 },true);
 
 function addBlockAfter(i,type){
-  const b=blocks(),nb={id:uid(),type:type||'p',text:'',indent:(b[i]&&b[i].indent)||0};
+  const b=blocks(),nb={id:uid(),type:type||'p',text:'',indent:(b[i]&&b[i].indent)||0,cg:(b[i]&&b[i].cg),col:(b[i]&&b[i].col)};
   b.splice(i+1,0,nb);renderBlocks();focusBlock(nb.id);markDirty();return nb;
 }
 async function insertNewDb(afterBid,kind){
@@ -1171,7 +1171,7 @@ async function insertNewDb(afterBid,kind){
     if(error)throw error;
     S.pages.push(data);S.collapsed[parent.id]=false;
     var b=blocks(),i=blockIndex(afterBid);
-    var nb={id:uid(),type:'dbembed',text:'',indent:0,dbId:data.id};
+    var nb={id:uid(),type:'dbembed',text:'',indent:0,dbId:data.id,cg:(b[i]&&b[i].cg),col:(b[i]&&b[i].col)};
     if(i>=0)b.splice(i+1,0,nb);else b.push(nb);
     renderTree();renderBlocks();markDirty();
     toast('\u2713 Created '+row.title+' inside this page');
