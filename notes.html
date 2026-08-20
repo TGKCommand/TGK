@@ -629,7 +629,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.38';
+const TGK_NOTES_VERSION='v1.39';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1084,6 +1084,11 @@ document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&!e.altKey){
     const _k=(e.key||'').toLowerCase();
     if(_k==='d'&&!e.shiftKey){e.preventDefault();dupBlock(id);return;}
+    if(e.shiftKey&&/^Digit[0-9]$/.test(e.code||'')){
+      var _tm={Digit0:'p',Digit1:'h1',Digit2:'h2',Digit3:'h3',Digit4:'todo',Digit5:'bullet',Digit6:'num',Digit7:'toggle',Digit8:'quote'};
+      var _nt=_tm[e.code];
+      if(_nt){e.preventDefault();bl.type=_nt;if(_nt==='toggle'&&bl.open===undefined)bl.open=true;renderBlocks();focusBlock(id);markDirty();return;}
+    }
     if(e.shiftKey&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
       e.preventDefault();
       moveBlock(id,e.key==='ArrowUp'?-1:1);
@@ -3322,6 +3327,12 @@ function openShortcuts(){
     +k('Enter','New block, or split at the cursor')
     +k('Backspace','At the start: clear formatting, outdent, then merge up')
     +k('Esc','Close a menu or dialog')
+    +k('Ctrl+Shift+1/2/3','Turn block into Heading 1 / 2 / 3')
+    +k('Ctrl+Shift+0','Turn block into Text')
+    +k('Ctrl+Shift+4/5/6','To-do / Bulleted / Numbered')
+    +k('Ctrl+Shift+7/8','Toggle / Quote')
+    +k('Ctrl+D','Duplicate block')
+    +k('Ctrl+Z / Ctrl+Shift+Z','Undo / Redo')
     +'<div class="nx-hint">Markdown as you type: <b># </b>heading, <b>- </b>bullet, <b>1. </b>numbered, <b>[] </b>to-do, <b>&gt; </b>quote, <b>```</b> code, <b>--- </b>divider.</div>',
     '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
 }
