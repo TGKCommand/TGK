@@ -330,7 +330,7 @@ body.dark .emb-bar{background:rgba(255,255,255,.04)}
 .nc-o span{font-size:11px;color:var(--text3)}
 .rpage{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 2px}
 .rpage-l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
-body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #pgmenu,body.dark #slash{background:#202325;color:var(--text)}
+body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #pgmenu,body.dark #rowmenu,body.dark #slash{background:#202325;color:var(--text)}
 body.dark .nx-i,body.dark .qs-i,body.dark .cin,body.dark .side-search{background:#191c1e;color:var(--text)}
 body.dark .nx-b{background:#26292c;color:var(--text2)}
 body.dark .nx-b:hover{background:#2e3235}
@@ -419,7 +419,7 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 #fmtpop .fp-i{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12.5px}
 #fmtpop .fp-i:hover{background:var(--teal-dim)}
 #fmtpop .fp-sw{width:18px;height:18px;border-radius:4px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;padding:0}
-#bmenu,#pgmenu{position:absolute;z-index:520;background:#fff;border-radius:var(--r-lg);box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);width:212px;padding:5px;max-height:70vh;overflow-y:auto}
+#bmenu,#pgmenu,#rowmenu{position:absolute;z-index:520;background:#fff;border-radius:var(--r-lg);box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);width:212px;padding:5px;max-height:70vh;overflow-y:auto}
 .bm-h{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--text3);padding:6px 9px 3px}
 .bm-i{padding:6px 9px;border-radius:var(--r);cursor:pointer;font-size:12.5px}
 .bm-i:hover{background:var(--teal-dim)}
@@ -614,7 +614,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.23';
+const TGK_NOTES_VERSION='v1.24';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -787,7 +787,7 @@ function renderTree(){
       +'<span class="ic">'+(p.icon?esc(p.icon):(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'))+'</span>'
       +'<span class="nm">'+esc(p.title||'Untitled')+'</span>'
       +'<button class="act" title="Add inside (page or database)" onclick="event.stopPropagation();newChild(\''+p.id+'\')">+</button>'
-      +'<button class="act" title="Move to trash" onclick="event.stopPropagation();archivePage(\''+p.id+'\')">\u00d7</button>'
+      +'<button class="act" title="More actions" onclick="event.stopPropagation();openRowMenu(\''+p.id+'\',event)">\u22ef</button>'
       +'</div>'+(open&&kids.length?walk(p.id,depth+1):'');
   }).join('');
   const html=walk(null,0);
@@ -796,6 +796,46 @@ function renderTree(){
   const fv=$('favs');
   if(fv)fv.innerHTML=(typeof favTreeHTML==='function')?favTreeHTML():'';
 }
+function closeRowMenu(){var e=document.getElementById('rowmenu');if(e)e.remove();}
+function openRowMenu(id,ev){
+  closeRowMenu();
+  var p=pageById(id);if(!p)return;
+  var btn=ev&&(ev.currentTarget||ev.target);
+  var r=(btn&&btn.getBoundingClientRect)?btn.getBoundingClientRect():{left:60,bottom:60};
+  var el=document.createElement('div');el.id='rowmenu';
+  el.style.left=Math.min(r.left,window.innerWidth-224)+'px';
+  el.style.top=(r.bottom+window.scrollY+4)+'px';
+  el.innerHTML='<div class="bm-h">'+esc((p.title||'Untitled').slice(0,26))+'</div>'
+    +'<div class="bm-i" data-a="rename">Rename</div>'
+    +'<div class="bm-i" data-a="dupe">Duplicate</div>'
+    +'<div class="bm-i" data-a="addpage">Add page inside</div>'
+    +'<div class="bm-i" data-a="adddb">Add database inside</div>'
+    +'<div class="bm-sep"></div>'
+    +'<div class="bm-i danger" data-a="trash">Move to trash</div>';
+  document.body.appendChild(el);
+  Array.prototype.slice.call(el.querySelectorAll('[data-a]')).forEach(function(row){
+    row.onclick=function(){var a=row.getAttribute('data-a');closeRowMenu();rowMenuAct(id,a);};
+  });
+  setTimeout(function(){document.addEventListener('click',closeRowMenu,{once:true});},10);
+}
+function rowMenuAct(id,a){
+  if(a==='rename')renamePage(id);
+  else if(a==='dupe'){if(typeof duplicatePage==='function')duplicatePage(id);}
+  else if(a==='addpage'){if(typeof newPage==='function')newPage(id,'doc');}
+  else if(a==='adddb'){if(typeof newPage==='function')newPage(id,'db');}
+  else if(a==='trash'){if(typeof archivePage==='function')archivePage(id);}
+}
+async function renamePage(id){
+  var p=pageById(id);if(!p)return;
+  var v=prompt('Rename page:',p.title||'');
+  if(v===null)return;
+  p.title=(v.trim()||'Untitled');
+  renderTree();
+  if(id===S.activeId){var t=document.querySelector('.doc-title');if(t)t.textContent=(p.title==='Untitled'?'':p.title);}
+  try{await sb.from('wiki_pages').update({title:p.title}).eq('id',id);}
+  catch(e){toast('Could not rename: '+(e.message||e),7000);}
+}
+window.openRowMenu=openRowMenu;window.closeRowMenu=closeRowMenu;window.rowMenuAct=rowMenuAct;window.renamePage=renamePage;
 function toggleTw(id){S.collapsed[id]=!S.collapsed[id];renderTree();}
 
 /* ============================ editor ============================ */
