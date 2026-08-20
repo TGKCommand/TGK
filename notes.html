@@ -271,6 +271,12 @@ tr.rw-below td{box-shadow:inset 0 -2px 0 var(--teal)}
 .tl-empty{padding:26px;color:var(--text3);font-size:12.5px}
 .cbx{width:15px;height:15px;accent-color:var(--teal);cursor:pointer;margin-left:6px}
 .chip{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:4px;margin:1px 3px 1px 0}
+.bpill{display:inline-block;padding:1px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.bmeta{display:block;margin-top:5px}
+.cch-p{display:inline-flex;align-items:center;gap:5px}
+.cch-pn{font-size:11px;color:var(--text2)}
+.cch-done{font-size:11px;color:var(--teal-d);font-weight:600}
+.cch-t{font-size:11px;color:var(--text3)}
 .multi{min-height:26px;padding:3px 5px;cursor:pointer;border-radius:var(--r)}
 .multi:hover{background:var(--bg3)}
 .multi .ph{color:var(--text3)}
@@ -641,7 +647,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.45';
+const TGK_NOTES_VERSION='v1.46';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1541,6 +1547,19 @@ function cellHTML(r,pr,first){
   if(pr.type==='rollup')return (typeof rollupCellHTML==='function')?rollupCellHTML(r,pr):'';
   return '<input class="cin'+(first?' first':'')+'" value="'+esc(v)+'" placeholder="'+(first?'Untitled':'')+'" '+set+'>';
 }
+function cardChip(pr,r){
+  var v=String((r.cells||{})[pr.id]==null?'':(r.cells||{})[pr.id]);
+  if(pr.type==='check')return (v==='true'||v===true+'')?'<span class="cch-done">\u2713 '+esc(pr.name)+'</span>':'';
+  if(!v)return '';
+  if(pr.type==='select')return '<span class="chip" style="background:'+selColor(pr,v)+'22;color:'+selColor(pr,v)+'">'+esc(v)+'</span>';
+  if(pr.type==='multi')return v.split(',').filter(Boolean).map(function(x){x=x.trim();return '<span class="chip" style="background:'+selColor(pr,x)+'22;color:'+selColor(pr,x)+'">'+esc(x)+'</span>';}).join('');
+  if(pr.type==='person'&&typeof avatar==='function')return '<span class="cch-p">'+avatar(v)+'<span class="cch-pn">'+esc(String(v).split('@')[0])+'</span></span>';
+  if(pr.type==='date')return '<span class="cch-t">\u{1F4C5} '+esc(v)+'</span>';
+  if(pr.type==='url')return '<span class="cch-t">\u{1F517} '+esc(v)+'</span>';
+  if(pr.type==='formula'&&typeof evalFormula==='function')return '<span class="cch-t">'+esc(String(evalFormula(pr.formula,r,db())))+'</span>';
+  return '<span class="cch-t">'+esc(v)+'</span>';
+}
+window.cardChip=cardChip;
 function dbBoardHTML(d,v){
   const gp=dbProp(v.groupBy)||((d.props||[]).find(p=>p.type==='select'));
   if(!gp)return '<div class="dbempty" style="padding:30px">Board view needs a Select property to group by. Add one, then set it on this view.</div>';
@@ -1549,12 +1568,10 @@ function dbBoardHTML(d,v){
   return '<div class="board">'+groups.map(g=>{
     const items=rows.filter(r=>String((r.cells||{})[gp.id]||'')===g);
     return '<div class="bcol" ondragover="event.preventDefault()" ondrop="dropCard(event,\''+gp.id+'\',\''+esc(g)+'\')">'
-      +'<div class="bch"><span class="bdot" style="background:'+(g?selColor(gp,g):'var(--border2)')+'"></span>'
-      +esc(g||'No '+gp.name)+' <span class="bcount">'+items.length+'</span></div>'
+      +'<div class="bch"><span class="bpill" style="background:'+(g?selColor(gp,g):'#9b9a97')+'22;color:'+(g?selColor(gp,g):'#9b9a97')+'">'+esc(g||'No '+gp.name)+'</span><span class="bcount">'+items.length+'</span></div>'
       +items.map(r=>{
         const title=String((r.cells||{})[(d.props[0]||{}).id]||'')||'Untitled';
-        const meta=(d.props||[]).slice(1).filter(p=>p.id!==gp.id&&(r.cells||{})[p.id]).slice(0,2)
-          .map(p=>'<span class="bmeta">'+esc(p.name)+': '+esc(String(r.cells[p.id]))+'</span>').join('');
+        const meta=(d.props||[]).slice(1).filter(p=>p.id!==gp.id).map(p=>cardChip(p,r)).filter(Boolean).slice(0,4).map(c=>'<div class="bmeta">'+c+'</div>').join('');
         return '<div class="bcard" draggable="true" ondragstart="dragCard(event,\''+r.id+'\')" onclick="openRow(\''+r.id+'\')">'
           +'<div class="bt">'+esc(title)+'</div>'+meta+'</div>';
       }).join('')
