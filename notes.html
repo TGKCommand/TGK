@@ -641,7 +641,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.44';
+const TGK_NOTES_VERSION='v1.45';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1108,10 +1108,10 @@ document.addEventListener('keydown',e=>{
       return;
     }
   }
-  if(e.key==='Enter'&&!e.shiftKey){
+  if(e.key==='Enter'){
     if(bl.type==='code'){return;} // newlines inside code
-    if(bl.type==='callout'||bl.type==='quote'){e.preventDefault();try{document.execCommand('insertLineBreak');}catch(_){try{document.execCommand('insertHTML',false,'<br>');}catch(__){}}return;}
-    e.preventDefault();
+    if(!e.shiftKey){e.preventDefault();try{document.execCommand('insertLineBreak');}catch(_){try{document.execCommand('insertHTML',false,'<br>');}catch(__){}}return;} // Enter = soft line break
+    e.preventDefault(); // Shift+Enter = new block / split
     let before,after;
     try{
       const sel=window.getSelection(),rg=sel.getRangeAt(0).cloneRange();
@@ -3353,7 +3353,8 @@ function openShortcuts(){
     +k('@','Link to another page')
     +k('Tab','Indent a block, or move between table cells')
     +k('Shift+Tab','Outdent a block')
-    +k('Enter','New block, or split at the cursor')
+    +k('Enter','Soft line break (stay in the block)')
+    +k('Shift+Enter','New block, or split at the cursor')
     +k('Backspace','At the start: clear formatting, outdent, then merge up')
     +k('Esc','Close a menu or dialog')
     +k('Ctrl+Shift+1/2/3','Turn block into Heading 1 / 2 / 3')
