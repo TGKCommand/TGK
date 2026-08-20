@@ -212,6 +212,11 @@ table.dbt th .thn:hover{color:#fff}
 table.dbt td{padding:3px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
 table.dbt tbody tr:hover{background:rgba(13,148,136,.04)}
 table.dbt tbody tr.row-sel{background:rgba(13,148,136,.09)}
+.row-grip{opacity:0;cursor:grab;color:var(--text3);font-size:11px;margin-right:2px;user-select:none;display:inline-block;vertical-align:middle}
+tr:hover .row-grip{opacity:.55}
+.row-grip:hover{opacity:1;color:var(--teal)}
+tr.rw-above td{box-shadow:inset 0 2px 0 var(--teal)}
+tr.rw-below td{box-shadow:inset 0 -2px 0 var(--teal)}
 .cin{width:100%;border:1px solid transparent;border-radius:var(--r);padding:5px 6px;font-size:12.5px;background:transparent;outline:none;color:var(--text)}
 .cin:hover{border-color:var(--border)}
 .cin:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 2px var(--teal-dim)}
@@ -624,7 +629,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.37';
+const TGK_NOTES_VERSION='v1.38';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1470,7 +1475,7 @@ function dbTableHTML(d,v){
       +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
   }).join('');
   const body=rows.map(r=>'<tr data-rid="'+r.id+'"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
-    +'<td><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
+    +'<td><span class="row-grip" draggable="true" ondragstart="rowDragStart(event)" title="Drag to reorder">\u283f</span><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
     +props.map((pr,ci)=>
       '<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
     +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
@@ -2201,6 +2206,40 @@ document.addEventListener('contextmenu',function(e){
   if(bk){e.preventDefault();openBlockMenu(bk.getAttribute('data-bid'),e.clientX,e.clientY);}
 });
 window.dupRow=dupRow;window.openRowCtx=openRowCtx;window.closeRowCtx=closeRowCtx;
+var _rowDrag=null,_rowBelow=false;
+function rowDragStart(e){var tr=e.target.closest&&e.target.closest('tr[data-rid]');_rowDrag=tr?tr.getAttribute('data-rid'):null;if(_rowDrag){try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',_rowDrag);}catch(_){}}}
+document.addEventListener('dragover',function(e){
+  if(!_rowDrag)return;
+  var tr=e.target.closest&&e.target.closest('tr[data-rid]');
+  if(!tr)return;
+  e.preventDefault();
+  document.querySelectorAll('tr.rw-above,tr.rw-below').forEach(function(x){x.classList.remove('rw-above','rw-below');});
+  var r=tr.getBoundingClientRect();_rowBelow=(e.clientY>r.top+r.height/2);
+  tr.classList.add(_rowBelow?'rw-below':'rw-above');
+});
+document.addEventListener('drop',function(e){
+  if(!_rowDrag)return;
+  var tr=e.target.closest&&e.target.closest('tr[data-rid]');
+  document.querySelectorAll('tr.rw-above,tr.rw-below').forEach(function(x){x.classList.remove('rw-above','rw-below');});
+  if(tr){e.preventDefault();var rid=tr.getAttribute('data-rid');if(rid&&rid!==_rowDrag)rowReorder(_rowDrag,rid,_rowBelow);}
+  _rowDrag=null;
+});
+document.addEventListener('dragend',function(){_rowDrag=null;document.querySelectorAll('tr.rw-above,tr.rw-below').forEach(function(x){x.classList.remove('rw-above','rw-below');});});
+function rowReorder(dragRid,targetRid,below){
+  var d=db(),v=activeView(),rows=d.rows||[];
+  var from=-1,to=-1;
+  for(var k=0;k<rows.length;k++){if(rows[k].id===dragRid)from=k;if(rows[k].id===targetRid)to=k;}
+  if(from<0||to<0||from===to)return;
+  var m=rows[from],tgt=rows[to];
+  if(v&&v.groupBy){var gp=dbProp(v.groupBy);if(gp){m.cells=m.cells||{};m.cells[v.groupBy]=(tgt.cells||{})[v.groupBy];}}
+  rows.splice(from,1);
+  var ti=-1;for(var j=0;j<rows.length;j++){if(rows[j].id===targetRid){ti=j;break;}}
+  if(ti<0)ti=rows.length-1;
+  rows.splice(ti+(below?1:0),0,m);
+  if(d.sort&&d.sort.prop){d.sort=null;toast('Sort cleared - showing manual order');}
+  markDirty();renderDb();
+}
+window.rowDragStart=rowDragStart;window.rowReorder=rowReorder;
 function archiveRow(id){
   const d=db(),r=(d.rows||[]).find(x=>x.id===id);
   if(!r)return;
@@ -4888,7 +4927,7 @@ function dbGroupedTableHTML(d,v){
         +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
     }).join('')+'<th style="width:64px"></th>';
   const rowHTML=r=>'<tr data-rid="'+r.id+'"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
-    +'<td><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
+    +'<td><span class="row-grip" draggable="true" ondragstart="rowDragStart(event)" title="Drag to reorder">\u283f</span><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
     +props.map((pr,ci)=>'<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
     +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
     +'<button class="thx del" title="Archive row" onclick="archiveRow(\''+r.id+'\')">\u00d7</button></td></tr>';
