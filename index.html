@@ -12235,7 +12235,11 @@ function doLogout() {
 function showLoginScreen() {
   document.getElementById('cc-login').style.display = 'flex';
   document.getElementById('cc-topbar').style.display = 'none';
-  document.getElementById('cc-breadcrumb').style.display = 'none';
+  // Hide via the class, NOT an inline style. An inline display:none outranks the .visible
+  // class rule, so pinning it here left the breadcrumb permanently hidden for the rest of the
+  // session - every later classList.add('visible') looked like it worked but changed nothing.
+  var _bcLogin = document.getElementById('cc-breadcrumb');
+  if (_bcLogin) { _bcLogin.style.removeProperty('display'); _bcLogin.classList.remove('visible'); }
   document.getElementById('cc-shell').style.display = 'none';
   setTimeout(function(){ document.getElementById('login-email').focus(); }, 100);
 }
@@ -12292,7 +12296,9 @@ function openERP() {
 
   // Breadcrumb
   var bc = document.getElementById('cc-breadcrumb');
-  if (bc) bc.classList.add('visible');
+  // Clear any inline display first: a leftover value would outrank the class and the bar
+  // would stay hidden even though the class was applied.
+  if (bc) { bc.style.removeProperty('display'); bc.classList.add('visible'); }
   var lbl = document.getElementById('cc-bc-label');
   if (lbl) lbl.textContent = 'TGK ERP';
   var acts = document.getElementById('cc-bc-actions');
@@ -16345,7 +16351,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.19';
+var TGK_CC_VERSION='v2.20';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
