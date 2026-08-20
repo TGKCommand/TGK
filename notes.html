@@ -6,6 +6,7 @@
 <title>TGK Notes</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -124,6 +125,37 @@ input,select,textarea{font-family:inherit}
   border-radius:var(--r-lg);padding:11px 13px;margin:6px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
 .bk[data-type=code] .bk-t{font-family:var(--mono);font-size:12.5px;color:#E4E9EC;white-space:pre-wrap;line-height:1.6;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .bk[data-type=code] .bk-handle{color:#5a6570}
+.cb-wrap{flex:1;min-width:0}
+.cb-bar{display:flex;align-items:center;gap:6px;margin:0 0 5px}
+.cb-lang{background:rgba(255,255,255,.06);color:#dbe3e8;border:1px solid rgba(255,255,255,.14);border-radius:6px;font-family:var(--mono);font-size:10.5px;padding:2px 6px;cursor:pointer}
+.cb-copy{background:rgba(255,255,255,.06);color:#dbe3e8;border:1px solid rgba(255,255,255,.14);border-radius:6px;font-family:var(--mono);font-size:10.5px;padding:3px 9px;cursor:pointer}
+.cb-copy:hover{background:rgba(255,255,255,.12)}
+.cb-pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#E4E9EC;cursor:text}
+.cb-code{font-family:var(--mono);background:none;padding:0}
+.cb-ta{width:100%;box-sizing:border-box;background:rgba(0,0,0,.28);color:#E4E9EC;border:1px solid rgba(255,255,255,.14);border-radius:6px;font-family:var(--mono);font-size:12.5px;line-height:1.6;padding:8px 10px;resize:none;outline:none;min-height:44px;white-space:pre;overflow-wrap:normal;overflow-x:auto}
+.hljs-comment,.hljs-quote{color:#7d8a99;font-style:italic}
+.hljs-keyword,.hljs-selector-tag,.hljs-built_in,.hljs-name{color:#E07B28}
+.hljs-string,.hljs-attr,.hljs-symbol,.hljs-bullet,.hljs-addition{color:#8fd18a}
+.hljs-number,.hljs-literal{color:#e6a95b}
+.hljs-title,.hljs-section{color:#6cc0e6}
+.hljs-type,.hljs-class .hljs-title{color:#56c7c7}
+.hljs-attribute,.hljs-variable,.hljs-template-variable{color:#7dcfff}
+.hljs-tag{color:#9aa7b0}
+.hljs-meta{color:#6b7686}
+.hljs-deletion{color:#f7768e}
+.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}
+.bmk{position:relative;margin:2px 0}
+.bmk-main{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:8px;overflow:hidden;text-decoration:none;background:var(--bg2);transition:border-color .1s}
+.bmk-main:hover{border-color:var(--teal)}
+.bmk-tx{padding:10px 12px;min-width:0}
+.bmk-t{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bmk-d{font-size:11.5px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bmk-h{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:var(--text2)}
+.bmk-fav{width:15px;height:15px;border-radius:3px}
+.bmk-edit{position:absolute;top:6px;right:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text3);font-size:11px;padding:2px 6px;opacity:0;cursor:pointer}
+.bmk:hover .bmk-edit{opacity:1}
+.bmk-empty{border:1px dashed var(--border2);border-radius:8px;padding:12px;color:var(--text3);cursor:pointer;font-size:12.5px}
+.bmk-empty:hover{border-color:var(--teal);color:var(--text2)}
 .bk[data-type=todo] .bk-t.done{text-decoration:line-through;color:var(--text3)}
 .bk-cb{width:15px;height:15px;margin-top:4px;cursor:pointer;accent-color:var(--teal)}
 .bk-div{flex:1;height:1px;background:var(--border2);margin:11px 0}
@@ -225,6 +257,22 @@ body.dark{
   --teal-dim:rgba(13,148,136,.16);--orange-dim:rgba(234,88,12,.16);
 }
 body.dark .doc{background:rgba(32,35,37,.88)}
+body.wide .doc{max-width:none;margin-left:26px;margin-right:26px}
+.emb-wrap{width:100%;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--card-bg)}
+.emb-bar{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:11px;color:var(--text3);background:rgba(0,0,0,.03);border-bottom:1px solid var(--border)}
+body.dark .emb-bar{background:rgba(255,255,255,.04)}
+.emb-bar .emb-u{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.emb-frame{width:100%;height:480px;min-height:160px;resize:vertical;overflow:auto;display:block}
+.emb-frame iframe{width:100%;height:100%;border:0;display:block}
+.emb-empty{padding:26px;text-align:center;border:1px dashed var(--border2);border-radius:var(--r-lg);color:var(--text3);cursor:pointer}
+.emb-empty:hover{border-color:var(--teal);color:var(--teal)}
+.nc-opts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.nc-o{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:11px 13px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--card-bg);text-align:left;width:100%}
+.nc-o:hover{border-color:var(--teal);background:var(--teal-dim)}
+.nc-o b{font-size:13px}
+.nc-o span{font-size:11px;color:var(--text3)}
+.rpage{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 2px}
+.rpage-l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
 body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #slash{background:#202325;color:var(--text)}
 body.dark .nx-i,body.dark .qs-i,body.dark .cin,body.dark .side-search{background:#191c1e;color:var(--text)}
 body.dark .nx-b{background:#26292c;color:var(--text2)}
@@ -487,6 +535,7 @@ table.tb th .tb-c{font-weight:700}
       <div class="sp">
         <button id="bell" onclick="openNotifs()" title="Notifications">&#128276;</button>
         <button class="fav-b" id="theme-btn" onclick="toggleTheme()" title="Switch theme">&#9789;</button>
+        <button class="fav-b" id="wide-btn" onclick="toggleWide()" title="Toggle full width">&#8596;</button>
         <button class="fav-b" id="fav-btn" onclick="toggleFav(S.activeId)" title="Favourite this page">&#9734;</button>
         <button class="btn btn-sm" onclick="openHistory()" title="Version history">History</button>
         <button class="btn btn-sm" onclick="openPageInfo()" title="Page info">Info</button>
@@ -508,7 +557,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.7';
+const TGK_NOTES_VERSION='v1.9';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -679,7 +728,7 @@ function renderTree(){
       +'<span class="tw" onclick="event.stopPropagation();toggleTw(\''+p.id+'\')">'+(kids.length?(open?'\u25be':'\u25b8'):'')+'</span>'
       +'<span class="ic">'+(p.icon?esc(p.icon):(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'))+'</span>'
       +'<span class="nm">'+esc(p.title||'Untitled')+'</span>'
-      +'<button class="act" title="Add sub-page" onclick="event.stopPropagation();newPage(\''+p.id+'\')">+</button>'
+      +'<button class="act" title="Add inside (page or database)" onclick="event.stopPropagation();newChild(\''+p.id+'\')">+</button>'
       +'<button class="act" title="Move to trash" onclick="event.stopPropagation();archivePage(\''+p.id+'\')">\u00d7</button>'
       +'</div>'+(open&&kids.length?walk(p.id,depth+1):'');
   }).join('');
@@ -705,11 +754,13 @@ const BLOCKS=[
   {t:'code',em:'\u2039\u203a',n:'Code',d:'Monospace block'},
   {t:'divider',em:'\u2014',n:'Divider',d:'Horizontal rule'},
   {t:'image',em:'\u{1F5BC}',n:'Image',d:'Upload a photo or paste a URL'},
+  {t:'bookmark',em:'\u{1F517}',n:'Bookmark',d:'Link-preview card for any URL'},
   {t:'toggle',em:'\u25b8',n:'Toggle',d:'Collapsible section - indent blocks under it'},
   {t:'table',em:'\u25a6',n:'Table',d:'A simple table inside this page'},
   {t:'toc',em:'\u2261',n:'Contents',d:'Auto list of the headings on this page'},
   {t:'subpage',em:'\u2197',n:'Sub-page',d:'Link or create a page inside this one'},
-  {t:'dbembed',em:'\u25a6',n:'Database view',d:'Embed rows from another database'}
+  {t:'dbembed',em:'\u25a6',n:'Database view',d:'Embed rows from another database'},
+  {t:'embed',em:'\u25a7',n:'Embed / web app',d:'Embed a web page or TGK tool by URL'}
 ];
 function curPage(){return pageById(S.activeId);}
 function isDb(p){return !!(p&&p.page_type==='db');}
@@ -802,6 +853,10 @@ function renderBlocks(){
     if(bl.type==='subpage')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="subpage" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
         +(typeof subpageHTML==='function'?subpageHTML(bl):'')+'</div>';
+
+    if(bl.type==='embed')
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="embed" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u2059</span>'
+        +(typeof embedHTML==='function'?embedHTML(bl):'')+'</div>';
     if(bl.type==='toc')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="toc" style="margin-left:'+pad+'px"><span class="bk-handle" draggable="true">\u2059</span>'
         +(typeof tocHTML==='function'?tocHTML():'')+'</div>';
@@ -813,12 +868,18 @@ function renderBlocks(){
         +'<div class="bk-t'+(bl.colour?(' '+bl.colour):'')+'" contenteditable="true" spellcheck="true" data-ph="Toggle heading">'+(typeof richHTML==='function'?richHTML(bl.text||''):esc(bl.text||''))+'</div>'
         +(!bl.open&&_n?'<span class="tg-n">'+_n+' hidden</span>':'')+'</div>';
     }
+    if(bl.type==='code')return codeBlockHTML(bl);
+    if(bl.type==='bookmark')
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="bookmark" style="margin-left:'+pad+'px">'
+        +'<span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u2059</span>'
+        +bookmarkHTML(bl)+'</div>';
     const ph=i===0?"Type '/' for commands":'';
     return '<div class="bk" data-bid="'+bl.id+'" data-type="'+bl.type+'" style="margin-left:'+pad+'px">'
       +'<span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Click for options, drag to move">\u2059</span>'+mk
       +'<div class="bk-t'+(bl.type==='todo'&&bl.checked?' done':'')+(bl.colour?(' '+bl.colour):'')+'" contenteditable="true" spellcheck="true" data-ph="'+ph+'">'+(typeof richHTML==='function'?richHTML(bl.text||''):esc(bl.text||''))+'</div>'
       +'</div>';
   }).join('');
+  if(typeof cbGrow==='function')document.querySelectorAll('.cb-ta').forEach(cbGrow);
 }
 function blockIndex(id){return blocks().findIndex(x=>x.id===id);}
 function focusBlock(id,atStart,offset){
@@ -860,7 +921,7 @@ document.addEventListener('input',e=>{
         bl.type=ty;bl.text=_plain.slice(pre.length);
         if(ty==='divider'){bl.text='';}
         renderBlocks();
-        if(ty==='divider'){addBlockAfter(i,'p');}else focusBlock(id);
+        if(ty==='divider'){addBlockAfter(i,'p');}else if(ty==='code'){editCode(id);}else focusBlock(id);
         markDirty();return;
       }
     }
@@ -1045,6 +1106,8 @@ function applySlash(def){
     if(nb){nb.indent=(b[i].indent||0)+1;renderBlocks();focusBlock(nb.id);}
     markDirty();return;
   }
+  if(def.t==='code'){closeSlash();renderBlocks();markDirty();editCode(id);return;}
+  if(def.t==='bookmark'){b[i].text='';closeSlash();renderBlocks();markDirty();if(typeof setBookmarkUrl==='function')setBookmarkUrl(id);return;}
   closeSlash();renderBlocks();focusBlock(id);markDirty();
 }
 
@@ -1128,6 +1191,7 @@ function renderDb(){
     +'<button class="vtab" onclick="openViewEditor('+(d.activeView||0)+')" title="Edit this view">\u2699</button>'
     +'<input class="dbq" placeholder="Search rows..." value="'+esc(S.dbq||'')+'" oninput="S.dbq=this.value;renderDb()">'
     +'<button class="btn btn-sm" onclick="openFilterEditor()">Filter'+(((v.filters||[]).length)?('<span class="fbadge">'+v.filters.length+'</span>'):'')+'</button>'
+    +'<button class="btn btn-sm" onclick="openDbArchive()" title="Archived rows">Archive'+(((d.rows||[]).some(r=>r.archived))?('<span class="fbadge">'+(d.rows||[]).filter(r=>r.archived).length+'</span>'):'')+'</button>'
     +'<button class="btn btn-sm" onclick="openPropEditor()">+ Property</button>'
     +'<button class="btn btn-sm btn-primary" onclick="addRow()">+ Row</button></div>'
     +body
@@ -1136,7 +1200,7 @@ function renderDb(){
 }
 function visibleRows(d){
   const q=(S.dbq||'').trim().toLowerCase();
-  let rows=(d.rows||[]).slice();
+  let rows=(d.rows||[]).filter(r=>!r.archived).slice();
   const _f=(activeView().filters)||[];
   if(_f.length&&typeof rowPasses==='function')rows=rows.filter(r=>_f.every(f=>rowPasses(r,f)));
   if(q)rows=rows.filter(r=>Object.keys(r.cells||{}).some(k=>String(r.cells[k]==null?'':r.cells[k]).toLowerCase().includes(q)));
@@ -1166,7 +1230,7 @@ function dbTableHTML(d,v){
     +(d.props||[]).map((pr,ci)=>
       '<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
     +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
-    +'<button class="thx del" title="Delete row" onclick="delRow(\''+r.id+'\')">\u00d7</button></td></tr>').join('');
+    +'<button class="thx del" title="Archive row" onclick="archiveRow(\''+r.id+'\')">\u00d7</button></td></tr>').join('');
   return '<div class="tblwrap"><table class="dbt"><thead><tr>'+head+'<th style="width:64px"></th></tr></thead>'
     +'<tbody>'+(body||'<tr><td colspan="99" class="dbempty">No rows'+(S.dbq?' match that filter':'')+'.</td></tr>')+'</tbody></table></div>';
 }
@@ -1229,6 +1293,7 @@ function rowPanelHTML(){
   return '<div class="rowpanel"><div class="rph"><b>Row detail</b>'
     +'<button class="btn btn-sm" onclick="closeRow()">Close</button></div>'
     +'<div class="rfs">'+fields+'</div>'
+    +rowPageBarHTML(r)
     +'<div class="rpn">Notes</div><div id="blocks"></div></div>';
 }
 
@@ -1253,7 +1318,9 @@ function sortBy(pid){
 function addRow(){
   const d=db(),cells={};
   (d.props||[]).forEach(p=>{cells[p.id]=p.type==='check'?false:'';});
-  d.rows=d.rows||[];d.rows.push({id:uid(),cells:cells,notes:[]});
+  const r={id:uid(),cells:cells,notes:[]};
+  d.rows=d.rows||[];d.rows.push(r);
+  S.rowEdit=r.id;
   markDirty();renderDb();
 }
 function delRow(id){
@@ -1848,6 +1915,40 @@ function setImageSrc(bid,url){
   renderBlocks();markDirty();
 }
 
+/* ---------- archive / restore rows ---------- */
+function archiveRow(id){
+  const d=db(),r=(d.rows||[]).find(x=>x.id===id);
+  if(!r)return;
+  r.archived=true;
+  if(S.rowEdit===id)S.rowEdit=null;
+  markDirty();renderDb();toast('Row archived - restore it from Archive');
+}
+function restoreRow(id){
+  const d=db(),r=(d.rows||[]).find(x=>x.id===id);
+  if(r){r.archived=false;markDirty();}
+  renderDb();openDbArchive();
+}
+function purgeRow(id){
+  if(!confirm('Delete this row permanently? This cannot be undone.'))return;
+  const d=db();d.rows=(d.rows||[]).filter(r=>r.id!==id);
+  markDirty();renderDb();openDbArchive();
+}
+function rowTitle(d,r){
+  const first=(d.props||[]).find(p=>p.type==='text')||(d.props||[])[0];
+  return first?String((r.cells||{})[first.id]||'').trim():'';
+}
+function openDbArchive(){
+  const d=db();
+  const arch=(d.rows||[]).filter(r=>r.archived);
+  const list=arch.map(r=>'<div class="tr-row"><span class="tr-n">\u2637 '+(esc(rowTitle(d,r))||'<i style="color:var(--text3)">Untitled row</i>')+'</span>'
+    +'<button class="nx-b sm" onclick="restoreRow(\''+r.id+'\')">Restore</button>'
+    +'<button class="nx-b sm danger" onclick="purgeRow(\''+r.id+'\')">Delete forever</button></div>').join('')
+    ||'<div class="nx-hint">No archived rows in this database.</div>';
+  nxModal('Archived rows', list, '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+window.archiveRow=archiveRow;window.restoreRow=restoreRow;window.purgeRow=purgeRow;
+window.rowTitle=rowTitle;window.openDbArchive=openDbArchive;
+
 /* ---------- templates ---------- */
 async function saveAsTemplate(){
   const p=curPage();
@@ -1995,9 +2096,11 @@ function blocksToMd(bl){
       case 'todo': out.push(ind+'- ['+(b.checked?'x':' ')+'] '+t);break;
       case 'quote': out.push('> '+t);break;
       case 'callout': out.push('> **Note:** '+t);break;
-      case 'code': out.push('```\n'+t+'\n```');break;
+      case 'code': out.push('```'+(b.lang&&b.lang!=='plain'?b.lang:'')+'\n'+t+'\n```');break;
       case 'divider': out.push('---');break;
       case 'image': out.push('!['+(t||'image')+']('+(b.src||'')+')');break;
+      case 'bookmark': out.push('['+(b.title||b.url||'link')+']('+(b.url||'')+')');break;
+      case 'embed': out.push('['+(b.url||'embed')+']('+(b.url||'')+')');break;
       default: out.push(t);
     }
     out.push('');
@@ -2538,6 +2641,7 @@ function pickSubpage(bid){
   nxModal('Sub-page',
     '<label class="nx-l">Create a new page</label>'
     +'<input id="sp-new" class="nx-i" placeholder="New page title...">'
+    +'<select id="sp-type" class="nx-i" style="margin-top:6px"><option value="doc">As a page</option><option value="db">As a database</option></select>'
     +'<div class="nx-hint">or link an existing one</div>'
     +'<select id="sp-pick" class="nx-i"><option value="">Choose a page...</option>'+opts+'</select>',
     '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
@@ -2549,10 +2653,14 @@ async function applySubpage(){
   const pick=(document.getElementById('sp-pick')||{}).value||'';
   const bid=_spTarget;
   if(title){
+    const _ty=((document.getElementById('sp-type')||{}).value)||'doc';
+    const _isdb=(_ty==='db');
+    const _par=pageById(S.activeId);
     try{
-      const row={title:title,icon:'',parent_id:S.activeId,sort_order:nextSort(S.activeId),
-                 page_type:'doc',content:[{id:uid(),type:'p',text:'',indent:0}],
+      const row={title:title,icon:_isdb?'\u{1F5C3}':'',parent_id:S.activeId,sort_order:nextSort(S.activeId),
+                 page_type:_isdb?'db':'doc',content:_isdb?blankDb():[{id:uid(),type:'p',text:'',indent:0}],
                  created_by:S.user?S.user.email:null};
+      if(S._hasVisibility)row.visibility=_par?(_par.visibility||'team'):(S.workspace==='private'?'private':'team');
       const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
       if(error)throw error;
       S.pages.push(data);
@@ -2571,6 +2679,76 @@ function setSubpage(bid,pageId){
   b[i].pageId=pageId;
   renderBlocks();markDirty();
 }
+
+/* ---------- rows as pages + nested create ---------- */
+function rowPageBarHTML(r){
+  const p=r.pageId?pageById(r.pageId):null;
+  if(p){
+    return '<div class="rpage"><span class="rpage-l">Linked page</span>'
+      +'<a class="sp-card" onclick="openPage(\''+p.id+'\')"><span class="sp-ic">'+(p.icon?esc(p.icon):(isDb(p)?'\u{1F5C3}':'\u{1F4C4}'))+'</span><span class="sp-t">'+esc(p.title||'Untitled')+'</span><span class="sp-go">Open \u2192</span></a>'
+      +'<button class="btn btn-sm" onclick="unlinkRowPage(\''+r.id+'\')">Unlink</button></div>';
+  }
+  return '<div class="rpage"><span class="rpage-l">Page</span>'
+    +'<button class="btn btn-sm btn-primary" onclick="createRowPage(\''+r.id+'\')">+ Create page</button>'
+    +'<button class="btn btn-sm" onclick="linkRowPage(\''+r.id+'\')">Link existing</button></div>';
+}
+async function createRowPage(rid){
+  const d=db(),r=(d.rows||[]).find(x=>x.id===rid);
+  if(!r)return;
+  const par=curPage();
+  const title=(typeof rowTitle==='function'?rowTitle(d,r):'')||'Untitled';
+  const row={title:title,icon:'',parent_id:S.activeId,sort_order:nextSort(S.activeId),
+             page_type:'doc',content:[{id:uid(),type:'p',text:'',indent:0}],
+             created_by:S.user?S.user.email:null};
+  if(S._hasVisibility)row.visibility=par?(par.visibility||'team'):(S.workspace==='private'?'private':'team');
+  try{
+    const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+    if(error)throw error;
+    S.pages.push(data);
+    r.pageId=data.id;markDirty();
+    S.collapsed[S.activeId]=false;
+    renderTree();openPage(data.id);
+  }catch(e){toast(writeErr(e,'create the row page'),9000);}
+}
+function linkRowPage(rid){
+  window._rpTarget=rid;
+  const opts=(S.pages||[]).filter(p=>p.id!==S.activeId).map(p=>'<option value="'+p.id+'">'+esc(p.title||'Untitled')+'</option>').join('');
+  nxModal('Link a page to this row',
+    '<label class="nx-l">Choose an existing page</label>'
+    +'<select id="rp-pick" class="nx-i"><option value="">Choose a page...</option>'+opts+'</select>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="applyLinkRowPage()">Link</button>');
+}
+function applyLinkRowPage(){
+  const pick=(document.getElementById('rp-pick')||{}).value||'';
+  if(!pick){toast('Choose a page');return;}
+  const d=db(),r=(d.rows||[]).find(x=>x.id===window._rpTarget);
+  if(r){r.pageId=pick;markDirty();}
+  nxClose();renderDb();
+}
+function unlinkRowPage(rid){
+  const d=db(),r=(d.rows||[]).find(x=>x.id===rid);
+  if(r){r.pageId=null;markDirty();}
+  renderDb();
+}
+function newChild(pid){
+  window._ncParent=pid||null;
+  nxModal('Add inside',
+    '<div class="nx-hint">Create a new item nested inside this one.</div>'
+    +'<div class="nc-opts">'
+    +'<button class="nc-o" onclick="ncPick(\'doc\')"><b>\u{1F4C4} Page</b><span>A document with blocks</span></button>'
+    +'<button class="nc-o" onclick="ncPick(\'db\')"><b>\u{1F5C3} Database</b><span>Table, board, calendar or gallery</span></button>'
+    +'<button class="nc-o" onclick="ncPick(\'tasks\')"><b>\u2611 Projects &amp; Tasks</b><span>Prebuilt task database</span></button>'
+    +'</div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>');
+}
+function ncPick(kind){
+  const pid=window._ncParent||null;nxClose();
+  if(kind==='tasks'){newTasksDb(pid);return;}
+  newPage(pid,kind==='db'?'db':'doc');
+}
+window.rowPageBarHTML=rowPageBarHTML;window.createRowPage=createRowPage;window.linkRowPage=linkRowPage;
+window.applyLinkRowPage=applyLinkRowPage;window.unlinkRowPage=unlinkRowPage;window.newChild=newChild;window.ncPick=ncPick;
 
 /* ---------- page info ---------- */
 function pageStats(p){
@@ -3536,6 +3714,153 @@ function toggleTheme(){
   setTimeout(()=>applyTheme(t),0);
 })();
 
+const WIDE_KEY='tgk_notes_wide';
+function applyWide(on){
+  try{document.body.classList.toggle('wide',!!on);}catch(e){}
+  try{localStorage.setItem(WIDE_KEY,on?'1':'0');}catch(e){}
+  var b=document.getElementById('wide-btn');
+  if(b)b.title=on?'Switch to comfortable width':'Toggle full width';
+}
+function toggleWide(){
+  var on=false;try{on=localStorage.getItem(WIDE_KEY)==='1';}catch(e){}
+  applyWide(!on);
+}
+(function initWide(){
+  var on=false;try{on=localStorage.getItem(WIDE_KEY)==='1';}catch(e){}
+  setTimeout(function(){applyWide(on);},0);
+})();
+window.toggleWide=toggleWide;window.applyWide=applyWide;
+
+/* ---------- embed block (iframe any URL / TGK tool) ---------- */
+function embedHTML(bl){
+  var url=bl.url||'';
+  if(!url){
+    return '<div class="emb-empty" onclick="setEmbedUrl(\''+bl.id+'\')">\u2795 Add an embed URL (a hosted TGK tool or any web page)</div>';
+  }
+  var safe=esc(url);
+  var h=Math.max(160,parseInt(bl.height,10)||480);
+  return '<div class="emb-wrap">'
+    +'<div class="emb-bar"><span class="emb-u" title="'+safe+'">'+safe+'</span>'
+    +'<button class="thx" title="Change URL" onclick="setEmbedUrl(\''+bl.id+'\')">\u270e</button>'
+    +'<a class="thx" title="Open in a new tab" href="'+safe+'" target="_blank" rel="noopener">\u2197</a></div>'
+    +'<div class="emb-frame" style="height:'+h+'px" onmouseup="saveEmbedHeight(\''+bl.id+'\',this)">'
+    +'<iframe src="'+esc(embedSrc(url))+'" referrerpolicy="no-referrer" loading="lazy" allow="clipboard-read; clipboard-write"></iframe></div></div>';
+}
+function setEmbedUrl(bid){
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var cur=b[i].url||'';
+  var v=prompt('Embed URL (https://...). Paste the hosted address of the tool or page to embed:',cur);
+  if(v===null)return;
+  v=String(v).trim();
+  if(v&&!/^https?:\/\//i.test(v))v='https://'+v;
+  b[i].url=v;markDirty();renderBlocks();
+}
+function saveEmbedHeight(bid,el){
+  if(!el)return;
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var h=Math.max(160,Math.round(el.offsetHeight));
+  if(h!==(parseInt(b[i].height,10)||480)){b[i].height=h;markDirty();}
+}
+/* ---------- code blocks: language + highlight + copy ---------- */
+const CB_LANGS=[['plain','Plain'],['javascript','JavaScript'],['typescript','TypeScript'],['python','Python'],['json','JSON'],['html','HTML'],['css','CSS'],['sql','SQL'],['bash','Bash'],['markdown','Markdown']];
+function mapLang(l){return ({js:'javascript',ts:'typescript',py:'python',sh:'bash',shell:'bash',xml:'html'})[l]||l;}
+function hlHighlight(code,lang){
+  if(window.hljs&&lang&&lang!=='plain'){
+    try{return window.hljs.highlight(code,{language:mapLang(lang),ignoreIllegals:true}).value;}catch(e){}
+  }
+  return esc(code);
+}
+function cbGrow(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px';}
+function codeBlockHTML(bl){
+  var lang=bl.lang||'plain';
+  var editing=(S._codeEdit===bl.id)||!(bl.text||'').trim();
+  var opts=CB_LANGS.map(function(l){return '<option value="'+l[0]+'"'+(l[0]===lang?' selected':'')+'>'+l[1]+'</option>';}).join('');
+  var bar='<div class="cb-bar"><select class="cb-lang" onmousedown="event.stopPropagation()" onchange="setCodeLang(\''+bl.id+'\',this.value)">'+opts+'</select>'
+    +'<button class="cb-copy" onmousedown="event.preventDefault()" onclick="copyCode(\''+bl.id+'\')">Copy</button></div>';
+  var body=editing
+    ? '<textarea class="cb-ta" data-cbid="'+bl.id+'" spellcheck="false" placeholder="Type or paste code...">'+esc(bl.text||'')+'</textarea>'
+    : '<pre class="cb-pre" onclick="editCode(\''+bl.id+'\')"><code class="cb-code hljs">'+hlHighlight(bl.text||'',lang)+'</code></pre>';
+  return '<div class="bk" data-bid="'+bl.id+'" data-type="code" style="margin-left:'+((bl.indent||0)*24)+'px">'
+    +'<span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u2059</span>'
+    +'<div class="cb-wrap">'+bar+body+'</div></div>';
+}
+function editCode(id){
+  S._codeEdit=id;renderBlocks();
+  setTimeout(function(){var ta=document.querySelector('.cb-ta[data-cbid="'+id+'"]');if(ta){cbGrow(ta);ta.focus();try{ta.setSelectionRange(ta.value.length,ta.value.length);}catch(e){}}},0);
+}
+function setCodeLang(id,lang){var b=blocks(),i=blockIndex(id);if(i<0)return;b[i].lang=lang;markDirty();renderBlocks();}
+function copyCode(id){
+  var b=blocks(),i=blockIndex(id);if(i<0)return;var txt=b[i].text||'';
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){toast('\u2713 Code copied');},function(){toast('Copy failed');});}
+  else toast('Clipboard unavailable');
+}
+document.addEventListener('input',function(e){
+  var ta=e.target;if(!ta.classList||!ta.classList.contains('cb-ta'))return;
+  var id=ta.getAttribute('data-cbid'),i=blockIndex(id);if(i<0)return;
+  blocks()[i].text=ta.value;cbGrow(ta);markDirty();
+},true);
+document.addEventListener('focusout',function(e){
+  var ta=e.target;if(!ta.classList||!ta.classList.contains('cb-ta'))return;
+  var host=ta.closest('.bk'),to=e.relatedTarget;
+  if(to&&host&&host.contains(to))return;
+  S._codeEdit=null;renderBlocks();
+},true);
+document.addEventListener('keydown',function(e){
+  var ta=e.target;if(!ta.classList||!ta.classList.contains('cb-ta'))return;
+  if(e.key==='Tab'){
+    e.preventDefault();var s0=ta.selectionStart,en=ta.selectionEnd;
+    ta.value=ta.value.slice(0,s0)+'  '+ta.value.slice(en);ta.selectionStart=ta.selectionEnd=s0+2;
+    var id=ta.getAttribute('data-cbid'),i=blockIndex(id);if(i>=0){blocks()[i].text=ta.value;markDirty();}cbGrow(ta);
+  }else if(e.key==='Backspace'&&ta.value===''){
+    e.preventDefault();var id2=ta.getAttribute('data-cbid'),j=blockIndex(id2);
+    if(j>=0){var b=blocks();b.splice(j,1);S._codeEdit=null;if(!b.length)b.push({id:uid(),type:'p',text:'',indent:0});renderBlocks();var prev=b[Math.max(0,j-1)];if(prev)focusBlock(prev.id,false);markDirty();}
+  }
+},true);
+
+/* ---------- bookmark blocks ---------- */
+function bookmarkHTML(bl){
+  if(!bl.url)return '<div class="bmk-empty" onclick="setBookmarkUrl(\''+bl.id+'\')">\u{1F517} Add a bookmark URL</div>';
+  var host='';try{host=new URL(bl.url).hostname.replace(/^www\./,'');}catch(e){host=bl.url;}
+  var title=bl.title||host||bl.url;
+  var desc=bl.desc||bl.url;
+  var fav='https://www.google.com/s2/favicons?domain='+encodeURIComponent(host)+'&sz=64';
+  return '<div class="bmk">'
+    +'<a class="bmk-main" href="'+esc(bl.url)+'" target="_blank" rel="noopener">'
+    +'<div class="bmk-tx"><div class="bmk-t">'+esc(title)+'</div><div class="bmk-d">'+esc(desc)+'</div>'
+    +'<div class="bmk-h"><img class="bmk-fav" src="'+esc(fav)+'" alt="" onerror="this.style.display=\'none\'">'+esc(host)+'</div></div></a>'
+    +'<button class="bmk-edit" title="Edit title / description" onclick="editBookmark(\''+bl.id+'\')">\u270e</button></div>';
+}
+function setBookmarkUrl(bid){
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var v=prompt('Bookmark URL (https://...):',b[i].url||'');if(v===null)return;
+  v=String(v).trim();if(v&&!/^https?:\/\//i.test(v))v='https://'+v;
+  b[i].url=v;if(v&&!b[i].title){try{b[i].title=new URL(v).hostname.replace(/^www\./,'');}catch(e){}}
+  markDirty();renderBlocks();
+}
+function editBookmark(bid){
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var t=prompt('Title:',b[i].title||'');if(t!==null)b[i].title=t.trim();
+  var d=prompt('Description (optional):',b[i].desc||'');if(d!==null)b[i].desc=d.trim();
+  markDirty();renderBlocks();
+}
+
+/* ---------- embed: turn share URLs into embeddable ones ---------- */
+function embedSrc(url){
+  try{
+    var u=new URL(url),h=u.hostname.replace(/^www\./,'');
+    if(h==='youtube.com'||h==='m.youtube.com'){var id=u.searchParams.get('v');if(id)return 'https://www.youtube.com/embed/'+id;}
+    if(h==='youtu.be')return 'https://www.youtube.com/embed/'+u.pathname.slice(1);
+    if(h==='vimeo.com'){var m=u.pathname.match(/\/(\d+)/);if(m)return 'https://player.vimeo.com/video/'+m[1];}
+    if(h==='loom.com'&&/\/share\//.test(u.pathname))return 'https://www.loom.com/embed/'+u.pathname.split('/share/')[1];
+    if(h==='figma.com')return 'https://www.figma.com/embed?embed_host=tgk&url='+encodeURIComponent(url);
+    if(h==='drive.google.com')return url.replace(/\/view.*$/,'/preview');
+  }catch(e){}
+  return url;
+}
+window.codeBlockHTML=codeBlockHTML;window.editCode=editCode;window.setCodeLang=setCodeLang;window.copyCode=copyCode;window.cbGrow=cbGrow;window.hlHighlight=hlHighlight;
+window.bookmarkHTML=bookmarkHTML;window.setBookmarkUrl=setBookmarkUrl;window.editBookmark=editBookmark;window.embedSrc=embedSrc;
+window.embedHTML=embedHTML;window.setEmbedUrl=setEmbedUrl;window.saveEmbedHeight=saveEmbedHeight;
+
 /* ---------- embedded database view ---------- */
 function dbEmbedHTML(bl){
   const p=bl.dbId?pageById(bl.dbId):null;
@@ -3544,7 +3869,7 @@ function dbEmbedHTML(bl){
   }
   const d=p.content||{};
   const props=(d.props||[]).slice(0,bl.cols||4);
-  let rows=(d.rows||[]).slice();
+  let rows=(d.rows||[]).filter(r=>!r.archived).slice();
   if(bl.filterProp&&bl.filterVal){
     rows=rows.filter(r=>String((r.cells||{})[bl.filterProp]||'').toLowerCase()===String(bl.filterVal).toLowerCase());
   }
@@ -3884,7 +4209,7 @@ function dbGroupedTableHTML(d,v){
     +'<td><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
     +props.map((pr,ci)=>'<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
     +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
-    +'<button class="thx del" title="Delete row" onclick="delRow(\''+r.id+'\')">\u00d7</button></td></tr>';
+    +'<button class="thx del" title="Archive row" onclick="archiveRow(\''+r.id+'\')">\u00d7</button></td></tr>';
   let body='';
   if(!gp){
     body=rows.map(rowHTML).join('')||'<tr><td colspan="'+colCount+'" class="dbempty">No rows'+(S.dbq?' match that filter':'')+'.</td></tr>';
@@ -3952,14 +4277,15 @@ function tasksDbTemplate(){
     activeView:0,sort:null
   };
 }
-async function newTasksDb(){
+async function newTasksDb(parentId){
   try{
-    const row={title:'Tasks',icon:'\u2611',parent_id:null,sort_order:nextSort(null),
+    const row={title:'Tasks',icon:'\u2611',parent_id:parentId||null,sort_order:nextSort(parentId||null),
                page_type:'db',content:tasksDbTemplate(),created_by:S.user?S.user.email:null};
     if(S._hasVisibility)row.visibility=(S.workspace==='private'?'private':'team');
     const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
     if(error)throw error;
     S.pages.push(data);
+    if(parentId)S.collapsed[parentId]=false;
     renderTree();openPage(data.id);
     toast('\u2713 Projects & Tasks created');
   }catch(e){toast(writeErr(e,'create the tasks database'),9000);}
