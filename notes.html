@@ -202,6 +202,7 @@ table.dbt tbody tr.row-sel{background:rgba(13,148,136,.09)}
 .cin:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 2px var(--teal-dim)}
 .cin.first{font-weight:600}
 .cin.num{font-family:var(--mono);text-align:right}
+.fx-cell{color:var(--text2);cursor:default;font-variant-numeric:tabular-nums}
 .cin.sel{font-weight:600}
 .dbt tfoot td{padding:4px 6px;border-top:1px solid var(--border);background:rgba(13,148,136,.03)}
 .agg-sel{border:none;background:transparent;color:var(--text3);font-size:10.5px;font-family:var(--mono);cursor:pointer;max-width:100px;outline:none}
@@ -594,7 +595,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.13';
+const TGK_NOTES_VERSION='v1.14';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1190,7 +1191,8 @@ const PROP_TYPES=[
   {t:'url',n:'URL',em:'\u2197'},
   {t:'person',n:'Person',em:'\u263a'},
   {t:'relation',n:'Relation (database)',em:'\u21c4'},
-  {t:'rollup',n:'Rollup',em:'\u2211'}
+  {t:'rollup',n:'Rollup',em:'\u2211'},
+  {t:'formula',n:'Formula',em:'\u0192'}
 ];
 const SEL_COLORS=['#0d9488','#ea580c','#7c5cd6','#2563eb','#16a34a','#dc2626','#d97706','#64748b'];
 
@@ -1317,6 +1319,7 @@ function cellHTML(r,pr,first){
       return '<div class="multi" onclick="openRow(\''+r.id+'\')" title="Open the row to reassign">'+avatar(_pv)+'</div>';
     return (typeof personCellHTML==='function')?personCellHTML(r,pr):'';
   }
+  if(pr.type==='formula')return '<div class="cin fx-cell" title="Formula">'+esc(String(evalFormula(pr.formula,r,db())))+'</div>';
   if(pr.type==='relation')return (typeof relCellHTML==='function')?relCellHTML(r,pr):'';
   if(pr.type==='rollup')return (typeof rollupCellHTML==='function')?rollupCellHTML(r,pr):'';
   return '<input class="cin'+(first?' first':'')+'" value="'+esc(v)+'" placeholder="'+(first?'Untitled':'')+'" '+set+'>';
@@ -1489,7 +1492,8 @@ function openPropEditor(pid){
     +'<label class="nx-l">Type</label>'
     +'<select id="pe-type" class="nx-i" onchange="propTypeChanged()">'+typeOpts+'</select>'
     +'<div id="pe-opts"></div>'
-    +((typeof relRollupFields==='function')?relRollupFields(p):''),
+    +((typeof relRollupFields==='function')?relRollupFields(p):'')
+    +((typeof formulaField==='function')?formulaField(p):''),
     (pid?'<button class="nx-b danger" onclick="deleteProp()">Delete</button>':'')
     +'<span style="flex:1"></span>'
     +'<button class="nx-b" onclick="nxClose()">Cancel</button>'
@@ -1530,6 +1534,7 @@ function saveProp(){
   const _rel=(document.getElementById('pe-relprop')||{}).value||null;
   const _tpr=(document.getElementById('pe-tprop')||{}).value||null;
   const _agg=(document.getElementById('pe-agg')||{}).value||'count';
+  const _fx=(document.getElementById('pe-fx')||{}).value||'';
   if(_propEdit){
     const p=dbProp(_propEdit);
     if(p){
@@ -1538,12 +1543,14 @@ function saveProp(){
       if(type==='relation')p.targetDb=_tgt;else delete p.targetDb;
       if(type==='rollup'){p.relProp=_rel;p.targetProp=_tpr;p.agg=_agg;}
       else{delete p.relProp;delete p.targetProp;delete p.agg;}
+      if(type==='formula')p.formula=_fx;else delete p.formula;
     }
   }else{
     const p={id:uid(),name:name,type:type};
     if(type==='select'||type==='multi')p.options=opts;
     if(type==='relation')p.targetDb=_tgt;
     if(type==='rollup'){p.relProp=_rel;p.targetProp=_tpr;p.agg=_agg;}
+    if(type==='formula')p.formula=_fx;
     d.props=d.props||[];d.props.push(p);
     (d.rows||[]).forEach(r=>{r.cells=r.cells||{};r.cells[p.id]=(type==='check')?false:'';});
   }
@@ -3359,6 +3366,7 @@ function peTypeExtras(){
   const rel=document.getElementById('pe-rel'), roll=document.getElementById('pe-roll');
   if(rel)rel.style.display=(t==='relation')?'':'none';
   if(roll)roll.style.display=(t==='rollup')?'':'none';
+  var fx=document.getElementById('pe-formula');if(fx)fx.style.display=(t==='formula')?'':'none';
   if(t==='rollup')rollTargetProps();
 }
 
@@ -4485,6 +4493,67 @@ function dbGroupedTableHTML(d,v){
   return quickBarHTML(d,v)
     +'<div class="tblwrap"><table class="dbt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody>'+aggFootHTML(d,v,rows)+'</table></div>';
 }
+/* ---------- formula engine ---------- */
+var _F={
+  _if:function(c,a,b){return c?a:b;},
+  and:function(){for(var i=0;i<arguments.length;i++)if(!arguments[i])return false;return true;},
+  or:function(){for(var i=0;i<arguments.length;i++)if(arguments[i])return true;return false;},
+  not:function(x){return !x;},
+  concat:function(){var o='';for(var i=0;i<arguments.length;i++)o+=(arguments[i]==null?'':arguments[i]);return o;},
+  contains:function(h,n){return String(h==null?'':h).indexOf(String(n==null?'':n))>=0;},
+  empty:function(x){return x==null||x===''||x===false;},
+  length:function(x){return String(x==null?'':x).length;},
+  upper:function(x){return String(x==null?'':x).toUpperCase();},
+  lower:function(x){return String(x==null?'':x).toLowerCase();},
+  round:function(x,dp){var m=Math.pow(10,dp||0);return Math.round((Number(x)||0)*m)/m;},
+  floor:function(x){return Math.floor(Number(x)||0);},
+  ceil:function(x){return Math.ceil(Number(x)||0);},
+  abs:function(x){return Math.abs(Number(x)||0);},
+  min:function(){return Math.min.apply(null,[].slice.call(arguments).map(Number));},
+  max:function(){return Math.max.apply(null,[].slice.call(arguments).map(Number));},
+  now:function(){return new Date().toISOString().slice(0,10);},
+  year:function(x){var d=new Date(x);return isNaN(d.getTime())?'':d.getFullYear();},
+  month:function(x){var d=new Date(x);return isNaN(d.getTime())?'':d.getMonth()+1;},
+  day:function(x){var d=new Date(x);return isNaN(d.getTime())?'':d.getDate();},
+  dateBetween:function(a,b,u){var da=new Date(a),db2=new Date(b);if(isNaN(da.getTime())||isNaN(db2.getTime()))return '';var dd=(db2-da)/86400000;u=u||'days';if(u==='weeks')return Math.round(dd/7);if(u==='months')return Math.round(dd/30);if(u==='years')return Math.round(dd/365);return Math.round(dd);},
+  num:function(x){var n=Number(x);return isNaN(n)?0:n;},
+  text:function(x){return x==null?'':String(x);},
+  format:function(x){return x==null?'':String(x);}
+};
+function evalFormula(expr,r,d,depth){
+  depth=depth||0;
+  if(!expr)return '';
+  if(depth>8)return '\u26a0';
+  try{
+    var t=String(expr);
+    t=t.replace(/prop\(\s*(["'])([\s\S]*?)\1\s*\)/g,function(_m,q,nm){return '_g('+JSON.stringify(nm)+')';});
+    t=t.replace(/\{([^}]+)\}/g,function(_m,nm){return '_g('+JSON.stringify(nm.trim())+')';});
+    t=t.replace(/\bif\s*\(/g,'_if(');
+    var props=(d.props||[]);
+    var _g=function(nm){
+      var p=null;for(var i=0;i<props.length;i++){if(props[i].name===nm){p=props[i];break;}}
+      if(!p)return '';
+      var val=(r.cells||{})[p.id];
+      if(p.type==='number')return (val===''||val==null)?0:Number(val);
+      if(p.type==='check')return val===true||val==='true';
+      if(p.type==='formula')return evalFormula(p.formula,r,d,depth+1);
+      return val==null?'':val;
+    };
+    var fn=new Function('_g','_if','and','or','not','concat','contains','empty','length','upper','lower','round','floor','ceil','abs','min','max','now','year','month','day','dateBetween','num','text','format','"use strict";return ('+t+');');
+    var out=fn(_g,_F._if,_F.and,_F.or,_F.not,_F.concat,_F.contains,_F.empty,_F.length,_F.upper,_F.lower,_F.round,_F.floor,_F.ceil,_F.abs,_F.min,_F.max,_F.now,_F.year,_F.month,_F.day,_F.dateBetween,_F.num,_F.text,_F.format);
+    if(out===true)return '\u2713';
+    if(out===false)return '';
+    if(typeof out==='number'&&!isFinite(out))return '\u26a0';
+    return out==null?'':out;
+  }catch(e){return '\u26a0';}
+}
+function formulaField(p){
+  return '<div id="pe-formula" style="display:none">'
+    +'<label class="nx-l">Formula</label>'
+    +'<textarea id="pe-fx" class="nx-i" style="height:74px;font-family:var(--mono);font-size:12px" placeholder="if(prop(&quot;Status&quot;)==&quot;Done&quot;, &quot;OK&quot;, &quot;Pending&quot;)">'+esc(p&&p.formula?p.formula:'')+'</textarea>'
+    +'<div class="nx-hint">Reference columns with prop("Name") or {Name}. Use == for equals. Functions: if, and, or, not, concat, contains, empty, length, upper, lower, round, floor, ceil, abs, min, max, num, text, now, year, month, day, dateBetween(a,b,"days").</div></div>';
+}
+window.evalFormula=evalFormula;window.formulaField=formulaField;
 /* ---------- column aggregations ---------- */
 function _aggRound(n){return Math.round((Number(n)||0)*100)/100;}
 function aggApplicable(pr){
@@ -4492,11 +4561,12 @@ function aggApplicable(pr){
   if(pr.type==='number')return base.concat([['sum','Sum'],['avg','Average'],['min','Min'],['max','Max'],['range','Range']]);
   if(pr.type==='check')return base.concat([['checked','Checked'],['unchecked','Unchecked'],['pct','Percent checked']]);
   if(pr.type==='date')return base.concat([['earliest','Earliest'],['latest','Latest']]);
+  if(pr.type==='formula')return base.concat([['sum','Sum'],['avg','Average'],['min','Min'],['max','Max'],['range','Range']]);
   return base;
 }
 function aggLabel(t){var m={count:'Count',filled:'Filled',empty:'Empty',unique:'Unique',sum:'Sum',avg:'Avg',min:'Min',max:'Max',range:'Range',checked:'Checked',unchecked:'Unchecked',pct:'% done',earliest:'First',latest:'Last'};return m[t]||'';}
 function aggCompute(t,pr,rows){
-  var vals=rows.map(function(r){return (r.cells||{})[pr.id];});
+  var vals=(pr.type==='formula')?rows.map(function(r){return evalFormula(pr.formula,r,db());}):rows.map(function(r){return (r.cells||{})[pr.id];});
   function filled(x){return pr.type==='check'?(x===true||x==='true'):(x!=null&&String(x).trim()!=='');}
   var nums=vals.filter(function(x){return x!=null&&x!==''&&!isNaN(Number(x));}).map(Number);
   var dates=vals.filter(function(x){return x&&!isNaN(Date.parse(x));});
