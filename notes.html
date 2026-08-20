@@ -552,7 +552,7 @@ table.tb th .tb-c{font-weight:700}
       <div class="sf-sep"></div>
       <div class="sf-grid sf-tools">
         <button class="btn" onclick="openTemplates(null)" title="Browse and apply templates">Templates</button>
-        <button class="btn" onclick="openImport()" title="Import Markdown">Import</button>
+        <button class="btn" onclick="openImportChooser()" title="Import Markdown or data">Import</button>
         <button class="btn" onclick="openTrash()" title="Deleted pages">Trash</button>
         <button class="btn" onclick="openShortcuts()" title="Keyboard shortcuts">Shortcuts</button>
       </div>
@@ -595,7 +595,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.14';
+const TGK_NOTES_VERSION='v1.15';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -4667,6 +4667,125 @@ window.propIcon=propIcon;window.avatar=avatar;window.groupKeyFor=groupKeyFor;win
 window.groupProgress=groupProgress;window.toggleGroup=toggleGroup;window.dbGroupedTableHTML=dbGroupedTableHTML;
 window.quickBarHTML=quickBarHTML;window.quickFilter=quickFilter;window.clearQuick=clearQuick;window.addRowTo=addRowTo;
 window.tasksDbTemplate=tasksDbTemplate;window.newTasksDb=newTasksDb;
+/* ---------- import data as a database ---------- */
+function openImportChooser(){
+  nxModal('Import',
+    '<div class="nx-hint">Bring outside content into Notes.</div>'
+    +'<button class="btn btn-w" style="margin-top:8px" onclick="nxClose();openImport()">Markdown into a page</button>'
+    +'<button class="btn btn-w" style="margin-top:8px" onclick="nxClose();openDataImport()">CSV / TSV / JSON as a new database</button>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+function _parseDelimited(text,delim){
+  var out=[],row=[],field='',i=0,inq=false;
+  while(i<text.length){
+    var c=text.charAt(i);
+    if(inq){
+      if(c==='"'){if(text.charAt(i+1)==='"'){field+='"';i+=2;continue;}inq=false;i++;continue;}
+      field+=c;i++;continue;
+    }
+    if(c==='"'){inq=true;i++;continue;}
+    if(c===delim){row.push(field);field='';i++;continue;}
+    if(c==='\n'||c==='\r'){if(c==='\r'&&text.charAt(i+1)==='\n')i++;row.push(field);out.push(row);row=[];field='';i++;continue;}
+    field+=c;i++;
+  }
+  row.push(field);out.push(row);
+  if(out.length&&out[out.length-1].length===1&&out[out.length-1][0]==='')out.pop();
+  return out;
+}
+function parseImport(text){
+  text=(text||'').replace(/^\uFEFF/,'').trim();
+  if(!text)return null;
+  if(text.charAt(0)==='['||text.charAt(0)==='{'){
+    try{
+      var j=JSON.parse(text);
+      var arr=Array.isArray(j)?j:(j&&Array.isArray(j.data)?j.data:null);
+      if(arr){
+        if(arr.length&&(typeof arr[0]!=='object'||arr[0]===null))
+          return {cols:['Value'],rows:arr.map(function(x){return [x==null?'':String(x)];})};
+        var cols=[];
+        arr.forEach(function(o){if(o&&typeof o==='object')Object.keys(o).forEach(function(k){if(cols.indexOf(k)<0)cols.push(k);});});
+        var rows=arr.map(function(o){return cols.map(function(c){var v=(o&&o[c]!=null)?o[c]:'';if(v&&typeof v==='object')v=JSON.stringify(v);return v;});});
+        return {cols:cols,rows:rows};
+      }
+    }catch(e){}
+  }
+  var delim=text.indexOf('\t')>=0?'\t':',';
+  var lines=_parseDelimited(text,delim);
+  if(lines.length<1)return null;
+  return {cols:lines[0].map(function(c){return String(c||'').trim();}),rows:lines.slice(1)};
+}
+function _inferType(vals){
+  var non=vals.filter(function(v){return v!==''&&v!=null;}).map(function(v){return String(v).trim();});
+  if(!non.length)return 'text';
+  if(non.every(function(v){return v!==''&&!isNaN(Number(v));}))return 'number';
+  if(non.every(function(v){return /^(true|false|yes|no|y|n)$/i.test(v);}))return 'check';
+  if(non.every(function(v){return /^https?:\/\//i.test(v);}))return 'url';
+  if(non.every(function(v){return /\d/.test(v)&&!isNaN(Date.parse(v));}))return 'date';
+  var uniq={};non.forEach(function(v){uniq[v]=1;});var u=Object.keys(uniq).length;
+  if(u>=2&&u<=8&&non.length>=u*2)return 'select';
+  return 'text';
+}
+function buildDbFromParsed(parsed){
+  var seen={};
+  var cols=parsed.cols.map(function(c){var n=String(c||'').trim()||'Column';var b=n,k=1;while(seen[n]){n=b+' '+(++k);}seen[n]=1;return n;});
+  var colVals=cols.map(function(c,ci){return parsed.rows.map(function(r){return r[ci]==null?'':r[ci];});});
+  var props=cols.map(function(c,ci){
+    var type=_inferType(colVals[ci]);
+    var p={id:uid(),name:c,type:type};
+    if(type==='select'){var uq={};colVals[ci].forEach(function(v){v=String(v||'').trim();if(v)uq[v]=1;});p.options=Object.keys(uq).map(function(v,i){return {v:v,c:i%8};});}
+    return p;
+  });
+  var rows=parsed.rows.map(function(r){
+    var cells={};
+    props.forEach(function(p,ci){
+      var raw=r[ci]==null?'':String(r[ci]).trim();
+      if(p.type==='check')cells[p.id]=/^(true|yes|y)$/i.test(raw);
+      else if(p.type==='date'){var dt=new Date(raw);cells[p.id]=isNaN(dt.getTime())?'':dt.toISOString().slice(0,10);}
+      else cells[p.id]=raw;
+    });
+    return {id:uid(),cells:cells,notes:[]};
+  });
+  return {props:props,rows:rows};
+}
+function openDataImport(){
+  nxModal('Import data as a database',
+    '<label class="nx-l">Database name</label>'
+    +'<input id="di-name" class="nx-i" value="Imported data" placeholder="e.g. Facebook Groups">'
+    +'<label class="nx-l">Paste CSV, TSV, or JSON</label>'
+    +'<textarea id="di-data" class="nx-i" style="height:190px;font-family:var(--mono);font-size:11.5px" placeholder="Group,URL,Members,Active\nJDM Owners,https://facebook.com/groups/...,3200,yes"></textarea>'
+    +'<div class="nx-hint">First row = column names (CSV / TSV). JSON = an array of objects. Types (number, date, checkbox, URL, select) are detected automatically.</div>'
+    +'<div id="di-prev" class="nx-hint" style="margin-top:4px"></div>',
+    '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b" onclick="previewImport()">Preview</button>'
+    +'<button class="nx-b primary" onclick="runDataImport()">Create database</button>');
+  setTimeout(function(){var f=document.getElementById('di-data');if(f)f.focus();},40);
+}
+function previewImport(){
+  var el=document.getElementById('di-prev');if(!el)return;
+  var parsed=parseImport((document.getElementById('di-data')||{}).value||'');
+  if(!parsed||!parsed.cols.length){el.textContent='Nothing to import yet.';return;}
+  var built=buildDbFromParsed(parsed);
+  el.innerHTML='<b>'+built.rows.length+'</b> rows, <b>'+built.props.length+'</b> columns: '
+    +built.props.map(function(p){return esc(p.name)+' ('+p.type+')';}).join(', ');
+}
+async function runDataImport(){
+  var name=((document.getElementById('di-name')||{}).value||'').trim()||'Imported data';
+  var parsed=parseImport((document.getElementById('di-data')||{}).value||'');
+  if(!parsed||!parsed.cols.length){toast('Paste some CSV, TSV, or JSON first');return;}
+  var built=buildDbFromParsed(parsed);
+  var content={props:built.props,rows:built.rows,views:[{id:uid(),name:'Table',kind:'table',groupBy:null,filters:[]}],activeView:0,sort:null};
+  try{
+    var row={title:name,icon:'\u25a6',parent_id:null,sort_order:nextSort(null),page_type:'db',content:content,created_by:S.user?S.user.email:null};
+    if(S._hasVisibility)row.visibility=(S.workspace==='private'?'private':'team');
+    const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+    if(error)throw error;
+    S.pages.push(data);
+    nxClose();renderTree();openPage(data.id);
+    toast('\u2713 Imported '+built.rows.length+' rows');
+  }catch(e){toast(writeErr(e,'create the database'),9000);}
+}
+window.openImportChooser=openImportChooser;window.openDataImport=openDataImport;window.previewImport=previewImport;window.runDataImport=runDataImport;window.parseImport=parseImport;window.buildDbFromParsed=buildDbFromParsed;
+
 
 </script>
 </body>
