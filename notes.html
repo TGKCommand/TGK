@@ -622,7 +622,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.27';
+const TGK_NOTES_VERSION='v1.28';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -2822,7 +2822,7 @@ function tableBlockHTML(bl){
     +'<div class="tb-bar">'
       +'<button class="nx-b sm" onclick="tblRowAdd(\''+bl.id+'\')">+ Row</button>'
       +'<button class="nx-b sm" onclick="tblColAdd(\''+bl.id+'\')">+ Column</button>'
-      +'<button class="nx-b sm" onclick="tblHead(\''+bl.id+'\')">'+(bl.head?'No header row':'Header row')+'</button>'
+      +'<button class="nx-b sm" onclick="tblHead(\''+bl.id+'\')">'+(bl.head?'No header row':'Header row')+'</button>'+'<button class="nx-b sm danger" onclick="delBlock(\''+bl.id+'\')">Delete table</button>'
       +'<span class="tb-n">'+bl.rows.length+' \u00d7 '+cols+'</span>'
     +'</div></div>';
 }
@@ -3834,7 +3834,7 @@ function openBlockMenu(bid,x,y){
     +'<div class="bm-i" onclick="dupBlock(\''+bid+'\')">Duplicate</div>'
     +'<div class="bm-i" onclick="moveBlock(\''+bid+'\',-1)">Move up</div>'
     +'<div class="bm-i" onclick="moveBlock(\''+bid+'\',1)">Move down</div>'
-    +(bl.cg?'<div class="bm-i" onclick="colOut(\''+bid+'\')">Make full width</div>':'')
+    +(bl.cg?'<div class="bm-i" onclick="colOut(\''+bid+'\')">Make full width</div><div class="bm-i danger" onclick="colDeleteCol(\''+bid+'\')">Delete this column</div>':'')
     +'<div class="bm-sep"></div><div class="bm-h">Text colour</div>'
     +'<div class="bm-c">'+NX_COLORS.map(function(c){var cl=c.k==='default'?'':'tx-'+c.k;return '<button class="bm-sw '+(cl||'none')+'" onclick="colourBlock(\''+bid+'\',\''+cl+'\')" title="'+c.n+'"></button>';}).join('')+'</div>'
     +'<div class="bm-h">Background</div>'
@@ -4133,6 +4133,31 @@ function colDrop(dragBid,targetBid,side){
   }
   normalizeColumns(b);renderBlocks();markDirty();
 }
+function colDeleteCol(bid){
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var cg=b[i].cg,col=(b[i].col||0);
+  if(!cg){delBlock(bid);return;}
+  for(var k=b.length-1;k>=0;k--){if(b[k].cg===cg&&(b[k].col||0)===col)b.splice(k,1);}
+  if(!b.length)b.push({id:uid(),type:'p',text:'',indent:0});
+  if(typeof closeBlockMenu==='function')closeBlockMenu();
+  normalizeColumns(b);renderBlocks();markDirty();
+}
+function removeEmbed(bid){
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var dbId=b[i].dbId,linked=dbId?pageById(dbId):null;
+  nxModal('Remove database',
+    '<div class="nx-hint">Remove just this inline view'+(linked?(', or delete the "'+esc(linked.title||'Untitled')+'" database entirely (it also lives in your sidebar)'):'')+'?</div>',
+    (linked?'<button class="nx-b danger" onclick="deleteEmbedDb(\''+bid+'\')">Delete database</button>':'')
+    +'<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
+    +'<button class="nx-b primary" onclick="nxClose();delBlock(\''+bid+'\')">Remove view</button>');
+}
+function deleteEmbedDb(bid){
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var dbId=b[i].dbId;
+  nxClose();delBlock(bid);
+  if(dbId&&typeof archivePage==='function')archivePage(dbId);
+}
+window.colDeleteCol=colDeleteCol;window.removeEmbed=removeEmbed;window.deleteEmbedDb=deleteEmbedDb;
 function colOut(bid){
   var b=blocks(),i=blockIndex(bid);if(i<0)return;
   var cg=b[i].cg;
@@ -4487,7 +4512,7 @@ function dbEmbedHTML(bl){
   return '<div class="emb">'
     +'<div class="emb-h"><span class="emb-t" onclick="openPage(\''+p.id+'\')">\u{1F5C3} '+esc(p.title||'Untitled')+'</span>'
       +'<span class="emb-n">'+rows.length+' row'+(rows.length!==1?'s':'')+(rows.length>limit?(' \u00b7 showing '+limit):'')+'</span>'
-      +'<button class="nx-b sm" onclick="pickEmbed(\''+bl.id+'\')">Configure</button></div>'
+      +'<button class="nx-b sm" onclick="pickEmbed(\''+bl.id+'\')">Configure</button>'+'<button class="nx-b sm danger" onclick="removeEmbed(\''+bl.id+'\')">Remove</button></div>'
     +'<div class="tblwrap"><table class="dbt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div></div>';
 }
 let _embTarget=null;
