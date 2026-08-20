@@ -124,6 +124,9 @@ input,select,textarea{font-family:inherit}
 .col-row{display:flex;gap:0;align-items:flex-start;margin:2px 0}
 .col{flex:1 1 0;min-width:0}
 .col>.bk{margin-left:0!important}
+.col-row .col{padding:3px 5px;border-radius:7px;transition:box-shadow .12s}
+.col-row:hover .col{box-shadow:inset 0 0 0 1px var(--border)}
+.col-row .col:hover{box-shadow:inset 0 0 0 1px var(--border2)}
 .col-rz{flex:0 0 22px;align-self:stretch;cursor:col-resize;position:relative}
 .col-rz::before{content:'';position:absolute;left:50%;transform:translateX(-50%);top:2px;bottom:2px;width:3px;border-radius:3px;background:transparent;transition:background .1s}
 .col-rz:hover::before{background:var(--teal)}
@@ -619,7 +622,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.26';
+const TGK_NOTES_VERSION='v1.27';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -875,6 +878,8 @@ const BLOCKS=[
   {t:'toc',em:'\u2261',n:'Contents',d:'Auto list of the headings on this page'},
   {t:'subpage',em:'\u2197',n:'Sub-page',d:'Link or create a page inside this one'},
   {t:'dbembed',em:'\u25a6',n:'Database view',d:'Embed rows from another database'},
+  {t:'newdb',em:'\u{1F5C3}',n:'New database',d:'Create a database in this page (also a sub-page)'},
+  {t:'newtasks',em:'\u2611',n:'New task board',d:'Create a Projects & Tasks database in this page'},
   {t:'embed',em:'\u25a7',n:'Embed / web app',d:'Embed a web page or TGK tool by URL'}
 ];
 function curPage(){return pageById(S.activeId);}
@@ -1005,7 +1010,7 @@ function blockHTML(bl,i){
       return '<div class="bk" data-bid="'+bl.id+'" data-type="bookmark" style="margin-left:'+pad+'px">'
         +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u2059</span>'
         +bookmarkHTML(bl)+'</div>';
-    const ph=i===0?"Write here, or click + on the left to add a table, columns, and more":'';
+    const ph=i===0?"Write here, or click + on the left to add a table, columns, and more":(bl.cg?"Empty column - type here or click +":'');
     return '<div class="bk" data-bid="'+bl.id+'" data-type="'+bl.type+'" style="margin-left:'+pad+'px">'
       +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Click for options, drag to move">\u2059</span>'+mk
       +'<div class="bk-t'+(bl.type==='todo'&&bl.checked?' done':'')+(bl.colour?(' '+bl.colour):'')+'" contenteditable="true" spellcheck="true" data-ph="'+ph+'">'+(typeof richHTML==='function'?richHTML(bl.text||''):esc(bl.text||''))+'</div>'
@@ -1154,6 +1159,25 @@ function addBlockAfter(i,type){
   const b=blocks(),nb={id:uid(),type:type||'p',text:'',indent:(b[i]&&b[i].indent)||0};
   b.splice(i+1,0,nb);renderBlocks();focusBlock(nb.id);markDirty();return nb;
 }
+async function insertNewDb(afterBid,kind){
+  var parent=curPage();if(!parent){toast('Open a page first');return;}
+  var content=(kind==='tasks'&&typeof tasksDbTemplate==='function')?tasksDbTemplate():blankDb();
+  var row={title:(kind==='tasks'?'Tasks':'New database'),icon:(kind==='tasks'?'\u2611':'\u{1F5C3}'),
+           parent_id:parent.id,sort_order:nextSort(parent.id),page_type:'db',content:content,
+           created_by:S.user?S.user.email:null};
+  if(S._hasVisibility)row.visibility=parent.visibility||'team';
+  try{
+    const{data,error}=await sb.from('wiki_pages').insert(row).select().single();
+    if(error)throw error;
+    S.pages.push(data);S.collapsed[parent.id]=false;
+    var b=blocks(),i=blockIndex(afterBid);
+    var nb={id:uid(),type:'dbembed',text:'',indent:0,dbId:data.id};
+    if(i>=0)b.splice(i+1,0,nb);else b.push(nb);
+    renderTree();renderBlocks();markDirty();
+    toast('\u2713 Created '+row.title+' inside this page');
+  }catch(e){toast(writeErr(e,'create the database'),9000);}
+}
+window.insertNewDb=insertNewDb;
 function makeColumns(bid,n){
   var b=blocks(),i=blockIndex(bid);if(i<0)return;
   n=Math.max(2,Math.min(4,n||2));
@@ -1187,6 +1211,7 @@ function openAddMenu(el){
   setTimeout(function(){document.addEventListener('click',closeAddMenu,{once:true});},10);
 }
 function insertBlockType(afterBid,t){
+  if(t==='newdb'||t==='newtasks'){insertNewDb(afterBid,t==='newtasks'?'tasks':'db');return;}
   var b=blocks(),i=blockIndex(afterBid);if(i<0)return;
   var nb={id:uid(),type:'p',text:'',indent:(b[i]&&b[i].indent)||0,cg:b[i]&&b[i].cg,col:b[i]&&b[i].col};
   b.splice(i+1,0,nb);renderBlocks();
@@ -1253,7 +1278,7 @@ function openSlash(host,filter){
   el.style.top=(r.bottom+window.scrollY+4)+'px';
   drawSlash();
 }
-var SLASH_CATS={p:'Basic',h1:'Basic',h2:'Basic',h3:'Basic',bullet:'Basic',num:'Basic',todo:'Basic',toggle:'Basic',quote:'Basic',callout:'Basic',divider:'Basic',subpage:'Basic',col2:'Layout',col3:'Layout',col4:'Layout',image:'Media',bookmark:'Media',embed:'Media',code:'Media',table:'Database',dbembed:'Database',toc:'Advanced'};
+var SLASH_CATS={p:'Basic',h1:'Basic',h2:'Basic',h3:'Basic',bullet:'Basic',num:'Basic',todo:'Basic',toggle:'Basic',quote:'Basic',callout:'Basic',divider:'Basic',subpage:'Basic',col2:'Layout',col3:'Layout',col4:'Layout',image:'Media',bookmark:'Media',embed:'Media',code:'Media',table:'Database',dbembed:'Database',newdb:'Database',newtasks:'Database',toc:'Advanced'};
 var SLASH_CAT_ORDER=['Basic','Layout','Media','Database','Advanced'];
 function slashCat(t){return SLASH_CATS[t]||'Basic';}
 function drawSlash(){
@@ -1281,6 +1306,7 @@ function applySlash(def){
   if(!def||!slashHost)return;
   const id=slashHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
   if(i<0){closeSlash();return;}
+  if(def.t==='newdb'||def.t==='newtasks'){b[i].type='p';b[i].text='';closeSlash();renderBlocks();insertNewDb(id,def.t==='newtasks'?'tasks':'db');return;}
   b[i].type=def.t;b[i].text='';
   if(def.t==='divider'){closeSlash();renderBlocks();addBlockAfter(i,'p');markDirty();return;}
   if(def.t==='image'){closeSlash();renderBlocks();markDirty();if(typeof pickImage==='function')pickImage(id);return;}
