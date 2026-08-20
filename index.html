@@ -15888,6 +15888,66 @@ document.addEventListener('DOMContentLoaded', function() {
     try { localStorage.setItem(LS_ACTIVE, JSON.stringify(active)); } catch(e){}
     try { localStorage.setItem(LS_HWM,    JSON.stringify(hwm));    } catch(e){}
   }
+
+  // ---- Per-user dismissals -------------------------------------------------
+  // localStorage above is only a cache so the panel paints instantly and still works
+  // offline. The authoritative record is notification_dismissals, keyed by user id, which is
+  // what makes a dismissal follow the person to another machine instead of staying on this one.
+  var _dismissed = {};        // { 'kind|id': true }  seeded from the server
+  var _dismissLoaded = false;
+
+  function _userId(){
+    var s = session();
+    if (!s) return null;
+    if (s.user && s.user.id) return s.user.id;
+    // Fall back to the JWT subject when the session object does not carry a user block.
+    try {
+      var p = JSON.parse(atob(String(s.access_token).split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+      return p.sub || null;
+    } catch(e){ return null; }
+  }
+  function _userEmail(){
+    var s = session();
+    return (s && s.user && s.user.email) ? s.user.email : null;
+  }
+  function _dkey(kind,id){ return String(kind)+'|'+String(id); }
+
+  function loadDismissals(){
+    var uid = _userId();
+    if (!uid) { _dismissLoaded = true; return Promise.resolve(); }
+    return fetch(SB_URL + '/rest/v1/notification_dismissals?select=kind,ref_key&user_id=eq.' + uid + '&limit=2000', {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token() }
+    })
+    .then(function(r){ return r.ok ? r.json() : []; })
+    .then(function(rows){
+      (rows||[]).forEach(function(r){ _dismissed[_dkey(r.kind, r.ref_key)] = true; });
+      _dismissLoaded = true;
+      // Anything dismissed on another machine should not still be sitting in this panel.
+      var before = active.length;
+      active = active.filter(function(n){ return !_dismissed[_dkey(n.kind, n.id)]; });
+      if (active.length !== before) { saveState(); render(); }
+    })
+    .catch(function(){ _dismissLoaded = true; });
+  }
+
+  function recordDismissal(kind, id){
+    _dismissed[_dkey(kind,id)] = true;
+    var uid = _userId();
+    if (!uid) return;                       // signed out: local-only, nothing to sync
+    fetch(SB_URL + '/rest/v1/notification_dismissals', {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY,
+        Authorization: 'Bearer ' + token(),
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=ignore-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ user_id: uid, user_email: _userEmail(), kind: String(kind), ref_key: String(id) })
+    }).catch(function(){});
+  }
+  // Filter helper used when new notifications arrive, so something already handled elsewhere
+  // never reappears.
+  function notDismissed(n){ return !_dismissed[_dkey(n.kind, n.id)]; }
   function session(){
     try { return JSON.parse(localStorage.getItem(SESS_KEY)); } catch(e){ return null; }
   }
@@ -15965,6 +16025,7 @@ document.addEventListener('DOMContentLoaded', function() {
     rows.forEach(function(r){
       var id = rowId(kind, r);
       if (active.some(function(n){ return n.kind === kind && n.id === id; })) return;
+      if (_dismissed[_dkey(kind, id)]) return;   // handled already, possibly on another device
       active.push({
         kind:  kind,
         id:    id,
@@ -16071,10 +16132,13 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (tool === 'support' && typeof openSupportCenter === 'function') openSupportCenter();
   }
   function dismiss(kind, id){
+    recordDismissal(kind, id);
     active = active.filter(function(n){ return !(n.kind === kind && n.id === id); });
     saveState(); render();
   }
   function dismissAll(){
+    // Record every one, so clearing here also clears them on every other machine.
+    active.forEach(function(n){ recordDismissal(n.kind, n.id); });
     active = [];
     saveState(); render(); closePanel();
   }
@@ -16183,6 +16247,9 @@ document.addEventListener('DOMContentLoaded', function() {
   async function boot(){
     loadState();
     render();                 // restore any notifications persisted from before
+    // Pull this user's dismissals before polling, so anything already handled on another
+    // machine never gets re-added to the panel here.
+    await loadDismissals();
     await initHwm('orders');
     await initHwm('tickets');
     await pollAll();
