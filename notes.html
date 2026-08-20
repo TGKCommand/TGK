@@ -112,15 +112,15 @@ input,select,textarea{font-family:inherit}
 .bk.dz-above{box-shadow:inset 0 2px 0 var(--teal)}
 .bk.dz-below{box-shadow:inset 0 -2px 0 var(--teal)}
 .doc-tail{min-height:120px;cursor:text}
-.bk-handle{opacity:0;flex-shrink:0;width:16px;text-align:center;color:var(--border2);cursor:grab;font-size:12px;line-height:1.7;user-select:none}
+.bk-handle{opacity:.35;flex-shrink:0;width:22px;text-align:center;color:var(--text2);cursor:grab;font-size:15px;line-height:1.35;user-select:none;border-radius:5px}
 .bk:hover .bk-handle{opacity:1}
-.bk-plus{opacity:0;flex-shrink:0;width:16px;text-align:center;color:var(--text3);cursor:pointer;font-size:15px;line-height:1.4;user-select:none;border-radius:4px}
+.bk-plus{opacity:.35;flex-shrink:0;width:22px;text-align:center;color:var(--text2);cursor:pointer;font-size:19px;font-weight:700;line-height:1.15;user-select:none;border-radius:5px}
 .bk:hover .bk-plus{opacity:1}
-.bk-plus:hover{background:rgba(13,148,136,.12);color:var(--teal)}
+.bk-plus:hover{background:rgba(13,148,136,.16);color:var(--teal)}
 #addmenu{width:242px}
 .am-i{display:flex;align-items:center;gap:9px}
 .am-e{width:20px;flex-shrink:0;text-align:center;color:var(--text3);font-size:13px}
-.bk-handle:hover{color:var(--teal)}
+.bk-handle:hover{background:rgba(13,148,136,.16);color:var(--teal)}
 .col-row{display:flex;gap:0;align-items:flex-start;margin:2px 0}
 .col{flex:1 1 0;min-width:0}
 .col>.bk{margin-left:0!important}
@@ -219,6 +219,8 @@ table.dbt tbody tr.row-sel{background:rgba(13,148,136,.09)}
 .cin.num{font-family:var(--mono);text-align:right}
 .fx-cell{color:var(--text2);cursor:default;font-variant-numeric:tabular-nums}
 .dbt th[draggable]{cursor:grab}
+.vp-row{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;cursor:pointer}
+.vp-note{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
 .dbt th.col-dz{box-shadow:inset 3px 0 0 var(--teal)}
 .g-ed{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;margin-left:8px;padding:2px 6px;border-radius:5px;opacity:0}
 .g-row:hover .g-ed{opacity:1}
@@ -338,7 +340,7 @@ body.dark .emb-bar{background:rgba(255,255,255,.04)}
 .nc-o span{font-size:11px;color:var(--text3)}
 .rpage{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 2px}
 .rpage-l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
-body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #pgmenu,body.dark #rowmenu,body.dark #addmenu,body.dark #slash{background:#202325;color:var(--text)}
+body.dark .nx-box,body.dark .qs-box,body.dark #bmenu,body.dark #pgmenu,body.dark #rowmenu,body.dark #addmenu,body.dark #rowctx,body.dark #slash{background:#202325;color:var(--text)}
 body.dark .nx-i,body.dark .qs-i,body.dark .cin,body.dark .side-search{background:#191c1e;color:var(--text)}
 body.dark .nx-b{background:#26292c;color:var(--text2)}
 body.dark .nx-b:hover{background:#2e3235}
@@ -427,7 +429,7 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 #fmtpop .fp-i{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12.5px}
 #fmtpop .fp-i:hover{background:var(--teal-dim)}
 #fmtpop .fp-sw{width:18px;height:18px;border-radius:4px;border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;padding:0}
-#bmenu,#pgmenu,#rowmenu,#addmenu{position:absolute;z-index:520;background:#fff;border-radius:var(--r-lg);box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);width:212px;padding:5px;max-height:70vh;overflow-y:auto}
+#bmenu,#pgmenu,#rowmenu,#addmenu,#rowctx{position:absolute;z-index:520;background:#fff;border-radius:var(--r-lg);box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);width:212px;padding:5px;max-height:70vh;overflow-y:auto}
 .bm-h{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--text3);padding:6px 9px 3px}
 .bm-i{padding:6px 9px;border-radius:var(--r);cursor:pointer;font-size:12.5px}
 .bm-i:hover{background:var(--teal-dim)}
@@ -622,7 +624,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.29';
+const TGK_NOTES_VERSION='v1.32';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -977,30 +979,30 @@ function blockHTML(bl,i){
     else if(bl.type==='todo')mk='<input type="checkbox" class="bk-cb"'+(bl.checked?' checked':'')+' data-cb="'+bl.id+'">';
     else if(bl.type==='callout')mk='<span class="bk-mk">\u{1F4A1}</span>';
     if(bl.type==='divider')
-      return '<div class="bk" data-bid="'+bl.id+'" data-type="divider" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u2059</span><div class="bk-div"></div></div>';
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="divider" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span><div class="bk-div"></div></div>';
     if(bl.type==='image')
-      return '<div class="bk" data-bid="'+bl.id+'" data-type="image" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u2059</span>'
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="image" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span>'
         +(typeof imageBlockHTML==='function'?imageBlockHTML(bl):'')+'</div>';
     if(bl.type==='table')
-      return '<div class="bk" data-bid="'+bl.id+'" data-type="table" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u2059</span>'
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="table" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span>'
         +(typeof tableBlockHTML==='function'?tableBlockHTML(bl):'')+'</div>';
     if(bl.type==='dbembed')
-      return '<div class="bk" data-bid="'+bl.id+'" data-type="dbembed" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u2059</span>'
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="dbembed" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span>'
         +(typeof dbEmbedHTML==='function'?dbEmbedHTML(bl):'')+'</div>';
     if(bl.type==='subpage')
-      return '<div class="bk" data-bid="'+bl.id+'" data-type="subpage" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u2059</span>'
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="subpage" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span>'
         +(typeof subpageHTML==='function'?subpageHTML(bl):'')+'</div>';
 
     if(bl.type==='embed')
-      return '<div class="bk" data-bid="'+bl.id+'" data-type="embed" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u2059</span>'
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="embed" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u283f</span>'
         +(typeof embedHTML==='function'?embedHTML(bl):'')+'</div>';
     if(bl.type==='toc')
-      return '<div class="bk" data-bid="'+bl.id+'" data-type="toc" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u2059</span>'
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="toc" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span>'
         +(typeof tocHTML==='function'?tocHTML():'')+'</div>';
     if(bl.type==='toggle'){
       const _n=(typeof toggleCount==='function')?toggleCount(bl.id):0;
       return '<div class="bk" data-bid="'+bl.id+'" data-type="toggle" style="margin-left:'+pad+'px">'
-        +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u2059</span>'
+        +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span>'
         +'<button class="tg-a" onclick="toggleBlock(\''+bl.id+'\')" title="'+(bl.open?'Collapse':'Expand')+'">'+(bl.open?'\u25be':'\u25b8')+'</button>'
         +'<div class="bk-t'+(bl.colour?(' '+bl.colour):'')+'" contenteditable="true" spellcheck="true" data-ph="Toggle heading">'+(typeof richHTML==='function'?richHTML(bl.text||''):esc(bl.text||''))+'</div>'
         +(!bl.open&&_n?'<span class="tg-n">'+_n+' hidden</span>':'')+'</div>';
@@ -1008,11 +1010,11 @@ function blockHTML(bl,i){
     if(bl.type==='code')return codeBlockHTML(bl);
     if(bl.type==='bookmark')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="bookmark" style="margin-left:'+pad+'px">'
-        +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u2059</span>'
+        +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u283f</span>'
         +bookmarkHTML(bl)+'</div>';
     const ph=i===0?"Write here, or click + on the left to add a table, columns, and more":(bl.cg?"Empty column - type here or click +":'');
     return '<div class="bk" data-bid="'+bl.id+'" data-type="'+bl.type+'" style="margin-left:'+pad+'px">'
-      +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Click for options, drag to move">\u2059</span>'+mk
+      +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Click for options, drag to move">\u283f</span>'+mk
       +'<div class="bk-t'+(bl.type==='todo'&&bl.checked?' done':'')+(bl.colour?(' '+bl.colour):'')+'" contenteditable="true" spellcheck="true" data-ph="'+ph+'">'+(typeof richHTML==='function'?richHTML(bl.text||''):esc(bl.text||''))+'</div>'
       +'</div>';
 }
@@ -1410,6 +1412,7 @@ function renderDb(){
     +'<input class="dbq" placeholder="Search rows..." value="'+esc(S.dbq||'')+'" oninput="S.dbq=this.value;renderDb()">'
     +'<button class="btn btn-sm" onclick="openFilterEditor()">Filter'+(((v.filters||[]).length)?('<span class="fbadge">'+v.filters.length+'</span>'):'')+'</button>'
     +'<button class="btn btn-sm" onclick="openDbArchive()" title="Archived rows">Archive'+(((d.rows||[]).some(r=>r.archived))?('<span class="fbadge">'+(d.rows||[]).filter(r=>r.archived).length+'</span>'):'')+'</button>'
+    +'<button class="btn btn-sm" onclick="openViewProps()">Columns</button>'
     +'<button class="btn btn-sm" onclick="openPropEditor()">+ Property</button>'
     +'<button class="btn btn-sm btn-primary" onclick="addRow()">+ Row</button></div>'
     +body
@@ -1432,18 +1435,40 @@ function visibleRows(d){
   }
   return rows;
 }
+function viewProps(d,v){
+  var props=(d.props||[]),h=(v&&v.hidden)||[];
+  return props.filter(function(p,i){return i===0||h.indexOf(p.id)<0;});
+}
+function toggleViewProp(pid,show){
+  var v=activeView();v.hidden=v.hidden||[];
+  if(show){v.hidden=v.hidden.filter(function(x){return x!==pid;});}
+  else{if(v.hidden.indexOf(pid)<0)v.hidden.push(pid);}
+  markDirty();renderDb();
+}
+function openViewProps(){
+  var d=db(),v=activeView(),h=(v.hidden)||[];
+  var body=(d.props||[]).map(function(p,i){
+    var hidden=h.indexOf(p.id)>=0,first=(i===0);
+    return '<label class="vp-row"><input type="checkbox"'+(((!hidden)||first)?' checked':'')+(first?' disabled':'')+' onchange="toggleViewProp(\''+p.id+'\',this.checked)"> '+esc(p.name)+(first?' <span class="vp-note">always shown</span>':'')+'</label>';
+  }).join('')||'<div class="nx-hint">No properties.</div>';
+  nxModal('Columns in this view',
+    '<div class="nx-hint">Show or hide columns for the current view only. Reorder columns by dragging their headers.</div>'+body,
+    '<span style="flex:1"></span><button class="nx-b primary" onclick="nxClose()">Done</button>');
+}
+window.viewProps=viewProps;window.toggleViewProp=toggleViewProp;window.openViewProps=openViewProps;
 function dbTableHTML(d,v){
   const rows=visibleRows(d);
+  const props=viewProps(d,v);
   const _allSel=rows.length&&rows.every(r=>typeof rowSelected==='function'&&rowSelected(r.id));
   const head='<th style="width:26px"><input type="checkbox" class="selbox"'+(_allSel?' checked':'')+' onchange="toggleSelAll(this.checked)" title="Select all shown"></th>'
-    +(d.props||[]).map(pr=>{
+    +props.map(pr=>{
     const arrow=(d.sort&&d.sort.prop===pr.id)?(d.sort.dir==='desc'?' \u25be':' \u25b4'):'';
     return '<th draggable="true" ondragstart="colDragStart(event,\''+pr.id+'\')" ondragover="colDragOver(event,\''+pr.id+'\')" ondrop="colDrop2(event,\''+pr.id+'\')" ondragend="colDragEnd()"><span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
       +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
   }).join('');
-  const body=rows.map(r=>'<tr'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
+  const body=rows.map(r=>'<tr data-rid="'+r.id+'"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
     +'<td><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
-    +(d.props||[]).map((pr,ci)=>
+    +props.map((pr,ci)=>
       '<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
     +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
     +'<button class="thx del" title="Archive row" onclick="archiveRow(\''+r.id+'\')">\u00d7</button></td></tr>').join('');
@@ -2142,6 +2167,37 @@ function setImageSrc(bid,url){
 }
 
 /* ---------- archive / restore rows ---------- */
+function dupRow(rid){
+  var d=db();var idx=(d.rows||[]).findIndex(function(r){return r.id===rid;});
+  if(idx<0)return;
+  var copy=JSON.parse(JSON.stringify(d.rows[idx]));copy.id=uid();
+  if(Array.isArray(copy.notes))copy.notes.forEach(function(nb){nb.id=uid();});
+  d.rows.splice(idx+1,0,copy);markDirty();renderDb();
+}
+function closeRowCtx(){var e=document.getElementById('rowctx');if(e)e.remove();}
+function openRowCtx(rid,x,y){
+  closeRowCtx();
+  var el=document.createElement('div');el.id='rowctx';
+  el.style.left=Math.min(x,window.innerWidth-200)+'px';el.style.top=(y+window.scrollY)+'px';
+  el.innerHTML='<div class="bm-i" data-a="open">Open</div>'
+    +'<div class="bm-i" data-a="dupe">Duplicate</div>'
+    +'<div class="bm-sep"></div>'
+    +'<div class="bm-i danger" data-a="del">Delete (archive)</div>';
+  document.body.appendChild(el);
+  Array.prototype.slice.call(el.querySelectorAll('[data-a]')).forEach(function(row){
+    row.onclick=function(){var a=row.getAttribute('data-a');closeRowCtx();if(a==='open')openRow(rid);else if(a==='dupe')dupRow(rid);else if(a==='del')archiveRow(rid);};
+  });
+  setTimeout(function(){document.addEventListener('click',closeRowCtx,{once:true});},10);
+}
+document.addEventListener('contextmenu',function(e){
+  var t=e.target;
+  if(t&&t.closest&&(t.closest('.cb-ta')||t.closest('textarea')))return;
+  var tr=t&&t.closest&&t.closest('tr[data-rid]');
+  if(tr){e.preventDefault();openRowCtx(tr.getAttribute('data-rid'),e.clientX,e.clientY);return;}
+  var bk=t&&t.closest&&t.closest('.bk');
+  if(bk){e.preventDefault();openBlockMenu(bk.getAttribute('data-bid'),e.clientX,e.clientY);}
+});
+window.dupRow=dupRow;window.openRowCtx=openRowCtx;window.closeRowCtx=closeRowCtx;
 function archiveRow(id){
   const d=db(),r=(d.rows||[]).find(x=>x.id===id);
   if(!r)return;
@@ -4406,7 +4462,7 @@ function codeBlockHTML(bl){
     ? '<textarea class="cb-ta" data-cbid="'+bl.id+'" spellcheck="false" placeholder="Type or paste code...">'+esc(bl.text||'')+'</textarea>'
     : '<pre class="cb-pre" onclick="editCode(\''+bl.id+'\')"><code class="cb-code hljs">'+hlHighlight(bl.text||'',lang)+'</code></pre>';
   return '<div class="bk" data-bid="'+bl.id+'" data-type="code" style="margin-left:'+((bl.indent||0)*24)+'px">'
-    +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u2059</span>'
+    +'<span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u283f</span>'
     +'<div class="cb-wrap">'+bar+body+'</div></div>';
 }
 function editCode(id){
@@ -4819,7 +4875,7 @@ function clearQuick(){const v=activeView();v.filters=[];markDirty();renderDb();}
 function dbGroupedTableHTML(d,v){
   const gp=dbProp(v.groupBy);
   const rows=visibleRows(d);
-  const props=d.props||[];
+  const props=viewProps(d,v);
   const colCount=props.length+2;
   const head='<th style="width:26px"><input type="checkbox" class="selbox" onchange="toggleSelAll(this.checked)" title="Select all shown"></th>'
     +props.map(pr=>{
@@ -4828,7 +4884,7 @@ function dbGroupedTableHTML(d,v){
         +'<span class="thn" onclick="sortBy(\''+pr.id+'\')">'+esc(pr.name)+arrow+'</span>'
         +'<button class="thx" title="Edit property" onclick="openPropEditor(\''+pr.id+'\')">\u22ef</button></th>';
     }).join('')+'<th style="width:64px"></th>';
-  const rowHTML=r=>'<tr'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
+  const rowHTML=r=>'<tr data-rid="'+r.id+'"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' class="row-sel"':'')+'>'
     +'<td><input type="checkbox" class="selbox"'+((typeof rowSelected==='function'&&rowSelected(r.id))?' checked':'')+' onchange="toggleRowSel(\''+r.id+'\',this.checked)"></td>'
     +props.map((pr,ci)=>'<td>'+cellHTML(r,pr,ci===0)+'</td>').join('')
     +'<td class="rowact"><button class="thx" title="Open row" onclick="openRow(\''+r.id+'\')">\u2197</button>'
@@ -4961,7 +5017,7 @@ function aggCompute(t,pr,rows){
 }
 function setAgg(pid,t){var v=activeView();v.aggs=v.aggs||{};if(t)v.aggs[pid]=t;else delete v.aggs[pid];markDirty();renderDb();}
 function aggFootHTML(d,v,rows){
-  var props=d.props||[];
+  var props=viewProps(d,v);
   var cells='<td></td>'+props.map(function(pr){
     var t=(v.aggs||{})[pr.id]||'';
     var opts=aggApplicable(pr).map(function(o){return '<option value="'+o[0]+'"'+(o[0]===t?' selected':'')+'>'+o[1]+'</option>';}).join('');
@@ -4972,7 +5028,7 @@ function aggFootHTML(d,v,rows){
   return '<tfoot><tr class="agg-row">'+cells+'</tr></tfoot>';
 }
 function aggGroupHTML(d,v,rows,colCount){
-  var props=d.props||[];
+  var props=viewProps(d,v);
   if(!props.some(function(pr){return (v.aggs||{})[pr.id];}))return '';
   var cells='<td></td>'+props.map(function(pr){
     var t=(v.aggs||{})[pr.id]||'';
