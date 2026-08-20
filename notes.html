@@ -208,6 +208,18 @@ table.dbt tbody tr.row-sel{background:rgba(13,148,136,.09)}
 .g-ed{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;margin-left:8px;padding:2px 6px;border-radius:5px;opacity:0}
 .g-row:hover .g-ed{opacity:1}
 .g-ed:hover{background:rgba(255,255,255,.08);color:var(--teal)}
+.rem-badge{position:absolute;top:-3px;right:-3px;background:var(--orange);color:#fff;border-radius:8px;font-size:9px;font-weight:700;line-height:14px;height:14px;min-width:14px;padding:0 3px;text-align:center;display:none}
+.rem-h{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin:10px 0 4px}
+.rem-h.ov{color:var(--orange)}
+.rem-i{display:flex;flex-direction:column;gap:1px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;cursor:pointer;background:var(--bg2)}
+.rem-i:hover{border-color:var(--teal)}
+.rem-t{font-weight:600;font-size:13px;color:var(--text)}
+.rem-m{font-size:11px;color:var(--text3)}
+.rem-w{font-size:10.5px;font-weight:700;margin-top:2px}
+.rem-w.ov{color:var(--orange)}.rem-w.td{color:var(--teal)}.rem-w.sn{color:var(--text2)}
+.cm-reply{margin-left:20px;border-left:2px solid var(--border2);padding-left:10px}
+.cm-ri{font-size:11.5px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin:6px 0 4px}
+.cm-ri .cm-a{margin-left:6px}
 .cin.sel{font-weight:600}
 .dbt tfoot td{padding:4px 6px;border-top:1px solid var(--border);background:rgba(13,148,136,.03)}
 .agg-sel{border:none;background:transparent;color:var(--text3);font-size:10.5px;font-family:var(--mono);cursor:pointer;max-width:100px;outline:none}
@@ -575,6 +587,7 @@ table.tb th .tb-c{font-weight:700}
       </div>
       <div class="sp">
         <button id="bell" onclick="openNotifs()" title="Notifications">&#128276;</button>
+        <button class="fav-b" id="remind-btn" onclick="openReminders()" title="Due &amp; overdue tasks" style="position:relative">&#9200;<span class="rem-badge" id="rem-badge"></span></button>
         <button class="fav-b" id="theme-btn" onclick="toggleTheme()" title="Switch theme">&#9789;</button>
         <button class="fav-b" id="wide-btn" onclick="toggleWide()" title="Toggle full width">&#8596;</button>
         <button class="fav-b" id="fav-btn" onclick="toggleFav(S.activeId)" title="Favourite this page">&#9734;</button>
@@ -600,7 +613,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.17';
+const TGK_NOTES_VERSION='v1.19';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -826,6 +839,7 @@ function openPage(id,viaNav){
   var _op=pageById(id);S._snap=_op?JSON.parse(JSON.stringify({t:_op.title,c:_op.content})):null;
   if(typeof refreshNav==='function')refreshNav();
   if(typeof refreshUndo==='function')refreshUndo();
+  if(typeof refreshReminderBadge==='function')refreshReminderBadge();
   if(typeof pushRecent==='function')pushRecent(id);
   if(typeof loadComments==='function')loadComments(id);
   renderTree();renderDoc();
@@ -2316,9 +2330,72 @@ function qsSearch(term){
     if(seen.has(k))return false;seen.add(k);return true;
   }).slice(0,25);
 }
+/* ---------- due-date reminders ---------- */
+function _isRowDone(d,r){
+  var props=(d.props||[]);
+  for(var i=0;i<props.length;i++){
+    var p=props[i],v=(r.cells||{})[p.id];
+    if(p.type==='select'&&/^(done|complete|completed|closed|shipped|cancelled|canceled)$/i.test(String(v||'').trim()))return true;
+    if(p.type==='check'&&/done|complete|ship/i.test(p.name||'')&&(v===true||v==='true'))return true;
+  }
+  return false;
+}
+function collectReminders(){
+  var today=new Date();today.setHours(0,0,0,0);
+  var out={overdue:[],today:[],soon:[]};
+  (S.pages||[]).forEach(function(p){
+    if(!isDb(p))return;
+    var d=p.content||{};
+    var dateProps=(d.props||[]).filter(function(x){return x.type==='date';});
+    if(!dateProps.length)return;
+    var first=(d.props||[])[0];
+    (d.rows||[]).forEach(function(r){
+      if(r.archived)return;
+      if(_isRowDone(d,r))return;
+      dateProps.forEach(function(dp){
+        var raw=String((r.cells||{})[dp.id]||'').slice(0,10);
+        if(!raw)return;
+        var dt=new Date(raw+'T00:00:00');if(isNaN(dt.getTime()))return;
+        var diff=Math.round((dt-today)/86400000);
+        if(diff>7)return;
+        var item={pageId:p.id,rowId:r.id,title:first?String((r.cells||{})[first.id]||'Untitled'):'Row',db:p.title||'Untitled',date:raw,prop:dp.name,diff:diff};
+        if(diff<0)out.overdue.push(item);else if(diff===0)out.today.push(item);else out.soon.push(item);
+      });
+    });
+  });
+  var by=function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;};
+  out.overdue.sort(by);out.today.sort(by);out.soon.sort(by);
+  return out;
+}
+function reminderCount(){var r=collectReminders();return r.overdue.length+r.today.length;}
+function refreshReminderBadge(){
+  var b=document.getElementById('rem-badge');if(!b)return;
+  var n=reminderCount();
+  if(n>0){b.textContent=n>99?'99+':String(n);b.style.display='';}else{b.style.display='none';}
+}
+function gotoReminder(pid,rid){nxClose();openPage(pid);S.rowEdit=rid;setTimeout(function(){try{renderDb();}catch(e){}},40);}
+function openReminders(){
+  var r=collectReminders();
+  function sec(title,items,cls){
+    if(!items.length)return '';
+    return '<div class="rem-h '+cls+'">'+title+' ('+items.length+')</div>'
+      +items.map(function(it){
+        var when=it.diff<0?(Math.abs(it.diff)+'d overdue'):it.diff===0?'today':('in '+it.diff+'d');
+        return '<div class="rem-i" onclick="gotoReminder(\''+it.pageId+'\',\''+it.rowId+'\')">'
+          +'<span class="rem-t">'+esc(it.title)+'</span>'
+          +'<span class="rem-m">'+esc(it.db)+' \u00b7 '+esc(it.prop)+' '+esc(it.date)+'</span>'
+          +'<span class="rem-w '+cls+'">'+when+'</span></div>';
+      }).join('');
+  }
+  var body=sec('Overdue',r.overdue,'ov')+sec('Today',r.today,'td')+sec('Next 7 days',r.soon,'sn');
+  if(!body)body='<div class="nx-hint" style="padding:14px 2px">Nothing due in the next 7 days. Add a Date property to a database and set due dates to see reminders here. Rows marked Done are skipped.</div>';
+  nxModal('Reminders',body,'<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
+}
+window.collectReminders=collectReminders;window.reminderCount=reminderCount;window.refreshReminderBadge=refreshReminderBadge;window.openReminders=openReminders;window.gotoReminder=gotoReminder;
 function paletteCommands(){
   var C=[];
   function add(key,icon,label,fn){C.push({key:key,icon:icon,label:label,run:fn});}
+  add('reminders due overdue tasks','\u23f0','Reminders',function(){if(typeof openReminders==='function')openReminders();});
   add('new page','+','New page',function(){if(typeof newPage==='function')newPage(null,'doc');});
   add('new database','\u25a6','New database',function(){if(typeof newPage==='function')newPage(null,'db');});
   add('new projects tasks','\u2611','New Projects & Tasks',function(){if(typeof newTasksDb==='function')newTasksDb();});
@@ -3904,34 +3981,51 @@ function openComments(bid){
       '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>');
     return;
   }
-  S._cmBlock=bid;
+  S._cmBlock=bid;S._cmReplyTo=null;
   const bl=blocks()[blockIndex(bid)];
   const quoted=bl?((typeof blockPlain==='function')?blockPlain(bl.text):bl.text||''):'';
   nxModal('Comments',
     (quoted?'<div class="cm-q">'+esc(quoted.slice(0,140))+'</div>':'')
     +'<div id="cm-list"></div>'
+    +'<div id="cm-reply-ind" class="cm-ri" style="display:none"></div>'
     +'<label class="nx-l">Add a comment</label>'
     +'<textarea id="cm-new" class="nx-i" style="height:70px;resize:vertical" placeholder="Write a comment..."></textarea>',
     '<label class="cm-sr"><input type="checkbox" id="cm-showres" onchange="drawComments()"> Show resolved</label>'
     +'<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Close</button>'
     +'<button class="nx-b primary" onclick="addComment()">Comment</button>');
-  drawComments();
+  drawComments();updateReplyInd();
   setTimeout(()=>{const f=document.getElementById('cm-new');if(f)f.focus();},40);
+}
+function _cmHTML(c,isReply){
+  return '<div class="cm'+(c.resolved?' done':'')+(isReply?' cm-reply':'')+'">'
+    +'<div class="cm-h"><b>'+esc(String(c.author||'someone').split('@')[0])+'</b>'
+    +'<span class="cm-t">'+esc((typeof verWhen==='function')?verWhen(c.created_at):'')+'</span>'
+    +(isReply?'':'<button class="cm-a" onclick="replyTo(\''+c.id+'\')">Reply</button>')
+    +'<button class="cm-a" onclick="resolveComment(\''+c.id+'\','+(c.resolved?'false':'true')+')">'+(c.resolved?'Reopen':'Resolve')+'</button>'
+    +'<button class="cm-a danger" onclick="deleteComment(\''+c.id+'\')">Delete</button></div>'
+    +'<div class="cm-b">'+esc(c.body||'')+'</div></div>';
 }
 function drawComments(){
   const showRes=!!(document.getElementById('cm-showres')||{}).checked;
-  const list=commentsFor(S._cmBlock,showRes);
+  const all=commentsFor(S._cmBlock,showRes);
   const l=document.getElementById('cm-list');
   if(!l)return;
-  l.innerHTML=list.map(c=>
-    '<div class="cm'+(c.resolved?' done':'')+'">'
-    +'<div class="cm-h"><b>'+esc(String(c.author||'someone').split('@')[0])+'</b>'
-    +'<span class="cm-t">'+esc((typeof verWhen==='function')?verWhen(c.created_at):'')+'</span>'
-    +'<button class="cm-a" onclick="resolveComment(\''+c.id+'\','+(c.resolved?'false':'true')+')">'
-      +(c.resolved?'Reopen':'Resolve')+'</button>'
-    +'<button class="cm-a danger" onclick="deleteComment(\''+c.id+'\')">Delete</button></div>'
-    +'<div class="cm-b">'+esc(c.body||'')+'</div></div>').join('')
-    ||'<div class="nx-hint">No comments on this block yet.</div>';
+  const tops=all.filter(function(c){return !c.parent_id;});
+  l.innerHTML=tops.map(function(c){
+    var reps=all.filter(function(x){return x.parent_id===c.id;});
+    return _cmHTML(c,false)+reps.map(function(rc){return _cmHTML(rc,true);}).join('');
+  }).join('')||'<div class="nx-hint">No comments on this block yet.</div>';
+  updateReplyInd();
+}
+function replyTo(id){S._cmReplyTo=id;updateReplyInd();var f=document.getElementById('cm-new');if(f)f.focus();}
+function cancelReply(){S._cmReplyTo=null;updateReplyInd();}
+function updateReplyInd(){
+  var el=document.getElementById('cm-reply-ind');if(!el)return;
+  if(!S._cmReplyTo){el.style.display='none';el.innerHTML='';return;}
+  var c=(S.comments||[]).find(function(x){return x.id===S._cmReplyTo;});
+  var who=c?String(c.author||'someone').split('@')[0]:'comment';
+  el.style.display='';
+  el.innerHTML='Replying to <b>'+esc(who)+'</b> <button class="cm-a" onclick="cancelReply()">cancel</button>';
 }
 async function addComment(){
   const t=document.getElementById('cm-new');
@@ -3939,16 +4033,27 @@ async function addComment(){
   if(!body){toast('Write something first');return;}
   const p=curPage();
   if(!p)return;
+  const base={page_id:p.id,block_id:S._cmBlock,body:body,author:S.user?S.user.email:null};
+  const payload=S._cmReplyTo?Object.assign({parent_id:S._cmReplyTo},base):base;
   try{
-    const{data,error}=await sb.from('wiki_comments').insert({
-      page_id:p.id,block_id:S._cmBlock,body:body,
-      author:S.user?S.user.email:null}).select().single();
+    const{data,error}=await sb.from('wiki_comments').insert(payload).select().single();
     if(error)throw error;
     S.comments=(S.comments||[]).concat([data]);
-    if(t)t.value='';
+    if(t)t.value='';S._cmReplyTo=null;
     drawComments();paintCommentPins();
   }catch(e){
     const m=String(e.message||e);
+    if(S._cmReplyTo&&/parent_id/i.test(m)){
+      try{
+        const r2=await sb.from('wiki_comments').insert(base).select().single();
+        if(r2.error)throw r2.error;
+        S.comments=(S.comments||[]).concat([r2.data]);
+        if(t)t.value='';S._cmReplyTo=null;
+        drawComments();paintCommentPins();
+        toast('Posted, but replies need a one-time migration to thread. See the note.',7000);
+      }catch(e2){toast('Could not add: '+(e2.message||e2),8000);}
+      return;
+    }
     if(/does not exist|schema cache/i.test(m)){S._cmMissing=true;nxClose();openComments(S._cmBlock);}
     else toast('Could not add the comment: '+m,8000);
   }
@@ -3971,6 +4076,7 @@ async function deleteComment(id){
     drawComments();paintCommentPins();
   }catch(e){toast('Could not delete: '+(e.message||e),8000);}
 }
+window.replyTo=replyTo;window.cancelReply=cancelReply;window.updateReplyInd=updateReplyInd;
 function commentBadge(){
   const open=(S.comments||[]).filter(c=>!c.resolved).length;
   return open?('<span class="fbadge">'+open+'</span>'):'';
