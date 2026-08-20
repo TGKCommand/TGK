@@ -318,6 +318,7 @@ tr.rw-below td{box-shadow:inset 0 -2px 0 var(--teal)}
 .tr-n{flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 a.mention{color:var(--teal-d);background:var(--teal-dim);border-radius:3px;padding:0 3px;cursor:pointer;text-decoration:none;font-weight:600}
 a.mention:hover{background:rgba(13,148,136,.18)}
+a.mention::before{content:"\01F4C4";margin-right:3px;font-size:.92em}
 .bl-wrap{margin-top:34px;padding-top:14px;border-top:1px solid var(--border)}
 .bl-h{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
 .bl-i{display:inline-block;font-size:12.5px;color:var(--text2);background:var(--bg3);border-radius:var(--r);padding:4px 9px;margin:0 6px 6px 0;cursor:pointer;text-decoration:none}
@@ -432,6 +433,9 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 .tx-gray,.tx-grey{color:#787774}.tx-brown{color:#9f6b53}.tx-orange{color:#cc782f}
 .tx-yellow{color:#c29343}.tx-green{color:#548164}.tx-blue{color:#477da5}
 .tx-purple{color:#8a67ab}.tx-pink{color:#b4497f}.tx-red{color:#d44c47}
+.fs-sm{font-size:.82em}.fs-lg{font-size:1.3em}.fs-xl{font-size:1.7em}
+.ff-serif{font-family:Georgia,'Times New Roman',serif}.ff-mono{font-family:var(--mono)}
+.fp-fa{display:inline-block;width:24px;text-align:center;margin-right:8px;color:var(--text2)}
 .bg-gray{background:#f1f0ef}.bg-brown{background:#f3eeee}.bg-orange{background:#faebdd}
 .bg-yellow{background:#fbf3db}.bg-green{background:#eef3ed}.bg-blue{background:#e7f3f8}
 .bg-purple{background:#f6f3f9}.bg-pink{background:#faf1f5}.bg-red{background:#fdebec}
@@ -637,7 +641,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.42';
+const TGK_NOTES_VERSION='v1.44';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1168,7 +1172,15 @@ document.addEventListener('paste',e=>{
   const txt=(e.clipboardData||window.clipboardData).getData('text/plain')||'';
   if(t.classList.contains('doc-title')){document.execCommand('insertText',false,txt.replace(/\n/g,' '));return;}
   const lines=txt.split(/\r?\n/);
-  if(lines.length<2){document.execCommand('insertText',false,txt);return;}
+  if(lines.length<2){
+    var _one=txt.trim(),_sel=window.getSelection();
+    if(/^https?:\/\/\S+$/i.test(_one)){
+      if(_sel&&!_sel.isCollapsed){document.execCommand('createLink',false,_one);}
+      else{var _safe=_one.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});document.execCommand('insertHTML',false,'<a href="'+_safe+'" target="_blank" rel="noopener">'+_safe+'</a>');}
+      return;
+    }
+    document.execCommand('insertText',false,txt);return;
+  }
   const host=t.closest('.bk'),id=host.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
   b[i].text=(b[i].text||'')+lines[0];
   let at=i;
@@ -1996,6 +2008,14 @@ function backlinksHTML(pageId){
 document.addEventListener('click',e=>{
   const m=e.target.closest&&e.target.closest('.mention');
   if(m){e.preventDefault();e.stopPropagation();const id=m.getAttribute('data-pid');if(id)openPage(id);}
+},true);
+document.addEventListener('click',function(e){
+  var a=e.target.closest&&e.target.closest('a[href]');
+  if(!a||(a.classList&&a.classList.contains('mention')))return;
+  if(!(a.closest('.bk-t')||a.closest('.tb-c')||a.closest('figcaption')))return;
+  var href=a.getAttribute('href')||'';
+  if(!/^https?:\/\//i.test(href))return;
+  e.preventDefault();window.open(href,'_blank','noopener');
 },true);
 
 /* @ picker inside the editor */
@@ -3777,7 +3797,7 @@ function cleanInlineHTML(html){
         const n=a.name.toLowerCase();
         // 'person' must survive: an @teammate chip is a span carrying that class, and
         // stripping it on the next keystroke would silently un-style every mention.
-        const keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^(tx-|bg-|person$)/.test(a.value));
+        const keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^(tx-|bg-|fs-|ff-|person$)/.test(a.value));
         if(!keep)ch.removeAttribute(a.name);
       });
       if(tag==='A'){
@@ -3820,6 +3840,7 @@ function fmtBar(){
     +'<button onmousedown="event.preventDefault()" onclick="fmtCode()" title="Inline code">&lt;/&gt;</button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtMark()" title="Highlight"><span class="hl">H</span></button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtLink()" title="Link">&#128279;</button>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmtFontMenu(this)" title="Font and size" style="font-weight:700">Aa</button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtColorMenu(this)" title="Text colour"><span style="border-bottom:2px solid #cc782f;line-height:1">A</span></button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtClear()" title="Clear formatting">&#10005;</button>';
   document.body.appendChild(el);
@@ -3908,6 +3929,45 @@ function clearInlineColor(range){
   });
 }
 /* Wrap the current selection in a colour span (or clear, when cls is empty). */
+function stripInlineClass(range,prefix){
+  if(!_fmtEl)return;
+  var spans=Array.prototype.slice.call(_fmtEl.querySelectorAll('span'));
+  spans.forEach(function(sp){
+    var hit=true;if(range){try{hit=range.intersectsNode(sp);}catch(_e){hit=true;}}
+    if(!hit)return;
+    var keep=(sp.className||'').split(/\s+/).filter(function(c){return c&&c.indexOf(prefix)!==0;});
+    if(keep.length)sp.className=keep.join(' ');
+    else{while(sp.firstChild)sp.parentNode.insertBefore(sp.firstChild,sp);sp.remove();}
+  });
+}
+function applyInlineFont(cls){
+  var sel=window.getSelection();
+  if(!sel||!sel.rangeCount||sel.isCollapsed){closeFmtPop();return;}
+  var range=sel.getRangeAt(0);
+  var prefix=cls?(cls.split('-')[0]+'-'):null;
+  if(prefix)stripInlineClass(range,prefix);
+  if(cls&&cls.indexOf('-default')<0){
+    var span=document.createElement('span');span.className=cls;
+    try{range.surroundContents(span);}
+    catch(_e){try{span.appendChild(range.extractContents());range.insertNode(span);}catch(__e){}}
+  }
+  syncFmt();closeFmtPop();hideFmt();
+}
+function fmtFontMenu(btn){
+  closeFmtPop();
+  var items=[{h:'Size'},{cls:'fs-default',label:'Normal'},{cls:'fs-sm',label:'Small'},{cls:'fs-lg',label:'Large'},{cls:'fs-xl',label:'Huge'},
+             {h:'Font'},{cls:'ff-default',label:'Sans (default)'},{cls:'ff-serif',label:'Serif'},{cls:'ff-mono',label:'Mono'}];
+  var el=document.createElement('div');el.id='fmtpop';
+  el.innerHTML=items.map(function(it){
+    if(it.h)return '<div class="fp-h">'+esc(it.h)+'</div>';
+    return '<div class="fp-i" onmousedown="event.preventDefault()" onclick="applyInlineFont(\''+it.cls+'\')"><span class="fp-fa '+it.cls+'">Aa</span>'+esc(it.label)+'</div>';
+  }).join('');
+  document.body.appendChild(el);
+  var r=btn.getBoundingClientRect();
+  el.style.left=Math.max(8,Math.min(r.left,window.innerWidth-184))+'px';
+  el.style.top=Math.min(r.bottom+6,window.innerHeight-Math.min(el.offsetHeight||260,300)-8)+'px';
+}
+window.applyInlineFont=applyInlineFont;window.fmtFontMenu=fmtFontMenu;window.stripInlineClass=stripInlineClass;
 function applyInlineColor(cls){
   var sel=window.getSelection();
   if(!sel||!sel.rangeCount||sel.isCollapsed){closeFmtPop();return;}
