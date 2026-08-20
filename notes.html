@@ -124,12 +124,12 @@ input,select,textarea{font-family:inherit}
 .col-row{display:flex;gap:0;align-items:flex-start;margin:2px 0}
 .col{flex:1 1 0;min-width:0}
 .col>.bk{margin-left:0!important}
-.col-row .col{padding:3px 5px;border-radius:7px;transition:box-shadow .12s}
-.col-row:hover .col{box-shadow:inset 0 0 0 1px var(--border)}
-.col-row .col:hover{box-shadow:inset 0 0 0 1px var(--border2)}
-.col-rz{flex:0 0 22px;align-self:stretch;cursor:col-resize;position:relative}
-.col-rz::before{content:'';position:absolute;left:50%;transform:translateX(-50%);top:2px;bottom:2px;width:3px;border-radius:3px;background:transparent;transition:background .1s}
-.col-rz:hover::before{background:var(--teal)}
+.col-row{gap:14px}
+.col-row .col{padding:10px 14px;border-radius:9px;background:rgba(13,148,136,.045);box-shadow:inset 0 0 0 1px var(--border);transition:box-shadow .12s,background .12s}
+.col-row .col:hover{box-shadow:inset 0 0 0 1px var(--teal);background:rgba(13,148,136,.075)}
+.col-rz{flex:0 0 8px;align-self:stretch;cursor:col-resize;position:relative}
+.col-rz::before{content:'';position:absolute;left:50%;transform:translateX(-50%);top:8px;bottom:8px;width:2px;border-radius:3px;background:var(--border2);transition:background .1s,width .1s}
+.col-rz:hover::before{background:var(--teal);width:4px}
 .bk.col-left{box-shadow:inset 3px 0 0 var(--teal);border-radius:4px}
 .bk.col-right{box-shadow:inset -3px 0 0 var(--teal);border-radius:4px}
 @media(max-width:720px){.col-row{flex-direction:column;gap:0}.col-rz{display:none}}
@@ -290,10 +290,10 @@ table.dbt tbody tr.row-sel{background:rgba(13,148,136,.09)}
 .rpn{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);border-top:1px solid var(--border);padding-top:10px;margin-bottom:4px}
 
 .nx-overlay,#nx-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
-.nx-box{background:#fff;border-radius:var(--r-lg);width:470px;max-width:94vw;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(14,20,24,.22)}
-.nx-title{font-size:14px;font-weight:800;padding:16px 18px 10px}
-.nx-body{padding:0 18px 6px;overflow-y:auto}
-.nx-foot{display:flex;gap:8px;align-items:center;padding:12px 18px 16px;border-top:1px solid var(--border);margin-top:10px}
+.nx-box{background:#fff;border-radius:var(--r-lg);width:470px;max-width:94vw;max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 48px rgba(14,20,24,.22)}
+.nx-title{font-size:14px;font-weight:800;padding:16px 18px 10px;flex-shrink:0}
+.nx-body{padding:0 18px 6px;overflow-y:auto;flex:1 1 auto;min-height:0}
+.nx-foot{display:flex;gap:8px;align-items:center;padding:12px 18px 16px;border-top:1px solid var(--border);margin-top:10px;flex-shrink:0}
 .nx-l{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin:10px 0 4px}
 .nx-i{width:100%;padding:7px 9px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;background:#fff;outline:none;font-family:inherit}
 .nx-i:focus{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-dim)}
@@ -624,7 +624,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.33';
+const TGK_NOTES_VERSION='v1.36';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -5167,7 +5167,7 @@ function _parseDelimited(text,delim){
   if(out.length&&out[out.length-1].length===1&&out[out.length-1][0]==='')out.pop();
   return out;
 }
-function parseImport(text){
+function parseImport(text,prefKey){
   text=(text||'').replace(/^\uFEFF/,'').trim();
   if(!text)return null;
   if(text.charAt(0)==='['||text.charAt(0)==='{'){
@@ -5175,7 +5175,8 @@ function parseImport(text){
       var j=JSON.parse(text);
       var arr=Array.isArray(j)?j:null;
       if(!arr&&j&&typeof j==='object'){
-        if(Array.isArray(j.data))arr=j.data;
+        if(prefKey&&Array.isArray(j[prefKey]))arr=j[prefKey];
+        else if(Array.isArray(j.data))arr=j.data;
         else{var _ak=Object.keys(j).filter(function(k){return Array.isArray(j[k])&&j[k].length&&typeof j[k][0]==='object'&&j[k][0]!==null;});_ak.sort(function(a,c){return j[c].length-j[a].length;});if(_ak.length)arr=j[_ak[0]];}
       }
       if(arr){
@@ -5226,13 +5227,23 @@ function buildDbFromParsed(parsed){
   });
   return {props:props,rows:rows};
 }
+function jsonArrays(text){
+  text=(text||'').trim();if(text.charAt(0)!=='{')return null;
+  try{var j=JSON.parse(text);if(!j||typeof j!=='object'||Array.isArray(j))return null;
+    var ks=Object.keys(j).filter(function(k){return Array.isArray(j[k])&&j[k].length&&typeof j[k][0]==='object'&&j[k][0]!==null;});
+    var out=ks.map(function(k){return {key:k,count:j[k].length};});
+    out.sort(function(a,b){return b.count-a.count;});
+    return out;
+  }catch(e){return null;}
+}
 function openDataImport(){
   nxModal('Import data as a database',
     '<label class="nx-l">Database name</label>'
     +'<input id="di-name" class="nx-i" value="Imported data" placeholder="e.g. Facebook Groups">'
     +'<label class="nx-l">Paste CSV, TSV, or JSON</label>'
     +'<textarea id="di-data" class="nx-i" style="height:190px;font-family:var(--mono);font-size:11.5px" placeholder="Group,URL,Members,Active\nJDM Owners,https://facebook.com/groups/...,3200,yes"></textarea>'
-    +'<div class="nx-hint">First row = column names (CSV / TSV). JSON = an array of objects. Types (number, date, checkbox, URL, select) are detected automatically.</div>'
+    +'<div id="di-arraywrap" style="display:none"><label class="nx-l">Which list to import?</label><select id="di-array" class="nx-i" onchange="previewImport()"></select></div>'
+    +'<div class="nx-hint">First row = column names (CSV / TSV). JSON = an array of objects, or an object containing lists (you can pick which). Types (number, date, checkbox, URL, select) are detected automatically.</div>'
     +'<div id="di-prev" class="nx-hint" style="margin-top:4px"></div>',
     '<span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Cancel</button>'
     +'<button class="nx-b" onclick="previewImport()">Preview</button>'
@@ -5241,15 +5252,22 @@ function openDataImport(){
 }
 function previewImport(){
   var el=document.getElementById('di-prev');if(!el)return;
-  var parsed=parseImport((document.getElementById('di-data')||{}).value||'');
+  var raw=(document.getElementById('di-data')||{}).value||'';
+  var arrs=jsonArrays(raw),wrap=document.getElementById('di-arraywrap'),sel=document.getElementById('di-array');
+  if(arrs&&arrs.length>1&&wrap&&sel){var cur=sel.value;sel.innerHTML=arrs.map(function(a){return '<option value="'+esc(a.key)+'"'+(a.key===cur?' selected':'')+'>'+esc(a.key)+' ('+a.count+' rows)</option>';}).join('');wrap.style.display='';}else if(wrap){wrap.style.display='none';}
+  var pref=(arrs&&arrs.length>1&&sel)?sel.value:null;
+  var parsed=parseImport(raw,pref);
   if(!parsed||!parsed.cols.length){el.textContent='Nothing to import yet.';return;}
   var built=buildDbFromParsed(parsed);
   el.innerHTML='<b>'+built.rows.length+'</b> rows, <b>'+built.props.length+'</b> columns: '
     +built.props.map(function(p){return esc(p.name)+' ('+p.type+')';}).join(', ');
 }
 async function runDataImport(){
-  var name=((document.getElementById('di-name')||{}).value||'').trim()||'Imported data';
-  var parsed=parseImport((document.getElementById('di-data')||{}).value||'');
+  var raw=(document.getElementById('di-data')||{}).value||'';
+  var arrs=jsonArrays(raw),sel=document.getElementById('di-array');
+  var pref=(arrs&&arrs.length>1&&sel)?sel.value:null;
+  var name=((document.getElementById('di-name')||{}).value||'').trim()||(pref||'Imported data');
+  var parsed=parseImport(raw,pref);
   if(!parsed||!parsed.cols.length){toast('Paste some CSV, TSV, or JSON first');return;}
   var built=buildDbFromParsed(parsed);
   var content={props:built.props,rows:built.rows,views:[{id:uid(),name:'Table',kind:'table',groupBy:null,filters:[]}],activeView:0,sort:null};
@@ -5263,7 +5281,7 @@ async function runDataImport(){
     toast('\u2713 Imported '+built.rows.length+' rows');
   }catch(e){toast(writeErr(e,'create the database'),9000);}
 }
-window.openImportChooser=openImportChooser;window.openDataImport=openDataImport;window.previewImport=previewImport;window.runDataImport=runDataImport;window.parseImport=parseImport;window.buildDbFromParsed=buildDbFromParsed;
+window.openImportChooser=openImportChooser;window.openDataImport=openDataImport;window.previewImport=previewImport;window.runDataImport=runDataImport;window.parseImport=parseImport;window.buildDbFromParsed=buildDbFromParsed;window.jsonArrays=jsonArrays;
 
 
 </script>
