@@ -226,6 +226,9 @@ tr.rw-below td{box-shadow:inset 0 -2px 0 var(--teal)}
 .dbt th[draggable]{cursor:grab}
 .vp-row{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;cursor:pointer}
 .vp-note{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.au-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)}
+.au-main{flex:1;min-width:0}.au-n{font-size:13px;font-weight:600}.au-d{font-size:11px;color:var(--text3);margin-top:1px}
+.au-sep{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin:13px 0 3px}
 .dbt th.col-dz{box-shadow:inset 3px 0 0 var(--teal)}
 .g-ed{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;margin-left:8px;padding:2px 6px;border-radius:5px;opacity:0}
 .g-row:hover .g-ed{opacity:1}
@@ -647,7 +650,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.46';
+const TGK_NOTES_VERSION='v1.47';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1452,6 +1455,7 @@ function renderDb(){
     +'<input class="dbq" placeholder="Search rows..." value="'+esc(S.dbq||'')+'" oninput="S.dbq=this.value;renderDb()">'
     +'<button class="btn btn-sm" onclick="openFilterEditor()">Filter'+(((v.filters||[]).length)?('<span class="fbadge">'+v.filters.length+'</span>'):'')+'</button>'
     +'<button class="btn btn-sm" onclick="openDbArchive()" title="Archived rows">Archive'+(((d.rows||[]).some(r=>r.archived))?('<span class="fbadge">'+(d.rows||[]).filter(r=>r.archived).length+'</span>'):'')+'</button>'
+    +'<button class="btn btn-sm" onclick="openAutomations()">\u26a1 Automations</button>'
     +'<button class="btn btn-sm" onclick="openViewProps()">Columns</button>'
     +'<button class="btn btn-sm" onclick="openPropEditor()">+ Property</button>'
     +'<button class="btn btn-sm btn-primary" onclick="addRow()">+ Row</button></div>'
@@ -1628,9 +1632,80 @@ function setCell(rid,pid,val){
   if(!r)return;
   r.cells=r.cells||{};r.cells[pid]=val;
   markDirty();
+  if(typeof runAutomations==='function')runAutomations(r,pid,val);
   const pr=dbProp(pid);
   if(pr&&(pr.type==='select'||pr.type==='multi'))renderDb();
 }
+function runAutomations(r,pid,val){
+  var d=db(),autos=d.automations||[],changed=false;
+  autos.forEach(function(a){
+    if(!a.active||a.tprop!==pid)return;
+    if(String(a.tval||'')!==String(val==null?'':val))return;
+    if(a.aprop){r.cells=r.cells||{};r.cells[a.aprop]=a.aval;changed=true;}
+    if(a.notify){try{notify(a.notify,'automation',(a.name||'Automation')+': '+((dbProp(pid)||{}).name||'field')+' set to '+val,null);}catch(e){}}
+  });
+  if(changed){markDirty();renderDb();}
+}
+function openAutomations(){
+  var d=db(),autos=d.automations||[];
+  var list=autos.map(function(a){
+    var tp=dbProp(a.tprop),ap=a.aprop?dbProp(a.aprop):null;
+    var desc='When '+(tp?esc(tp.name):'?')+' = '+esc(a.tval||'')+' \u2192 '+(ap?('set '+esc(ap.name)+' = '+esc(a.aval||'')):'')+(a.notify?((ap?', ':'')+'notify '+esc(a.notify)):'');
+    return '<div class="au-row"><input type="checkbox"'+(a.active?' checked':'')+' onchange="toggleAutomation(\''+a.id+'\',this.checked)">'
+      +'<div class="au-main"><div class="au-n">'+esc(a.name||'Automation')+'</div><div class="au-d">'+desc+'</div></div>'
+      +'<button class="nx-b sm" onclick="openAutomationEditor(\''+a.id+'\')">Edit</button>'
+      +'<button class="nx-b sm danger" onclick="deleteAutomation(\''+a.id+'\')">Delete</button></div>';
+  }).join('')||'<div class="nx-hint">No automations yet.</div>';
+  nxModal('Automations',
+    '<div class="nx-hint">When a property changes, automatically set another property or send a notification. Runs while this app is open.</div>'+list,
+    '<button class="nx-b" onclick="openAutomationEditor(null)">+ New automation</button><span style="flex:1"></span><button class="nx-b primary" onclick="nxClose()">Done</button>');
+}
+function openAutomationEditor(id){
+  var d=db();
+  var selprops=(d.props||[]).filter(function(p){return p.type==='select';});
+  if(!selprops.length){toast('Add a Select property first - automations trigger on it');return;}
+  var a=id?(d.automations||[]).find(function(x){return x.id===id;}):null;
+  var editing=!!a; if(!a)a={id:uid(),name:'',active:true,tprop:selprops[0].id,tval:'',aprop:'',aval:'',notify:''};
+  window._auEdit=JSON.parse(JSON.stringify(a));
+  var selOpts=function(sel){return selprops.map(function(p){return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+esc(p.name)+'</option>';}).join('');};
+  var allOpts=function(sel){return '<option value="">\u2014 none \u2014</option>'+(d.props||[]).map(function(p){return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+esc(p.name)+'</option>';}).join('');};
+  nxModal(editing?'Edit automation':'New automation',
+    '<label class="nx-l">Name</label><input id="au-name" class="nx-i" value="'+esc(a.name||'')+'" placeholder="e.g. On Blocked, notify me">'
+    +'<div class="au-sep">When</div>'
+    +'<label class="nx-l">This property</label><select id="au-tprop" class="nx-i" onchange="auTvalOptions()">'+selOpts(a.tprop)+'</select>'
+    +'<label class="nx-l">is set to</label><select id="au-tval" class="nx-i"></select>'
+    +'<div class="au-sep">Then</div>'
+    +'<label class="nx-l">Set property (optional)</label><select id="au-aprop" class="nx-i">'+allOpts(a.aprop)+'</select>'
+    +'<label class="nx-l">to value</label><input id="au-aval" class="nx-i" value="'+esc(a.aval||'')+'">'
+    +'<label class="nx-l">Notify (email, optional)</label><input id="au-notify" class="nx-i" value="'+esc(a.notify||'')+'" placeholder="teammate@tgkmotorsport.com">',
+    '<span style="flex:1"></span><button class="nx-b" onclick="openAutomations()">Cancel</button><button class="nx-b primary" onclick="saveAutomation()">Save</button>');
+  setTimeout(function(){auTvalOptions(true);},20);
+}
+function auTvalOptions(initial){
+  var tp=dbProp((document.getElementById('au-tprop')||{}).value);
+  var sel=document.getElementById('au-tval');if(!sel)return;
+  var cur=initial?((window._auEdit||{}).tval||''):sel.value;
+  sel.innerHTML=((tp&&tp.options)||[]).map(function(o){return '<option value="'+esc(o.v)+'"'+(o.v===cur?' selected':'')+'>'+esc(o.v)+'</option>';}).join('')||'<option value="">(no options)</option>';
+}
+function saveAutomation(){
+  var d=db();d.automations=d.automations||[];
+  var e=window._auEdit||{};
+  var a={id:e.id||uid(),active:(e.active!==false),
+    name:((document.getElementById('au-name')||{}).value||'').trim()||'Automation',
+    tprop:(document.getElementById('au-tprop')||{}).value||'',
+    tval:(document.getElementById('au-tval')||{}).value||'',
+    aprop:(document.getElementById('au-aprop')||{}).value||'',
+    aval:((document.getElementById('au-aval')||{}).value||''),
+    notify:((document.getElementById('au-notify')||{}).value||'').trim()};
+  if(!a.tprop){toast('Pick a trigger property');return;}
+  var idx=d.automations.findIndex(function(x){return x.id===a.id;});
+  if(idx>=0)d.automations[idx]=a;else d.automations.push(a);
+  markDirty();openAutomations();
+}
+function toggleAutomation(id,on){var d=db(),a=(d.automations||[]).find(function(x){return x.id===id;});if(a){a.active=!!on;markDirty();}}
+function deleteAutomation(id){var d=db();d.automations=(d.automations||[]).filter(function(x){return x.id!==id;});markDirty();openAutomations();}
+window.runAutomations=runAutomations;window.openAutomations=openAutomations;window.openAutomationEditor=openAutomationEditor;
+window.auTvalOptions=auTvalOptions;window.saveAutomation=saveAutomation;window.toggleAutomation=toggleAutomation;window.deleteAutomation=deleteAutomation;
 function addProp(){
   const name=prompt('Property name:','New property');
   if(!name)return;
