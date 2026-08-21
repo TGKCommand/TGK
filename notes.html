@@ -150,9 +150,8 @@ body.dark .btn:not(.btn-primary):hover{background:#2e3235;border-color:#3c4145}
 .bk[data-type=quote]{border-left:3px solid var(--border2);padding:1px 0 1px 14px;margin:4px 0}
 .bk[data-type=quote] .bk-t{color:var(--text2);font-style:italic}
 .bk[data-type=callout]{background:var(--teal-dim);border-radius:var(--r-lg);padding:11px 14px;margin:6px 0}
-.bk[data-type=code]{background-color:var(--cb-c);background-image:var(--cb-i);background-size:100% 100%,100% 100%,100% 100%,auto 150px;
-  border-radius:var(--r-lg);padding:11px 13px;margin:6px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
-.bk[data-type=code] .bk-t{font-family:var(--mono);font-size:12.5px;color:#E4E9EC;white-space:pre-wrap;line-height:1.6;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.bk[data-type=code]{background:#1b1e23;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:12px 14px;margin:6px 0}
+.bk[data-type=code] .bk-t{font-family:var(--mono);font-size:12.5px;color:#e4e9ec;white-space:pre-wrap;line-height:1.6}
 .bk[data-type=code] .bk-handle{color:#5a6570}
 .cb-wrap{flex:1;min-width:0}
 .cb-bar{display:flex;align-items:center;gap:6px;margin:0 0 5px}
@@ -328,6 +327,11 @@ tr.rw-below td{box-shadow:inset 0 -2px 0 var(--teal)}
 .nx-b.primary{background:var(--orange);border-color:var(--orange);color:#fff}
 .nx-b.danger{color:var(--red);border-color:rgba(220,38,38,.35)}
 .nx-b.sm{padding:4px 9px;font-size:11.5px;margin-top:7px}
+.dm-list{max-height:190px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);padding:4px;margin-bottom:2px}
+.dm-o{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);cursor:pointer;font-size:13px}
+.dm-o:hover{background:var(--bg2)}
+.dm-o .dm-e{margin-left:auto;font-size:11px;color:var(--text3);font-family:var(--mono)}
+textarea.nx-i{resize:vertical;min-height:74px;line-height:1.5}
 .nx-hint{font-size:11px;color:var(--text3);margin:7px 0}
 .pe-opt{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .pe-sw{width:22px;height:22px;border-radius:4px;border:1px solid var(--border2);cursor:pointer;flex-shrink:0}
@@ -581,7 +585,8 @@ table.tb th .tb-c{font-weight:700}
 .gal-b{padding:9px 11px}
 .gal-t{font-size:13px;font-weight:600;margin-bottom:4px}
 .gal-m{display:block;font-size:10.5px;color:var(--text3)}
-.bk[data-type=toggle] .tg-a{background:none;border:none;cursor:pointer;color:var(--text3);font-size:10px;padding:0 2px;line-height:1.7}
+.bk[data-type=toggle] .tg-a{background:none;border:none;cursor:pointer;color:var(--text3);font-size:11px;padding:0 2px;line-height:1.7;transition:color .1s}
+.bk[data-type=toggle] .tg-a:hover{color:var(--text)}
 .bk[data-type=toggle] .bk-t{font-weight:600}
 .tg-n{font-size:10px;color:var(--text3);margin-left:6px}
 .img-empty{flex:1;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:22px;text-align:center;color:var(--text3);cursor:pointer;font-size:12.5px;background:var(--bg2)}
@@ -680,7 +685,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.59';
+const TGK_NOTES_VERSION='v1.61';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -5005,14 +5010,46 @@ function openInbox(){
     var p=n.page_id?pageById(n.page_id):null;
     return '<div class="nt'+(n.read?' read':'')+'">'
       +'<div class="nt-b"><b>'+esc(teamName(n.actor))+'</b> '+esc(n.message||'mentioned you')+(p?(' in <span class="nt-p" onclick="gotoNotif(\''+n.id+'\')">'+esc(p.title||'Untitled')+'</span>'):'')+'</div>'
-      +'<div class="nt-t">'+esc((typeof verWhen==='function')?verWhen(n.created_at):'')+(n.read?'':' \u00b7 <span class="nt-a" onclick="markNotif(\''+n.id+'\')">mark read</span>')+'</div></div>';
+      +'<div class="nt-t">'+esc((typeof verWhen==='function')?verWhen(n.created_at):'')+' \u00b7 <span class="nt-a" onclick="openComposer(\''+esc(n.actor||'')+'\')">reply</span>'+(n.read?'':' \u00b7 <span class="nt-a" onclick="markNotif(\''+n.id+'\')">mark read</span>')+'</div></div>';
   }
   var body='<div class="ib-sec">Unread ('+unread.length+')</div>'+(unread.length?unread.map(ntHTML).join(''):'<div class="nx-hint">You are all caught up.</div>');
   if(read.length)body+='<div class="ib-sec">Earlier</div>'+read.slice(0,25).map(ntHTML).join('');
-  nxModal('Inbox',body,'<button class="nx-b" onclick="markAllNotifs()">Mark all read</button><span style="flex:1"></span><button class="nx-b primary" onclick="nxClose()">Done</button>');
+  nxModal('Inbox',body,'<button class="nx-b primary" onclick="openComposer()">New message</button><button class="nx-b" onclick="markAllNotifs()">Mark all read</button><span style="flex:1"></span><button class="nx-b" onclick="nxClose()">Done</button>');
   if(typeof loadNotifs==='function')loadNotifs();
 }
 window.openInbox=openInbox;
+async function _dmSend(to,msg){
+  var me=(S.user&&S.user.email||'').toLowerCase();to=String(to||'').toLowerCase();
+  if(!to||to===me)return false;
+  try{var r=await sb.from('wiki_notifications').insert({recipient:to,actor:me,page_id:null,block_id:null,kind:'message',message:msg});if(r&&r.error)throw r.error;return true;}catch(e){return false;}
+}
+function openComposer(preEmail){
+  var me=(S.user&&S.user.email||'').toLowerCase();
+  var pre=String(preEmail||'').toLowerCase();
+  var team=(S.team||[]).filter(function(t){return String(t.email||'').toLowerCase()!==me;});
+  if(!team.length){toast('No other registered users to message');return;}
+  var rows=team.map(function(t){
+    var e=esc(t.email||''),nm=esc(t.display_name||String(t.email||'').split('@')[0]);
+    var chk=(pre&&String(t.email||'').toLowerCase()===pre)?' checked':'';
+    return '<label class="dm-o"><input type="checkbox" class="dm-r" value="'+e+'"'+chk+'><span>'+nm+'</span><span class="dm-e">'+e+'</span></label>';
+  }).join('');
+  var body='<div class="nx-l">To</div><div class="dm-list">'+rows+'</div>'
+    +'<div class="nx-l">Message</div><textarea class="nx-i" id="dm-msg" rows="4" placeholder="Write a message..." onmousedown="event.stopPropagation()"></textarea>';
+  nxModal('New message',body,'<span style="flex:1"></span><button class="nx-b" onclick="openInbox()">Cancel</button><button class="nx-b primary" onclick="sendComposed()">Send</button>');
+  setTimeout(function(){var m=document.getElementById('dm-msg');if(m)m.focus();},30);
+}
+window.openComposer=openComposer;
+async function sendComposed(){
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('.dm-r'));
+  var to=boxes.filter(function(b){return b.checked;}).map(function(b){return b.value;});
+  var m=document.getElementById('dm-msg');var msg=(m&&m.value||'').trim();
+  if(!to.length){toast('Pick at least one person');return;}
+  if(!msg){toast('Write a message');return;}
+  var ok=0;for(var i=0;i<to.length;i++){if(await _dmSend(to[i],msg))ok++;}
+  toast('\u2713 Message sent to '+ok+' '+(ok===1?'person':'people'));
+  openInbox();
+}
+window.sendComposed=sendComposed;
 function openNotifs(){
   S._inboxOpen=false;
   const list=(S.notifs||[]).map(n=>{
