@@ -430,10 +430,16 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 .emb-h{display:flex;align-items:center;gap:9px;margin-bottom:5px}
 .emb-t{font-size:12.5px;font-weight:700;cursor:pointer;color:var(--teal-d)}
 .emb-n{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-left:auto}
-#fmtbar{position:absolute;z-index:500;display:none;gap:1px;background:#141618;border-radius:6px;padding:3px;box-shadow:0 6px 20px rgba(14,20,24,.35)}
-#fmtbar button{background:none;border:none;color:#dfe4e8;cursor:pointer;font-family:inherit;font-size:12.5px;padding:5px 8px;border-radius:4px;min-width:28px}
-#fmtbar button:hover{background:#2b3238;color:#fff}
-#fmtbar .hl{background:#f5e17a;color:#141618;border-radius:2px;padding:0 3px}
+#fmtbar{position:fixed;z-index:500;display:none;align-items:center;gap:2px;background:linear-gradient(180deg,#23272b,#191c1f);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:5px 6px;box-shadow:0 10px 30px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.25);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#fmtbar button{display:inline-flex;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:#c2cad1;cursor:pointer;font-family:inherit;font-size:13px;height:30px;min-width:30px;padding:0 7px;border-radius:8px;transition:background .12s,color .12s,transform .06s}
+#fmtbar button:hover{background:rgba(255,255,255,.10);color:#fff}
+#fmtbar button:active{transform:scale(.94);background:rgba(42,191,170,.25);color:#fff}
+#fmtbar svg{width:15px;height:15px;display:block}
+#fmtbar .fb-l{font-size:14px;line-height:1}
+#fmtbar .fb-a{border-bottom:2.5px solid #e0863a;line-height:1;font-weight:700;padding-bottom:1px}
+#fmtbar .fb-car{opacity:.5;font-size:8px;margin-left:0}
+#fmtbar .fb-div{width:1px;height:18px;background:rgba(255,255,255,.13);margin:0 3px;flex:none}
+#fmtbar .hl{background:#f5e17a;color:#141618;border-radius:3px;padding:0 3px;font-weight:700}
 .bk-t code{background:var(--bg4);border-radius:3px;padding:1px 4px;font-family:var(--mono);font-size:.92em}
 .bk-t mark{background:#f9edb0;border-radius:2px;padding:0 2px}
 .bk-t a:not(.mention){color:var(--teal-d);text-decoration:underline}
@@ -445,6 +451,13 @@ body.dark .person{background:rgba(124,92,214,.26);color:#c3b1f5}
 .fs-sm{font-size:.82em}.fs-lg{font-size:1.3em}.fs-xl{font-size:1.7em}
 .ff-serif{font-family:Georgia,'Times New Roman',serif}.ff-mono{font-family:var(--mono)}
 .fp-fa{display:inline-block;width:24px;text-align:center;margin-right:8px;color:var(--text2)}
+.fp-size{display:flex;align-items:center;gap:6px;padding:4px 10px 6px}
+.fp-size input{width:66px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text);font-size:13px}
+.fp-size span{font-size:11px;color:var(--text3)}
+.fp-set{margin-left:auto;padding:4px 11px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text);cursor:pointer;font-size:12px}
+.fp-chips{display:flex;flex-wrap:wrap;gap:4px;padding:0 10px 6px;max-width:230px}
+.fp-chip{padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg2);color:var(--text2);cursor:pointer;font-size:12px}
+.fp-chip:hover,.fp-set:hover{border-color:var(--teal);color:var(--teal)}
 .bg-gray{background:#f1f0ef}.bg-brown{background:#f3eeee}.bg-orange{background:#faebdd}
 .bg-yellow{background:#fbf3db}.bg-green{background:#eef3ed}.bg-blue{background:#e7f3f8}
 .bg-purple{background:#f6f3f9}.bg-pink{background:#faf1f5}.bg-red{background:#fdebec}
@@ -650,7 +663,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.49';
+const TGK_NOTES_VERSION='v1.51';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -3894,7 +3907,8 @@ function cleanInlineHTML(html){
         const n=a.name.toLowerCase();
         // 'person' must survive: an @teammate chip is a span carrying that class, and
         // stripping it on the next keystroke would silently un-style every mention.
-        const keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^(tx-|bg-|fs-|ff-|person$)/.test(a.value));
+        let keep=(tag==='A'&&n==='href')||(tag==='SPAN'&&n==='class'&&/^(tx-|bg-|fs-|ff-|person$)/.test(a.value));
+        if(tag==='SPAN'&&n==='style'){var _fm=/font-size:\s*(\d{1,3})px/i.exec(a.value||'');if(_fm){ch.setAttribute('style','font-size:'+_fm[1]+'px');keep=true;}}
         if(!keep)ch.removeAttribute(a.name);
       });
       if(tag==='A'){
@@ -3927,19 +3941,25 @@ let _fmtEl=null;
 function fmtBar(){
   let el=document.getElementById('fmtbar');
   if(el)return el;
+  var IC_CODE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+  var IC_LINK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+  var IC_CLEAR='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H8.5L3.7 15.2a2 2 0 0 1 0-2.8l8-8a2 2 0 0 1 2.8 0l5.3 5.3a2 2 0 0 1 0 2.8L14 20"/><path d="M7 12l5 5"/></svg>';
   el=document.createElement('div');
   el.id='fmtbar';
   el.innerHTML=
-     '<button onmousedown="event.preventDefault()" onclick="fmt(\'bold\')" title="Bold  Ctrl+B"><b>B</b></button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmt(\'italic\')" title="Italic  Ctrl+I"><i>I</i></button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmt(\'underline\')" title="Underline  Ctrl+U"><u>U</u></button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmt(\'strikeThrough\')" title="Strikethrough"><s>S</s></button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmtCode()" title="Inline code">&lt;/&gt;</button>'
+     '<button onmousedown="event.preventDefault()" onclick="fmt(\'bold\')" title="Bold (Ctrl+B)"><span class="fb-l" style="font-weight:800">B</span></button>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmt(\'italic\')" title="Italic (Ctrl+I)"><span class="fb-l" style="font-style:italic;font-family:Georgia,serif">I</span></button>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmt(\'underline\')" title="Underline (Ctrl+U)"><span class="fb-l" style="text-decoration:underline">U</span></button>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmt(\'strikeThrough\')" title="Strikethrough"><span class="fb-l" style="text-decoration:line-through">S</span></button>'
+    +'<span class="fb-div"></span>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmtCode()" title="Inline code">'+IC_CODE+'</button>'
     +'<button onmousedown="event.preventDefault()" onclick="fmtMark()" title="Highlight"><span class="hl">H</span></button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmtLink()" title="Link">&#128279;</button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmtFontMenu(this)" title="Font and size" style="font-weight:700">Aa</button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmtColorMenu(this)" title="Text colour"><span style="border-bottom:2px solid #cc782f;line-height:1">A</span></button>'
-    +'<button onmousedown="event.preventDefault()" onclick="fmtClear()" title="Clear formatting">&#10005;</button>';
+    +'<button onmousedown="event.preventDefault()" onclick="fmtLink()" title="Link">'+IC_LINK+'</button>'
+    +'<span class="fb-div"></span>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmtFontMenu(this)" title="Font and size"><span class="fb-l" style="font-weight:700">Aa</span><span class="fb-car">&#9662;</span></button>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmtColorMenu(this)" title="Text colour"><span class="fb-a">A</span><span class="fb-car">&#9662;</span></button>'
+    +'<span class="fb-div"></span>'
+    +'<button onmousedown="event.preventDefault()" onclick="fmtClear()" title="Clear formatting">'+IC_CLEAR+'</button>';
   document.body.appendChild(el);
   return el;
 }
@@ -3955,8 +3975,9 @@ function showFmtBar(){
   const r=sel.getRangeAt(0).getBoundingClientRect();
   const el=fmtBar();
   el.style.display='flex';
-  el.style.left=Math.max(8,Math.min(r.left+r.width/2-140,window.innerWidth-290))+'px';
-  el.style.top=(r.top+window.scrollY-42)+'px';
+  const _w=el.offsetWidth||300;
+  el.style.left=Math.max(8,Math.min(r.left+r.width/2-_w/2,window.innerWidth-_w-8))+'px';
+  el.style.top=Math.max(8,r.top+window.scrollY-46)+'px';
 }
 document.addEventListener('mouseup',()=>setTimeout(showFmtBar,10),true);
 document.addEventListener('keyup',e=>{if(e.shiftKey||['ArrowLeft','ArrowRight'].indexOf(e.key)>=0)setTimeout(showFmtBar,10);},true);
@@ -4039,6 +4060,7 @@ function stripInlineClass(range,prefix){
 }
 function applyInlineFont(cls){
   var sel=window.getSelection();
+  if(window._fpRange){try{sel.removeAllRanges();sel.addRange(window._fpRange);}catch(e){}}
   if(!sel||!sel.rangeCount||sel.isCollapsed){closeFmtPop();return;}
   var range=sel.getRangeAt(0);
   var prefix=cls?(cls.split('-')[0]+'-'):null;
@@ -4050,21 +4072,50 @@ function applyInlineFont(cls){
   }
   syncFmt();closeFmtPop();hideFmt();
 }
+function stripSizeSpans(range){
+  if(!_fmtEl)return;
+  Array.prototype.slice.call(_fmtEl.querySelectorAll('span[style]')).forEach(function(sp){
+    var hit=true;if(range){try{hit=range.intersectsNode(sp);}catch(e){hit=true;}}
+    if(!hit)return;
+    sp.style.fontSize='';
+    if(!(sp.getAttribute('style')||'').trim())sp.removeAttribute('style');
+    if(!sp.className&&!sp.getAttribute('style')){while(sp.firstChild)sp.parentNode.insertBefore(sp.firstChild,sp);sp.remove();}
+  });
+}
+function applyInlineSize(px){
+  var sel=window.getSelection();
+  if(window._fpRange){try{sel.removeAllRanges();sel.addRange(window._fpRange);}catch(e){}}
+  if(!sel.rangeCount||sel.isCollapsed){closeFmtPop();return;}
+  var range=sel.getRangeAt(0);
+  px=parseInt(px,10);
+  if(!px){stripSizeSpans(range);}
+  else{
+    if(px<6)px=6;if(px>200)px=200;
+    var span=document.createElement('span');span.style.fontSize=px+'px';
+    try{range.surroundContents(span);}catch(_e){try{span.appendChild(range.extractContents());range.insertNode(span);}catch(__e){}}
+  }
+  syncFmt();closeFmtPop();hideFmt();
+}
 function fmtFontMenu(btn){
   closeFmtPop();
-  var items=[{h:'Size'},{cls:'fs-default',label:'Normal'},{cls:'fs-sm',label:'Small'},{cls:'fs-lg',label:'Large'},{cls:'fs-xl',label:'Huge'},
-             {h:'Font'},{cls:'ff-default',label:'Sans (default)'},{cls:'ff-serif',label:'Serif'},{cls:'ff-mono',label:'Mono'}];
+  var sel=window.getSelection();
+  window._fpRange=(sel&&sel.rangeCount&&!sel.isCollapsed)?sel.getRangeAt(0).cloneRange():null;
+  var cur=16;
+  try{var nd=window._fpRange?window._fpRange.startContainer:null;if(nd&&nd.nodeType===3)nd=nd.parentNode;if(nd)cur=parseInt(getComputedStyle(nd).fontSize)||16;}catch(e){}
+  var chips=[12,14,16,18,20,24,28,32,40,48];
   var el=document.createElement('div');el.id='fmtpop';
-  el.innerHTML=items.map(function(it){
-    if(it.h)return '<div class="fp-h">'+esc(it.h)+'</div>';
-    return '<div class="fp-i" onmousedown="event.preventDefault()" onclick="applyInlineFont(\''+it.cls+'\')"><span class="fp-fa '+it.cls+'">Aa</span>'+esc(it.label)+'</div>';
-  }).join('');
+  el.innerHTML='<div class="fp-h">Text size</div>'
+    +'<div class="fp-size"><input id="fp-size" type="number" min="6" max="200" value="'+cur+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();applyInlineSize(this.value);}"><span>px</span><button class="fp-set" onmousedown="event.preventDefault()" onclick="applyInlineSize(document.getElementById(\'fp-size\').value)">Set</button></div>'
+    +'<div class="fp-chips">'+chips.map(function(n){return '<button class="fp-chip" onmousedown="event.preventDefault()" onclick="applyInlineSize('+n+')">'+n+'</button>';}).join('')+'</div>'
+    +'<div class="fp-i" onmousedown="event.preventDefault()" onclick="applyInlineSize(0)">Reset to default</div>'
+    +'<div class="fp-h">Font</div>'
+    +[{cls:'ff-default',label:'Sans (default)'},{cls:'ff-serif',label:'Serif'},{cls:'ff-mono',label:'Mono'}].map(function(it){return '<div class="fp-i" onmousedown="event.preventDefault()" onclick="applyInlineFont(\''+it.cls+'\')"><span class="fp-fa '+it.cls+'">Aa</span>'+esc(it.label)+'</div>';}).join('');
   document.body.appendChild(el);
   var r=btn.getBoundingClientRect();
-  el.style.left=Math.max(8,Math.min(r.left,window.innerWidth-184))+'px';
-  el.style.top=Math.min(r.bottom+6,window.innerHeight-Math.min(el.offsetHeight||260,300)-8)+'px';
+  el.style.left=Math.max(8,Math.min(r.left,window.innerWidth-210))+'px';
+  el.style.top=Math.min(r.bottom+6,window.innerHeight-Math.min(el.offsetHeight||320,340)-8)+'px';
 }
-window.applyInlineFont=applyInlineFont;window.fmtFontMenu=fmtFontMenu;window.stripInlineClass=stripInlineClass;
+window.applyInlineFont=applyInlineFont;window.fmtFontMenu=fmtFontMenu;window.stripInlineClass=stripInlineClass;window.applyInlineSize=applyInlineSize;window.stripSizeSpans=stripSizeSpans;
 function applyInlineColor(cls){
   var sel=window.getSelection();
   if(!sel||!sel.rangeCount||sel.isCollapsed){closeFmtPop();return;}
