@@ -3635,6 +3635,10 @@ function showView(name) {
   if (_clv0 && _clv0.classList.contains('active')) { _clv0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc3 = document.getElementById('cc-breadcrumb'); if (_bc3) _bc3.classList.remove('visible'); }
   var _tav0 = document.getElementById('ta-viewer');
   if (_tav0 && _tav0.classList.contains('active')) { _tav0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc4 = document.getElementById('cc-breadcrumb'); if (_bc4) _bc4.classList.remove('visible'); }
+  var _ntv0 = document.getElementById('notes-viewer');
+  if (_ntv0 && _ntv0.classList.contains('active')) { _ntv0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc5 = document.getElementById('cc-breadcrumb'); if (_bc5) _bc5.classList.remove('visible'); }
+  var _skv0 = document.getElementById('sku-viewer');
+  if (_skv0 && _skv0.classList.contains('active')) { _skv0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc6 = document.getElementById('cc-breadcrumb'); if (_bc6) _bc6.classList.remove('visible'); }
   document.querySelectorAll('.cc-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.cc-navbtn').forEach(b => b.classList.remove('active'));
   const view = document.getElementById('view-' + name);
@@ -13433,12 +13437,49 @@ function _createNotif(taskId,taskTitle,toColId,toColName,fromColName){
   _updateBell();
 }
 function _tryNotif(title,body){'Notification'in window&&(Notification.permission==='granted'?new Notification(title,{body:body}):Notification.permission!=='denied'&&Notification.requestPermission().then(function(p){if(p==='granted')new Notification(title,{body:body});}));}
-function _updateBell(){var notifs=_getNotifsAll(),myId=_myId();var n=myId?notifs.filter(function(x){return x.forUser===myId&&!x.read;}).length:0;var b=document.getElementById('pw-bell-badge');if(b){b.textContent=n||'';b.className='pw-bell-badge'+(n?' show':'');}}
-window.pwToggleNotifs=function(){var dd=document.getElementById('pw-notif-dd');if(!dd)return;if(dd.classList.contains('open')){dd.classList.remove('open');return;}_renderNotifList();dd.classList.add('open');setTimeout(function(){document.addEventListener('click',function _on(e){if(!dd.contains(e.target)&&!e.target.closest('.pw-bell-btn')){dd.classList.remove('open');document.removeEventListener('click',_on);}});},10);};
-function _renderNotifList(){var list=document.getElementById('pw-notif-list');if(!list)return;var notifs=_getNotifsAll(),myId=_myId(),mine=myId?notifs.filter(function(n){return n.forUser===myId;}):notifs;if(!mine.length){list.innerHTML='<div class="pw-notif-empty">No notifications yet</div>';return;}list.innerHTML=mine.slice(0,20).map(function(n){return'<div class="pw-notif-item'+(n.read?'':' unread')+'" onclick="pwNotifClick(\''+n.id+'\',\''+n.taskId+'\')"><div class="pw-notif-ic">&#128203;</div><div class="pw-notif-body"><div class="pw-notif-msg"><strong>'+_esc(n.taskTitle)+'</strong> moved to <strong>'+_esc(n.toStage)+'</strong>'+(n.fromStage?' from '+_esc(n.fromStage):'')+' </div><div class="pw-notif-time">'+_fdt(n.ts)+'</div></div></div>';}).join('');}
+function _updateBell(){var notifs=_getNotifsAll(),myId=_myId();var n=myId?notifs.filter(function(x){return x.forUser===myId&&!x.read;}).length:0;n+=(typeof _wikiUnread==='function'?_wikiUnread():0);var b=document.getElementById('pw-bell-badge');if(b){b.textContent=n||'';b.className='pw-bell-badge'+(n?' show':'');}}
+window.pwToggleNotifs=function(){var dd=document.getElementById('pw-notif-dd');if(!dd)return;if(dd.classList.contains('open')){dd.classList.remove('open');return;}_renderNotifList();try{_loadWikiNotifs();}catch(e){}dd.classList.add('open');setTimeout(function(){document.addEventListener('click',function _on(e){if(!dd.contains(e.target)&&!e.target.closest('.pw-bell-btn')){dd.classList.remove('open');document.removeEventListener('click',_on);}});},10);};
+function _renderNotifList(){var list=document.getElementById('pw-notif-list');if(!list)return;var notifs=_getNotifsAll(),myId=_myId(),mine=myId?notifs.filter(function(n){return n.forUser===myId;}):notifs;var wikiHTML=(_wikiNotifs||[]).slice(0,20).map(function(n){return'<div class="pw-notif-item'+(n.read?'':' unread')+'" onclick="pwWikiClick(\''+n.id+'\')"><div class="pw-notif-ic">&#128172;</div><div class="pw-notif-body"><div class="pw-notif-msg"><strong>'+_esc(String(n.actor||'Someone').split('@')[0])+'</strong> '+_esc(n.message||'mentioned you')+'</div><div class="pw-notif-time">'+_wikiWhen(n.created_at)+'</div></div></div>';}).join('');var pwHTML=mine.slice(0,20).map(function(n){return'<div class="pw-notif-item'+(n.read?'':' unread')+'" onclick="pwNotifClick(\''+n.id+'\',\''+n.taskId+'\')"><div class="pw-notif-ic">&#128203;</div><div class="pw-notif-body"><div class="pw-notif-msg"><strong>'+_esc(n.taskTitle)+'</strong> moved to <strong>'+_esc(n.toStage)+'</strong>'+(n.fromStage?' from '+_esc(n.fromStage):'')+' </div><div class="pw-notif-time">'+_fdt(n.ts)+'</div></div></div>';}).join('');list.innerHTML=(wikiHTML+pwHTML)||'<div class="pw-notif-empty">No notifications yet</div>';}
 window.pwNotifClick=function(nid,tid){var notifs=_getNotifsAll();notifs.forEach(function(n){if(n.id===nid)n.read=true;});_saveNotifs(notifs);_updateBell();document.getElementById('pw-notif-dd').classList.remove('open');var S=_gs();if(S.tasks[tid])pwEditCard(tid);};
-window.pwClearNotifs=function(){var notifs=_getNotifsAll(),myId=_myId();notifs.forEach(function(n){if(!myId||n.forUser===myId)n.read=true;});_saveNotifs(notifs);_updateBell();_renderNotifList();};
+window.pwClearNotifs=function(){var notifs=_getNotifsAll(),myId=_myId();notifs.forEach(function(n){if(!myId||n.forUser===myId)n.read=true;});_saveNotifs(notifs);var me=_wikiEmail();(_wikiNotifs||[]).forEach(function(n){n.read=true;});if(me){try{_wikiFetch('/rest/v1/wiki_notifications?recipient=eq.'+encodeURIComponent(me)+'&read=eq.false',{method:'PATCH',body:JSON.stringify({read:true})}).catch(function(){});}catch(e){}}_updateBell();_renderNotifList();};
 function _syncRemoteNotifs(){if(typeof sbGet!=='function')return;sbGet('tgk_notifications').then(function(r){if(!Array.isArray(r)||!r.length)return;var local=_getNotifsAll(),ids=new Set(local.map(function(n){return n.id;}));r.forEach(function(n){if(!ids.has(n.id))local.push(n);});local.sort(function(a,b){return b.ts.localeCompare(a.ts);});if(local.length>100)local=local.slice(0,100);localStorage.setItem(PW_NOTIF_KEY,JSON.stringify(local));_updateBell();}).catch(function(){});}
+/* ── Universal inbox: fold Notes (wiki_notifications) into the CC bell ── */
+var _wikiNotifs=[], _wikiSeen=null;
+function _wikiEmail(){try{var s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');return String(s&&s.email||'').toLowerCase();}catch(e){return '';}}
+function _wikiToken(){try{var s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');return (s&&s.access_token)||'';}catch(e){return '';}}
+async function _wikiFetch(path,opts){
+  var tok=_wikiToken();
+  var res=await fetch(TGK_SB_URL+path,Object.assign({headers:{'apikey':TGK_SB_KEY,'Authorization':'Bearer '+(tok||TGK_SB_KEY),'Content-Type':'application/json','Prefer':'return=representation'}},opts));
+  if(!res.ok)throw new Error('wiki '+res.status);
+  var t=await res.text();return t?JSON.parse(t):null;
+}
+function _wikiUnread(){return (_wikiNotifs||[]).filter(function(n){return !n.read;}).length;}
+function _wikiWhen(ts){try{var d=new Date(ts),sec=(Date.now()-d.getTime())/1000;if(sec<60)return'just now';if(sec<3600)return Math.floor(sec/60)+'m ago';if(sec<86400)return Math.floor(sec/3600)+'h ago';return d.toLocaleDateString();}catch(e){return'';}}
+async function _loadWikiNotifs(){
+  var me=_wikiEmail();if(!me)return;
+  try{
+    var rows=await _wikiFetch('/rest/v1/wiki_notifications?recipient=eq.'+encodeURIComponent(me)+'&select=*&order=created_at.desc&limit=40');
+    _wikiNotifs=Array.isArray(rows)?rows:[];
+  }catch(e){return;}
+  var unread=_wikiNotifs.filter(function(n){return !n.read;});
+  var topId=unread.length?unread[0].id:null;
+  if(_wikiSeen!==null&&topId&&topId!==_wikiSeen){
+    var n0=unread[0];
+    if(typeof _tryNotif==='function')_tryNotif('New message',(String(n0.actor||'Someone').split('@')[0])+': '+(n0.message||'mentioned you'));
+  }
+  _wikiSeen=topId;
+  _updateBell();
+  var dd=document.getElementById('pw-notif-dd');if(dd&&dd.classList.contains('open'))_renderNotifList();
+}
+window.pwWikiClick=async function(id){
+  try{await _wikiFetch('/rest/v1/wiki_notifications?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({read:true})});}catch(e){}
+  var n=(_wikiNotifs||[]).find(function(x){return x.id===id;});if(n)n.read=true;
+  _updateBell();_renderNotifList();
+  try{if(typeof openNotes==='function')openNotes();}catch(e){}
+};
+setTimeout(function(){if(_wikiEmail())_loadWikiNotifs();},2500);
+setInterval(function(){if(_wikiEmail())_loadWikiNotifs();},45000);
+
 
 /* ── full detail view ────────────────────────────────────────── */
 var _dtid=null,_sd=null,_dtab='description';
@@ -16345,7 +16386,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.19';
+var TGK_CC_VERSION='v2.22';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
