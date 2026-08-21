@@ -710,7 +710,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.64';
+const TGK_NOTES_VERSION='v1.66';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -743,7 +743,8 @@ async function afterLogin(user){
   if(window.innerWidth<=860)$('menu-btn').style.display='';
   const _vt=$('ver-tag'); if(_vt)_vt.textContent='TGK NOTES '+TGK_NOTES_VERSION;
   if(typeof loadTeam==='function')await loadTeam();
-  if(typeof loadNotifs==='function'){loadNotifs();setInterval(loadNotifs,60000);}
+  if(typeof loadNotifs==='function'){loadNotifs();setInterval(function(){loadNotifs();if(S._inboxOpen&&S._inboxTab==='msgs'&&typeof loadThreads==='function')loadThreads();},40000);}
+  if(typeof _realtimeInit==='function')_realtimeInit();
   await loadPages();
 }
 (async()=>{
@@ -1142,7 +1143,11 @@ document.addEventListener('input',e=>{
                ['1. ','num'],['[] ','todo'],['[ ] ','todo'],['> ','quote'],['``` ','code'],['--- ','divider']];
     for(const[pre,ty]of map){
       if(_plain.startsWith(pre)){
-        bl.type=ty;bl.text=_plain.slice(pre.length);
+        bl.type=ty;
+        var _box=document.createElement('div');_box.innerHTML=bl.text;
+        var _tn=(function ft(n){for(var c=n.firstChild;c;c=c.nextSibling){if(c.nodeType===3)return c;var r=ft(c);if(r)return r;}return null;})(_box);
+        if(_tn&&_tn.nodeValue.slice(0,pre.length)===pre){_tn.nodeValue=_tn.nodeValue.slice(pre.length);bl.text=_box.innerHTML;}
+        else{bl.text=_plain.slice(pre.length);}
         if(ty==='divider'){bl.text='';}
         renderBlocks();
         if(ty==='divider'){addBlockAfter(i,'p');}else if(ty==='code'){editCode(id);}else focusBlock(id);
@@ -5073,6 +5078,30 @@ async function loadThreads(){
   if(S._inboxOpen&&S._inboxTab==='msgs')openInbox();
 }
 window.loadThreads=loadThreads;
+function _realtimeInit(){
+  try{
+    var me=(S.user&&S.user.email||'').toLowerCase();
+    if(!me||!sb||typeof sb.channel!=='function')return;
+    if(S._rtCh){try{sb.removeChannel(S._rtCh);}catch(e){}S._rtCh=null;}
+    var ch=sb.channel('wn-'+me.replace(/[^a-z0-9]/g,''));
+    ch.on('postgres_changes',{event:'*',schema:'public',table:'wiki_notifications',filter:'recipient=eq.'+me},function(p){_onRealtime(p,true);});
+    ch.on('postgres_changes',{event:'*',schema:'public',table:'wiki_notifications',filter:'actor=eq.'+me},function(p){_onRealtime(p,false);});
+    ch.subscribe();
+    S._rtCh=ch;
+  }catch(e){}
+}
+window._realtimeInit=_realtimeInit;
+function _onRealtime(p,incoming){
+  try{
+    if(incoming&&p&&p.eventType==='INSERT'&&!S._inboxOpen){
+      var m=p.new||{};
+      if(typeof toast==='function')toast('\u2709 '+(teamName(m.actor)||'New message')+': '+String(m.message||'').slice(0,42));
+    }
+    if(typeof loadNotifs==='function')loadNotifs();
+    if(S._inboxOpen&&S._inboxTab==='msgs'&&typeof loadThreads==='function')loadThreads();
+  }catch(e){}
+}
+window._onRealtime=_onRealtime;
 async function openThread(email){
   S._inboxTab='msgs';S._thread=String(email||'').toLowerCase();openInbox();
   var me=(S.user&&S.user.email||'').toLowerCase();
