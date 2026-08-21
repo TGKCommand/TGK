@@ -710,7 +710,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.66';
+const TGK_NOTES_VERSION='v1.67';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -3109,7 +3109,7 @@ function tableBlockHTML(bl){
   const body=bl.rows.map((row,r)=>
     '<tr>'+row.map((cell,c)=>
       '<'+((bl.head&&r===0)?'th':'td')+' class="tb-cell">'
-      +'<div class="tb-c" contenteditable="true" spellcheck="true" data-tr="'+r+'" data-tc="'+c+'">'+esc(cell||'')+'</div>'
+      +'<div class="tb-c" contenteditable="true" spellcheck="true" data-tr="'+r+'" data-tc="'+c+'">'+((typeof richHTML==='function')?richHTML(cell||''):esc(cell||''))+'</div>'
       +'</'+((bl.head&&r===0)?'th':'td')+'>').join('')
     +'<td class="tb-act"><button class="tb-x" title="Delete this row" onclick="tblRowDel(\''+bl.id+'\','+r+')">&times;</button></td></tr>').join('');
   const colDel='<tr class="tb-colbar">'+bl.rows[0].map((_,c)=>
@@ -3145,7 +3145,7 @@ document.addEventListener('input',e=>{
   const host=t.closest('.bk');if(!host)return;
   const bl=tblBlock(host.getAttribute('data-bid'));if(!bl)return;
   const r=Number(t.getAttribute('data-tr')),c=Number(t.getAttribute('data-tc'));
-  if(bl.rows&&bl.rows[r])bl.rows[r][c]=t.textContent;
+  if(bl.rows&&bl.rows[r])bl.rows[r][c]=(typeof cleanInlineHTML==='function')?cleanInlineHTML(t.innerHTML):t.textContent;
   markDirty();
 },true);
 document.addEventListener('keydown',e=>{
@@ -4048,6 +4048,11 @@ function syncFmt(){
   if(!host)return;
   const i=blockIndex(host.getAttribute('data-bid'));
   if(i<0)return;
+  if(_fmtEl.classList&&_fmtEl.classList.contains('tb-c')){
+    var _tbl=blocks()[i],_tr=Number(_fmtEl.getAttribute('data-tr')),_tc=Number(_fmtEl.getAttribute('data-tc'));
+    if(_tbl&&_tbl.rows&&_tbl.rows[_tr])_tbl.rows[_tr][_tc]=cleanInlineHTML(_fmtEl.innerHTML);
+    markDirty();return;
+  }
   blocks()[i].text=cleanInlineHTML(_fmtEl.innerHTML);
   markDirty();
 }
