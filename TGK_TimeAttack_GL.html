@@ -2735,6 +2735,29 @@ function glSplitWheels(root, S) {
       if (g.attributes.normal) ng.setAttribute('normal', g.attributes.normal);
       if (g.attributes.uv) ng.setAttribute('uv', g.attributes.uv);
       ng.setIndex(indices);
+      /* THE BOUNDING BOX MUST COME FROM THESE INDICES.
+         A split shares the ORIGINAL position buffer and differs only in its
+         index, so THREE's own computeBoundingBox - which scans the whole
+         attribute - reports the entire car. Every wheel pivot was therefore
+         placed at the car's centre instead of at a hub, which is how wheels
+         ended up sitting on the roof. Computing it from the indices actually
+         used is the fix. */
+      var bx0 = 1e30, by0 = 1e30, bz0 = 1e30, bx1 = -1e30, by1 = -1e30, bz1 = -1e30;
+      for (var bi = 0; bi < indices.length; bi++) {
+        var vi = indices[bi];
+        var px = pos.getX(vi), py = pos.getY(vi), pz = pos.getZ(vi);
+        if (px < bx0) bx0 = px; if (px > bx1) bx1 = px;
+        if (py < by0) by0 = py; if (py > by1) by1 = py;
+        if (pz < bz0) bz0 = pz; if (pz > bz1) bz1 = pz;
+      }
+      ng.boundingBox = new THREE.Box3(new THREE.Vector3(bx0, by0, bz0),
+                                      new THREE.Vector3(bx1, by1, bz1));
+      ng.boundingSphere = new THREE.Sphere(
+        new THREE.Vector3((bx0 + bx1) / 2, (by0 + by1) / 2, (bz0 + bz1) / 2),
+        Math.max(bx1 - bx0, by1 - by0, bz1 - bz0));
+      /* keep THREE from recomputing it from the full buffer */
+      ng.computeBoundingBox = function () {};
+      ng.computeBoundingSphere = function () {};
       var nm = new THREE.Mesh(ng, m.material);
       nm.name = name; nm.castShadow = true;
       nm.position.copy(m.position); nm.rotation.copy(m.rotation); nm.scale.copy(m.scale);
@@ -2963,6 +2986,17 @@ function loadCarModel(S, key, onDone) {
        A static wheel is a much smaller problem than shredded bodywork, so this
        stays off until the hub positions are transformed into each mesh's local
        space and the result verified against all four cars. */
+    /* SPLITTER OFF.
+       Synthesising wheels from merged geometry has now failed in three
+       distinct ways - wrong units, carving bodywork, and most recently
+       placing wheels on the roof, because a split mesh shares the ORIGINAL
+       vertex buffer and so reports the whole car's bounding box, which puts
+       its pivot at the car's centre rather than at a hub.
+
+       Fixing that means computing each split's bounds from its own INDICES,
+       and I am not shipping a fourth attempt unverified. The CC and Tiguan
+       therefore have static wheels: correct geometry that does not rotate,
+       which is plainly better than wheels on the roof. */
     if (spinners.length < 2) {
       var splitN = glSplitWheels(root, S);
       if (splitN) {
@@ -3388,8 +3422,16 @@ function glBuildWorld() {
   }
   /* racing line */
   lineGroup = new THREE.Group(); worldGroup.add(lineGroup);
+  /* THE RACING LINE, not the centreline. This plotted segs[L].x/.z directly -
+     the centre of the course - and ignored segs[L].line, which is the lateral
+     offset the racing-line solver produces. So the GL build has never shown
+     the line the canvas build shows. Same worldAt convention as everywhere
+     else: lateral offset is (cos(th), -sin(th)). */
   var lv = [];
-  for (var L = 0; L < N; L += 3) lv.push(-course.segs[L].x, 0.02, course.segs[L].z);
+  for (var L = 0; L < N; L += 2) {
+    var ls = course.segs[L], llat = ls.line || 0;
+    lv.push(-(ls.x + Math.cos(ls.th) * llat), 0.03, ls.z - Math.sin(ls.th) * llat);
+  }
   var lgeo = new THREE.BufferGeometry();
   lgeo.setAttribute('position', new THREE.Float32BufferAttribute(lv, 3));
   lineGroup.add(new THREE.Line(lgeo, new THREE.LineBasicMaterial({ color: 0x2abfaa })));
@@ -3597,14 +3639,29 @@ function taCamUpdate(dt) {
        (xD = -0.34). Positive put the camera in the passenger seat. */
     lat = -0.36;
   }
-  var bx = car.x - Math.sin(car.yaw) * back, bz = car.z - Math.cos(car.yaw) * back;
+  /* ---- CHASE CAMERA: smooth the HEADING, then place rigidly ---------------
+     This used to lerp the camera POSITION toward a moving target, so the
+     camera trailed the car and floated during direction changes - inputs feel
+     disconnected because the viewpoint arrives late. The canvas renderer
+     instead smooths the camera's HEADING and then places the camera at a
+     fixed distance along it, so the camera is always exactly where it should
+     be relative to the car and only the swing settles. That is why the canvas
+     build feels more planted, and the physics is identical between them - the
+     two builds share 30_physics.js. Same approach here now, same constant. */
+  if (camYaw === undefined) camYaw = car.yaw;
+  var dY = car.yaw - camYaw;
+  while (dY > Math.PI) dY -= 6.283185;
+  while (dY < -Math.PI) dY += 6.283185;
+  var kY = 1 - Math.pow(m === 'cockpit' ? 0.0000001 : 0.0005, dt);
+  camYaw += dY * kY;
+  var useYaw = (m === 'cockpit') ? car.yaw : camYaw;
+  var bx = car.x - Math.sin(useYaw) * back, bz = car.z - Math.cos(useYaw) * back;
   /* lateral offset is perpendicular to heading */
-  bx += Math.cos(car.yaw) * lat; bz -= Math.sin(car.yaw) * lat;
-  var tx = -bx, tz = bz;
-  var k = 1 - Math.pow(m === 'cockpit' ? 0.0000001 : 0.001, dt);
-  camera.position.lerp(new THREE.Vector3(tx, hh, tz), k);
+  bx += Math.cos(useYaw) * lat; bz -= Math.sin(useYaw) * lat;
+  /* placed, not lerped - no positional lag */
+  camera.position.set(-bx, hh, bz);
   /* look from the EYE down the road, not from the car's centre */
-  camera.lookAt(-(bx + Math.sin(car.yaw) * 14), hh - 0.10, bz + Math.cos(car.yaw) * 14);
+  camera.lookAt(-(bx + Math.sin(useYaw) * 14), hh - 0.10, bz + Math.cos(useYaw) * 14);
   camX = bx; camZ = bz;
 }
 
