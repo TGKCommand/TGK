@@ -1245,15 +1245,24 @@ function taBuildLine(segs, cones) {
      escaped its starting line, and it cost 21 seconds of course-build time.
      Relaxation reaches essentially the same line for a few milliseconds, and
      the corridor - not the optimiser - is what guarantees the line is legal. */
-  for (var pass2 = 0; pass2 < 260; pass2++) {
+  /* RELAXATION MUST NOT ERASE THE SEED.
+     260 passes of pure averaging drives every unconstrained point to the mean
+     of its neighbours, and in the offset domain that mean is ZERO - the
+     centreline. So the out-in-out seed was being smoothed away and the line
+     only left the middle where a cone physically forced it. Far fewer passes,
+     and each point is pulled back toward its seeded position, so smoothing
+     removes kinks without destroying the racing geometry. */
+  var seed = line.slice();
+  for (var pass2 = 0; pass2 < 40; pass2++) {
     var pv2 = line.slice();
     for (i = 1; i < n - 1; i++) {
-      line[i] = clamp((pv2[i - 1] + pv2[i + 1]) / 2, lo[i], hi[i]);
+      var sm2 = (pv2[i - 1] + pv2[i + 1]) / 2;
+      line[i] = clamp(sm2 * 0.55 + seed[i] * 0.45, lo[i], hi[i]);
     }
   }
   var best = lapTime(line);
   /* final light smoothing, still inside the corridor */
-  for (var sm = 0; sm < 24; sm++) {
+  for (var sm = 0; sm < 8; sm++) {
     var pv = line.slice();
     for (i = 1; i < n - 1; i++) line[i] = clamp((pv[i - 1] + 2 * pv[i] + pv[i + 1]) / 4, lo[i], hi[i]);
   }
@@ -1670,7 +1679,19 @@ function taStep(dt) {
      a punched radiator costs power, crumpled bodywork adds drag. Declared up
      front because drag and torque both read it. */
   var D = car.dmg || (car.dmg = { f: 0, r: 0, l: 0, rt: 0, steer: 0, susp: 0, eng: 0, brk: 0, aero: 0, pts: [] });
-  if (car.shell && typeof sbStep === 'function') sbStep(car.shell, dt);
+  /* The shell is COSMETIC, so it does not need the 240 Hz physics rate. It was
+     costing 928 us per step - fifteen times the rest of the physics put
+     together, 22 percent of every frame - because it ran every substep with 8
+     internal substeps of its own. Now it runs at frame rate, and only when
+     there is something to solve: an undamaged lattice at rest is skipped
+     entirely. */
+  if (car.shell && typeof sbStep === 'function') {
+    car._sbTick = (car._sbTick || 0) + 1;
+    if (car._sbTick >= 4) {
+      var acc = car._sbTick * dt; car._sbTick = 0;
+      if (car.shell.dirty || car.shell.active) sbStep(car.shell, acc);
+    }
+  }
   var TW_MU = Math.pow((S.tw || 0.245) / 0.245, 0.30);
   /* per-car roll stiffness distribution: the primary balance knob. A FWD CC
      needs a stiff front to protect the driven axle; the X5 runs softer front
@@ -2317,7 +2338,7 @@ function taSpeedMph() { return Math.abs(car.v) * 2.2369363; }
    smaller than that.
    ========================================================================== */
 
-var SB_SUBSTEPS = 8;          /* per physics frame - the lattice is stiff  */
+var SB_SUBSTEPS = 5;          /* per physics frame - the lattice is stiff  */
 var SB_K = 1.6e5;             /* beam stiffness N/m - sheet metal, not box section */
 var SB_D = 900;               /* beam damping N/(m/s)                      */
 var SB_YIELD = 0.005;         /* strain past which deformation is PERMANENT.
@@ -2402,6 +2423,7 @@ function sbStep(sb, dt) {
       A.fx += f * dx; A.fy += f * dy; A.fz += f * dz;
       C.fx -= f * dx; C.fy -= f * dy; C.fz -= f * dz;
     }
+    var moving = 0;
     for (var n = 0; n < N.length; n++) {
       var nd = N[n], im = 1 / nd.m;
       /* tether to the rigid body: the shell rides the car, it does not fly
@@ -2413,7 +2435,10 @@ function sbStep(sb, dt) {
       nd.fz += (nd.oz - nd.z) * 900 - nd.vz * 26;
       nd.vx += nd.fx * im * h; nd.vy += nd.fy * im * h; nd.vz += nd.fz * im * h;
       nd.x += nd.vx * h; nd.y += nd.vy * h; nd.z += nd.vz * h;
+      if (Math.abs(nd.vx) + Math.abs(nd.vy) + Math.abs(nd.vz) > 0.004) moving = 1;
     }
+    /* once every node has settled the lattice sleeps until the next impact */
+    if (!moving) { sb.active = 0; break; }
   }
 }
 
@@ -2438,6 +2463,7 @@ function sbImpact(sb, px, py, pz, ix, iy, iz, energy) {
     nd.vx += ix * w; nd.vy += iy * w; nd.vz += iz * w;
   }
   sb.dirty = 1;
+  sb.active = 1;          /* wake the solver */
 }
 
 /* Per-node displacement from rest, for the renderer to push into the body. */
@@ -2656,10 +2682,24 @@ function glSplitWheels(root, S) {
   var hubs = [[-tw, rw, wb], [tw, rw, wb], [-tw, rw, -wb], [tw, rw, -wb]];
   var R2 = (rw * 1.30) * (rw * 1.30);
   root.updateMatrixWorld(true);
+  /* CANDIDATE FILTER - this is what was missing.
+     Testing every mesh meant the wheel-sphere also cut through BODYWORK: the
+     fender arch and sill sit inside a sphere at the hub, so those triangles
+     were extracted and spun along with the wheel. That is why the CC and
+     Tiguan looked out of round and thrashed about.
+
+     A mesh is only a wheel candidate if its material or node name says so.
+     Where names carry no information (the Tiguan calls everything
+     'Index_0_1') we split NOTHING - a static wheel is a far better outcome
+     than shredded bodywork. */
   var cand = [];
   root.traverse(function (n) {
-    if (n.isMesh && n.geometry && n.geometry.attributes && n.geometry.attributes.position) cand.push(n);
+    if (!(n.isMesh && n.geometry && n.geometry.attributes && n.geometry.attributes.position)) return;
+    var ms = Array.isArray(n.material) ? n.material : [n.material];
+    var tag = ms.map(function (m) { return (m && m.name) || ''; }).join(' ') + ' ' + (n.name || '');
+    if (/\btire|\btyre|\brim\b|_rim|wheel|rotor|brake/i.test(tag)) cand.push(n);
   });
+  if (!cand.length) return 0;
   var made = 0, v = new THREE.Vector3();
   for (var ci = 0; ci < cand.length; ci++) {
     var m = cand[ci], g = m.geometry, pos = g.attributes.position;
