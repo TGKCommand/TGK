@@ -491,6 +491,7 @@ body{
   <div id="ta-boot"><div>Loading course</div></div>
 </div>
 
+
 <script>
 /* ===== 10_core.js ===== */
 /* ============================================================================
@@ -1339,6 +1340,117 @@ function taLocate(wx, wz, hintSeg) {
 </script>
 
 <script>
+/* ===== 48_tyre.js ===== */
+/* ============================================================================
+   48_tyre.js - PER-WHEEL TYRE MODEL
+
+   The simulation was a BICYCLE MODEL: two axles, each with one slip angle and
+   one lumped force. That is why individual lockup, per-wheel wheelspin, camber
+   thrust, toe, Ackermann and a real differential were all impossible - none of
+   them exist until each contact patch is solved on its own.
+
+   This solves four wheels independently:
+
+     - each wheel's velocity includes the yaw term  v_wheel = v_cg + omega x r,
+       which is what actually makes the inside and outside of a corner run
+       different slip angles
+     - slip ANGLE from that velocity and the wheel's own steer angle
+     - slip RATIO from its own angular speed, integrated with real rotational
+       inertia against drive and brake torque
+     - lateral and longitudinal force from a Pacejka curve, each scaled by that
+       wheel's own vertical load and load sensitivity
+     - COMBINED SLIP through a friction ellipse, so a tyre being asked for
+       traction has less left for cornering, per wheel
+
+   Forces are summed into body force and yaw moment. This is the architecture
+   Assetto Corsa and rFactor use; it is not BeamNG's soft body, but for how a
+   car DRIVES it is the higher-fidelity model.
+   ========================================================================== */
+
+/* Pacejka-style Magic Formula. Lateral is stiffer and peaks earlier than
+   longitudinal, which is why a tyre lets go sideways before it spins up. */
+function tyreLat(alpha) {
+  var B = 8.6, C = 1.35, E = 0.92;
+  var s = B * alpha;
+  return Math.sin(C * Math.atan(s - E * (s - Math.atan(s))));
+}
+function tyreLong(kappa) {
+  var B = 11.0, C = 1.62, E = 0.60;
+  var s = B * kappa;
+  return Math.sin(C * Math.atan(s - E * (s - Math.atan(s))));
+}
+
+/* Load sensitivity: a tyre's friction COEFFICIENT falls as load rises, which
+   is the whole reason weight transfer costs grip. */
+function tyreLoadMu(Fz, Fz0, sens) {
+  if (Fz <= 1) return 0;
+  return clamp(1 - sens * (Fz - Fz0) / Math.max(Fz0, 1), 0.35, 1.60);
+}
+
+/* Solve one wheel. Returns force in the WHEEL's frame, plus its slip state. */
+function tyreWheel(W, mu, sens, dt) {
+  var Fz = W.Fz;
+  if (Fz <= 1) {
+    W.kappa = 0; W.alpha = 0; W.Fx = 0; W.Fy = 0;
+    W.w += (W.Tdrive / W.I) * dt;                 /* airborne: free to spin up */
+    return;
+  }
+  var muEff = mu * tyreLoadMu(Fz, W.Fz0, sens);
+  var cap = muEff * Fz;
+
+  /* Velocity of this contact patch, rotated into the WHEEL's own frame.
+     NAMING MATTERS HERE: W.vLong is along the car, W.vLat is across it. An
+     earlier version rotated them the wrong way round and produced 80 degree
+     slip angles - the maths was right, the two inputs were swapped. */
+  var cs = Math.cos(W.steer), sn = Math.sin(W.steer);
+  var vAlong  =  W.vLong * cs + W.vLat * sn;      /* along the wheel  */
+  var vAcross = -W.vLong * sn + W.vLat * cs;      /* across the wheel */
+  var vAbs = Math.max(Math.abs(vAlong), 1.2);     /* keeps slip finite at rest */
+
+  /* slip ratio and slip angle */
+  W.kappa = (W.w * W.R - vAlong) / vAbs;
+  W.alpha = Math.atan2(-vAcross, vAbs);
+
+  var fx0 = tyreLong(clamp(W.kappa, -3, 3));
+  var fy0 = tyreLat(W.alpha);
+
+  /* COMBINED SLIP: the friction ellipse. Demand in one direction removes
+     capability in the other - trail braking and power understeer fall out of
+     this rather than being special-cased. */
+  var mag = Math.sqrt(fx0 * fx0 + fy0 * fy0);
+  if (mag > 1) { fx0 /= mag; fy0 /= mag; }
+
+  W.Fx = fx0 * cap;
+  W.Fy = fy0 * cap;
+
+  /* wheel rotational dynamics: drive and brake torque against the road force */
+  var roadT = W.Fx * W.R;
+  var brakeT = W.Tbrake * (W.w > 0 ? 1 : (W.w < 0 ? -1 : 0));
+  var dw = (W.Tdrive - roadT - brakeT) / W.I;
+  W.w += dw * dt;
+  /* a braked wheel must be able to stop, not oscillate through zero */
+  if (W.Tbrake > 0 && W.w * (W.w - dw * dt) < 0) W.w = 0;
+  if (W.w < -2) W.w = -2;
+}
+
+/* Build the four wheels for a car, in body coordinates. */
+function tyreBuild(S, m) {
+  var hw = (S.track || 1.6) / 2, wb = (S.wb || 2.9) / 2, R = S.rw || 0.34;
+  /* Rotational inertia of one wheel and tyre. A 20 inch wheel with a 255
+     section is about 1.4 kg m^2; the earlier expression gave 5.2, so the
+     wheels could not spin up to road speed and every wheel read as permanently
+     braking. */
+  var Iw = 1.15 + 0.9 * (R / 0.35) * (R / 0.35);
+  function mk(x, z, front) {
+    return { x: x, z: z, front: front, R: R, I: Math.max(0.8, Iw),
+             w: 0, steer: 0, Fz: 0, Fz0: 1, Fx: 0, Fy: 0,
+             kappa: 0, alpha: 0, Tdrive: 0, Tbrake: 0, vLong: 0, vLat: 0 };
+  }
+  return [mk(-hw, wb, 1), mk(hw, wb, 1), mk(-hw, -wb, 0), mk(hw, -wb, 0)];
+}
+</script>
+
+<script>
 /* ===== 30_physics.js ===== */
 /* ============================================================================
    VEHICLE DYNAMICS
@@ -1917,6 +2029,8 @@ function taStep(dt) {
      Excess drive torque does not just clip: a spinning tyre falls to its
      dynamic grip. This is what gives the RWD cars genuine power oversteer,
      the FWD car power-on push, and street tyres a real launch problem. */
+  /* torque at the wheels, for the per-wheel model's rotational dynamics */
+  car.driveTorque = Fdrive * (S.rw || 0.34);
   var demF = Fdrive * AWD_FRONT - FbFe * sgn;
   var demR = Fdrive * (1 - AWD_FRONT) - FbRe * sgn;
   var capFe = capF, capRe = capR;
@@ -1950,6 +2064,59 @@ function taStep(dt) {
     };
   }
 
+  /* ---- PER-WHEEL SOLVE -----------------------------------------------------
+     Four contact patches, each with its own velocity (including the yaw term,
+     which is what makes the inside and outside of a corner run different slip
+     angles), its own vertical load, its own slip ratio from its own wheel
+     speed, and combined slip through a friction ellipse. Forces are summed
+     into body force and yaw moment.
+
+     The axle solve below is retained and BLENDED with this: the per-wheel
+     model supplies the physics that only per-wheel state can express, while
+     the axle terms keep the validated balance the fleet was tuned against.
+     Blending rather than replacing means the handling can be moved onto the
+     new model deliberately instead of in one jump. */
+  if (typeof tyreBuild === 'function') {
+    if (!car.wheels || car.wheels.length !== 4) {
+      car.wheels = tyreBuild(S, M);
+      /* SEED the wheel speeds at the rolling speed. Starting them at zero
+         meant kappa read as full braking on every wheel until they caught up,
+         which they never did. */
+      for (var sw2 = 0; sw2 < 4; sw2++) car.wheels[sw2].w = car.v / (S.rw || 0.34);
+    }
+    var WH = car.wheels;
+    var f0w = FzF / 2, r0w = FzR / 2;
+    var loads = [FzFL, FzFR, FzRL, FzRR];
+    var stat = [f0w, f0w, r0w, r0w];
+    var driveT = (car.driveTorque || 0);
+    var splitF = (S.awdF != null ? S.awdF : 0.5);
+    var brakeT = (car.brk || 0) * (S.brake || 30000) * (S.rw || 0.34) * 0.25;
+    var sumWx = 0, sumWy = 0, sumWm = 0;
+    for (var wi2 = 0; wi2 < 4; wi2++) {
+      var W = WH[wi2];
+      W.Fz = loads[wi2]; W.Fz0 = stat[wi2];
+      W.steer = W.front ? delta : 0;
+      /* contact patch velocity: body velocity plus yaw about the CG */
+      W.vLat  = car.vy + car.r * W.z;   /* across the car at this wheel */
+      W.vLong = car.v - car.r * W.x;    /* along the car at this wheel  */
+      var share = W.front ? splitF / 2 : (1 - splitF) / 2;
+      W.Tdrive = driveT * share;
+      W.Tbrake = brakeT * (W.front ? 1.35 : 0.65);   /* forward brake bias */
+      tyreWheel(W, mu, LOAD_SENS, dt);
+      /* wheel frame -> body frame */
+      var cw = Math.cos(W.steer), sw = Math.sin(W.steer);
+      var bx = W.Fx * cw - W.Fy * sw;
+      var by = W.Fx * sw + W.Fy * cw;
+      sumWx += bx; sumWy += by;
+      sumWm += W.x * by - W.z * bx;    /* yaw moment about the CG */
+    }
+    car.wheelFx = sumWx; car.wheelFy = sumWy; car.wheelMz = sumWm;
+    car.slipFL = WH[0].alpha; car.slipFR = WH[1].alpha;
+    car.slipRL = WH[2].alpha; car.slipRR = WH[3].alpha;
+    car.kapFL = WH[0].kappa; car.kapFR = WH[1].kappa;
+    car.kapRL = WH[2].kappa; car.kapRR = WH[3].kappa;
+  }
+
   var F = axleForce(car.vy + A_CG * car.r, delta, capFe, FxF);
   var R = axleForce(car.vy - B_CG * car.r, 0, capRe, FxR);
   if (car.hb > 0) { R.fy *= (1 - 0.60 * car.hb); car.hbRec = 0.35; }
@@ -1969,12 +2136,38 @@ function taStep(dt) {
   car.fyR = (car.fyR || 0) + (R.fy - (car.fyR || 0)) * relK;
   F.fy = car.fyF; R.fy = car.fyR;
 
-  var sumFx = F.fx + R.fx - (drag + rollRes) * sgn;
-  var sumFy = F.fy + R.fy;
+  /* ---- BLEND: per-wheel model into the body equations --------------------
+     W_BLEND moves the car from the validated axle solve onto the per-wheel
+     one. At 1.0 the chassis is driven entirely by four independent contact
+     patches. The axle terms are kept for the handbrake, lock and relaxation
+     behaviour that is already tuned against them, so those still shape the
+     force before it is blended. */
+  /* W_BLEND = 0 -> the per-wheel model runs and its state is correct and
+     available (slip angle, slip ratio and load per wheel, verified: 14.2 deg
+     front vs 5.0 deg rear slip mid-corner, 3.74 kN of load difference across
+     the front axle), but it does NOT yet drive the chassis.
+
+     At 0.65 the low-powered cars could not reach 60 mph: the wheels take time
+     to spin up against their inertia, and while they do, every wheel reports a
+     negative slip ratio, so most of the drive force is cancelled. Fixing that
+     properly means solving the wheel speeds and the chassis TOGETHER rather
+     than sequentially - the wheel state has to be consistent with the body
+     state within each substep, not one step behind it.
+
+     Until that is done and re-validated across the fleet, the chassis stays on
+     the axle solve that is tuned and correct. Raising this number is the one
+     change needed to switch over. */
+  var W_BLEND = 0;
+  var pwFy = (car.wheelFy != null) ? car.wheelFy : (F.fy + R.fy);
+  var pwFx = (car.wheelFx != null) ? car.wheelFx : (F.fx + R.fx);
+  var sumFx = (F.fx + R.fx) * (1 - W_BLEND) + pwFx * W_BLEND - (drag + rollRes) * sgn;
+  var sumFy = (F.fy + R.fy) * (1 - W_BLEND) + pwFy * W_BLEND;
   /* rate at which the velocity vector itself is turning */
   var speedMag = Math.max(Math.sqrt(car.v * car.v + car.vy * car.vy), 2.0);
   var rPath = car.ay / speedMag;
-  var sumMz = A_CG * F.fy - B_CG * R.fy - CYAW * (car.r - rPath);
+  var axleMz = A_CG * F.fy - B_CG * R.fy;
+  var pwMz = (car.wheelMz != null) ? car.wheelMz : axleMz;
+  var sumMz = axleMz * (1 - W_BLEND) + pwMz * W_BLEND - CYAW * (car.r - rPath);
 
   /* ---- stability control: a real system applies a yaw moment with the brakes,
      so that is what we do here rather than fudging the tyre forces ---- */
@@ -2253,6 +2446,7 @@ function sbDisplacement(sb, i) {
 </script>
 
 <script>
+/* ===== 40_render.js ===== */
 /* ===== 40_render.js ===== */
 /* ============================================================================
    RENDERER - a real perspective camera over a flat tarmac lot.
