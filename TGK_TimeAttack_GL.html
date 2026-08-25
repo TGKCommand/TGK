@@ -354,7 +354,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v4.70</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v5.00</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -501,7 +501,7 @@ body{
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v4.70';
+var TA_VER = 'v5.00';
 /* daily weather, derived from the course seed in taApplySun */
 var TA_WX = 'sun', TA_WX_LABEL = 'clear', WX_GRIP = 1, SH_K = 1, WX_SUN = 1;
 
@@ -3043,9 +3043,9 @@ function loadCarModel(S, key, onDone) {
 
 var renderer = null, scene = null, camera = null, sunLight = null, hemi = null;
 var carGroup = null, wheelPivots = [], ghostGroup = null, rivalGroup = null;
-var coneMesh = null, coneCollar = null, coneBase = null, coneChalk = null;
+var coneMesh = null, coneCollar = null, coneBase = null, coneChalk = null, coneAO = null;
 var coneDown = null, gateGroup = null, lineGroup = null;
-var _asphaltTex = null, _skyMesh = null, _smokeTex = null, _skidTex = null;
+var _asphaltTex = null, _skyMesh = null, _smokeTex = null, _skidTex = null, _aoTex = null;
 var _flameSprites = null, _flameTex = null;
 var tailMats = [], skidGroup = null, smokeGroup = null;
 var camX = 0, camZ = 0, camYaw = 0;
@@ -3232,6 +3232,23 @@ function glMakeSkid() {
   }
   var _t = new THREE.CanvasTexture(c); _t.encoding = THREE.sRGBEncoding; return _t;
 }
+function glMakeAO() {
+  /* Contact shadow. Objects that meet the ground with no darkening at the
+     join read as FLOATING, however good the lighting is - the eye uses that
+     gradient to place things in space. A directional shadow alone does not
+     supply it, because it falls to one side; ambient occlusion is the darkness
+     an object creates in the crevice beneath itself, and it sits underneath. */
+  var c = document.createElement('canvas'); c.width = c.height = 64;
+  var g = c.getContext('2d');
+  var grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0.00, 'rgba(0,0,0,0.55)');
+  grd.addColorStop(0.45, 'rgba(0,0,0,0.28)');
+  grd.addColorStop(1.00, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+  var t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
 function glMakeChalk() {
   var c = document.createElement('canvas'); c.width = c.height = 64;
   var g = c.getContext('2d');
@@ -3344,6 +3361,14 @@ function glBuildWorld() {
 
   var gChalk = new THREE.PlaneGeometry(0.46, 0.46);
   gChalk.rotateX(-Math.PI / 2);
+  if (!_aoTex) _aoTex = glMakeAO();
+  var gAO = new THREE.PlaneGeometry(0.62, 0.62);
+  gAO.rotateX(-Math.PI / 2);
+  coneAO = new THREE.InstancedMesh(gAO,
+    new THREE.MeshBasicMaterial({ map: _aoTex, transparent: true, depthWrite: false, opacity: 0.9 }),
+    N_CONE);
+  worldGroup.add(coneAO);
+
   coneChalk = new THREE.InstancedMesh(gChalk,
     new THREE.MeshBasicMaterial({ map: glMakeChalk(), transparent: true, depthWrite: false, opacity: 0.85 }), N_CONE);
   worldGroup.add(coneChalk);
@@ -3463,6 +3488,20 @@ function glBuildWorld() {
       rr.castShadow = true; sg.add(rr);
     }
   }
+  /* one contact shadow per trackside object, sized to its footprint */
+  if (!_aoTex) _aoTex = glMakeAO();
+  var aoGeo = new THREE.PlaneGeometry(1, 1);
+  aoGeo.rotateX(-Math.PI / 2);
+  var aoMat = new THREE.MeshBasicMaterial({ map: _aoTex, transparent: true, depthWrite: false, opacity: 0.85 });
+  for (var ao = 0; ao < course.scenery.length; ao++) {
+    var ob2 = course.scenery[ao];
+    if (ob2.t === 'decal' || ob2.t === 'gantry') continue;
+    var aw = (ob2.t === 'tree') ? 3.4 : Math.max(2.2, (ob2.w || 1.6) * 1.9);
+    var am = new THREE.Mesh(aoGeo, aoMat);
+    am.scale.set(aw, 1, aw);
+    am.position.set(-ob2.x, 0.02, ob2.z);
+    sg.add(am);
+  }
   worldGroup.add(sg);
 
   skidGroup = new THREE.Group(); worldGroup.add(skidGroup);
@@ -3491,6 +3530,15 @@ function glSyncCones(force) {
     if (coneCollar) coneCollar.setMatrixAt(i, _dummy.matrix);
     if (coneBase) coneBase.setMatrixAt(i, _dummy.matrix);
     /* the chalk box never moves - that is the whole point of it */
+    if (coneAO) {
+      /* the shadow belongs to the ground, so it does not tip over with a
+         struck cone - it just stays where the cone was standing */
+      _dummy.position.set(-c.x, 0.014, c.z);
+      _dummy.rotation.set(0, 0, 0);
+      _dummy.scale.setScalar(sc * (laid ? 1.15 : 1));
+      _dummy.updateMatrix();
+      coneAO.setMatrixAt(i, _dummy.matrix);
+    }
     if (coneChalk) {
       _dummy.position.set(-c.x, 0.006, c.z);
       _dummy.rotation.set(0, c.th || 0, 0);
@@ -3503,6 +3551,7 @@ function glSyncCones(force) {
   if (coneCollar) coneCollar.instanceMatrix.needsUpdate = true;
   if (coneBase) coneBase.instanceMatrix.needsUpdate = true;
   if (coneChalk) coneChalk.instanceMatrix.needsUpdate = true;
+  if (coneAO) coneAO.instanceMatrix.needsUpdate = true;
 }
 
 /* ---------- car ----------------------------------------------------------- */
