@@ -2678,9 +2678,7 @@ function glSplitWheels(root, S) {
      units the asset was authored in. This runs AFTER the fit, so the car is
      already scaled, centred and grounded, and the hubs are known exactly. */
   if (!S || typeof THREE === 'undefined') return 0;
-  var tw = (S.track || 1.6) / 2, wb = (S.wb || 2.9) / 2, rw = S.rw || 0.34;
-  var hubs = [[-tw, rw, wb], [tw, rw, wb], [-tw, rw, -wb], [tw, rw, -wb]];
-  var R2 = (rw * 1.30) * (rw * 1.30);
+  var rw = S.rw || 0.34;
   root.updateMatrixWorld(true);
   /* CANDIDATE FILTER - this is what was missing.
      Testing every mesh meant the wheel-sphere also cut through BODYWORK: the
@@ -2708,27 +2706,51 @@ function glSplitWheels(root, S) {
     var idx = g.index ? g.index.array : null;
     var tris = idx ? (idx.length / 3) : (pos.count / 3);
     if (tris < 24 || tris > 120000) continue;
+    /* SELF-LOCATING. Wheels were previously found with a sphere at the hub
+       positions the SPEC implies - but the model is only fitted by LENGTH, so
+       its wheelbase and track need not match the spec, and the sphere then
+       sits off the wheel. The result rotated about a point that was not the
+       hub. A mesh made of wheels needs no assumed positions at all: split it
+       into quadrants about its OWN centre, and each quadrant is one wheel
+       wherever the model happens to put it. */
+    var mnx = 1e30, mxx = -1e30, mnz = 1e30, mxz = -1e30, ti;
+    for (ti = 0; ti < pos.count; ti++) {
+      var qx = pos.getX(ti), qz = pos.getZ(ti);
+      if (qx < mnx) mnx = qx; if (qx > mxx) mxx = qx;
+      if (qz < mnz) mnz = qz; if (qz > mxz) mxz = qz;
+    }
+    var midX = (mnx + mxx) / 2, midZ = (mnz + mxz) / 2;
     var buckets = [[], [], [], []], rest = [], any = 0;
     for (var t = 0; t < tris; t++) {
       var a1 = idx ? idx[t * 3] : t * 3, b1 = idx ? idx[t * 3 + 1] : t * 3 + 1, c1 = idx ? idx[t * 3 + 2] : t * 3 + 2;
-      v.set((pos.getX(a1) + pos.getX(b1) + pos.getX(c1)) / 3,
-            (pos.getY(a1) + pos.getY(b1) + pos.getY(c1)) / 3,
-            (pos.getZ(a1) + pos.getZ(b1) + pos.getZ(c1)) / 3);
-      v.applyMatrix4(m.matrixWorld);            /* <-- into WORLD space */
-      var hit = -1;
-      for (var h = 0; h < 4; h++) {
-        var dx = v.x - hubs[h][0], dy = v.y - hubs[h][1], dz = v.z - hubs[h][2];
-        if (dx * dx + dy * dy + dz * dz < R2) { hit = h; break; }
-      }
-      if (hit >= 0) { buckets[hit].push(a1, b1, c1); any++; }
-      else rest.push(a1, b1, c1);
+      var cx3 = (pos.getX(a1) + pos.getX(b1) + pos.getX(c1)) / 3;
+      var cz3 = (pos.getZ(a1) + pos.getZ(b1) + pos.getZ(c1)) / 3;
+      var q3 = (cz3 > midZ ? 0 : 2) + (cx3 > midX ? 1 : 0);
+      buckets[q3].push(a1, b1, c1); any++;
     }
     /* Require a plausible wheel: enough triangles, and spread over at least
        two corners. A single blob in one corner is a mirror or a sill, not a
        wheel set, and must not be carved up. */
+    /* A quadrant is only a wheel if it is WHEEL-SIZED. This is what stops a
+       body mesh being carved into four pieces: a quarter of a car is far
+       bigger than a tyre, so it fails and nothing is touched. */
+    function quadOk(ind) {
+      if (ind.length < 60) return false;
+      var x0 = 1e30, x1 = -1e30, y0 = 1e30, y1 = -1e30, z0 = 1e30, z1 = -1e30;
+      for (var e = 0; e < ind.length; e++) {
+        var vv = ind[e], ax = pos.getX(vv), ay = pos.getY(vv), az = pos.getZ(vv);
+        if (ax < x0) x0 = ax; if (ax > x1) x1 = ax;
+        if (ay < y0) y0 = ay; if (ay > y1) y1 = ay;
+        if (az < z0) z0 = az; if (az > z1) z1 = az;
+      }
+      var dy = y1 - y0, dz = z1 - z0, dx = x1 - x0, dia = rw * 2;
+      /* a wheel is about one diameter tall and long, and much thinner across */
+      return dy < dia * 1.45 && dz < dia * 1.45 && dy > dia * 0.45 && dz > dia * 0.45 && dx < dia * 0.95;
+    }
     var filled = 0;
-    for (var q0 = 0; q0 < 4; q0++) if (buckets[q0].length >= 60) filled++;
-    if (any < 120 || filled < 2) continue;
+    for (var q0 = 0; q0 < 4; q0++) if (quadOk(buckets[q0])) filled++;
+    if (filled < 3) continue;      /* need at least three real wheels to trust it */
+    for (var q1 = 0; q1 < 4; q1++) if (!quadOk(buckets[q1])) { rest = rest.concat(buckets[q1]); buckets[q1] = []; }
     function mk(indices, name) {
       var ng = new THREE.BufferGeometry();
       ng.setAttribute('position', pos);
