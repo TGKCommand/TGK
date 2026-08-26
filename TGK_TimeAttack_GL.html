@@ -3887,7 +3887,10 @@ function loadCarModel(S, key, onDone) {
              reflective. */
           if (mm.metalness !== undefined) { mm.metalness = 0.16; mm.roughness = 0.34; }
           if (mm.clearcoat !== undefined) { mm.clearcoat = 0.85; mm.clearcoatRoughness = 0.12; }
-          if (mm.envMapIntensity !== undefined) mm.envMapIntensity = 0.55;
+          /* 0.55 was tuned against a flat grey cube that carried no sun and
+             no horizon. Against a real probe the reflection is meaningful, so
+             the paint can take more of it without turning to chrome. */
+          if (mm.envMapIntensity !== undefined) mm.envMapIntensity = 0.85;
           painted++;
         }
       });
@@ -4020,7 +4023,7 @@ var carGroup = null, wheelPivots = [], ghostGroup = null, rivalGroup = null;
 var coneMesh = null, coneCollar = null, coneBase = null, coneChalk = null, coneAO = null;
 var coneDown = null, gateGroup = null, lineGroup = null;
 var _asphaltTex = null, _skyMesh = null, _smokeTex = null, _skidTex = null, _aoTex = null;
-var _cloudMesh = null, _skyFor = null, _grassTex = null;
+var _cloudMesh = null, _skyFor = null, _grassTex = null, _asphaltNrm = null;
 var _flameSprites = null, _flameTex = null;
 var tailMats = [], skidGroup = null, smokeGroup = null;
 var camX = 0, camZ = 0, camYaw = 0;
@@ -4124,26 +4127,10 @@ function taResize() {
        Car paint is a mirror. With nothing to reflect, clearcoat reads as flat
        plastic no matter how good the material is. A tiny procedural sky/ground
        cube costs almost nothing and transforms how metal and glass look. */
-    try {
-      var cv = document.createElement('canvas'); cv.width = cv.height = 128;
-      var g = cv.getContext('2d');
-      var grd = g.createLinearGradient(0, 0, 0, 128);
-      grd.addColorStop(0.00, '#20456e');
-      grd.addColorStop(0.48, '#9db6c8');
-      grd.addColorStop(0.52, '#6a6d70');
-      grd.addColorStop(1.00, '#2e3033');
-      g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
-      var faces = [];
-      for (var f = 0; f < 6; f++) faces.push(cv.toDataURL());
-      var ldr = new THREE.CubeTextureLoader();
-      ldr.load(faces, function (tex) {
-        tex.encoding = THREE.sRGBEncoding;
-        scene.environment = tex;
-      });
-    } catch (e) {
-      /* reflections are a nicety - never let them stop the game booting */
-      console.warn('[TGK] environment map unavailable:', e && e.message);
-    }
+    /* The real probe is built in glRefreshEnvironment() once the sky exists.
+       What used to be here was a 128 px gradient copied to all six faces of a
+       cube - the same reflection in every direction, with no sun in it and no
+       idea which way was up. */
     _glReady = true;
   }
   var w = window.innerWidth, h = window.innerHeight;
@@ -4571,6 +4558,106 @@ function glMakeClouds(seed) {
   return t;
 }
 
+/* ---------------------------------------------------------------------------
+   IMAGE-BASED LIGHTING
+
+   Renders the sky dome, the cloud layer and the ground into a cube and runs
+   PMREM over it - the standard prefiltered-mipmap chain that lets one probe
+   serve every roughness from mirror to matte. This is what makes reflective
+   materials carry information about the world instead of an arbitrary
+   gradient: the sun appears in the paint where the sun actually is, the
+   horizon warms at golden hour, and the underside of the car sees tarmac.
+
+   Cheap because it reuses the dome textures that already exist rather than
+   painting anything new, and it only runs when the sky itself changes.
+   ------------------------------------------------------------------------ */
+var _envRT = null;
+function glRefreshEnvironment() {
+  if (!renderer || !scene || !_skyMesh || !_skyMesh.material.map) return;
+  if (!THREE.PMREMGenerator) return;
+  try {
+    var pm = new THREE.PMREMGenerator(renderer);
+    var es = new THREE.Scene();
+    var disposables = [];
+
+    var skyM = new THREE.MeshBasicMaterial({
+      map: _skyMesh.material.map, side: THREE.BackSide, fog: false, depthWrite: false
+    });
+    var skyG = new THREE.SphereGeometry(60, 32, 20);
+    es.add(new THREE.Mesh(skyG, skyM));
+    disposables.push(skyG, skyM);
+
+    if (_cloudMesh && _cloudMesh.material.map) {
+      var clM = new THREE.MeshBasicMaterial({
+        map: _cloudMesh.material.map, side: THREE.BackSide,
+        transparent: true, fog: false, depthWrite: false
+      });
+      var clG = new THREE.SphereGeometry(58, 32, 20);
+      es.add(new THREE.Mesh(clG, clM));
+      disposables.push(clG, clM);
+    }
+
+    /* The lower hemisphere is tarmac, not sky. Without it a car reflects blue
+       underneath as well as above and reads as chrome floating in a void -
+       the bounce off the ground is half of what makes paint look like paint. */
+    var P = glSkyPalette();
+    var lift = WX_SUN ? 0.20 : 0.16;
+    var gM = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(lift, lift, lift * 1.04), side: THREE.DoubleSide, fog: false
+    });
+    var gG = new THREE.CircleGeometry(59, 40);
+    var gnd = new THREE.Mesh(gG, gM);
+    gnd.rotation.x = -Math.PI / 2;
+    es.add(gnd);
+    disposables.push(gG, gM);
+
+    var rt = pm.fromScene(es, 0.015);
+    if (_envRT && _envRT.dispose) _envRT.dispose();
+    _envRT = rt;
+    scene.environment = rt.texture;
+    pm.dispose();
+    for (var d = 0; d < disposables.length; d++) {
+      if (disposables[d] && disposables[d].dispose) disposables[d].dispose();
+    }
+  } catch (e) {
+    /* reflections are a nicety - never let them stop the game booting */
+    console.warn('[TGK] environment probe unavailable:', e && e.message);
+  }
+}
+
+/* Derive a normal map from an existing albedo canvas by treating luminance as
+   height. Crude next to a scanned map, and exactly right for aggregate: the
+   dark pits and pale stones in the asphalt ARE its relief, so the albedo is
+   already a height field in everything but name. */
+function glNormalFromCanvas(srcCanvas, strength) {
+  var W = srcCanvas.width, H = srcCanvas.height;
+  var sd = srcCanvas.getContext('2d').getImageData(0, 0, W, H).data;
+  var out = document.createElement('canvas'); out.width = W; out.height = H;
+  var og = out.getContext('2d');
+  var img = og.createImageData(W, H), D = img.data;
+  function lum(x, y) {
+    x = ((x % W) + W) % W; y = ((y % H) + H) % H;
+    var i = (y * W + x) * 4;
+    return (sd[i] * 0.299 + sd[i + 1] * 0.587 + sd[i + 2] * 0.114) / 255;
+  }
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var dx = (lum(x - 1, y) - lum(x + 1, y)) * strength;
+      var dy = (lum(x, y - 1) - lum(x, y + 1)) * strength;
+      var l = Math.sqrt(dx * dx + dy * dy + 1);
+      var i2 = (y * W + x) * 4;
+      D[i2] = (dx / l * 0.5 + 0.5) * 255;
+      D[i2 + 1] = (dy / l * 0.5 + 0.5) * 255;
+      D[i2 + 2] = (1 / l * 0.5 + 0.5) * 255;
+      D[i2 + 3] = 255;
+    }
+  }
+  og.putImageData(img, 0, 0);
+  var t = new THREE.CanvasTexture(out);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
 /* Rebuild both domes. Called whenever the weather or sun changes, which for a
    daily-seeded course is once per layout - so the cost never lands in a lap. */
 function glRefreshSky() {
@@ -4592,6 +4679,8 @@ function glRefreshSky() {
      look like it is painted on a wall rather than sitting in air. */
   if (scene && scene.fog) scene.fog.color.setRGB(P.hor[0] / 255, P.hor[1] / 255, P.hor[2] / 255);
   if (scene) scene.background = new THREE.Color(P.hor[0] / 255, P.hor[1] / 255, P.hor[2] / 255);
+  /* the probe is generated FROM these textures, so it has to follow them */
+  glRefreshEnvironment();
 }
 
 /* ---------- static world: lot, swept course, cones, gates, scenery -------- */
@@ -4633,7 +4722,21 @@ function glBuildWorld() {
   var padW = (LP.x1 - LP.x0) + padPadX * 2, padD = (LP.z1 - LP.z0) + padPadZ * 2;
   var padCX = -((LP.x0 + LP.x1) / 2), padCZ = (LP.z0 + LP.z1) / 2;
   _asphaltTex.repeat.set(padW / 11.6, padD / 11.6);
-  var lotMat = new THREE.MeshStandardMaterial({ map: _asphaltTex, color: 0xffffff, roughness: 0.95 });
+  if (!_asphaltNrm && _asphaltTex.image) {
+    /* Relief from the albedo. A flat tarmac texture gives a raking sun nothing
+       to catch, so the pad stays a uniform sheet whatever the light does -
+       which is why it read as a painted floor rather than as aggregate. */
+    _asphaltNrm = glNormalFromCanvas(_asphaltTex.image, 2.6);
+  }
+  var lotMat = new THREE.MeshStandardMaterial({
+    map: _asphaltTex, color: 0xffffff, roughness: 0.93, metalness: 0.0,
+    envMapIntensity: 0.35
+  });
+  if (_asphaltNrm) {
+    _asphaltNrm.repeat.copy(_asphaltTex.repeat);
+    lotMat.normalMap = _asphaltNrm;
+    lotMat.normalScale = new THREE.Vector2(0.55, 0.55);
+  }
   var lot = new THREE.Mesh(new THREE.PlaneGeometry(padW, padD), lotMat);
   lot.rotation.x = -Math.PI / 2;
   lot.position.set(padCX, 0, padCZ);
