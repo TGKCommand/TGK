@@ -3124,7 +3124,13 @@ function loadCarModel(S, key, onDone) {
        and I am not shipping a fourth attempt unverified. The CC and Tiguan
        therefore have static wheels: correct geometry that does not rotate,
        which is plainly better than wheels on the roof. */
-    if (spinners.length < 2) {
+    /* Geometry splitting is OFF. Six successive attempts each produced a new
+       visual defect - wheels through doors, on the roof, orbiting the body,
+       non-round, invisible. The approach is wrong: it infers wheels from
+       heuristics at load time and cannot be verified before it is seen.
+       Static wheels are stable and correct-looking; that is the better
+       trade. */
+    if (false && spinners.length < 2) {
       var splitN = glSplitWheels(root, S);
       if (splitN) {
         console.log('[TGK] ' + key + ': no wheel nodes, split merged geometry into ' + splitN + ' wheels');
@@ -4021,7 +4027,27 @@ function buildCarInto(grp, S, tint) {
     }
     grp.add(model);
     if (!isGhost) {
+      /* Rig wheels ONLY from nodes the model itself declares, and only when
+         they resolve to four genuine corners. A partial set is what produced
+         the floating tyre on the Tiguan: five named nodes belonging to ONE
+         wheel were grouped into a single pivot and swung around the body.
+         Anything less than four corners: leave the model alone. */
       var sp = (typeof glFindSpinners === 'function') ? glFindSpinners(model) : [];
+      if (sp.length) {
+        var _bb = new THREE.Box3().setFromObject(model);
+        var _mz = (_bb.max.z + _bb.min.z) / 2, _mx = (_bb.max.x + _bb.min.x) / 2;
+        var _seen = {};
+        for (var _s = 0; _s < sp.length; _s++) {
+          var _c = new THREE.Box3().setFromObject(sp[_s]).getCenter(new THREE.Vector3());
+          _seen[(_c.z > _mz ? 'F' : 'R') + (_c.x < _mx ? 'L' : 'R')] = 1;
+        }
+        var _n = 0; for (var _k in _seen) _n++;
+        if (_n < 4) {
+          console.warn('[TGK] ' + key + ': wheel nodes cover only ' + _n +
+                       ' corner(s) - not rigging wheels (they stay static rather than swing).');
+          sp = [];
+        }
+      }
       /* ---- REAL wheel rig -------------------------------------------------
          Previously the "pivots" were plain JS objects, so writing rotation.y
          to them did nothing: the wheels never steered. Each wheel now gets a
