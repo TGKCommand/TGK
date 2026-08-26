@@ -1410,38 +1410,55 @@ function tyreWheel(W, mu, sens, dt) {
   var cap = muEff * Fz;
 
   /* Velocity of this contact patch, rotated into the WHEEL's own frame.
-     NAMING MATTERS HERE: W.vLong is along the car, W.vLat is across it. An
-     earlier version rotated them the wrong way round and produced 80 degree
-     slip angles - the maths was right, the two inputs were swapped. */
+     NAMING MATTERS HERE: W.vLong is along the car, W.vLat is across it. */
   var cs = Math.cos(W.steer), sn = Math.sin(W.steer);
-  var vAlong  =  W.vLong * cs + W.vLat * sn;      /* along the wheel  */
-  var vAcross = -W.vLong * sn + W.vLat * cs;      /* across the wheel */
-  var vAbs = Math.max(Math.abs(vAlong), 1.2);     /* keeps slip finite at rest */
+  var vAlong  =  W.vLong * cs + W.vLat * sn;
+  var vAcross = -W.vLong * sn + W.vLat * cs;
+  var vAbs = Math.max(Math.abs(vAlong), 1.2);
 
-  /* slip ratio and slip angle */
-  W.kappa = (W.w * W.R - vAlong) / vAbs;
   W.alpha = Math.atan2(-vAcross, vAbs);
-
-  var fx0 = tyreLong(clamp(W.kappa, -3, 3));
   var fy0 = tyreLat(W.alpha);
 
-  /* COMBINED SLIP: the friction ellipse. Demand in one direction removes
-     capability in the other - trail braking and power understeer fall out of
-     this rather than being special-cased. */
-  var mag = Math.sqrt(fx0 * fx0 + fy0 * fy0);
-  if (mag > 1) { fx0 /= mag; fy0 /= mag; }
+  /* ---- COUPLED WHEEL SPEED ------------------------------------------------
+     The wheel's rotational state and the force it makes are mutually
+     dependent: slip ratio sets the force, and the force decelerates the
+     wheel, which changes the slip ratio. Integrating that ONCE per physics
+     step with an explicit step is both inaccurate and, at 240 Hz against a
+     stiff tyre curve, badly behaved - the wheel lags its equilibrium slip for
+     several steps, reports a false negative slip ratio while it catches up,
+     and cancels most of the drive force. That is exactly why the low-powered
+     cars could not reach 60 mph when this model was first blended in.
 
-  W.Fx = fx0 * cap;
-  W.Fy = fy0 * cap;
+     Sub-stepping the ROTATIONAL dynamics inside one chassis step fixes it:
+     the chassis velocity is held constant (it barely changes in 4 ms) while
+     the wheel converges to the slip ratio that balances the torque applied to
+     it. The wheel and body are then consistent within the step instead of one
+     lagging the other. Ten inner steps is comfortably enough to converge and
+     costs almost nothing - it is scalar arithmetic on four wheels. */
+  var SUB = 10, h = dt / SUB;
+  var fx0 = 0;
+  for (var s = 0; s < SUB; s++) {
+    W.kappa = (W.w * W.R - vAlong) / vAbs;
+    fx0 = tyreLong(clamp(W.kappa, -3, 3));
 
-  /* wheel rotational dynamics: drive and brake torque against the road force */
-  var roadT = W.Fx * W.R;
-  var brakeT = W.Tbrake * (W.w > 0 ? 1 : (W.w < 0 ? -1 : 0));
-  var dw = (W.Tdrive - roadT - brakeT) / W.I;
-  W.w += dw * dt;
-  /* a braked wheel must be able to stop, not oscillate through zero */
-  if (W.Tbrake > 0 && W.w * (W.w - dw * dt) < 0) W.w = 0;
-  if (W.w < -2) W.w = -2;
+    /* COMBINED SLIP: the friction ellipse. Demand in one direction removes
+       capability in the other, so trail braking and power-on understeer fall
+       out of the model rather than being special-cased. */
+    var mag = Math.sqrt(fx0 * fx0 + fy0 * fy0);
+    var fxU = fx0, fyU = fy0;
+    if (mag > 1) { fxU = fx0 / mag; fyU = fy0 / mag; }
+
+    var Fx = fxU * cap;
+    var brakeT = W.Tbrake * (W.w > 0.05 ? 1 : (W.w < -0.05 ? -1 : 0));
+    var dw = (W.Tdrive - Fx * W.R - brakeT) / W.I;
+    var wPrev = W.w;
+    W.w += dw * h;
+    /* a braked wheel must be able to STOP, not chatter through zero */
+    if (W.Tbrake > 0 && wPrev * W.w < 0) W.w = 0;
+    if (W.w < -2) W.w = -2;
+    W.Fx = Fx; W.Fy = fyU * cap;
+  }
+  if (W.Fx === undefined) { W.Fx = 0; W.Fy = fy0 * cap; }
 }
 
 /* Build the four wheels for a car, in body coordinates. */
@@ -1750,6 +1767,17 @@ function taStep(dt) {
      free at a standstill, flares when the driven wheels break loose, and takes
      real time to climb and fall. This is what makes a launch feel like a
      launch, and it is what the audio synth keys off. */
+  /* NOTE: deriving revs from the DRIVEN WHEELS was tried here and reverted.
+     It is physically right - the engine is geared to the wheels, not the road
+     - and it did stop the rear wheels reaching slip ratios above 10. But with
+     drive torque fed to the wheels from an engine map rather than through a
+     modelled driveline, it forms an undamped loop: revs feed torque feeds
+     wheel speed feeds revs. The gearbox hunted 1-2-1-2-3 with revs swinging
+     between 2700 and 6400, and the car could not pass 10 m/s.
+
+     Closing that loop properly needs engine inertia, clutch and gearbox solved
+     TOGETHER with the wheels, not an engine map driving them one-way. That is
+     the remaining work before the chassis can move onto the per-wheel model. */
   var rpmWheel = taRpmFor(absV, car.gear);
   var rpmTarget = rpmWheel;
   if (car.clutch < 1 || absV < 1.5) {

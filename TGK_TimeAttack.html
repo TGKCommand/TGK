@@ -1408,38 +1408,55 @@ function tyreWheel(W, mu, sens, dt) {
   var cap = muEff * Fz;
 
   /* Velocity of this contact patch, rotated into the WHEEL's own frame.
-     NAMING MATTERS HERE: W.vLong is along the car, W.vLat is across it. An
-     earlier version rotated them the wrong way round and produced 80 degree
-     slip angles - the maths was right, the two inputs were swapped. */
+     NAMING MATTERS HERE: W.vLong is along the car, W.vLat is across it. */
   var cs = Math.cos(W.steer), sn = Math.sin(W.steer);
-  var vAlong  =  W.vLong * cs + W.vLat * sn;      /* along the wheel  */
-  var vAcross = -W.vLong * sn + W.vLat * cs;      /* across the wheel */
-  var vAbs = Math.max(Math.abs(vAlong), 1.2);     /* keeps slip finite at rest */
+  var vAlong  =  W.vLong * cs + W.vLat * sn;
+  var vAcross = -W.vLong * sn + W.vLat * cs;
+  var vAbs = Math.max(Math.abs(vAlong), 1.2);
 
-  /* slip ratio and slip angle */
-  W.kappa = (W.w * W.R - vAlong) / vAbs;
   W.alpha = Math.atan2(-vAcross, vAbs);
-
-  var fx0 = tyreLong(clamp(W.kappa, -3, 3));
   var fy0 = tyreLat(W.alpha);
 
-  /* COMBINED SLIP: the friction ellipse. Demand in one direction removes
-     capability in the other - trail braking and power understeer fall out of
-     this rather than being special-cased. */
-  var mag = Math.sqrt(fx0 * fx0 + fy0 * fy0);
-  if (mag > 1) { fx0 /= mag; fy0 /= mag; }
+  /* ---- COUPLED WHEEL SPEED ------------------------------------------------
+     The wheel's rotational state and the force it makes are mutually
+     dependent: slip ratio sets the force, and the force decelerates the
+     wheel, which changes the slip ratio. Integrating that ONCE per physics
+     step with an explicit step is both inaccurate and, at 240 Hz against a
+     stiff tyre curve, badly behaved - the wheel lags its equilibrium slip for
+     several steps, reports a false negative slip ratio while it catches up,
+     and cancels most of the drive force. That is exactly why the low-powered
+     cars could not reach 60 mph when this model was first blended in.
 
-  W.Fx = fx0 * cap;
-  W.Fy = fy0 * cap;
+     Sub-stepping the ROTATIONAL dynamics inside one chassis step fixes it:
+     the chassis velocity is held constant (it barely changes in 4 ms) while
+     the wheel converges to the slip ratio that balances the torque applied to
+     it. The wheel and body are then consistent within the step instead of one
+     lagging the other. Ten inner steps is comfortably enough to converge and
+     costs almost nothing - it is scalar arithmetic on four wheels. */
+  var SUB = 10, h = dt / SUB;
+  var fx0 = 0;
+  for (var s = 0; s < SUB; s++) {
+    W.kappa = (W.w * W.R - vAlong) / vAbs;
+    fx0 = tyreLong(clamp(W.kappa, -3, 3));
 
-  /* wheel rotational dynamics: drive and brake torque against the road force */
-  var roadT = W.Fx * W.R;
-  var brakeT = W.Tbrake * (W.w > 0 ? 1 : (W.w < 0 ? -1 : 0));
-  var dw = (W.Tdrive - roadT - brakeT) / W.I;
-  W.w += dw * dt;
-  /* a braked wheel must be able to stop, not oscillate through zero */
-  if (W.Tbrake > 0 && W.w * (W.w - dw * dt) < 0) W.w = 0;
-  if (W.w < -2) W.w = -2;
+    /* COMBINED SLIP: the friction ellipse. Demand in one direction removes
+       capability in the other, so trail braking and power-on understeer fall
+       out of the model rather than being special-cased. */
+    var mag = Math.sqrt(fx0 * fx0 + fy0 * fy0);
+    var fxU = fx0, fyU = fy0;
+    if (mag > 1) { fxU = fx0 / mag; fyU = fy0 / mag; }
+
+    var Fx = fxU * cap;
+    var brakeT = W.Tbrake * (W.w > 0.05 ? 1 : (W.w < -0.05 ? -1 : 0));
+    var dw = (W.Tdrive - Fx * W.R - brakeT) / W.I;
+    var wPrev = W.w;
+    W.w += dw * h;
+    /* a braked wheel must be able to STOP, not chatter through zero */
+    if (W.Tbrake > 0 && wPrev * W.w < 0) W.w = 0;
+    if (W.w < -2) W.w = -2;
+    W.Fx = Fx; W.Fy = fyU * cap;
+  }
+  if (W.Fx === undefined) { W.Fx = 0; W.Fy = fy0 * cap; }
 }
 
 /* Build the four wheels for a car, in body coordinates. */
@@ -1748,6 +1765,17 @@ function taStep(dt) {
      free at a standstill, flares when the driven wheels break loose, and takes
      real time to climb and fall. This is what makes a launch feel like a
      launch, and it is what the audio synth keys off. */
+  /* NOTE: deriving revs from the DRIVEN WHEELS was tried here and reverted.
+     It is physically right - the engine is geared to the wheels, not the road
+     - and it did stop the rear wheels reaching slip ratios above 10. But with
+     drive torque fed to the wheels from an engine map rather than through a
+     modelled driveline, it forms an undamped loop: revs feed torque feeds
+     wheel speed feeds revs. The gearbox hunted 1-2-1-2-3 with revs swinging
+     between 2700 and 6400, and the car could not pass 10 m/s.
+
+     Closing that loop properly needs engine inertia, clutch and gearbox solved
+     TOGETHER with the wheels, not an engine map driving them one-way. That is
+     the remaining work before the chassis can move onto the per-wheel model. */
   var rpmWheel = taRpmFor(absV, car.gear);
   var rpmTarget = rpmWheel;
   if (car.clutch < 1 || absV < 1.5) {
@@ -3990,6 +4018,91 @@ function taDentField(mesh) {
    then spinning about the world lateral axis - makes the wheel trace a cone,
    i.e. it precesses. That was the wheel wobble: not too much camber, but
    camber and spin composed in the wrong order. Bodies keep roll-then-pitch. */
+/* ---------------------------------------------------------------------------
+   taPaintFaces - draws an already-sorted face list.
+
+   Split out of taDrawMesh so that SEVERAL meshes can be sorted together. Each
+   mesh used to sort and paint only its own faces, so the body was painted over
+   the wheels as a block: a steered wheel tucked under the arch disappeared,
+   and the two-pass workaround then made near wheels show THROUGH the body.
+   Neither is fixable without one shared depth sort, which needs alpha and tint
+   carried per FACE rather than closed over per mesh.
+   --------------------------------------------------------------------------- */
+function taPaintFaces(out) {
+  ctx.save();
+  ctx.globalAlpha = 1;
+  for (var i = 0; i < out.length; i++) {
+    var o = out[i], col = o.f.c;
+    var tint = o.tint;
+    if (tint && tint[o.f.tag]) col = tint[o.f.tag];
+    ctx.globalAlpha = (o.alpha === undefined ? 1 : o.alpha);
+    /* ground-proximity occlusion: sills, valances and inner wheels sit in
+       bounce-light shadow on a real car */
+    var aoK = 0.70 + 0.30 * clamp((o.cy - 0.06) / 0.55, 0, 1);
+    if (aoK < 0.995) col = [col[0] * aoK, col[1] * aoK, col[2] * aoK];
+    ctx.beginPath();
+    ctx.moveTo(o.s[0].x, o.s[0].y);
+    ctx.lineTo(o.s[1].x, o.s[1].y);
+    ctx.lineTo(o.s[2].x, o.s[2].y);
+    ctx.lineTo(o.s[3].x, o.s[3].y);
+    ctx.closePath();
+    var fs = shade(col, o.n[0], o.n[1], o.n[2], fogAt(o.d),
+      GLOSS[o.f.tag] || 0, o.v[0], o.v[1], o.v[2]);
+    var tg2 = o.f.tag;
+    if ((tg2 === 'body' || tg2 === 'roof' || tg2 === 'glass') && Math.abs(o.n[1]) < 0.85) {
+      /* Gouraud-style curvature: shade the same face under two normals
+         tilted about the horizontal and stretch a vertical gradient between
+         them - every panel reads rolled instead of flat */
+      var yMin = Math.min(o.s[0].y, o.s[1].y, o.s[2].y, o.s[3].y);
+      var yMax = Math.max(o.s[0].y, o.s[1].y, o.s[2].y, o.s[3].y);
+      if (yMax - yMin > 5) {
+        var fsT, fsB;
+        if (o.f.ng && o.gnw) {
+          /* baked joint normals (already yaw-rotated): index 1 is the UPPER
+             joint of the band; map it to whichever screen edge is higher */
+          var upFirst = (o.s[0].y + o.s[1].y) < (o.s[2].y + o.s[3].y);
+          var nT = upFirst ? o.gnw[0] : o.gnw[1], nB = upFirst ? o.gnw[1] : o.gnw[0];
+          fsT = shade(col, nT[0], nT[1], nT[2], fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
+          fsB = shade(col, nB[0], nB[1], nB[2], fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
+        } else {
+          var tny = o.n[1] + 0.16, tl = Math.hypot(o.n[0], tny, o.n[2]) || 1;
+          var bny = o.n[1] - 0.13, bl = Math.hypot(o.n[0], bny, o.n[2]) || 1;
+          fsT = shade(col, o.n[0] / tl, tny / tl, o.n[2] / tl, fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
+          fsB = shade(col, o.n[0] / bl, bny / bl, o.n[2] / bl, fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
+        }
+        var gr = ctx.createLinearGradient(0, yMin, 0, yMax);
+        gr.addColorStop(0, fsT);
+        gr.addColorStop(1, fsB);
+        ctx.fillStyle = gr;
+        ctx.fill();
+        ctx.fillStyle = fs;
+      } else { ctx.fillStyle = fs; ctx.fill(); }
+    } else {
+      ctx.fillStyle = fs;
+      ctx.fill();
+    }
+    /* seam-fill: a hairline stroke in the face's own colour closes the
+       cracks between adjacent polygons and softens silhouette stairsteps */
+    ctx.strokeStyle = fs;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+var _meshQueue = null;
+/* Collect several meshes into one depth-sorted batch. */
+function taMeshBatch(fn) {
+  var prev = _meshQueue;
+  _meshQueue = [];
+  try { fn(); } finally {
+    var q = _meshQueue;
+    _meshQueue = prev;
+    q.sort(function (a, b) { return (b.d - a.d) || ((MESH_PRI[a.f.tag] || 0) - (MESH_PRI[b.f.tag] || 0)); });
+    taPaintFaces(q);
+  }
+}
+
 function taDrawMesh(mesh, pos, yaw, roll, pitch, alpha, tint, axleFirst) {
   var cy2r = Math.cos(yaw), sy2r = Math.sin(yaw);
   var cy = Math.cos(yaw), sy = Math.sin(yaw);
@@ -4050,64 +4163,11 @@ function taDrawMesh(mesh, pos, yaw, roll, pitch, alpha, tint, axleFirst) {
     }
     out.push({ d: depth / 4, s: scr, f: f, n: [nx, ny, nz], v: [vx / vl, vy2 / vl, vz / vl], cy: cym, gnw: gnw });
   }
+  /* stamp alpha and tint onto each face so a shared sort can paint them */
+  for (i = 0; i < out.length; i++) { out[i].alpha = alpha; out[i].tint = tint; }
+  if (_meshQueue) { for (i = 0; i < out.length; i++) _meshQueue.push(out[i]); return; }
   out.sort(function (a, b) { return (b.d - a.d) || ((MESH_PRI[a.f.tag] || 0) - (MESH_PRI[b.f.tag] || 0)); });
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  for (i = 0; i < out.length; i++) {
-    var o = out[i], col = o.f.c;
-    if (tint && tint[o.f.tag]) col = tint[o.f.tag];
-    /* ground-proximity occlusion: sills, valances and inner wheels sit in
-       bounce-light shadow on a real car */
-    var aoK = 0.70 + 0.30 * clamp((o.cy - 0.06) / 0.55, 0, 1);
-    if (aoK < 0.995) col = [col[0] * aoK, col[1] * aoK, col[2] * aoK];
-    ctx.beginPath();
-    ctx.moveTo(o.s[0].x, o.s[0].y);
-    ctx.lineTo(o.s[1].x, o.s[1].y);
-    ctx.lineTo(o.s[2].x, o.s[2].y);
-    ctx.lineTo(o.s[3].x, o.s[3].y);
-    ctx.closePath();
-    var fs = shade(col, o.n[0], o.n[1], o.n[2], fogAt(o.d),
-      GLOSS[o.f.tag] || 0, o.v[0], o.v[1], o.v[2]);
-    var tg2 = o.f.tag;
-    if ((tg2 === 'body' || tg2 === 'roof' || tg2 === 'glass') && Math.abs(o.n[1]) < 0.85) {
-      /* Gouraud-style curvature: shade the same face under two normals
-         tilted about the horizontal and stretch a vertical gradient between
-         them - every panel reads rolled instead of flat */
-      var yMin = Math.min(o.s[0].y, o.s[1].y, o.s[2].y, o.s[3].y);
-      var yMax = Math.max(o.s[0].y, o.s[1].y, o.s[2].y, o.s[3].y);
-      if (yMax - yMin > 5) {
-        var fsT, fsB;
-        if (o.f.ng && o.gnw) {
-          /* baked joint normals (already yaw-rotated): index 1 is the UPPER
-             joint of the band; map it to whichever screen edge is higher */
-          var upFirst = (o.s[0].y + o.s[1].y) < (o.s[2].y + o.s[3].y);
-          var nT = upFirst ? o.gnw[0] : o.gnw[1], nB = upFirst ? o.gnw[1] : o.gnw[0];
-          fsT = shade(col, nT[0], nT[1], nT[2], fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
-          fsB = shade(col, nB[0], nB[1], nB[2], fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
-        } else {
-          var tny = o.n[1] + 0.16, tl = Math.hypot(o.n[0], tny, o.n[2]) || 1;
-          var bny = o.n[1] - 0.13, bl = Math.hypot(o.n[0], bny, o.n[2]) || 1;
-          fsT = shade(col, o.n[0] / tl, tny / tl, o.n[2] / tl, fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
-          fsB = shade(col, o.n[0] / bl, bny / bl, o.n[2] / bl, fogAt(o.d), GLOSS[tg2] || 0, o.v[0], o.v[1], o.v[2]);
-        }
-        var gr = ctx.createLinearGradient(0, yMin, 0, yMax);
-        gr.addColorStop(0, fsT);
-        gr.addColorStop(1, fsB);
-        ctx.fillStyle = gr;
-        ctx.fill();
-        ctx.fillStyle = fs;
-      } else { ctx.fillStyle = fs; ctx.fill(); }
-    } else {
-      ctx.fillStyle = fs;
-      ctx.fill();
-    }
-    /* seam-fill: a hairline stroke in the face's own colour closes the
-       cracks between adjacent polygons and softens silhouette stairsteps */
-    ctx.strokeStyle = fs;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-  }
-  ctx.restore();
+  taPaintFaces(out);
 }
 
 function taDrawCarBody(x, z, yaw, roll, pitch, steer, alpha, ghost) {
@@ -4174,7 +4234,16 @@ function taDrawCarBody(x, z, yaw, roll, pitch, steer, alpha, ghost) {
   var blur = ghost ? 0 : clamp((Math.abs(car.v) - 7) / 7, 0, 1);
   var wTint = ghost ? { tyre: [40, 90, 86], rim: [70, 150, 140] } :
     (blur > 0.55 ? { rim: [82, 84, 88] } : null);
-  for (var i = 0; i < 4; i++) {
+  /* ---- WHEELS IN TWO PASSES ------------------------------------------------
+     Each mesh depth-sorts only its OWN faces, so drawing all four wheels and
+     then the body meant the body was painted over every wheel as a block. A
+     wheel that tucked in under the arch when steered vanished completely.
+
+     Splitting by depth fixes it without a shared sort: wheels FARTHER from the
+     camera than the car's centre are drawn first, so the body correctly hides
+     them, and wheels NEARER than the centre are drawn after the body, so they
+     are never wrongly covered. */
+  function drawWheel(i) {
     var w = wheels[i];
     var wxx = x + (w[0] * Math.cos(yaw) + w[1] * Math.sin(yaw));
     var wzz = z + (-w[0] * Math.sin(yaw) + w[1] * Math.cos(yaw));
@@ -4195,7 +4264,13 @@ function taDrawCarBody(x, z, yaw, roll, pitch, steer, alpha, ghost) {
     var wRoll = (sideS < 0 ? -sCamb[i] : sCamb[i]);
     taDrawMesh(wheelMesh, [wxx, wy, wzz], yaw + w[2], wRoll, spin, alpha, wTint, true);
   }
-  taDrawMesh(carMesh, [x, 0.02, z], yaw, roll, pitch, alpha, tint);
+  /* Body and wheels in ONE depth-sorted batch, so they occlude each other
+     per-face. Two ordered passes cannot get this right: a wheel nearer than
+     the car's CENTRE can still sit behind panels that are also near. */
+  taMeshBatch(function () {
+    for (var wq = 0; wq < 4; wq++) drawWheel(wq);
+    taDrawMesh(carMesh, [x, 0.02, z], yaw, roll, pitch, alpha, tint);
+  });
 
   /* exhaust flame on an ignition-cut downshift */
   if (!ghost && typeof car !== 'undefined' && (car.flame || 0) > 0.02) {
