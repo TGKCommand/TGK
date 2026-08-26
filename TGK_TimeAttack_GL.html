@@ -3404,39 +3404,45 @@ function glHarvestByHubs(root, len, minY) {
         var dx = cx - hubs[hi].x, dy = cy - hubs[hi].y, dz = cz - hubs[hi].z;
         var d = dx * dx + dy * dy + dz * dz;
         /* must be inside the wheel's own envelope, not merely nearest to it */
-        if (d < bd && d < hubs[hi].dia * hubs[hi].dia * 0.36) { bd = d; bh = hi; }
+        /* Inside the tyre's own envelope. 0.53 of a diameter is just past the
+           tread surface at 0.50 - tight enough to leave the wheel arch and
+           the suspension outside it, wide enough that no part of the tyre
+           itself falls out and gets left behind as a static sliver. */
+        if (d < bd && d < hubs[hi].dia * hubs[hi].dia * 0.281) { bd = d; bh = hi; }
       }
       if (bh < 0) rest.push(t); else groups[bh].push(t);
     }
 
+    /* MEMBERSHIP IS POSITION, NOT SHAPE.
+
+       These triangles were selected for lying inside a known tyre's envelope.
+       Re-judging each group on its own silhouette is what tore holes in the
+       Tiguan's tyres: a sliver of sidewall or a bead ring fails a roundness
+       test on its own, gets dropped back into the static remainder, and then
+       stands still while the rest of the wheel turns. Anything inside the
+       tyre turns with the tyre. */
     var keep = [], kept = 0;
     for (var gi = 0; gi < 4; gi++) {
-      if (groups[gi].length < 24) { rest = rest.concat(groups[gi]); continue; }
-      var pm = new THREE.Mesh(glSliceTris(geo, groups[gi]), mesh.material);
-      pm.position.copy(mesh.position); pm.quaternion.copy(mesh.quaternion); pm.scale.copy(mesh.scale);
-      parent.add(pm); root.updateMatrixWorld(true);
-      var pb = new THREE.Box3().setFromObject(pm), ok = false;
-      if (!pb.isEmpty()) {
-        var ps = pb.getSize(new THREE.Vector3()), pc = pb.getCenter(new THREE.Vector3());
-        var pd = Math.max(ps.y, ps.z);
-        var HH = hubs[gi];
-        /* These triangles were already selected for sitting INSIDE a known
-           wheel's envelope, which is far stronger evidence than any shape
-           score computed on the fragment alone. Judging them again on
-           circularity is what left static rims on the right-hand side of two
-           cars: the same component reads 0.85 on one side and 0.73 on the
-           other, and no threshold separates that from junk. What still has to
-           hold is that the fragment is CONCENTRIC with the hub and fits
-           inside the wheel - which is exactly what excludes a brake caliper,
-           since a caliper straddles the disc from off-axis. */
-        ok = pd <= HH.dia * 1.12
-          && ps.x <= HH.dia * 1.12
-          && Math.hypot(pc.y - HH.y, pc.z - HH.z) <= HH.dia * 0.18;
+      if (groups[gi].length < 8) { rest = rest.concat(groups[gi]); continue; }
+      /* Everything this mesh contributes inside one tyre, taken together.
+         A full ring is concentric with the axle; a caliper or a bracket that
+         merely reaches into the wheel is not. Judging the group's POSITION
+         keeps whole tyres intact - it was judging its SHAPE that dropped
+         slivers of sidewall back into the static remainder and tore holes in
+         the Tiguan's wheels. */
+      var gb2 = new THREE.Box3();
+      var vg = new THREE.Vector3();
+      for (var qi = 0; qi < groups[gi].length; qi += Math.max(1, (groups[gi].length / 200) | 0)) {
+        for (var qk = 0; qk < 3; qk++) {
+          vg.fromBufferAttribute(pos, groups[gi][qi] * 3 + qk).applyMatrix4(mw);
+          gb2.expandByPoint(vg);
+        }
       }
-      parent.remove(pm);
-      if (pm.geometry) pm.geometry.dispose();
-      if (ok) { keep.push(groups[gi]); kept++; }
-      else rest = rest.concat(groups[gi]);
+      var gc2 = gb2.getCenter(new THREE.Vector3()), HG = hubs[gi];
+      if (Math.hypot(gc2.y - HG.y, gc2.z - HG.z) > HG.dia * 0.15) {
+        rest = rest.concat(groups[gi]); continue;
+      }
+      keep.push(groups[gi]); kept++;
     }
     if (!kept) continue;
 
@@ -3493,25 +3499,150 @@ function glAddHubCompanions(root, wheels) {
   var have = {};
   for (i = 0; i < wheels.length; i++) have[wheels[i].uuid] = 1;
   var added = 0;
+
+  /* MEMBERSHIP BY POSITION.
+
+     The previous version judged each candidate on its silhouette - round
+     enough, big enough, concentric enough. Every one of those thresholds
+     leaked. Brake discs sat just under the minimum diameter and stayed
+     static on the S6 and the X5; a rim face read 0.73 circularity on one
+     side of a car and 0.85 on the other. The question was never "is this
+     shaped like a wheel". It is "is this INSIDE the wheel", and that has an
+     unambiguous answer: sample the triangles and see where they are.
+
+     A part almost entirely inside one tyre's envelope turns with that tyre.
+     That does capture the brake caliper, which strictly should not rotate -
+     but a caliper is small, sits behind the spokes, and the alternative is
+     leaving genuine wheel components standing still, which is enormously
+     more visible. */
   root.traverse(function (n) {
-    if (!n.isMesh || !n.geometry || have[n.uuid]) return;
+    if (!n.isMesh || have[n.uuid] || !n.geometry || !n.geometry.attributes ||
+        !n.geometry.attributes.position) return;
     var b = new THREE.Box3().setFromObject(n);
     if (b.isEmpty()) return;
-    var c = b.getCenter(new THREE.Vector3()), s = b.getSize(new THREE.Vector3());
-    var d = Math.max(s.y, s.z);
-    for (var hi = 0; hi < hubs.length; hi++) {
-      var H = hubs[hi];
-      /* CONCENTRIC: on the hub axis, within a quarter of a wheel radius. This
-         is what separates a rotor from a caliper. */
-      if (Math.abs(c.x - H.x) > H.dia * 0.45) continue;
-      if (Math.hypot(c.y - H.y, c.z - H.z) > H.dia * 0.12) continue;
-      if (d > H.dia * 1.10 || d < H.dia * 0.25) continue;
-      if (Math.abs(s.y - s.z) > d * 0.30) continue;
-      if (glCircularity(n, c.y, c.z) < 0.62) continue;
-      wheels.push(n); have[n.uuid] = 1; added++;
-      break;
+    var s2 = b.getSize(new THREE.Vector3());
+    var biggest = 0;
+    for (var q = 0; q < hubs.length; q++) biggest = Math.max(biggest, hubs[q].dia);
+    /* cheap reject: nothing that fits inside a wheel is bigger than one */
+    if (s2.x > biggest * 1.25 || s2.y > biggest * 1.25 || s2.z > biggest * 1.25) return;
+
+    var geo = n.geometry.index ? n.geometry.toNonIndexed() : n.geometry;
+    var pos = geo.attributes.position, nT = Math.floor(pos.count / 3);
+    if (nT < 4) return;
+    var step = Math.max(1, Math.floor(nT / 400));
+    var mwn = n.matrixWorld, vv = new THREE.Vector3();
+    var counts = new Int32Array(hubs.length), sampled = 0;
+    for (var t = 0; t < nT; t += step) {
+      var cx = 0, cy = 0, cz = 0;
+      for (var k2 = 0; k2 < 3; k2++) {
+        vv.fromBufferAttribute(pos, t * 3 + k2).applyMatrix4(mwn);
+        cx += vv.x; cy += vv.y; cz += vv.z;
+      }
+      cx /= 3; cy /= 3; cz /= 3; sampled++;
+      for (var hj = 0; hj < hubs.length; hj++) {
+        var H2 = hubs[hj];
+        var ddx = cx - H2.x, ddy = cy - H2.y, ddz = cz - H2.z;
+        if (ddx * ddx + ddy * ddy + ddz * ddz < H2.dia * H2.dia * 0.27) { counts[hj]++; break; }
+      }
     }
+    if (!sampled) return;
+    var bestH = -1, bestN = 0;
+    for (var hk = 0; hk < hubs.length; hk++) if (counts[hk] > bestN) { bestN = counts[hk]; bestH = hk; }
+    /* almost all of it must be inside ONE wheel - a part that straddles the
+       boundary belongs to the bodyshell, not to the hub */
+    if (bestH < 0 || bestN / sampled < 0.88) return;
+    /* CONCENTRIC WITH THE AXLE, not merely inside the wheel. Containment
+       alone swept in sway bars, hub carriers and brake ducting - 230 parts on
+       the X5 - because a wheel well is full of things that fit inside a
+       wheel. What actually turns is centred on the axle; a caliper, an arm or
+       a link sits off it by design. This is the one test that separates
+       "rotates with the wheel" from "lives next to the wheel". */
+    var HB = hubs[bestH];
+    var bc = b.getCenter(new THREE.Vector3());
+    if (Math.hypot(bc.y - HB.y, bc.z - HB.z) > HB.dia * 0.12) return;
+    /* ROUND IN THE PLANE IT WOULD TURN IN. Containment plus concentricity
+       still admitted 38 parts per corner on the X5 - hub carriers, brake
+       ducting, spring seats, anything that happens to be centred on the axle.
+       Something that genuinely spins is a body of revolution about that axle,
+       so it is round. The bar is deliberately LOW: 0.78 was the threshold
+       that rejected real rims for reading 0.73 on one side of the car. At
+       0.55 a disc, a rim or a hub cap passes comfortably and a control arm,
+       a link or a sway bar does not come close. */
+    if (glCircularity(n, HB.y, HB.z) < 0.55) return;
+    wheels.push(n); have[n.uuid] = 1; added++;
   });
+  /* ---- SYMMETRY COMPLETION ------------------------------------------------
+     Every threshold in this file has leaked the same way: the identical
+     component reads slightly different numbers on the left and right of the
+     car, passes on one side and fails on the other, and one wheel ends up
+     with a part the other lacks. Rather than keep chasing the tolerance, use
+     the fact that a car IS symmetric. Anything rigged at one corner must have
+     its mirror image rigged at the corner across from it - and a mirror match
+     is a far more specific claim than any shape score, so it can be accepted
+     on much weaker evidence. */
+  (function () {
+    var axis = 0;
+    for (var q = 0; q < hubs.length; q++) axis += hubs[q].x;
+    axis /= hubs.length;
+
+    function hubFor(p) {
+      var best = null, bd = Infinity;
+      for (var i2 = 0; i2 < hubs.length; i2++) {
+        var d = Math.hypot(p.x - hubs[i2].x, p.z - hubs[i2].z);
+        if (d < bd) { bd = d; best = hubs[i2]; }
+      }
+      return best;
+    }
+    function mirrorHub(H) {
+      for (var i2 = 0; i2 < hubs.length; i2++) {
+        if (Math.abs(hubs[i2].z - H.z) < 0.30 &&
+            Math.abs((hubs[i2].x - axis) + (H.x - axis)) < 0.30 &&
+            Math.abs(hubs[i2].x - H.x) > 0.10) return hubs[i2];
+      }
+      return null;
+    }
+
+    var free = [];
+    root.traverse(function (n) {
+      if (n.isMesh && !have[n.uuid] && n.geometry && n.geometry.attributes &&
+          n.geometry.attributes.position) free.push(n);
+    });
+    if (!free.length) return;
+
+    var snapshot = wheels.slice();
+    for (var wi = 0; wi < snapshot.length; wi++) {
+      var w = snapshot[wi];
+      var wb2 = new THREE.Box3().setFromObject(w);
+      if (wb2.isEmpty()) continue;
+      var wc = wb2.getCenter(new THREE.Vector3()), wsz = wb2.getSize(new THREE.Vector3());
+      var H = hubFor(wc), MH = H && mirrorHub(H);
+      if (!MH) continue;
+      /* where the mirror of this part must be, and how big it must be */
+      var tx = 2 * axis - wc.x, ty = wc.y, tz = wc.z + (MH.z - H.z);
+      var already = false;
+      for (var ai = 0; ai < wheels.length; ai++) {
+        var ab = new THREE.Box3().setFromObject(wheels[ai]);
+        if (ab.isEmpty()) continue;
+        var ac = ab.getCenter(new THREE.Vector3()), asz = ab.getSize(new THREE.Vector3());
+        if (Math.hypot(ac.x - tx, ac.y - ty, ac.z - tz) < H.dia * 0.10 &&
+            Math.abs(asz.y - wsz.y) < H.dia * 0.12) { already = true; break; }
+      }
+      if (already) continue;
+      for (var fi = 0; fi < free.length; fi++) {
+        var f = free[fi];
+        if (have[f.uuid]) continue;
+        var fb = new THREE.Box3().setFromObject(f);
+        if (fb.isEmpty()) continue;
+        var fc = fb.getCenter(new THREE.Vector3()), fs = fb.getSize(new THREE.Vector3());
+        if (Math.hypot(fc.x - tx, fc.y - ty, fc.z - tz) > H.dia * 0.12) continue;
+        if (Math.abs(fs.y - wsz.y) > H.dia * 0.14) continue;
+        if (Math.abs(fs.z - wsz.z) > H.dia * 0.14) continue;
+        wheels.push(f); have[f.uuid] = 1; added++;
+        break;
+      }
+    }
+  })();
+
   if (added) console.info('[TGK] wheel rig: +' + added +
     ' companion part(s) turning on the hubs (rotors, rim faces).');
   return wheels;
@@ -5638,15 +5769,26 @@ function buildCarInto(grp, S, tint) {
         var gb = new THREE.Box3().setFromObject(gn);
         var gc = gb.getCenter(new THREE.Vector3());
         var kk = (gc.z > mid ? 'F' : 'R') + (gc.x < midX ? 'L' : 'R');
-        if (!corners[kk]) corners[kk] = { nodes: [], sx: 0, sy: 0, sz: 0, n: 0 };
+        if (!corners[kk]) corners[kk] = { nodes: [], sx: 0, sy: 0, sz: 0, n: 0, bestD: -1, bx: 0, by: 0, bz: 0 };
         var CO = corners[kk];
         CO.nodes.push(gn); CO.sx += gc.x; CO.sy += gc.y; CO.sz += gc.z; CO.n++;
+        /* Remember the BIGGEST part at this corner. The hub belongs at the
+           tyre's centre, and the tyre is always the largest thing on the
+           wheel - averaging every part instead lets a thin rim face sitting
+           outboard of the tyre drag the pivot off the axle, which shows up as
+           the front wheels swinging sideways when they steer. */
+        var gsz = gb.getSize(new THREE.Vector3());
+        var gdia = Math.max(gsz.y, gsz.z);
+        if (gdia > CO.bestD) { CO.bestD = gdia; CO.bx = gc.x; CO.by = gc.y; CO.bz = gc.z; }
       }
       var cornerKeys = [];
       for (var ck in corners) cornerKeys.push(ck);
       for (var ci2 = 0; ci2 < cornerKeys.length; ci2++) {
         var CC = corners[cornerKeys[ci2]];
-        var c = new THREE.Vector3(CC.sx / CC.n, CC.sy / CC.n, CC.sz / CC.n);
+        /* pivot on the tyre, not on the average of everything bolted to it */
+        var c = (CC.bestD > 0)
+          ? new THREE.Vector3(CC.bx, CC.by, CC.bz)
+          : new THREE.Vector3(CC.sx / CC.n, CC.sy / CC.n, CC.sz / CC.n);
         var steerP = new THREE.Group(), spinP = new THREE.Group();
         steerP.add(spinP);
         model.add(steerP);
