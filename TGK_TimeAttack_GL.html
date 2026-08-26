@@ -3081,7 +3081,233 @@ function glFindWheelsByShape(root) {
   return out;
 }
 
+/* Slice a subset of triangles out of a geometry into a new one, carrying
+   every attribute across (position, normal, uv, tangent, colour - whatever
+   the exporter wrote). Non-indexed makes the arithmetic trivial and the
+   duplication is irrelevant on a wheel. */
+function glSliceTris(geo, tris) {
+  var g = new THREE.BufferGeometry();
+  for (var name in geo.attributes) {
+    var a = geo.attributes[name];
+    var out = new a.array.constructor(tris.length * 3 * a.itemSize);
+    var o = 0;
+    for (var i = 0; i < tris.length; i++) {
+      var base = tris[i] * 3;
+      for (var k = 0; k < 3; k++) {
+        var src = (base + k) * a.itemSize;
+        for (var c = 0; c < a.itemSize; c++) out[o++] = a.array[src + c];
+      }
+    }
+    g.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize, a.normalized));
+  }
+  g.computeBoundingBox();
+  g.computeBoundingSphere();
+  return g;
+}
+
+/* ---------------------------------------------------------------------------
+   SPLIT MERGED WHEEL MESHES
+
+   Models exported by material rather than by part put all four wheels - and
+   often the tyres, rims and discs as three separate all-four-corner meshes -
+   into single objects. Nothing can be rigged until those are cut apart.
+
+   A mesh is a candidate when it behaves like a set of wheels: about a wheel
+   diameter tall, its centre one radius off the ground, and wide and long
+   enough to reach both sides of the car and both axles. That description
+   fits wheels and essentially nothing else - a floor pan is not a wheel
+   diameter tall, a bumper does not span the wheelbase.
+   ------------------------------------------------------------------------ */
+function glSplitWheelMeshes(root) {
+  if (!root) return 0;
+  root.updateMatrixWorld(true);
+  var rb = new THREE.Box3().setFromObject(root);
+  var rs = rb.getSize(new THREE.Vector3());
+  var len = Math.max(rs.z, 0.001), wide = Math.max(rs.x, 0.001), minY = rb.min.y;
+
+  var targets = [];
+  root.traverse(function (n) {
+    if (!n.isMesh || !n.geometry || !n.geometry.attributes || !n.geometry.attributes.position) return;
+    var b = new THREE.Box3().setFromObject(n);
+    if (b.isEmpty()) return;
+    var s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+    var dia = s.y;
+    /* A road wheel is 11 to 24 percent of the car's length. The old 32 percent
+       ceiling let whole-car material groups through - on the CC that meant
+       twelve candidates instead of four, which tripped the safety cap and
+       aborted the split entirely. */
+    if (dia < len * 0.11 || dia > len * 0.24) return;      /* wheel-tall */
+    if (Math.abs((c.y - minY) - dia * 0.5) > dia * 0.25) return;  /* on the ground */
+    /* HOW MANY WHEELS ARE IN HERE? Measured against the wheel's own diameter
+       rather than the car's overall width, because overall width is exactly
+       the number a stray shadow plane corrupts - on the Tiguan one 4.18 m
+       object inflated it to more than twice the real track and locked every
+       genuine wheel mesh out of the test. */
+    var spansX = s.x > dia * 1.5;      /* reaches both sides of the car */
+    var spansZ = s.z > dia * 2.2;      /* reaches both axles */
+    if (!spansX && !spansZ) return;    /* already a single wheel - nothing to do */
+    n.userData._wheelK = (spansX && spansZ) ? 4 : 2;
+    targets.push(n);
+  });
+  if (!targets.length || targets.length > 14) return 0;
+
+  var split = 0;
+  for (var ti = 0; ti < targets.length; ti++) {
+    var mesh = targets[ti];
+    var parent = mesh.parent;
+    if (!parent) continue;
+    var geo = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
+    var pos = geo.attributes.position;
+    var nTri = Math.floor(pos.count / 3);
+    if (nTri < 32) continue;
+
+    var mb = new THREE.Box3().setFromObject(mesh);
+    var mw = mesh.matrixWorld, v = new THREE.Vector3();
+
+    /* triangle centroids in world XZ */
+    var tcx = new Float64Array(nTri), tcz = new Float64Array(nTri);
+    for (var t = 0; t < nTri; t++) {
+      var sx = 0, sz = 0;
+      for (var k = 0; k < 3; k++) {
+        v.fromBufferAttribute(pos, t * 3 + k).applyMatrix4(mw);
+        sx += v.x; sz += v.z;
+      }
+      tcx[t] = sx / 3; tcz[t] = sz / 3;
+    }
+    /* Fit the centroids on a subsample. A wheel is thousands of triangles;
+       three thousand points locate it just as precisely and let us afford to
+       sweep several values of K instead of betting on one. */
+    var stride = Math.max(1, Math.floor(nTri / 3000));
+    var samp = [];
+    for (t = 0; t < nTri; t += stride) samp.push(t);
+
+    function clusterInto(K) {
+      var qx = new Float64Array(K), qz = new Float64Array(K), bi, si, sj, i2, d, dx, dz;
+      var cX = (mb.min.x + mb.max.x) / 2, cZ = (mb.min.z + mb.max.z) / 2;
+      var best = samp[0], bd = -1;
+      for (i2 = 0; i2 < samp.length; i2++) {
+        dx = tcx[samp[i2]] - cX; dz = tcz[samp[i2]] - cZ; d = dx * dx + dz * dz;
+        if (d > bd) { bd = d; best = samp[i2]; }
+      }
+      qx[0] = tcx[best]; qz[0] = tcz[best];
+      for (si = 1; si < K; si++) {
+        bd = -1; best = samp[0];
+        for (i2 = 0; i2 < samp.length; i2++) {
+          var near = Infinity;
+          for (sj = 0; sj < si; sj++) {
+            dx = tcx[samp[i2]] - qx[sj]; dz = tcz[samp[i2]] - qz[sj];
+            d = dx * dx + dz * dz; if (d < near) near = d;
+          }
+          if (near > bd) { bd = near; best = samp[i2]; }
+        }
+        qx[si] = tcx[best]; qz[si] = tcz[best];
+      }
+      for (var it = 0; it < 14; it++) {
+        var sX = new Float64Array(K), sZ = new Float64Array(K), cn = new Float64Array(K);
+        for (i2 = 0; i2 < samp.length; i2++) {
+          var tt = samp[i2], bq = 0, bqd = Infinity;
+          for (bi = 0; bi < K; bi++) {
+            dx = tcx[tt] - qx[bi]; dz = tcz[tt] - qz[bi]; d = dx * dx + dz * dz;
+            if (d < bqd) { bqd = d; bq = bi; }
+          }
+          sX[bq] += tcx[tt]; sZ[bq] += tcz[tt]; cn[bq]++;
+        }
+        for (bi = 0; bi < K; bi++) if (cn[bi]) { qx[bi] = sX[bi] / cn[bi]; qz[bi] = sZ[bi] / cn[bi]; }
+      }
+      /* one full assignment pass over every triangle */
+      var out = [];
+      for (bi = 0; bi < K; bi++) out.push([]);
+      for (t = 0; t < nTri; t++) {
+        var b2 = 0, bd2 = Infinity;
+        for (bi = 0; bi < K; bi++) {
+          dx = tcx[t] - qx[bi]; dz = tcz[t] - qz[bi]; d = dx * dx + dz * dz;
+          if (d < bd2) { bd2 = d; b2 = bi; }
+        }
+        out[b2].push(t);
+      }
+      return out;
+    }
+
+    /* Is this set of triangles a wheel? Judged on a throwaway mesh so a
+       rejected cluster costs nothing but the geometry it built. */
+    function looksLikeWheel(tris) {
+      if (tris.length < 24) return false;
+      var pm = new THREE.Mesh(glSliceTris(geo, tris), mesh.material);
+      pm.position.copy(mesh.position);
+      pm.quaternion.copy(mesh.quaternion);
+      pm.scale.copy(mesh.scale);
+      parent.add(pm); root.updateMatrixWorld(true);
+      var ok = false, pb = new THREE.Box3().setFromObject(pm);
+      if (!pb.isEmpty()) {
+        var ps = pb.getSize(new THREE.Vector3()), pc = pb.getCenter(new THREE.Vector3());
+        var pd = Math.max(ps.y, ps.z);
+        ok = pd >= len * 0.09 && pd <= len * 0.36
+          && Math.abs(ps.y - ps.z) <= pd * 0.42
+          && ps.x <= pd * 0.95
+          && Math.abs((pc.y - minY) - pd * 0.5) <= pd * 0.32
+          && glCircularity(pm, pc.y, pc.z) >= 0.70;
+      }
+      parent.remove(pm);
+      if (pm.geometry) pm.geometry.dispose();
+      return ok;
+    }
+
+    /* SWEEP K. Keep whichever count recovers the most wheels; a tie goes to
+       the simpler split. */
+    var bestSet = null, bestCount = 0;
+    for (var K = 6; K >= 2; K--) {
+      var cl = clusterInto(K), good = [], rest = [], ci2;
+      for (ci2 = 0; ci2 < cl.length; ci2++) {
+        if (looksLikeWheel(cl[ci2])) good.push(cl[ci2]);
+        else rest = rest.concat(cl[ci2]);
+      }
+      if (good.length > bestCount) { bestCount = good.length; bestSet = { good: good, rest: rest }; }
+    }
+    root.updateMatrixWorld(true);
+    if (!bestSet || bestCount < 1) continue;
+
+    for (var gi2 = 0; gi2 < bestSet.good.length; gi2++) {
+      var wm = new THREE.Mesh(glSliceTris(geo, bestSet.good[gi2]), mesh.material);
+      wm.name = (mesh.name || 'part') + '_wheel_' + gi2;
+      wm.castShadow = mesh.castShadow; wm.receiveShadow = mesh.receiveShadow;
+      wm.position.copy(mesh.position); wm.quaternion.copy(mesh.quaternion);
+      wm.scale.copy(mesh.scale);
+      parent.add(wm);
+    }
+    /* whatever was not a wheel stays put as one static remainder */
+    if (bestSet.rest.length >= 3) {
+      var rm = new THREE.Mesh(glSliceTris(geo, bestSet.rest), mesh.material);
+      rm.name = (mesh.name || 'part') + '_rest';
+      rm.castShadow = mesh.castShadow; rm.receiveShadow = mesh.receiveShadow;
+      rm.position.copy(mesh.position); rm.quaternion.copy(mesh.quaternion);
+      rm.scale.copy(mesh.scale);
+      parent.add(rm);
+    }
+    parent.remove(mesh);
+    root.updateMatrixWorld(true);
+    split++;
+  }
+  if (split) {
+    root.updateMatrixWorld(true);
+    console.info('[TGK] wheel rig: split ' + split +
+                 ' merged mesh(es) into four corners - this model groups parts by material.');
+  }
+  return split;
+}
+
 function glFindSpinners(root) {
+  /* Models that already expose one mesh per wheel need no surgery, and the
+     clustering sweep costs a few hundred milliseconds - so look first. This
+     returns non-empty only when it has found all four corners, which is
+     exactly the condition for skipping the split. */
+  var pre = glFindWheelsByShape(root);
+  if (pre.length >= 4) return pre;
+
+  /* Otherwise cut apart any mesh that contains several wheels, because until
+     that happens there is nothing individual to find. */
+  try { glSplitWheelMeshes(root); } catch (e) {
+    console.warn('[TGK] wheel split skipped: ' + (e && e.message));
+  }
   /* Shape first. It is the only method that works on models whose nodes are
      called Object_11, which is most of them. */
   var byShape = glFindWheelsByShape(root);
