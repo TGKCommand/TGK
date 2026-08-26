@@ -2959,7 +2959,134 @@ function glSplitWheels(root, S) {
   }
   return made;
 }
+/* ---------------------------------------------------------------------------
+   GEOMETRIC WHEEL DETECTION
+
+   Node names are not a contract. Across the fleet they are 'Object_17',
+   'Circle.002_8', 'Tire.001_99' and 'wheelv4', and only one of those is even
+   trying to tell the truth. Shape is a contract: a road wheel is a disc that
+   is as tall as it is long, a good deal narrower than it is tall, sitting on
+   the ground, displaced from the centreline. Nothing else on a car passes all
+   four tests, and a bonnet fails every one of them.
+
+   Returns [] unless it finds a confident, symmetric set of four corners -
+   because the failure mode of getting this wrong is not "wheels do not spin",
+   it is "the bodywork is reparented onto a hub and flung off the car".
+   ------------------------------------------------------------------------ */
+/* How circular is this mesh in the plane a wheel would rotate in?
+
+   Bin the vertices by angle around the part's own centre and keep the biggest
+   radius in each bin. A disc reads ~1.0 because every direction reaches the
+   same distance. A rectangle reads at most 0.707, because its corners are
+   sqrt(2) further out than its edges. That single number separates a wheel
+   from a door, a seat, a mirror and a bumper, none of which a bounding box
+   can distinguish from a tyre. */
+function glCircularity(mesh, cy, cz) {
+  var g = mesh.geometry, pos = g && g.attributes && g.attributes.position;
+  if (!pos || !pos.count) return 0;
+  var BINS = 16, maxR = new Float32Array(BINS), hits = 0;
+  var step = Math.max(1, Math.floor(pos.count / 420));
+  var v = new THREE.Vector3();
+  for (var i = 0; i < pos.count; i += step) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+    var dy = v.y - cy, dz = v.z - cz;
+    var r = Math.sqrt(dy * dy + dz * dz);
+    if (r <= 1e-6) continue;
+    var a = Math.atan2(dy, dz); if (a < 0) a += 6.283185;
+    var b = (a / 6.283185 * BINS) | 0; if (b >= BINS) b = BINS - 1;
+    if (r > maxR[b]) { if (maxR[b] === 0) hits++; maxR[b] = r; }
+  }
+  if (hits < BINS) return 0;              /* a gap in the ring is not a wheel */
+  var lo = Infinity, hi = 0;
+  for (var k = 0; k < BINS; k++) {
+    if (maxR[k] < lo) lo = maxR[k];
+    if (maxR[k] > hi) hi = maxR[k];
+  }
+  return hi > 0 ? lo / hi : 0;
+}
+
+function glFindWheelsByShape(root) {
+  if (!root) return [];
+  root.updateMatrixWorld(true);
+  var box = new THREE.Box3().setFromObject(root);
+  var size = box.getSize(new THREE.Vector3());
+  var len = Math.max(size.z, 0.001), wide = Math.max(size.x, 0.001);
+  var minY = box.min.y;
+  var midX = (box.max.x + box.min.x) / 2, midZ = (box.max.z + box.min.z) / 2;
+
+  var cands = [];
+  root.traverse(function (n) {
+    if (!n.isMesh || !n.geometry) return;
+    var b = new THREE.Box3().setFromObject(n);
+    if (!isFinite(b.min.x) || b.isEmpty()) return;
+    var s = b.getSize(new THREE.Vector3());
+    var c = b.getCenter(new THREE.Vector3());
+    var dia = Math.max(s.y, s.z);
+    if (dia <= 0) return;
+    /* plausible wheel diameter for a car: a fifth to a third of its length */
+    if (dia < len * 0.11 || dia > len * 0.34) return;
+    /* ROUND in side profile - height and length within a third of each other.
+       This alone kills bonnets, doors, roofs and glass, which are all long
+       and flat or tall and thin. */
+    if (Math.abs(s.y - s.z) > dia * 0.34) return;
+    /* NARROW across the car - a tyre is much thinner than it is tall */
+    if (s.x > dia * 0.80) return;
+    /* HUB HEIGHT. A wheel's centre is at exactly one radius off the ground -
+       that is what "rolling" means. A door's centre is well above its own
+       half-height because it starts at the sill. */
+    if (Math.abs((c.y - minY) - dia * 0.5) > dia * 0.26) return;
+    /* OUTBOARD - on a wheel's own side of the car, not straddling the spine */
+    if (Math.abs(c.x - midX) < wide * 0.14) return;
+    /* AT THE ENDS. Axles are near the extremities; doors, seats and sills
+       are the things that live amidships. */
+    if (Math.abs(c.z - midZ) < len * 0.13) return;
+    /* ROUND, actually round - the test a bounding box cannot do */
+    if (glCircularity(n, c.y, c.z) < 0.78) return;
+    cands.push({ node: n, c: c, dia: dia });
+  });
+  if (cands.length < 4) return [];
+
+  /* bucket into corners and demand all four are represented */
+  var corners = {};
+  for (var i = 0; i < cands.length; i++) {
+    var k = (cands[i].c.z > midZ ? 'F' : 'R') + (cands[i].c.x < midX ? 'L' : 'R');
+    (corners[k] || (corners[k] = [])).push(cands[i]);
+  }
+  var keys = [];
+  for (var kk in corners) keys.push(kk);
+  if (keys.length !== 4) return [];
+
+  /* SYMMETRY. Four real wheels are the same size as each other and sit at
+     mirrored positions. If the corners disagree wildly, something that is not
+     a wheel has been picked up and it is safer to rig nothing. */
+  var dias = keys.map(function (k) {
+    var t = 0; for (var j = 0; j < corners[k].length; j++) t = Math.max(t, corners[k][j].dia);
+    return t;
+  });
+  var dMin = Math.min.apply(null, dias), dMax = Math.max.apply(null, dias);
+  if (dMax > dMin * 1.6) return [];
+
+  var out = [];
+  for (var ki = 0; ki < keys.length; ki++) {
+    var grp = corners[keys[ki]];
+    /* keep only the parts that belong to the hub: within one diameter of the
+       biggest candidate at that corner. A caliper qualifies, a sill does not. */
+    var big = grp[0];
+    for (var gi = 1; gi < grp.length; gi++) if (grp[gi].dia > big.dia) big = grp[gi];
+    for (var gj = 0; gj < grp.length; gj++) {
+      var d = grp[gj].c.distanceTo(big.c);
+      if (d < big.dia * 0.9) out.push(grp[gj].node);
+    }
+  }
+  return out;
+}
+
 function glFindSpinners(root) {
+  /* Shape first. It is the only method that works on models whose nodes are
+     called Object_11, which is most of them. */
+  var byShape = glFindWheelsByShape(root);
+  if (byShape.length >= 4) return byShape;
+
   var all = [];
   root.traverse(function (n) {
     if (n.name && /(?:\btyres?|\btires?|_tyres?|_tires?|\brim\b|_rim\b|\bwheel|_wheel|wheel_|\brotor\b)/i.test(n.name)) all.push(n);
@@ -2974,11 +3101,44 @@ function glFindSpinners(root) {
      wheels. And a steering wheel is a wheel by name but must never rotate
      with the road. Both are excluded explicitly. */
   all = all.filter(function (n) { return !/steering|strim|trim\b/i.test(n.name || ''); });
-  return all.filter(function (n) {
+  all = all.filter(function (n) {
     var inner = false;
     n.traverse(function (m) { if (m !== n && all.indexOf(m) >= 0) inner = true; });
     return !inner;
   });
+
+  /* ---- SHAPE GATE ---------------------------------------------------------
+     A name is a hint, never a licence. On cc.glb 'wheel' as a substring also
+     matched body trim, and those panels were reparented onto a wheel hub and
+     swung with the suspension - which is what threw the bonnet and doors off
+     the car. Anything the names propose must still look like a wheel: round
+     in side profile, hub one radius off the ground, out at a corner. A door
+     fails all three, so it can no longer get through however it is named. */
+  if (!all.length) return all;
+  root.updateMatrixWorld(true);
+  var gb = new THREE.Box3().setFromObject(root);
+  var gs = gb.getSize(new THREE.Vector3());
+  var gLen = Math.max(gs.z, 0.001), gWide = Math.max(gs.x, 0.001);
+  var gMinY = gb.min.y, gMidX = (gb.max.x + gb.min.x) / 2, gMidZ = (gb.max.z + gb.min.z) / 2;
+  var kept = all.filter(function (n) {
+    var b = new THREE.Box3().setFromObject(n);
+    if (b.isEmpty()) return false;
+    var s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+    var dia = Math.max(s.y, s.z);
+    if (dia < gLen * 0.09 || dia > gLen * 0.38) return false;
+    if (Math.abs(s.y - s.z) > dia * 0.42) return false;
+    if (s.x > dia * 1.05) return false;
+    if (Math.abs((c.y - gMinY) - dia * 0.5) > dia * 0.34) return false;
+    if (Math.abs(c.x - gMidX) < gWide * 0.10) return false;
+    if (Math.abs(c.z - gMidZ) < gLen * 0.10) return false;
+    return true;
+  });
+  if (kept.length !== all.length) {
+    console.warn('[TGK] wheel rig: ' + (all.length - kept.length) + ' of ' + all.length +
+                 ' name-matched node(s) are not wheel-shaped and were rejected' +
+                 ' (this is what used to throw body panels onto the hubs).');
+  }
+  return kept;
 }
 var _modelBase = null;
 var _glFails = {}, _glProbeOK = {};
@@ -3285,7 +3445,7 @@ var _cloudMesh = null, _skyFor = null, _grassTex = null;
 var _flameSprites = null, _flameTex = null;
 var tailMats = [], skidGroup = null, smokeGroup = null;
 var camX = 0, camZ = 0, camYaw = 0;
-var _camFov, _camVPrev, _camAx, _camRoll;
+var _camFov, _camVPrev, _camAx, _camRoll, _camAim;
 /* SAME SHAPE as the canvas renderer: 60_game.js reads CAM_MODES[camMode].back
    for the minimap and its own camera bookkeeping, so string modes break it */
 var CAM_MODES = [
@@ -4566,10 +4726,10 @@ function taCamUpdate(dt) {
      rises with speed and again with wheelspin and lock-up, because that is
      when a real car is genuinely shaking. Kept small enough to be felt rather
      than seen. */
-  var rough = Math.min(1, spd / 42) * 0.010
-            + Math.min(0.6, (car.wheelspin || 0)) * 0.012
-            + Math.min(0.6, (car.locked || 0)) * 0.010
-            + (car.offLine ? 0.020 : 0);
+  var rough = Math.min(1, spd / 42) * 0.004
+            + Math.min(0.6, (car.wheelspin || 0)) * 0.005
+            + Math.min(0.6, (car.locked || 0)) * 0.004
+            + (car.offLine ? 0.012 : 0);
   var tsh = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
   var shx = (Math.sin(tsh * 41.3) + Math.sin(tsh * 27.1)) * 0.5 * rough;
   var shy = (Math.sin(tsh * 33.7) + Math.sin(tsh * 19.9)) * 0.5 * rough;
@@ -4589,10 +4749,17 @@ function taCamUpdate(dt) {
      slip angle - keeps the corner exit in frame and makes a slide readable.
      A little lead on yaw rate does the same job for ordinary cornering: the
      camera looks into the turn slightly before the car gets there. */
+  /* These two were far too strong and completely unfiltered, so the aim point
+     snapped the moment a steering key went down and the whole frame lurched.
+     Cut to about a quarter of what they were and put on a slow filter: the
+     camera should DRIFT into the corner over half a second, which you feel,
+     rather than jump there, which you fight. */
   var beta = car.beta || 0;
-  var driftBias = clamp(-beta, -0.55, 0.55) * (m === 'cockpit' ? 0.45 : 0.80);
-  var yawLead = clamp(car.r || 0, -1.4, 1.4) * (m === 'cockpit' ? 0.10 : 0.22);
-  var aimYaw = useYaw + driftBias + yawLead + shx;
+  var biasWant = clamp(-beta, -0.40, 0.40) * (m === 'cockpit' ? 0.12 : 0.22)
+               + clamp(car.r || 0, -1.2, 1.2) * (m === 'cockpit' ? 0.02 : 0.055);
+  if (_camAim === undefined) _camAim = 0;
+  _camAim += (biasWant - _camAim) * (1 - Math.pow(0.12, dt));
+  var aimYaw = useYaw + _camAim + shx;
   var reach = 14 + Math.min(12, spd * 0.30);
   camera.lookAt(
     -(bx + Math.sin(aimYaw) * reach),
@@ -4604,7 +4771,7 @@ function taCamUpdate(dt) {
      One and a half degrees at most, tied to lateral load. Too little to
      notice on its own and quite noticeable by its absence. */
   if (m !== 'cockpit') {
-    var rollWant = clamp(-(car.bodyRoll || 0) * 0.34 + clamp(car.r || 0, -1.2, 1.2) * -0.012, -0.028, 0.028);
+    var rollWant = clamp(-(car.bodyRoll || 0) * 0.22, -0.016, 0.016);
     if (_camRoll === undefined) _camRoll = 0;
     _camRoll += (rollWant - _camRoll) * (1 - Math.pow(0.03, dt));
     camera.rotateZ(_camRoll);
