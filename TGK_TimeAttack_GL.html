@@ -3401,14 +3401,23 @@ function glHarvestByHubs(root, len, minY) {
       cx /= 3; cy /= 3; cz /= 3;
       var bh = -1, bd = Infinity;
       for (var hi = 0; hi < 4; hi++) {
-        var dx = cx - hubs[hi].x, dy = cy - hubs[hi].y, dz = cz - hubs[hi].z;
-        var d = dx * dx + dy * dy + dz * dz;
-        /* must be inside the wheel's own envelope, not merely nearest to it */
-        /* Inside the tyre's own envelope. 0.53 of a diameter is just past the
-           tread surface at 0.50 - tight enough to leave the wheel arch and
-           the suspension outside it, wide enough that no part of the tyre
-           itself falls out and gets left behind as a static sliver. */
-        if (d < bd && d < hubs[hi].dia * hubs[hi].dia * 0.281) { bd = d; bh = hi; }
+        /* CYLINDER ABOUT THE AXLE, not a sphere around the hub.
+           A tyre does not fit inside a sphere of its own radius: the tread
+           sits at 0.50 of a diameter but the CORNER of the tread, out at the
+           edge of the contact patch, is at 0.55. So a spherical test excluded
+           the outer shoulder of every tyre, all the way round and on both
+           sides, and left it standing still while the wheel turned away from
+           underneath it - the ragged geometry around the Tiguan's wheels.
+           Radial and axial distance are different questions; they need
+           different limits. */
+        var Hc = hubs[hi];
+        var rdy = cy - Hc.y, rdz = cz - Hc.z;
+        var radial = rdy * rdy + rdz * rdz;
+        var axial = Math.abs(cx - Hc.x);
+        if (radial > Hc.dia * Hc.dia * 0.30) continue;   /* beyond the tread */
+        if (axial > Hc.dia * 0.42) continue;             /* outboard of the rim */
+        var d = radial + axial * axial;
+        if (d < bd) { bd = d; bh = hi; }
       }
       if (bh < 0) rest.push(t); else groups[bh].push(t);
     }
@@ -4020,6 +4029,7 @@ function loadCarModel(S, key, onDone) {
 
 var renderer = null, scene = null, camera = null, sunLight = null, hemi = null;
 var carGroup = null, wheelPivots = [], ghostGroup = null, rivalGroup = null;
+var _lineMesh = null, _linePts = null;
 var coneMesh = null, coneCollar = null, coneBase = null, coneChalk = null, coneAO = null;
 var coneDown = null, gateGroup = null, lineGroup = null;
 var _asphaltTex = null, _skyMesh = null, _smokeTex = null, _skidTex = null, _aoTex = null;
@@ -4893,13 +4903,27 @@ function glBuildWorld() {
      the line the canvas build shows. Same worldAt convention as everywhere
      else: lateral offset is (cos(th), -sin(th)). */
   var lv = [];
+  _linePts = [];
   for (var L = 0; L < N; L += 2) {
     var ls = course.segs[L], llat = ls.line || 0;
     lv.push(-(ls.x + Math.cos(ls.th) * llat), 0.03, ls.z - Math.sin(ls.th) * llat);
+    _linePts.push(-(ls.x + Math.cos(ls.th) * llat), ls.z - Math.sin(ls.th) * llat);
   }
   var lgeo = new THREE.BufferGeometry();
   lgeo.setAttribute('position', new THREE.Float32BufferAttribute(lv, 3));
-  lineGroup.add(new THREE.Line(lgeo, new THREE.LineBasicMaterial({ color: 0x2abfaa })));
+  /* Per-vertex colour so the line can be faded to the tarmac underneath the
+     car. A solid line drawn on the ground passes under the bodywork and comes
+     out the other side, which reads as a wire wrapped around the car rather
+     than as a marking on the road - every driving aid that draws a line fades
+     it out beneath the vehicle for exactly this reason. */
+  var lcol = new Float32Array((lv.length / 3) * 3);
+  for (var lc = 0; lc < lcol.length; lc += 3) { lcol[lc] = 0.165; lcol[lc + 1] = 0.749; lcol[lc + 2] = 0.667; }
+  lgeo.setAttribute('color', new THREE.BufferAttribute(lcol, 3));
+  _lineMesh = new THREE.Line(lgeo, new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.85
+  }));
+  _lineMesh.frustumCulled = false;
+  lineGroup.add(_lineMesh);
 
   /* trackside scenery as simple boxes - reads as an event without the cost */
   /* trackside furniture with actual shapes - a grey box for every object is
@@ -5468,6 +5492,19 @@ function taRenderFrame(ghostPose, rivalPose) {
      car drive measurably closer to one side of the sky than the other, and
      the horizon visibly tilts. Anchored to the eye it never can. Only the
      cloud layer turns, at a hair under a degree every ten seconds. */
+  /* Fade the racing line out around the car. Full strength beyond about six
+     metres, gone within two, so it never appears to touch the bodywork. */
+  if (_lineMesh && _linePts) {
+    var lcAttr = _lineMesh.geometry.attributes.color;
+    var lcArr = lcAttr.array, cxr = -car.x, czr = car.z;
+    for (var li = 0, pi2 = 0; pi2 < _linePts.length; li += 3, pi2 += 2) {
+      var ddx = _linePts[pi2] - cxr, ddz = _linePts[pi2 + 1] - czr;
+      var dist = Math.sqrt(ddx * ddx + ddz * ddz);
+      var k = clamp((dist - 2.0) / 4.0, 0, 1);
+      lcArr[li] = 0.165 * k; lcArr[li + 1] = 0.749 * k; lcArr[li + 2] = 0.667 * k;
+    }
+    lcAttr.needsUpdate = true;
+  }
   if (_skyMesh) _skyMesh.position.set(camera.position.x, 0, camera.position.z);
   if (_cloudMesh) {
     _cloudMesh.position.set(camera.position.x, 0, camera.position.z);
@@ -6715,7 +6752,34 @@ function taGhostPose(tMs) {
   while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (t[mid][0] <= tMs) lo = mid; else hi = mid; }
   var a = t[lo], b = t[hi];
   var f = (tMs - a[0]) / Math.max(1, b[0] - a[0]);
-  return { x: lerp(a[1], b[1], f), z: lerp(a[2], b[2], f), yaw: lerp(a[3], b[3], f) };
+
+  /* HEADING: shortest way round. Yaw is stored wrapped to +/-PI, so a car
+     passing through south gives adjacent samples of +3.10 and -3.10 and a
+     plain lerp spins the ghost a full turn between them. Unwrapping at read
+     time rather than at record time means ghosts saved before this fix load
+     and play back correctly too. */
+  var dy = b[3] - a[3];
+  while (dy > Math.PI) dy -= 6.283185;
+  while (dy < -Math.PI) dy += 6.283185;
+  var yaw = a[3] + dy * f;
+
+  /* POSITION: Catmull-Rom through the four surrounding samples. Straight
+     lines between samples cut the chord of every corner, so the ghost drove
+     a tighter line than the lap it came from and clipped cones the real run
+     went around. A spline passes through the recorded points instead of
+     between them. */
+  var p0 = t[lo > 0 ? lo - 1 : lo], p3 = t[hi < t.length - 1 ? hi + 1 : hi];
+  function cr(v0, v1, v2, v3, s) {
+    var s2 = s * s, s3 = s2 * s;
+    return 0.5 * ((2 * v1) + (-v0 + v2) * s +
+                  (2 * v0 - 5 * v1 + 4 * v2 - v3) * s2 +
+                  (-v0 + 3 * v1 - 3 * v2 + v3) * s3);
+  }
+  return {
+    x: cr(p0[1], a[1], b[1], p3[1], f),
+    z: cr(p0[2], a[2], b[2], p3[2], f),
+    yaw: yaw
+  };
 }
 function taGhostDelta(sNow, tNow) {
   if (!ghost) return null;
@@ -6792,7 +6856,11 @@ function taLoop(ts) {
   taParticles(dt);
 
   /* ghost trace sampling */
-  if (run.started && run.t - run.lastSample > 80) {
+  /* 25 Hz. At 80 ms the samples were 2.4 m apart at 55 mph and everything
+     between them was invented by the interpolator; doubling the rate costs
+     about 750 extra entries on a 60 s lap and makes the spline follow the
+     actual line rather than approximate it. */
+  if (run.started && run.t - run.lastSample > 40) {
     run.lastSample = run.t;
     run.trace.push([Math.round(run.t), +car.x.toFixed(2), +car.z.toFixed(2), +car.yaw.toFixed(3), +car.sAlong.toFixed(1)]);
   }
