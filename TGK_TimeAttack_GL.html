@@ -354,7 +354,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v5.5.1</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v5.6.0</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -504,11 +504,11 @@ body{
    renderer field is what tells them apart.
    ------------------------------------------------------------------------ */
 var TA_BUILD = {
-  version: '5.5.1',
+  version: '5.6.0',
   date: '2026-08-26',
   renderer: 'WebGL',
   notes: [
-    'probe defaults OFF - restores pre-probe lighting; taLight({env:0.35}) to test it',    'light budget is a live knob: taLight({env,hemi,sun,exposure}) - fixes washed-out world',    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
+    'probe rebuilt on fromEquirectangular; ghost/rival pivots no longer driven by player state',    'probe defaults OFF - restores pre-probe lighting; taLight({env:0.35}) to test it',    'light budget is a live knob: taLight({env,hemi,sun,exposure}) - fixes washed-out world',    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
     'wheels: cylindrical membership - fixes torn tyre shoulders',
     'wheels: Ackermann steering geometry on the front axle',
     'ghost: shortest-path heading (was spinning 360 at the wrap) + spline',
@@ -4692,69 +4692,33 @@ function taLight(o) {
 function glRefreshEnvironment() {
   if (!renderer || !scene || !_skyMesh || !_skyMesh.material.map) return;
   if (!THREE.PMREMGenerator) return;
+  if (TA_LIGHT.env <= 0) { scene.environment = null; return; }
   try {
+    /* fromEquirectangular, NOT fromScene.
+
+       The first version built a small scene - sky sphere, cloud sphere, ground
+       disc - and asked PMREM to render it. That is the flexible path and also
+       the one with the most ways to go wrong: it re-renders through the live
+       renderer with whatever tone mapping and output encoding happen to be
+       set, and the result came out malformed. Every MeshStandardMaterial in
+       the game went pure white while the MeshBasicMaterial sky rendered
+       correctly - the signature of a BAD environment texture rather than a
+       bright one, and why two rounds of dimming it changed nothing.
+
+       The sky texture is already equirectangular; that is how it is painted
+       and how it maps onto the dome. Handing it straight to PMREM is the
+       well-trodden path and skips the scene render entirely. The lower half
+       of that texture is the horizon colour rather than sky, so the probe
+       still darkens downward the way a real one does. */
     var pm = new THREE.PMREMGenerator(renderer);
-    var es = new THREE.Scene();
-    var disposables = [];
-
-    /* ---- PROBE LEVEL ------------------------------------------------------
-       The probe replaced a 128 px gradient cube, and everything downstream -
-       tone-mapping exposure, the hemisphere light, every envMapIntensity in
-       the scene - was tuned against THAT. Measured against it, a probe built
-       from the real sky is 1.90x brighter before the sun is even considered,
-       and the sun in the sky texture is a white disc with three additive glow
-       passes on top, which PMREM turns into an enormous radiance spike. The
-       result was every surface in the game clipping to pure white.
-
-       So the probe is attenuated to sit at the radiance the scene is already
-       exposed for. This changes only the LEVEL; the whole point of the probe
-       is its DIRECTIONALITY - sun in the right place, sky above, tarmac below
-       - and that survives attenuation untouched. */
-    var ENV_K = TA_LIGHT.env;
-    if (ENV_K <= 0) { if (scene) scene.environment = null; return; }
-    var skyM = new THREE.MeshBasicMaterial({
-      map: _skyMesh.material.map, side: THREE.BackSide, fog: false, depthWrite: false,
-      color: new THREE.Color(ENV_K, ENV_K, ENV_K)
-    });
-    var skyG = new THREE.SphereGeometry(60, 32, 20);
-    es.add(new THREE.Mesh(skyG, skyM));
-    disposables.push(skyG, skyM);
-
-    if (_cloudMesh && _cloudMesh.material.map) {
-      var clM = new THREE.MeshBasicMaterial({
-        map: _cloudMesh.material.map, side: THREE.BackSide,
-        transparent: true, fog: false, depthWrite: false,
-        color: new THREE.Color(ENV_K, ENV_K, ENV_K)
-      });
-      var clG = new THREE.SphereGeometry(58, 32, 20);
-      es.add(new THREE.Mesh(clG, clM));
-      disposables.push(clG, clM);
-    }
-
-    /* The lower hemisphere is tarmac, not sky. Without it a car reflects blue
-       underneath as well as above and reads as chrome floating in a void -
-       the bounce off the ground is half of what makes paint look like paint. */
-    var P = glSkyPalette();
-    var lift = (WX_SUN ? 0.20 : 0.16) * ENV_K;
-    var gM = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(lift, lift, lift * 1.04), side: THREE.DoubleSide, fog: false
-    });
-    var gG = new THREE.CircleGeometry(59, 40);
-    var gnd = new THREE.Mesh(gG, gM);
-    gnd.rotation.x = -Math.PI / 2;
-    es.add(gnd);
-    disposables.push(gG, gM);
-
-    var rt = pm.fromScene(es, 0.015);
+    pm.compileEquirectangularShader();
+    var rt = pm.fromEquirectangular(_skyMesh.material.map);
     if (_envRT && _envRT.dispose) _envRT.dispose();
     _envRT = rt;
     scene.environment = rt.texture;
     pm.dispose();
-    for (var d = 0; d < disposables.length; d++) {
-      if (disposables[d] && disposables[d].dispose) disposables[d].dispose();
-    }
   } catch (e) {
-    /* reflections are a nicety - never let them stop the game booting */
+    scene.environment = null;
     console.warn('[TGK] environment probe unavailable:', e && e.message);
   }
 }
@@ -5464,11 +5428,50 @@ function taBuildCar(spec) {
   scene.add(carGroup);
   buildCarInto(carGroup, spec, false);
   if (!ghostGroup) {
+    /* buildCarInto pushes hub pivots into the GLOBAL wheelPivots, and it is
+       called three times - player, ghost, rival. So the animator ended up
+       driving twelve pivots with the player's single suspension solution,
+       steering and spinning the ghost's and the rival's wheels from the
+       player's state. Park the player's list, let the other two builds fill
+       a scratch array, then put it back. */
+    var _mine = wheelPivots;
+
     ghostGroup = new THREE.Group(); ghostGroup.visible = false; scene.add(ghostGroup);
+    wheelPivots = [];
     buildCarInto(ghostGroup, spec, 0x2abfaa);
+    ghostGroup.userData.pivots = wheelPivots;
+
     rivalGroup = new THREE.Group(); rivalGroup.visible = false; scene.add(rivalGroup);
+    wheelPivots = [];
     buildCarInto(rivalGroup, spec, 0xe07b28);
+    rivalGroup.userData.pivots = wheelPivots;
+
+    wheelPivots = _mine;
   }
+}
+
+/* One line of ground truth, because I cannot see the running game and
+   guessing at it has cost several rounds. Call taDiag() in the console. */
+function taDiag() {
+  function kids(g) { var n = 0; if (g) g.traverse(function (o) { if (o.isMesh) n++; }); return n; }
+  var d = {
+    version: (typeof TA_BUILD !== 'undefined') ? TA_BUILD.version : '?',
+    light: (typeof TA_LIGHT !== 'undefined') ? TA_LIGHT : null,
+    envSet: !!(typeof scene !== 'undefined' && scene && scene.environment),
+    ghostLoaded: !!(typeof ghost !== 'undefined' && ghost),
+    ghostSamples: (typeof ghost !== 'undefined' && ghost && ghost.t) ? ghost.t.length : 0,
+    ghostBest: (typeof ghost !== 'undefined' && ghost) ? ghost.ms : null,
+    ghostGroup: !!ghostGroup,
+    ghostMeshes: kids(ghostGroup),
+    ghostVisible: ghostGroup ? ghostGroup.visible : false,
+    runStarted: !!(typeof run !== 'undefined' && run && run.started),
+    traceLen: (typeof run !== 'undefined' && run && run.trace) ? run.trace.length : 0,
+    dayKey: (typeof taDayKey === 'function') ? taDayKey() : '?',
+    playerPivots: wheelPivots.length,
+    carMeshes: kids(carGroup)
+  };
+  console.info('[TGK] diag', d);
+  return d;
 }
 
 /* ---------- frame --------------------------------------------------------- */
