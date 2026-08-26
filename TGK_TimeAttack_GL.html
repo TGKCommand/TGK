@@ -3899,7 +3899,7 @@ function loadCarModel(S, key, onDone) {
           /* 0.55 was tuned against a flat grey cube that carried no sun and
              no horizon. Against a real probe the reflection is meaningful, so
              the paint can take more of it without turning to chrome. */
-          if (mm.envMapIntensity !== undefined) mm.envMapIntensity = 0.85;
+          if (mm.envMapIntensity !== undefined) mm.envMapIntensity = 0.68;
           painted++;
         }
       });
@@ -4590,8 +4590,23 @@ function glRefreshEnvironment() {
     var es = new THREE.Scene();
     var disposables = [];
 
+    /* ---- PROBE LEVEL ------------------------------------------------------
+       The probe replaced a 128 px gradient cube, and everything downstream -
+       tone-mapping exposure, the hemisphere light, every envMapIntensity in
+       the scene - was tuned against THAT. Measured against it, a probe built
+       from the real sky is 1.90x brighter before the sun is even considered,
+       and the sun in the sky texture is a white disc with three additive glow
+       passes on top, which PMREM turns into an enormous radiance spike. The
+       result was every surface in the game clipping to pure white.
+
+       So the probe is attenuated to sit at the radiance the scene is already
+       exposed for. This changes only the LEVEL; the whole point of the probe
+       is its DIRECTIONALITY - sun in the right place, sky above, tarmac below
+       - and that survives attenuation untouched. */
+    var ENV_K = 0.48;
     var skyM = new THREE.MeshBasicMaterial({
-      map: _skyMesh.material.map, side: THREE.BackSide, fog: false, depthWrite: false
+      map: _skyMesh.material.map, side: THREE.BackSide, fog: false, depthWrite: false,
+      color: new THREE.Color(ENV_K, ENV_K, ENV_K)
     });
     var skyG = new THREE.SphereGeometry(60, 32, 20);
     es.add(new THREE.Mesh(skyG, skyM));
@@ -4600,7 +4615,8 @@ function glRefreshEnvironment() {
     if (_cloudMesh && _cloudMesh.material.map) {
       var clM = new THREE.MeshBasicMaterial({
         map: _cloudMesh.material.map, side: THREE.BackSide,
-        transparent: true, fog: false, depthWrite: false
+        transparent: true, fog: false, depthWrite: false,
+        color: new THREE.Color(ENV_K, ENV_K, ENV_K)
       });
       var clG = new THREE.SphereGeometry(58, 32, 20);
       es.add(new THREE.Mesh(clG, clM));
@@ -4611,7 +4627,7 @@ function glRefreshEnvironment() {
        underneath as well as above and reads as chrome floating in a void -
        the bounce off the ground is half of what makes paint look like paint. */
     var P = glSkyPalette();
-    var lift = WX_SUN ? 0.20 : 0.16;
+    var lift = (WX_SUN ? 0.20 : 0.16) * ENV_K;
     var gM = new THREE.MeshBasicMaterial({
       color: new THREE.Color(lift, lift, lift * 1.04), side: THREE.DoubleSide, fog: false
     });
@@ -6015,23 +6031,50 @@ function taBuildEngineBuffer(V) {
   var len = Math.floor(sr * cycleT * cycles);
   var buf = AC.createBuffer(1, len, sr);
   var ch = buf.getChannelData(0);
-  var pulses = V.cyl / 2 * 2;                    /* firings per 720 = cyl */
-  var dtP = cycleT / V.cyl;
+  /* ---- FIRING PATTERN, PER BANK -------------------------------------------
+     Crank angles in degrees over one 720-degree cycle, grouped by the
+     manifold that collects them. This is the whole character of the engine:
+     an even train is a buzz, a lopsided one is a rumble. */
+  var banks;
+  if (V.cyl >= 8) {
+    /* CROSS-PLANE V8. Even at the crank, uneven at each manifold. Both V8s in
+       this fleet are cross-plane, which is why both should burble. A
+       flat-plane V8 would be [[0,180,360,540],[90,270,450,630]] - each bank
+       even - and would wail instead. */
+    banks = [[0, 90, 270, 450], [180, 360, 540, 630]];
+  } else if (V.cyl === 6) {
+    banks = [[0, 240, 480], [120, 360, 600]];
+  } else {
+    /* inline four: one manifold, one firing every 180 degrees, genuinely
+       even - the fours already sounded right for this reason */
+    banks = [[0, 180, 360, 540]];
+  }
+
+  var pu = 0;
   for (var cy = 0; cy < cycles; cy++) {
-    for (var pu = 0; pu < V.cyl; pu++) {
-      var A = V.amps[pu % V.amps.length] * (0.96 + Math.random() * 0.08);
-      var t0 = (cy * cycleT + pu * dtP + (Math.random() - 0.5) * 0.0006);
-      var i0 = Math.floor(t0 * sr);
-      var nT = Math.floor(V.tau * 3.2 * sr);
-      var ph = Math.random() * 6.2832;
-      for (var k = 0; k < nT; k++) {
-        var idx = i0 + k;
-        if (idx < 0 || idx >= len) continue;
-        var tt = k / sr;
-        var env = Math.exp(-tt / V.tau);
-        var thump = Math.sin(6.2832 * V.thump * tt + ph) * env;
-        var burst = (Math.random() * 2 - 1) * Math.exp(-tt / (V.tau * 0.45)) * V.nz;
-        ch[idx] += A * (thump * 0.85 + burst);
+    for (var bk = 0; bk < banks.length; bk++) {
+      /* the two pipes are not the same length, so each bank has its own
+         thump frequency and decay - detuning them is what turns two pulse
+         trains into one thick note rather than a doubled click */
+      var bTune = banks.length > 1 ? (bk === 0 ? 0.965 : 1.035) : 1.0;
+      var bAmp = banks.length > 1 ? (bk === 0 ? 1.00 : 0.94) : 1.0;
+      for (var bi = 0; bi < banks[bk].length; bi++) {
+        var A = V.amps[pu % V.amps.length] * bAmp * (0.96 + Math.random() * 0.08);
+        pu++;
+        var frac = banks[bk][bi] / 720;
+        var t0 = (cy * cycleT + frac * cycleT + (Math.random() - 0.5) * 0.0006);
+        var i0 = Math.floor(t0 * sr);
+        var nT = Math.floor(V.tau * 3.2 * sr);
+        var ph = Math.random() * 6.2832;
+        for (var k = 0; k < nT; k++) {
+          var idx = i0 + k;
+          if (idx < 0 || idx >= len) continue;
+          var tt = k / sr;
+          var env = Math.exp(-tt / V.tau);
+          var thump = Math.sin(6.2832 * V.thump * bTune * tt + ph) * env;
+          var burst = (Math.random() * 2 - 1) * Math.exp(-tt / (V.tau * 0.45)) * V.nz;
+          ch[idx] += A * (thump * 0.85 + burst);
+        }
       }
     }
   }
