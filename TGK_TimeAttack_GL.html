@@ -2734,6 +2734,13 @@ function glSplitWheels(root, S) {
     /* A quadrant is only a wheel if it is WHEEL-SIZED. This is what stops a
        body mesh being carved into four pieces: a quarter of a car is far
        bigger than a tyre, so it fails and nothing is touched. */
+    /* World scale of THIS mesh. The vertex buffer is in the model's own units;
+       rw is in metres. Comparing the two directly rejected every wheel on any
+       model not authored at 1 unit = 1 metre - which is why the CC went from
+       rotating wrongly to not rotating at all. */
+    var _ws = new THREE.Vector3(1, 1, 1);
+    if (m.getWorldScale) m.getWorldScale(_ws);
+    var uScale = (Math.abs(_ws.x) + Math.abs(_ws.y) + Math.abs(_ws.z)) / 3 || 1;
     function quadOk(ind) {
       if (ind.length < 60) return false;
       var x0 = 1e30, x1 = -1e30, y0 = 1e30, y1 = -1e30, z0 = 1e30, z1 = -1e30;
@@ -2743,7 +2750,9 @@ function glSplitWheels(root, S) {
         if (ay < y0) y0 = ay; if (ay > y1) y1 = ay;
         if (az < z0) z0 = az; if (az > z1) z1 = az;
       }
-      var dy = y1 - y0, dz = z1 - z0, dx = x1 - x0, dia = rw * 2;
+      /* convert the cluster's extent into METRES before judging its size */
+      var dy = (y1 - y0) * uScale, dz = (z1 - z0) * uScale, dx = (x1 - x0) * uScale;
+      var dia = rw * 2;
       /* a wheel is about one diameter tall and long, and much thinner across */
       return dy < dia * 1.45 && dz < dia * 1.45 && dy > dia * 0.45 && dz > dia * 0.45 && dx < dia * 0.95;
     }
