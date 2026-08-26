@@ -3256,6 +3256,11 @@ function glSplitWheelMeshes(root) {
        the simpler split. */
     var bestSet = null, bestCount = 0;
     for (var K = 6; K >= 2; K--) {
+      /* A run with K clusters can recover at most K wheels, so once we already
+         hold that many there is nothing left for the smaller values of K to
+         win and the rest of the sweep is pure cost. On a model where every
+         mesh splits cleanly into four this halves the work. */
+      if (bestCount >= K) break;
       var cl = clusterInto(K), good = [], rest = [], ci2;
       for (ci2 = 0; ci2 < cl.length; ci2++) {
         if (looksLikeWheel(cl[ci2])) good.push(cl[ci2]);
@@ -3289,10 +3294,227 @@ function glSplitWheelMeshes(root) {
   }
   if (split) {
     root.updateMatrixWorld(true);
+    split += glHarvestByHubs(root, len, minY);
     console.info('[TGK] wheel rig: split ' + split +
                  ' merged mesh(es) into four corners - this model groups parts by material.');
   }
   return split;
+}
+
+/* ---------------------------------------------------------------------------
+   SECOND PASS - harvest against known hubs.
+
+   The first pass has to find wheels with no prior idea where they are, which
+   means an awkward mesh can succeed on one side of the car and fail on the
+   other. On the Tiguan that left the right-hand wheels missing a component
+   that would then have sat still while the rest of the wheel turned.
+
+   Once any mesh has split cleanly the hub locations are known, and assigning
+   triangles to the nearest KNOWN hub is far more reliable than rediscovering
+   the clustering from scratch. So every remaining mesh near a hub - including
+   the leftovers the first pass produced - gets a second look.
+   ------------------------------------------------------------------------ */
+function glHarvestByHubs(root, len, minY) {
+  root.updateMatrixWorld(true);
+
+  /* where are the wheels we already have? */
+  var hubs = [];
+  root.traverse(function (n) {
+    if (!n.isMesh || !/_wheel_\d+$/.test(n.name || '')) return;
+    var b = new THREE.Box3().setFromObject(n);
+    if (b.isEmpty()) return;
+    var c = b.getCenter(new THREE.Vector3()), s = b.getSize(new THREE.Vector3());
+    var dia = Math.max(s.y, s.z);
+    for (var i = 0; i < hubs.length; i++) {
+      if (Math.abs(hubs[i].x - c.x) < 0.30 && Math.abs(hubs[i].z - c.z) < 0.30) {
+        hubs[i].dia = Math.max(hubs[i].dia, dia);
+        return;
+      }
+    }
+    hubs.push({ x: c.x, y: c.y, z: c.z, dia: dia });
+  });
+  if (hubs.length < 3 || hubs.length > 4) return 0;
+
+  /* three hubs means one corner was missed entirely - a car is symmetric, so
+     the fourth is the mirror of whichever hub has no partner across the car */
+  if (hubs.length === 3) {
+    var sx = 0;
+    for (var h = 0; h < 3; h++) sx += hubs[h].x;
+    var axis = sx / 3;
+    for (var a = 0; a < 3; a++) {
+      var mate = false;
+      for (var b2 = 0; b2 < 3; b2++) {
+        if (a === b2) continue;
+        if (Math.abs(hubs[b2].z - hubs[a].z) < 0.25 &&
+            Math.abs((hubs[b2].x - axis) + (hubs[a].x - axis)) < 0.25) mate = true;
+      }
+      if (!mate) {
+        hubs.push({ x: 2 * axis - hubs[a].x, y: hubs[a].y, z: hubs[a].z, dia: hubs[a].dia });
+        break;
+      }
+    }
+    if (hubs.length < 4) return 0;
+  }
+
+  var gained = 0;
+  var pool = [];
+  root.traverse(function (n) {
+    if (!n.isMesh || !n.geometry || !n.geometry.attributes || !n.geometry.attributes.position) return;
+    if (/_wheel_\d+$/.test(n.name || '')) return;         /* already a wheel */
+    var b = new THREE.Box3().setFromObject(n);
+    if (b.isEmpty()) return;
+    var s = b.getSize(new THREE.Vector3());
+    /* Nothing that turns on a hub is taller than the wheel it turns on. The
+       old ceiling was a fraction of the CAR's length, which let whole-body
+       meshes into the pool - they enclose the hubs, so the proximity test
+       passes - and the pass then rebuilt the entire bodyshell as non-indexed
+       geometry to slice a few triangles out of it. Slow, and it triples the
+       memory of the largest mesh in the model for nothing. */
+    var maxHub = 0;
+    for (var mh = 0; mh < hubs.length; mh++) maxHub = Math.max(maxHub, hubs[mh].dia);
+    if (s.y > maxHub * 1.35) return;
+    var near = false;
+    for (var i = 0; i < hubs.length; i++) {
+      if (b.min.x - hubs[i].dia < hubs[i].x && hubs[i].x < b.max.x + hubs[i].dia &&
+          b.min.z - hubs[i].dia < hubs[i].z && hubs[i].z < b.max.z + hubs[i].dia &&
+          Math.abs((b.min.y + b.max.y) / 2 - hubs[i].y) < hubs[i].dia) { near = true; break; }
+    }
+    if (near) pool.push(n);
+  });
+
+  for (var pi = 0; pi < pool.length; pi++) {
+    var mesh = pool[pi], parent = mesh.parent;
+    if (!parent) continue;
+    var geo = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
+    var pos = geo.attributes.position;
+    var nTri = Math.floor(pos.count / 3);
+    if (nTri < 24) continue;
+
+    var mw = mesh.matrixWorld, v = new THREE.Vector3();
+    var groups = [[], [], [], []], rest = [];
+    for (var t = 0; t < nTri; t++) {
+      var cx = 0, cy = 0, cz = 0;
+      for (var k = 0; k < 3; k++) {
+        v.fromBufferAttribute(pos, t * 3 + k).applyMatrix4(mw);
+        cx += v.x; cy += v.y; cz += v.z;
+      }
+      cx /= 3; cy /= 3; cz /= 3;
+      var bh = -1, bd = Infinity;
+      for (var hi = 0; hi < 4; hi++) {
+        var dx = cx - hubs[hi].x, dy = cy - hubs[hi].y, dz = cz - hubs[hi].z;
+        var d = dx * dx + dy * dy + dz * dz;
+        /* must be inside the wheel's own envelope, not merely nearest to it */
+        if (d < bd && d < hubs[hi].dia * hubs[hi].dia * 0.36) { bd = d; bh = hi; }
+      }
+      if (bh < 0) rest.push(t); else groups[bh].push(t);
+    }
+
+    var keep = [], kept = 0;
+    for (var gi = 0; gi < 4; gi++) {
+      if (groups[gi].length < 24) { rest = rest.concat(groups[gi]); continue; }
+      var pm = new THREE.Mesh(glSliceTris(geo, groups[gi]), mesh.material);
+      pm.position.copy(mesh.position); pm.quaternion.copy(mesh.quaternion); pm.scale.copy(mesh.scale);
+      parent.add(pm); root.updateMatrixWorld(true);
+      var pb = new THREE.Box3().setFromObject(pm), ok = false;
+      if (!pb.isEmpty()) {
+        var ps = pb.getSize(new THREE.Vector3()), pc = pb.getCenter(new THREE.Vector3());
+        var pd = Math.max(ps.y, ps.z);
+        var HH = hubs[gi];
+        /* These triangles were already selected for sitting INSIDE a known
+           wheel's envelope, which is far stronger evidence than any shape
+           score computed on the fragment alone. Judging them again on
+           circularity is what left static rims on the right-hand side of two
+           cars: the same component reads 0.85 on one side and 0.73 on the
+           other, and no threshold separates that from junk. What still has to
+           hold is that the fragment is CONCENTRIC with the hub and fits
+           inside the wheel - which is exactly what excludes a brake caliper,
+           since a caliper straddles the disc from off-axis. */
+        ok = pd <= HH.dia * 1.12
+          && ps.x <= HH.dia * 1.12
+          && Math.hypot(pc.y - HH.y, pc.z - HH.z) <= HH.dia * 0.18;
+      }
+      parent.remove(pm);
+      if (pm.geometry) pm.geometry.dispose();
+      if (ok) { keep.push(groups[gi]); kept++; }
+      else rest = rest.concat(groups[gi]);
+    }
+    if (!kept) continue;
+
+    for (var ki = 0; ki < keep.length; ki++) {
+      var wm = new THREE.Mesh(glSliceTris(geo, keep[ki]), mesh.material);
+      wm.name = (mesh.name || 'part').replace(/_rest$/, '') + '_wheel_' + (10 + ki);
+      wm.castShadow = mesh.castShadow; wm.receiveShadow = mesh.receiveShadow;
+      wm.position.copy(mesh.position); wm.quaternion.copy(mesh.quaternion); wm.scale.copy(mesh.scale);
+      parent.add(wm);
+    }
+    if (rest.length >= 3) {
+      var rm = new THREE.Mesh(glSliceTris(geo, rest), mesh.material);
+      rm.name = (mesh.name || 'part') + '_rest';
+      rm.castShadow = mesh.castShadow; rm.receiveShadow = mesh.receiveShadow;
+      rm.position.copy(mesh.position); rm.quaternion.copy(mesh.quaternion); rm.scale.copy(mesh.scale);
+      parent.add(rm);
+    }
+    parent.remove(mesh);
+    root.updateMatrixWorld(true);
+    gained++;
+  }
+  return gained;
+}
+
+/* Everything that turns on a hub is part of that wheel: the tyre, the rim,
+   the brake rotor, the centre cap. Judged by CONCENTRICITY rather than by
+   how wheel-like a part looks on its own, because a rotor is far too small
+   to pass for a wheel and a slightly asymmetric rim face can fall under any
+   roundness threshold you pick.
+
+   A brake caliper is the case this has to exclude, and concentricity does it
+   cleanly: a caliper straddles the disc from outside, so its centre sits well
+   off the axis, while everything that rotates is centred on it. */
+function glAddHubCompanions(root, wheels) {
+  if (!wheels || wheels.length < 4) return wheels || [];
+  root.updateMatrixWorld(true);
+
+  var hubs = [], i;
+  for (i = 0; i < wheels.length; i++) {
+    var wb = new THREE.Box3().setFromObject(wheels[i]);
+    if (wb.isEmpty()) continue;
+    var wc = wb.getCenter(new THREE.Vector3()), ws = wb.getSize(new THREE.Vector3());
+    var wd = Math.max(ws.y, ws.z);
+    var found = false;
+    for (var h = 0; h < hubs.length; h++) {
+      if (Math.abs(hubs[h].x - wc.x) < 0.30 && Math.abs(hubs[h].z - wc.z) < 0.30) {
+        hubs[h].dia = Math.max(hubs[h].dia, wd); found = true; break;
+      }
+    }
+    if (!found) hubs.push({ x: wc.x, y: wc.y, z: wc.z, dia: wd });
+  }
+  if (hubs.length !== 4) return wheels;
+
+  var have = {};
+  for (i = 0; i < wheels.length; i++) have[wheels[i].uuid] = 1;
+  var added = 0;
+  root.traverse(function (n) {
+    if (!n.isMesh || !n.geometry || have[n.uuid]) return;
+    var b = new THREE.Box3().setFromObject(n);
+    if (b.isEmpty()) return;
+    var c = b.getCenter(new THREE.Vector3()), s = b.getSize(new THREE.Vector3());
+    var d = Math.max(s.y, s.z);
+    for (var hi = 0; hi < hubs.length; hi++) {
+      var H = hubs[hi];
+      /* CONCENTRIC: on the hub axis, within a quarter of a wheel radius. This
+         is what separates a rotor from a caliper. */
+      if (Math.abs(c.x - H.x) > H.dia * 0.45) continue;
+      if (Math.hypot(c.y - H.y, c.z - H.z) > H.dia * 0.12) continue;
+      if (d > H.dia * 1.10 || d < H.dia * 0.25) continue;
+      if (Math.abs(s.y - s.z) > d * 0.30) continue;
+      if (glCircularity(n, c.y, c.z) < 0.62) continue;
+      wheels.push(n); have[n.uuid] = 1; added++;
+      break;
+    }
+  });
+  if (added) console.info('[TGK] wheel rig: +' + added +
+    ' companion part(s) turning on the hubs (rotors, rim faces).');
+  return wheels;
 }
 
 function glFindSpinners(root) {
@@ -3301,7 +3523,7 @@ function glFindSpinners(root) {
      returns non-empty only when it has found all four corners, which is
      exactly the condition for skipping the split. */
   var pre = glFindWheelsByShape(root);
-  if (pre.length >= 4) return pre;
+  if (pre.length >= 4) return glAddHubCompanions(root, pre);
 
   /* Otherwise cut apart any mesh that contains several wheels, because until
      that happens there is nothing individual to find. */
@@ -3311,7 +3533,7 @@ function glFindSpinners(root) {
   /* Shape first. It is the only method that works on models whose nodes are
      called Object_11, which is most of them. */
   var byShape = glFindWheelsByShape(root);
-  if (byShape.length >= 4) return byShape;
+  if (byShape.length >= 4) return glAddHubCompanions(root, byShape);
 
   var all = [];
   root.traverse(function (n) {
