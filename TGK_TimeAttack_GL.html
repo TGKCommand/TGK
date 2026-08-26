@@ -2615,8 +2615,17 @@ var MODEL_TWEAK = {
                 pattern was deleting them */ shadowMin: 0.5 },
   cc:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
              paintRx: /^carpaint/i, hideRx: null, shadowMin: 0.4 },
-  tiguan:  { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: false,
-             paintRx: /^Paint_Color/i, hideRx: null, shadowMin: 0.5 },
+  tiguan:  { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
+             /* replacement model (Aug 2026): properly named materials at last,
+                so the body repaints and the splitter can find the wheels via
+                the 'Tires' material - the old asset called everything
+                Index_0_1 and could not be worked with. */
+             paintRx: /^Car_Paint$|^Paint_Color/i, hideRx: null, shadowMin: 0.5,
+             recolor: [
+               [/^Metal_Black$/i, [ 24,  25,  27], 0.55, 0.38],
+               [/^Silver$/i,      [148, 151, 156], 0.80, 0.30],
+               [/^Tires$|^Rubber$/i, [ 26,  26,  28], 0.05, 0.92]
+             ] },
   x5:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
              /* clean low-poly G05: materials are named for THIS car, so the
                 scheme can be exact - white body, blacked-out trim and mirrors,
@@ -2703,8 +2712,18 @@ function glSplitWheels(root, S) {
      is useless - but the wheels ARE at known positions. Extract a sphere at
      each hub and then let the SAME size validation decide: a genuine wheel
      passes, a lump of fender does not, so nothing is carved by mistake. */
+  /* NO FALLBACK for name-less models.
+     Extracting wheels by sphere from a mesh that merges wheels INTO bodywork
+     was tried and made the Tiguan worse: the split produced wheel meshes that
+     did not render, so the car lost its wheels entirely. Visible-but-static
+     wheels are strictly better than no wheels, and that is what leaving the
+     mesh alone gives.
+
+     The Tiguan's wheels cannot be identified from its data - all three of its
+     materials are called Index_0_1/2 and Paint_Color, and its wheels share
+     geometry with the body. That is an asset limitation, not something the
+     loader can reason its way out of. */
   var useSphere = false;
-  if (!cand.length) { cand = other; useSphere = true; }
   if (!cand.length) return 0;
   var made = 0, v = new THREE.Vector3();
   var hubTw = (S.track || 1.6) / 2, hubWb = (S.wb || 2.9) / 2;
