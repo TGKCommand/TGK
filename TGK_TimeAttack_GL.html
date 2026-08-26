@@ -354,7 +354,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v5.4.0</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v5.5.0</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -504,10 +504,11 @@ body{
    renderer field is what tells them apart.
    ------------------------------------------------------------------------ */
 var TA_BUILD = {
-  version: '5.4.0',
+  version: '5.5.0',
   date: '2026-08-26',
   renderer: 'WebGL',
-  notes: [    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
+  notes: [
+    'light budget is a live knob: taLight({env,hemi,sun,exposure}) - fixes washed-out world',    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
     'wheels: cylindrical membership - fixes torn tyre shoulders',
     'wheels: Ackermann steering geometry on the front axle',
     'ghost: shortest-path heading (was spinning 360 at the wrap) + spline',
@@ -4123,7 +4124,7 @@ function taApplySun(seed) {
   if (!_glReady) return;
   var warm = clamp((0.72 - SUN[1]) / 0.45, 0, 1);
   var sc = WX_SUN ? 1 : 0.30;
-  sunLight.intensity = (1.62 - 0.26 * warm) * sc;
+  sunLight.intensity = (1.62 - 0.26 * warm) * sc * TA_LIGHT.sun;
   sunLight.color.setRGB(1, 1 - 0.11 * warm, 1 - 0.36 * warm);
   /* SKY LIGHT, not a grey wash. The hemisphere light is standing in for the
      whole dome, so its top colour has to be the sky the dome is actually
@@ -4132,7 +4133,10 @@ function taApplySun(seed) {
   var P = glSkyPalette();
   hemi.color.setRGB(P.mid[0] / 255, P.mid[1] / 255, P.mid[2] / 255);
   hemi.groundColor.setRGB(0.20, 0.19, 0.18);
-  hemi.intensity = WX_SUN ? 0.62 : 1.15;
+  /* The probe now supplies sky ambient, which is exactly the job the
+     hemisphere light was standing in for - running both at full strength
+     double-counts the sky and is most of why the world went white. */
+  hemi.intensity = (WX_SUN ? 0.62 : 1.15) * (TA_LIGHT.hemi / 0.30) * 0.55;
   sunLight.castShadow = !!WX_SUN;
   glRefreshSky();
 }
@@ -4153,7 +4157,7 @@ function taResize() {
        shadows and paint that actually looks like paint. */
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = TA_LIGHT.exposure;
     renderer.physicallyCorrectLights = true;
     scene = new THREE.Scene();
     /* Fog reached full density at 320 m on a 2.6 km lot, and the camera's far
@@ -4635,6 +4639,37 @@ function glMakeClouds(seed) {
    painting anything new, and it only runs when the sky itself changes.
    ------------------------------------------------------------------------ */
 var _envRT = null;
+
+/* ---------------------------------------------------------------------------
+   LIGHT BUDGET
+
+   I have now mis-set this twice from arithmetic alone, so it is a live knob
+   rather than a constant baked into three separate places. From the console:
+
+       taLight({ env: 0.3, hemi: 0.3, exposure: 0.95 })   // apply immediately
+       taLight({ env: 0 })                                // probe off entirely
+       taLight()                                          // print current values
+
+   env      how much of the sky probe reaches reflective surfaces
+   hemi     the sky fill light, which the probe partly duplicates
+   sun      the key light
+   exposure tone-mapping exposure
+
+   Defaults are deliberately conservative: the probe's value is its
+   DIRECTIONALITY - sun in the right place, tarmac below - and that survives
+   being dim. Too bright and the whole scene clips to white, which is what
+   happened when the probe first went in. */
+var TA_LIGHT = { env: 0.30, hemi: 0.30, sun: 1.00, exposure: 0.95 };
+function taLight(o) {
+  if (!o) { console.info('[TGK] light', JSON.stringify(TA_LIGHT)); return TA_LIGHT; }
+  for (var k in o) if (TA_LIGHT[k] !== undefined) TA_LIGHT[k] = o[k];
+  try {
+    if (renderer) renderer.toneMappingExposure = TA_LIGHT.exposure;
+    taApplySun();
+  } catch (e) {}
+  console.info('[TGK] light', JSON.stringify(TA_LIGHT));
+  return TA_LIGHT;
+}
 function glRefreshEnvironment() {
   if (!renderer || !scene || !_skyMesh || !_skyMesh.material.map) return;
   if (!THREE.PMREMGenerator) return;
@@ -4656,7 +4691,8 @@ function glRefreshEnvironment() {
        exposed for. This changes only the LEVEL; the whole point of the probe
        is its DIRECTIONALITY - sun in the right place, sky above, tarmac below
        - and that survives attenuation untouched. */
-    var ENV_K = 0.48;
+    var ENV_K = TA_LIGHT.env;
+    if (ENV_K <= 0) { if (scene) scene.environment = null; return; }
     var skyM = new THREE.MeshBasicMaterial({
       map: _skyMesh.material.map, side: THREE.BackSide, fog: false, depthWrite: false,
       color: new THREE.Color(ENV_K, ENV_K, ENV_K)
