@@ -352,7 +352,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-ver">v5.00</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-ver">v5.4.0</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -494,6 +494,53 @@ body{
 
 <script>
 /* ===== 10_core.js ===== */
+/* ===== BUILD STAMP =========================================================
+   One constant, read by everything that displays a version. The old value was
+   a literal typed into the menu markup, which meant it never changed and you
+   could not tell a fresh file from a cached one. Both builds carry the same
+   number because they share their course, physics and audio modules; the
+   renderer field is what tells them apart.
+   ------------------------------------------------------------------------ */
+var TA_BUILD = {
+  version: '5.4.0',
+  date: '2026-08-26',
+  renderer: 'Canvas 2D',
+  notes: [    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
+    'wheels: cylindrical membership - fixes torn tyre shoulders',
+    'wheels: Ackermann steering geometry on the front axle',
+    'ghost: shortest-path heading (was spinning 360 at the wrap) + spline',
+    'sky: procedural dome, sun, drifting cloud layer, PMREM light probe',
+    'audio: cross-plane V8 bank firing - real burble, not amplitude fakery',
+    'render: instanced treeline/crowd/skids, 1282 -> 173 draw calls',
+    'course: SCCA pointer cones that lie down and aim where you drive'
+  ]
+};
+var TA_VERSION = TA_BUILD.version;
+
+function taStampBuild() {
+  var label = 'v' + TA_BUILD.version;
+  try {
+    var el = document.getElementById('ta-ver');
+    if (el) {
+      el.textContent = label;
+      el.title = TA_BUILD.renderer + ' build ' + TA_BUILD.version + ' - ' + TA_BUILD.date;
+    }
+    if (document.title.indexOf(label) < 0) document.title += ' ' + label;
+  } catch (e) {}
+  try {
+    console.info('%cTGK Time Attack %c' + label + '%c  ' +
+      TA_BUILD.renderer + '  ' + TA_BUILD.date,
+      'font-weight:700', 'color:#2ABFAA;font-weight:700', 'color:#888');
+    for (var i = 0; i < TA_BUILD.notes.length; i++) console.info('  - ' + TA_BUILD.notes[i]);
+  } catch (e2) {}
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', taStampBuild);
+  } else { taStampBuild(); }
+}
+
+
 /* ============================================================================
    TGK TIME ATTACK - core plumbing
    Self-contained: declares every global it uses. Safe standalone or in an

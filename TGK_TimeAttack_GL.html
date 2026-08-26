@@ -354,7 +354,7 @@ body{
   <!-- ================= GRID / SETUP ================= -->
   <div id="ta-start" class="ta-ovl">
     <div class="ta-sheet plate">
-      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v5.00</span></div>
+      <div class="ta-mhead"><span class="ta-logo"><b>TGK</b> Motorsport</span><span class="ta-logo-sep">&middot;</span><span class="ta-logo-sub">Time Attack</span><i></i><span id="ta-glb-tag" style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#2ABFAA;margin-right:10px">WebGL</span><span id="ta-ver">v5.4.0</span></div>
       <div class="ta-title">TIME <em>ATTACK</em></div>
       <div class="ta-sub">Autocross &middot; sealed course &middot; timed run</div>
 
@@ -496,6 +496,53 @@ body{
 
 <script>
 /* ===== 10_core.js ===== */
+/* ===== BUILD STAMP =========================================================
+   One constant, read by everything that displays a version. The old value was
+   a literal typed into the menu markup, which meant it never changed and you
+   could not tell a fresh file from a cached one. Both builds carry the same
+   number because they share their course, physics and audio modules; the
+   renderer field is what tells them apart.
+   ------------------------------------------------------------------------ */
+var TA_BUILD = {
+  version: '5.4.0',
+  date: '2026-08-26',
+  renderer: 'WebGL',
+  notes: [    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
+    'wheels: cylindrical membership - fixes torn tyre shoulders',
+    'wheels: Ackermann steering geometry on the front axle',
+    'ghost: shortest-path heading (was spinning 360 at the wrap) + spline',
+    'sky: procedural dome, sun, drifting cloud layer, PMREM light probe',
+    'audio: cross-plane V8 bank firing - real burble, not amplitude fakery',
+    'render: instanced treeline/crowd/skids, 1282 -> 173 draw calls',
+    'course: SCCA pointer cones that lie down and aim where you drive'
+  ]
+};
+var TA_VERSION = TA_BUILD.version;
+
+function taStampBuild() {
+  var label = 'v' + TA_BUILD.version;
+  try {
+    var el = document.getElementById('ta-ver');
+    if (el) {
+      el.textContent = label;
+      el.title = TA_BUILD.renderer + ' build ' + TA_BUILD.version + ' - ' + TA_BUILD.date;
+    }
+    if (document.title.indexOf(label) < 0) document.title += ' ' + label;
+  } catch (e) {}
+  try {
+    console.info('%cTGK Time Attack %c' + label + '%c  ' +
+      TA_BUILD.renderer + '  ' + TA_BUILD.date,
+      'font-weight:700', 'color:#2ABFAA;font-weight:700', 'color:#888');
+    for (var i = 0; i < TA_BUILD.notes.length; i++) console.info('  - ' + TA_BUILD.notes[i]);
+  } catch (e2) {}
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', taStampBuild);
+  } else { taStampBuild(); }
+}
+
+
 /* ============================================================================
    TGK TIME ATTACK - core plumbing
    Self-contained: declares every global it uses. Safe standalone or in an
@@ -3448,6 +3495,12 @@ function glHarvestByHubs(root, len, minY) {
         }
       }
       var gc2 = gb2.getCenter(new THREE.Vector3()), HG = hubs[gi];
+      /* A spoked rim face has gaps, so its bounding box centre can sit off
+         the axle even though the part plainly turns with the wheel. Measured
+         on the CC, the rejected leftovers covered 75 percent of a full circle
+         from the hub right out to the tread - that is a wheel, not a bracket.
+         So concentricity is the test only for parts that do NOT wrap the hub;
+         anything that goes most of the way round is accepted on that basis. */
       if (Math.hypot(gc2.y - HG.y, gc2.z - HG.z) > HG.dia * 0.15) {
         rest = rest.concat(groups[gi]); continue;
       }
@@ -5548,7 +5601,25 @@ function taRenderFrame(ghostPose, rivalPose) {
     var P = wheelPivots[w], U = P.userData;
     var sideSign = U.isLeft ? -1 : 1;        /* car-space X: left is negative */
     var frontSign = U.isFront ? 1 : -1;
-    if (U.isFront) P.rotation.y = -(car.delta || 0);
+    /* ---- ACKERMANN ----------------------------------------------------------
+       Both front wheels were set to the same angle, which no steering rack has
+       ever done. The two wheels trace circles of different radius about one
+       shared centre, so the inside wheel must turn further than the outside -
+       7.5 degrees further at full lock on this wheelbase, which is plainly
+       visible when the car is parked on opposite lock. The rack angle is the
+       geometric mean of the two; each wheel is solved from the turn radius it
+       actually describes. */
+    if (U.isFront) {
+      var d0 = car.delta || 0, ad = Math.abs(d0), wheelDelta = d0;
+      if (ad > 0.008) {
+        var Rturn = (halfWb * 2) / Math.tan(ad);
+        /* on a right-hand turn the right wheel is the inner one */
+        var isInner = (d0 > 0) !== !!U.isLeft;
+        var Rw = isInner ? (Rturn - halfTrack) : (Rturn + halfTrack);
+        wheelDelta = (d0 > 0 ? 1 : -1) * Math.atan2(halfWb * 2, Math.max(0.25, Rw));
+      }
+      P.rotation.y = -wheelDelta;
+    }
     /* STEP 2: GL wheels DO need compensation, unlike the canvas ones, because
        the pivot is a child of carGroup and inherits its rotation.
 
