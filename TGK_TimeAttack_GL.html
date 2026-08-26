@@ -2690,15 +2690,24 @@ function glSplitWheels(root, S) {
      Where names carry no information (the Tiguan calls everything
      'Index_0_1') we split NOTHING - a static wheel is a far better outcome
      than shredded bodywork. */
-  var cand = [];
+  var cand = [], other = [];
   root.traverse(function (n) {
     if (!(n.isMesh && n.geometry && n.geometry.attributes && n.geometry.attributes.position)) return;
     var ms = Array.isArray(n.material) ? n.material : [n.material];
     var tag = ms.map(function (m) { return (m && m.name) || ''; }).join(' ') + ' ' + (n.name || '');
     if (/\btire|\btyre|\brim\b|_rim|wheel|rotor|brake/i.test(tag)) cand.push(n);
+    else other.push(n);
   });
+  /* FALLBACK for models whose names say nothing (the Tiguan calls everything
+     'Index_0_1'). Those meshes merge wheels into bodywork, so a quadrant split
+     is useless - but the wheels ARE at known positions. Extract a sphere at
+     each hub and then let the SAME size validation decide: a genuine wheel
+     passes, a lump of fender does not, so nothing is carved by mistake. */
+  var useSphere = false;
+  if (!cand.length) { cand = other; useSphere = true; }
   if (!cand.length) return 0;
   var made = 0, v = new THREE.Vector3();
+  var hubTw = (S.track || 1.6) / 2, hubWb = (S.wb || 2.9) / 2;
   for (var ci = 0; ci < cand.length; ci++) {
     var m = cand[ci], g = m.geometry, pos = g.attributes.position;
     if (!m.parent) continue;
@@ -2721,12 +2730,31 @@ function glSplitWheels(root, S) {
     }
     var midX = (mnx + mxx) / 2, midZ = (mnz + mxz) / 2;
     var buckets = [[], [], [], []], rest = [], any = 0;
+    /* world scale, needed to place metre-space hubs into model units */
+    var _ws0 = new THREE.Vector3(1, 1, 1);
+    if (m.getWorldScale) m.getWorldScale(_ws0);
+    var uS0 = (Math.abs(_ws0.x) + Math.abs(_ws0.y) + Math.abs(_ws0.z)) / 3 || 1;
+    var hubR2 = Math.pow((rw * 1.28) / uS0, 2);
+    var hubsL = [[-hubTw / uS0 + midX, hubWb / uS0 + midZ], [hubTw / uS0 + midX, hubWb / uS0 + midZ],
+                 [-hubTw / uS0 + midX, -hubWb / uS0 + midZ], [hubTw / uS0 + midX, -hubWb / uS0 + midZ]];
+    var hubY = rw / uS0;
     for (var t = 0; t < tris; t++) {
       var a1 = idx ? idx[t * 3] : t * 3, b1 = idx ? idx[t * 3 + 1] : t * 3 + 1, c1 = idx ? idx[t * 3 + 2] : t * 3 + 2;
       var cx3 = (pos.getX(a1) + pos.getX(b1) + pos.getX(c1)) / 3;
+      var cy3 = (pos.getY(a1) + pos.getY(b1) + pos.getY(c1)) / 3;
       var cz3 = (pos.getZ(a1) + pos.getZ(b1) + pos.getZ(c1)) / 3;
-      var q3 = (cz3 > midZ ? 0 : 2) + (cx3 > midX ? 1 : 0);
-      buckets[q3].push(a1, b1, c1); any++;
+      if (useSphere) {
+        var hitq = -1;
+        for (var hh2 = 0; hh2 < 4; hh2++) {
+          var ddx = cx3 - hubsL[hh2][0], ddy = cy3 - hubY, ddz = cz3 - hubsL[hh2][1];
+          if (ddx * ddx + ddy * ddy + ddz * ddz < hubR2) { hitq = hh2; break; }
+        }
+        if (hitq >= 0) { buckets[hitq].push(a1, b1, c1); any++; }
+        else rest.push(a1, b1, c1);
+      } else {
+        var q3 = (cz3 > midZ ? 0 : 2) + (cx3 > midX ? 1 : 0);
+        buckets[q3].push(a1, b1, c1); any++;
+      }
     }
     /* Require a plausible wheel: enough triangles, and spread over at least
        two corners. A single blob in one corner is a mirror or a sill, not a
