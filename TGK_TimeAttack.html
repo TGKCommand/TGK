@@ -806,6 +806,10 @@ function taCourseBuild(seed) {
     cones.push({
       x: p.x, z: p.z, x0: p.x, z0: p.z, y: 0, seg: clamp(idx, 0, segs.length - 1), lat: lateral,
       kind: kind || 'std', down: false, vx: 0, vz: 0, vy: 0, spin: 0, rot: rnd() * 6.28,
+      /* the chalked box is painted on the ground when the course is set and
+         stays put forever after - it must NOT follow the cone's live rotation,
+         which is what a knocked cone tumbles through */
+      chalkTh: segAt(idx).th + (rnd() - 0.5) * 0.16,
       hit: false, tumble: 0
     });
     return cones[cones.length - 1];
@@ -818,12 +822,24 @@ function taCourseBuild(seed) {
       n: gates.length, seg: s.i, x: s.x, z: s.z, th: s.th, half: halfGap,
       L: l, R: r, done: false, missed: false, flash: 0, label: label || ''
     });
-    /* Lying pointer cones per SCCA convention: on their sides just outside
-       each standing gate cone, aimed at the side you drive through */
-    addCone(idx - 3, -halfGap - 0.9, 'pointer');
-    var pc1 = cones[cones.length - 1]; pc1.pd = 1; pc1.pth = segAt(idx - 3).th;
-    addCone(idx - 3, halfGap + 0.9, 'pointer');
-    var pc2 = cones[cones.length - 1]; pc2.pd = -1; pc2.pth = segAt(idx - 3).th;
+    /* Lying pointer cones, SCCA convention. A pointer is a cone on its side
+       with the TIP aimed at the line you are meant to drive - that is the
+       whole point of it, and it is why a real course reads at 60 mph without
+       anybody having to think. Each of these sits just outside a standing
+       gate cone and is canted slightly inward, so the pair forms a funnel
+       aiming into the mouth of the gate.
+
+       c.th is the direction the TIP points, in the same heading convention as
+       the centreline (0 = +Z). The renderer lays the cone down about its own
+       axis and yaws it to this heading; storing only pd/pth as before left
+       every pointer in the world flat on the same bearing. */
+    var pth = segAt(idx - 4).th;
+    addCone(idx - 4, -halfGap - 1.0, 'pointer');
+    var pc1 = cones[cones.length - 1];
+    pc1.pd = 1; pc1.th = pth + 0.30;      /* cant in toward the gate mouth */
+    addCone(idx - 4, halfGap + 1.0, 'pointer');
+    var pc2 = cones[cones.length - 1];
+    pc2.pd = -1; pc2.th = pth - 0.30;
   }
   function slalom(count, spacing, side) {
     /* single cones on alternating sides - the real autocross weave */
@@ -936,6 +952,41 @@ function taCourseBuild(seed) {
     c.slalomSide = slalomPlan[sp].sgn;
     c.slalomN = sp;
   }
+  /* SLALOM ENTRY POINTER: the single thing every autocrosser looks for on the
+     walk. A slalom is a row of identical standing cones and nothing about it
+     tells you which side to start on - so the course sets a cone on its side
+     ahead of the first one, tip angled at the gap you take. Without it the
+     row is a coin flip, and the side penalty then feels arbitrary. */
+  if (slalomPlan.length) {
+    var s0 = slalomPlan[0], sEntry = Math.max(0, s0.idx - 9);
+    var eth = segAt(sEntry).th;
+    /* sgn is the side the FIRST cone is passed on; aim the tip that way */
+    var ep = addCone(sEntry, -s0.sgn * 2.2, 'pointer');
+    ep.th = eth + s0.sgn * 0.42;
+    var ep2 = addCone(Math.max(0, s0.idx - 5), -s0.sgn * 2.0, 'pointer');
+    ep2.th = eth + s0.sgn * 0.30;
+  }
+
+  /* APEX POINTERS: at the tightest part of every corner the course lays a
+     cone on its side pointing through the apex. Curvature is already
+     integrated per segment, so the tight bits identify themselves - take the
+     local peak of |k| on anything sharper than a 26 m radius, and put a
+     pointer on the inside where a worker would chalk it. */
+  (function () {
+    var last = -999;
+    for (var q = 12; q < segs.length - 12; q++) {
+      var k = Math.abs(segs[q].k);
+      if (k < 1 / 26) continue;
+      if (k < Math.abs(segs[q - 3].k) || k < Math.abs(segs[q + 3].k)) continue;
+      if (q - last < 20) continue;
+      last = q;
+      var side = segs[q].k > 0 ? 1 : -1;        /* inside of the turn */
+      var ap = addCone(q, side * (COURSE_HALF - 1.1), 'pointer');
+      /* tip points along the road, canted out of the corner - which is what
+         tells the driver where the exit is, not just where the apex is */
+      ap.th = segs[q].th - side * 0.34;
+    }
+  })();
 
   /* gates through the interesting bits, plus start/finish */
   addGate(6, 5.0, 'START');
@@ -1064,6 +1115,15 @@ function taCourseBuild(seed) {
   decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 5.4, z: sg0.z - Math.cos(sg0.th) * 5.4, len: COURSE_HALF * 2 + 1.2, w: 0.16, rot: Math.PI / 2 - sg0.th, a: 0.40 });
   decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 2.7 + Math.cos(sg0.th) * 2.2, z: sg0.z - Math.cos(sg0.th) * 2.7 - Math.sin(sg0.th) * 2.2, len: 5.4, w: 0.14, rot: -sg0.th, a: 0.40 });
   decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 2.7 - Math.cos(sg0.th) * 2.2, z: sg0.z - Math.cos(sg0.th) * 2.7 + Math.sin(sg0.th) * 2.2, len: 5.4, w: 0.14, rot: -sg0.th, a: 0.40 });
+
+  /* A pair of pointers on the grid, tips down the launch straight - the last
+     thing you see before the lights and the only cue for where the start box
+     actually aims. */
+  (function () {
+    var lth = segAt(2).th;
+    var a = addCone(2, -(COURSE_HALF - 1.4), 'pointer'); a.th = lth + 0.16;
+    var b = addCone(2, (COURSE_HALF - 1.4), 'pointer'); b.th = lth - 0.16;
+  })();
 
   /* start gantry sits on the start gate */
   var g0 = gates[0];
@@ -1740,7 +1800,15 @@ function taStep(dt) {
     maxDelta = Math.max(maxDelta, clamp(Math.abs(car.beta) * 1.15 + 0.10, maxDelta, 0.55));
   }
   var slew = ((car.spec && car.spec.rackS) || 2.6) * dt;
-  car.delta += clamp(car.steer * maxDelta - car.delta, -slew, slew);
+  /* EXPO. A linear stick or key maps the first degree of input to the same
+     road-wheel angle as the last, so there is no fine authority anywhere near
+     centre - which on a keyboard is where the whole slalom lives. A 1.28
+     power curve halves the sensitivity around straight-ahead and leaves full
+     lock exactly where it was. This is the same shape every sim ships as its
+     default steering gamma, and it is why they feel calm on the straights. */
+  var _si = car.steer;
+  var _sc = (_si < 0 ? -1 : 1) * Math.pow(Math.abs(_si), 1.28);
+  car.delta += clamp(_sc * maxDelta - car.delta, -slew, slew);
   var delta = car.delta;
 
   /* ---- surface ---- */
@@ -2951,8 +3019,12 @@ function drawConeAt(c) {
     if (c.kind === 'pointer') {
       /* an actual cone lying on its side: round base facing away from the
          gate, body tapering to a tip that points at the side you take */
-      var thp = c.pth || 0, pdp = c.pd || 1;
-      var dxp = Math.cos(thp) * pdp, dzp = -Math.sin(thp) * pdp;
+      /* c.th is the bearing the TIP points, same convention as the
+         centreline (0 = +Z), so the body runs straight down that heading.
+         The old form used the segment NORMAL and a side flag, which could
+         only ever point across the course. */
+      var thp = c.th || 0;
+      var dxp = Math.sin(thp), dzp = Math.cos(thp);
       var tip = proj(c.x + dxp * 0.60, 0.03, c.z + dzp * 0.60);
       var bl = proj(c.x - dzp * 0.17, 0.03, c.z + dxp * 0.17);
       var br = proj(c.x + dzp * 0.17, 0.03, c.z - dxp * 0.17);
@@ -5026,7 +5098,16 @@ function taInputs(dt) {
   if (keys['d'] || keys['arrowright']) sTarget += 1;
   /* caster self-centres the wheel: return speeds up with road speed,
      exactly like trail does in the real car */
-  var rate = sTarget === 0 ? (11.0 + Math.min(9, Math.abs(car.v) * 0.28)) : 9.0;
+  var absv = Math.abs(car.v);
+  /* A wheel does not slew at one rate regardless of speed. At a standstill
+     you can spin it lock to lock; at 60 mph you make small, deliberate
+     inputs, partly because the effort is higher and mostly because you do not
+     want the car to bite. Winding the application rate down with speed - but
+     NOT the return rate, which caster genuinely does speed up - is most of
+     what stops a keyboard feeling like an on/off switch at the fast end. */
+  var rate = sTarget === 0
+    ? (11.0 + Math.min(9, absv * 0.28))
+    : (9.4 - Math.min(3.4, absv * 0.10));
   var d = sTarget - car.steer;
   car.steer += clamp(d, -rate * dt, rate * dt);
   car.steer = clamp(car.steer, -1, 1);

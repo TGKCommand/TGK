@@ -808,6 +808,10 @@ function taCourseBuild(seed) {
     cones.push({
       x: p.x, z: p.z, x0: p.x, z0: p.z, y: 0, seg: clamp(idx, 0, segs.length - 1), lat: lateral,
       kind: kind || 'std', down: false, vx: 0, vz: 0, vy: 0, spin: 0, rot: rnd() * 6.28,
+      /* the chalked box is painted on the ground when the course is set and
+         stays put forever after - it must NOT follow the cone's live rotation,
+         which is what a knocked cone tumbles through */
+      chalkTh: segAt(idx).th + (rnd() - 0.5) * 0.16,
       hit: false, tumble: 0
     });
     return cones[cones.length - 1];
@@ -820,12 +824,24 @@ function taCourseBuild(seed) {
       n: gates.length, seg: s.i, x: s.x, z: s.z, th: s.th, half: halfGap,
       L: l, R: r, done: false, missed: false, flash: 0, label: label || ''
     });
-    /* Lying pointer cones per SCCA convention: on their sides just outside
-       each standing gate cone, aimed at the side you drive through */
-    addCone(idx - 3, -halfGap - 0.9, 'pointer');
-    var pc1 = cones[cones.length - 1]; pc1.pd = 1; pc1.pth = segAt(idx - 3).th;
-    addCone(idx - 3, halfGap + 0.9, 'pointer');
-    var pc2 = cones[cones.length - 1]; pc2.pd = -1; pc2.pth = segAt(idx - 3).th;
+    /* Lying pointer cones, SCCA convention. A pointer is a cone on its side
+       with the TIP aimed at the line you are meant to drive - that is the
+       whole point of it, and it is why a real course reads at 60 mph without
+       anybody having to think. Each of these sits just outside a standing
+       gate cone and is canted slightly inward, so the pair forms a funnel
+       aiming into the mouth of the gate.
+
+       c.th is the direction the TIP points, in the same heading convention as
+       the centreline (0 = +Z). The renderer lays the cone down about its own
+       axis and yaws it to this heading; storing only pd/pth as before left
+       every pointer in the world flat on the same bearing. */
+    var pth = segAt(idx - 4).th;
+    addCone(idx - 4, -halfGap - 1.0, 'pointer');
+    var pc1 = cones[cones.length - 1];
+    pc1.pd = 1; pc1.th = pth + 0.30;      /* cant in toward the gate mouth */
+    addCone(idx - 4, halfGap + 1.0, 'pointer');
+    var pc2 = cones[cones.length - 1];
+    pc2.pd = -1; pc2.th = pth - 0.30;
   }
   function slalom(count, spacing, side) {
     /* single cones on alternating sides - the real autocross weave */
@@ -938,6 +954,41 @@ function taCourseBuild(seed) {
     c.slalomSide = slalomPlan[sp].sgn;
     c.slalomN = sp;
   }
+  /* SLALOM ENTRY POINTER: the single thing every autocrosser looks for on the
+     walk. A slalom is a row of identical standing cones and nothing about it
+     tells you which side to start on - so the course sets a cone on its side
+     ahead of the first one, tip angled at the gap you take. Without it the
+     row is a coin flip, and the side penalty then feels arbitrary. */
+  if (slalomPlan.length) {
+    var s0 = slalomPlan[0], sEntry = Math.max(0, s0.idx - 9);
+    var eth = segAt(sEntry).th;
+    /* sgn is the side the FIRST cone is passed on; aim the tip that way */
+    var ep = addCone(sEntry, -s0.sgn * 2.2, 'pointer');
+    ep.th = eth + s0.sgn * 0.42;
+    var ep2 = addCone(Math.max(0, s0.idx - 5), -s0.sgn * 2.0, 'pointer');
+    ep2.th = eth + s0.sgn * 0.30;
+  }
+
+  /* APEX POINTERS: at the tightest part of every corner the course lays a
+     cone on its side pointing through the apex. Curvature is already
+     integrated per segment, so the tight bits identify themselves - take the
+     local peak of |k| on anything sharper than a 26 m radius, and put a
+     pointer on the inside where a worker would chalk it. */
+  (function () {
+    var last = -999;
+    for (var q = 12; q < segs.length - 12; q++) {
+      var k = Math.abs(segs[q].k);
+      if (k < 1 / 26) continue;
+      if (k < Math.abs(segs[q - 3].k) || k < Math.abs(segs[q + 3].k)) continue;
+      if (q - last < 20) continue;
+      last = q;
+      var side = segs[q].k > 0 ? 1 : -1;        /* inside of the turn */
+      var ap = addCone(q, side * (COURSE_HALF - 1.1), 'pointer');
+      /* tip points along the road, canted out of the corner - which is what
+         tells the driver where the exit is, not just where the apex is */
+      ap.th = segs[q].th - side * 0.34;
+    }
+  })();
 
   /* gates through the interesting bits, plus start/finish */
   addGate(6, 5.0, 'START');
@@ -1066,6 +1117,15 @@ function taCourseBuild(seed) {
   decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 5.4, z: sg0.z - Math.cos(sg0.th) * 5.4, len: COURSE_HALF * 2 + 1.2, w: 0.16, rot: Math.PI / 2 - sg0.th, a: 0.40 });
   decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 2.7 + Math.cos(sg0.th) * 2.2, z: sg0.z - Math.cos(sg0.th) * 2.7 - Math.sin(sg0.th) * 2.2, len: 5.4, w: 0.14, rot: -sg0.th, a: 0.40 });
   decals.push({ t: 'paint', x: sg0.x - Math.sin(sg0.th) * 2.7 - Math.cos(sg0.th) * 2.2, z: sg0.z - Math.cos(sg0.th) * 2.7 + Math.sin(sg0.th) * 2.2, len: 5.4, w: 0.14, rot: -sg0.th, a: 0.40 });
+
+  /* A pair of pointers on the grid, tips down the launch straight - the last
+     thing you see before the lights and the only cue for where the start box
+     actually aims. */
+  (function () {
+    var lth = segAt(2).th;
+    var a = addCone(2, -(COURSE_HALF - 1.4), 'pointer'); a.th = lth + 0.16;
+    var b = addCone(2, (COURSE_HALF - 1.4), 'pointer'); b.th = lth - 0.16;
+  })();
 
   /* start gantry sits on the start gate */
   var g0 = gates[0];
@@ -1742,7 +1802,15 @@ function taStep(dt) {
     maxDelta = Math.max(maxDelta, clamp(Math.abs(car.beta) * 1.15 + 0.10, maxDelta, 0.55));
   }
   var slew = ((car.spec && car.spec.rackS) || 2.6) * dt;
-  car.delta += clamp(car.steer * maxDelta - car.delta, -slew, slew);
+  /* EXPO. A linear stick or key maps the first degree of input to the same
+     road-wheel angle as the last, so there is no fine authority anywhere near
+     centre - which on a keyboard is where the whole slalom lives. A 1.28
+     power curve halves the sensitivity around straight-ahead and leaves full
+     lock exactly where it was. This is the same shape every sim ships as its
+     default steering gamma, and it is why they feel calm on the straights. */
+  var _si = car.steer;
+  var _sc = (_si < 0 ? -1 : 1) * Math.pow(Math.abs(_si), 1.28);
+  car.delta += clamp(_sc * maxDelta - car.delta, -slew, slew);
   var delta = car.delta;
 
   /* ---- surface ---- */
@@ -3213,9 +3281,11 @@ var carGroup = null, wheelPivots = [], ghostGroup = null, rivalGroup = null;
 var coneMesh = null, coneCollar = null, coneBase = null, coneChalk = null, coneAO = null;
 var coneDown = null, gateGroup = null, lineGroup = null;
 var _asphaltTex = null, _skyMesh = null, _smokeTex = null, _skidTex = null, _aoTex = null;
+var _cloudMesh = null, _skyFor = null, _grassTex = null;
 var _flameSprites = null, _flameTex = null;
 var tailMats = [], skidGroup = null, smokeGroup = null;
 var camX = 0, camZ = 0, camYaw = 0;
+var _camFov, _camVPrev, _camAx, _camRoll;
 /* SAME SHAPE as the canvas renderer: 60_game.js reads CAM_MODES[camMode].back
    for the minimap and its own camera bookkeeping, so string modes break it */
 var CAM_MODES = [
@@ -3248,14 +3318,18 @@ function taApplySun(seed) {
   if (!_glReady) return;
   var warm = clamp((0.72 - SUN[1]) / 0.45, 0, 1);
   var sc = WX_SUN ? 1 : 0.30;
-  sunLight.intensity = (1.55 - 0.25 * warm) * sc;
-  sunLight.color.setRGB(1, 1 - 0.10 * warm, 1 - 0.34 * warm);
-  hemi.intensity = WX_SUN ? 0.55 : 1.05;
-  var top = WX_SUN ? new THREE.Color(0.09 + 0.12 * warm, 0.17 + 0.05 * warm, 0.26)
-                   : new THREE.Color(0.34, 0.36, 0.39);
-  scene.background = top;
-  scene.fog.color.copy(top);
+  sunLight.intensity = (1.62 - 0.26 * warm) * sc;
+  sunLight.color.setRGB(1, 1 - 0.11 * warm, 1 - 0.36 * warm);
+  /* SKY LIGHT, not a grey wash. The hemisphere light is standing in for the
+     whole dome, so its top colour has to be the sky the dome is actually
+     painted and its bottom colour the asphalt bouncing back up - otherwise
+     shadowed bodywork fills with a neutral grey that belongs to no scene. */
+  var P = glSkyPalette();
+  hemi.color.setRGB(P.mid[0] / 255, P.mid[1] / 255, P.mid[2] / 255);
+  hemi.groundColor.setRGB(0.20, 0.19, 0.18);
+  hemi.intensity = WX_SUN ? 0.62 : 1.15;
   sunLight.castShadow = !!WX_SUN;
+  glRefreshSky();
 }
 
 /* ---------- boot ---------------------------------------------------------- */
@@ -3282,7 +3356,13 @@ function taResize() {
        showed as a hard grey dome against the clear colour. Far plane now
        comfortably contains the dome; near lifted to 0.5 to buy back the depth
        precision the longer range costs. */
-    scene.fog = new THREE.Fog(0x9fb4c4, 220, 1500);
+    /* Reaching full density at 220 m buried the whole venue in haze - the
+       treeline, the sheds and the far side of the lot all sat inside it, so
+       the world ended about four seconds ahead of the car. Pushed out to
+       something that matches a clear day: light attenuation starting well
+       past the course, total only at the treeline. glRefreshSky owns the
+       colour, and it takes it from the horizon rather than the zenith. */
+    scene.fog = new THREE.Fog(0xbed4e2, 520, 2600);
     camera = new THREE.PerspectiveCamera(70, 1, 0.5, 3000);
     hemi = new THREE.HemisphereLight(0xbcd2e6, 0x3a3a38, 0.55);
     scene.add(hemi);
@@ -3369,15 +3449,89 @@ function glMakeAsphalt() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
-function glMakeSmoke() {
-  var c = document.createElement('canvas'); c.width = c.height = 64;
+function glMakeGrass() {
+  /* Rough field, not a lawn: mottled value noise with dry patches and a few
+     dirt scars, at a scale that tiles without an obvious grid. */
+  var c = document.createElement('canvas'); c.width = c.height = 256;
   var g = c.getContext('2d');
-  var grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grd.addColorStop(0.00, 'rgba(255,255,255,0.95)');
-  grd.addColorStop(0.45, 'rgba(240,242,244,0.45)');
-  grd.addColorStop(1.00, 'rgba(230,235,240,0)');
-  g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
-  var _t = new THREE.CanvasTexture(c); _t.encoding = THREE.sRGBEncoding; return _t;
+  g.fillStyle = '#4d5b34'; g.fillRect(0, 0, 256, 256);
+  var i, x, y, r;
+  for (i = 0; i < 1400; i++) {
+    x = Math.random() * 256; y = Math.random() * 256; r = 6 + Math.random() * 34;
+    var lift = Math.random();
+    g.fillStyle = lift > 0.62
+      ? 'rgba(104,116,70,' + (0.05 + Math.random() * 0.10) + ')'
+      : 'rgba(46,56,32,' + (0.05 + Math.random() * 0.10) + ')';
+    g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+  /* sun-bleached dry patches */
+  for (i = 0; i < 30; i++) {
+    x = Math.random() * 256; y = Math.random() * 256; r = 14 + Math.random() * 40;
+    g.fillStyle = 'rgba(134,130,80,' + (0.05 + Math.random() * 0.09) + ')';
+    g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+  /* short grass strokes so the near ground is not flat colour */
+  for (i = 0; i < 2600; i++) {
+    x = Math.random() * 256; y = Math.random() * 256;
+    g.strokeStyle = 'rgba(' + (58 + Math.random() * 60 | 0) + ',' + (70 + Math.random() * 58 | 0) + ',' + (36 + Math.random() * 30 | 0) + ',0.30)';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - 0.5) * 3, y - 1 - Math.random() * 3); g.stroke();
+  }
+  var t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function glMakeSmoke() {
+  /* A single radial gradient is a circle, and a hundred circles is still a
+     circle - which is why the old smoke read as a string of soft dots. Real
+     smoke is lumpy at every scale, so this is built from a dozen overlapping
+     lobes of varying size and density, then knocked back at the rim so the
+     sprite has no visible square edge. Rotating two of these against each
+     other actually looks like churn. */
+  var N = 128, c = document.createElement('canvas'); c.width = c.height = N;
+  var g = c.getContext('2d');
+  var mid = N / 2;
+  g.clearRect(0, 0, N, N);
+  var i, lg;
+  /* core */
+  lg = g.createRadialGradient(mid, mid, 0, mid, mid, mid * 0.55);
+  lg.addColorStop(0.00, 'rgba(255,255,255,0.62)');
+  lg.addColorStop(1.00, 'rgba(255,255,255,0)');
+  g.fillStyle = lg; g.fillRect(0, 0, N, N);
+  /* lobes */
+  for (i = 0; i < 14; i++) {
+    var ang = Math.random() * 6.2832;
+    var rad = Math.pow(Math.random(), 0.6) * mid * 0.46;
+    var lx = mid + Math.cos(ang) * rad, ly = mid + Math.sin(ang) * rad;
+    var lr = mid * (0.16 + Math.random() * 0.30);
+    var la = 0.10 + Math.random() * 0.22;
+    lg = g.createRadialGradient(lx, ly, 0, lx, ly, lr);
+    lg.addColorStop(0.00, 'rgba(255,255,255,' + la + ')');
+    lg.addColorStop(0.55, 'rgba(255,255,255,' + (la * 0.42) + ')');
+    lg.addColorStop(1.00, 'rgba(255,255,255,0)');
+    g.fillStyle = lg; g.fillRect(0, 0, N, N);
+  }
+  /* wispy filaments pulled off the edge */
+  g.globalCompositeOperation = 'destination-out';
+  for (i = 0; i < 30; i++) {
+    var wx = Math.random() * N, wy = Math.random() * N;
+    var wr = 3 + Math.random() * 13;
+    var wg = g.createRadialGradient(wx, wy, 0, wx, wy, wr);
+    wg.addColorStop(0.00, 'rgba(0,0,0,' + (0.10 + Math.random() * 0.30) + ')');
+    wg.addColorStop(1.00, 'rgba(0,0,0,0)');
+    g.fillStyle = wg; g.fillRect(0, 0, N, N);
+  }
+  /* hard vignette so the sprite quad never shows its corners */
+  var vg = g.createRadialGradient(mid, mid, mid * 0.72, mid, mid, mid);
+  vg.addColorStop(0.00, 'rgba(0,0,0,0)');
+  vg.addColorStop(1.00, 'rgba(0,0,0,1)');
+  g.fillStyle = vg; g.fillRect(0, 0, N, N);
+  g.globalCompositeOperation = 'source-over';
+
+  var _t = new THREE.CanvasTexture(c);
+  _t.encoding = THREE.sRGBEncoding;
+  return _t;
 }
 function glMakeSkid() {
   /* a tyre does not print a hard rectangle: dark down the middle, feathered
@@ -3424,19 +3578,281 @@ function glMakeChalk() {
   g.strokeRect(9, 9, 46, 46);
   var _t = new THREE.CanvasTexture(c); _t.encoding = THREE.sRGBEncoding; return _t;
 }
+/* ---------- SKY -----------------------------------------------------------
+   Painted as a real equirectangular dome rather than a vertical ramp, because
+   a ramp cannot contain a sun, and a sky with no sun in it while the ground
+   is throwing hard directional shadows is the thing that reads as "fake"
+   before anything else does.
+
+   UV convention has to match THREE's SphereGeometry exactly or the painted
+   sun drifts away from the light that casts the shadows:
+       theta = acos(d.y),        v = theta / PI
+       phi   = atan2(d.z, -d.x), u = phi / 2PI
+   and the render space mirrors X against course space, so the sun direction
+   here is (-SUN[0], SUN[1], SUN[2]) - the same mirroring sunLight.position
+   already uses.
+   ------------------------------------------------------------------------ */
+function glSkyPalette() {
+  var wx = (typeof TA_WX !== 'undefined') ? TA_WX : 'sun';
+  if (wx === 'overcast') return {
+    zen: [108, 116, 125], mid: [143, 150, 157], hor: [181, 185, 188],
+    sun: [214, 214, 211], glow: 0.16, gsize: 0.34,
+    haze: [193, 197, 200], hazeA: 0.55,
+    lit: [212, 215, 218], dark: [126, 133, 142],
+    cover: 0.30, soft: 0.62, drift: 0.55
+  };
+  if (wx === 'rain') return {
+    zen: [82, 88, 95], mid: [108, 114, 120], hor: [140, 144, 147],
+    sun: [170, 172, 172], glow: 0.06, gsize: 0.30,
+    haze: [151, 155, 158], hazeA: 0.68,
+    lit: [166, 170, 175], dark: [86, 91, 98],
+    cover: 0.20, soft: 0.72, drift: 0.95
+  };
+  if (wx === 'golden') return {
+    zen: [38, 62, 112], mid: [122, 130, 158], hor: [238, 186, 124],
+    sun: [255, 238, 196], glow: 0.95, gsize: 0.62,
+    haze: [246, 198, 138], hazeA: 0.62,
+    lit: [255, 219, 178], dark: [104, 86, 104],
+    cover: 0.52, soft: 0.44, drift: 0.35
+  };
+  return {                                            /* clear */
+    zen: [38, 84, 143], mid: [104, 150, 191], hor: [190, 212, 226],
+    sun: [255, 250, 232], glow: 0.80, gsize: 0.46,
+    haze: [206, 223, 233], hazeA: 0.44,
+    lit: [252, 252, 250], dark: [150, 162, 178],
+    cover: 0.60, soft: 0.40, drift: 0.30
+  };
+}
+function _rgb(a, m) { m = m == null ? 1 : m; return 'rgb(' + (a[0] * m | 0) + ',' + (a[1] * m | 0) + ',' + (a[2] * m | 0) + ')'; }
+function _rgba(a, al) { return 'rgba(' + (a[0] | 0) + ',' + (a[1] | 0) + ',' + (a[2] | 0) + ',' + al + ')'; }
+
+/* where the sun lands on the dome, in 0..1 UV */
+function glSunUV() {
+  var dx = -SUN[0], dy = SUN[1], dz = SUN[2];
+  var l = Math.hypot(dx, dy, dz) || 1;
+  dx /= l; dy /= l; dz /= l;
+  var v = Math.acos(clamp(dy, -1, 1)) / Math.PI;
+  var u = Math.atan2(dz, -dx) / (Math.PI * 2);
+  u = ((u % 1) + 1) % 1;
+  return { u: u, v: v };
+}
+
+/* Seamless-in-x value noise. Four octaves on coarse grids is plenty for
+   cumulus and costs nothing next to a per-pixel loop. */
+function _skyNoise(w, h, seed) {
+  var rnd = taRand((seed || 7) >>> 0);
+  var oct = [], amp = [], tot = 0, o;
+  for (o = 0; o < 5; o++) {
+    var gw = 4 << o, gh = 2 << o, g = new Float32Array(gw * gh);
+    for (var i = 0; i < g.length; i++) g[i] = rnd();
+    oct.push({ w: gw, h: gh, g: g });
+    amp.push(1 / (1 << o)); tot += amp[o];
+  }
+  var out = new Float32Array(w * h);
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      var s = 0;
+      for (o = 0; o < oct.length; o++) {
+        var O = oct[o], fx = x / w * O.w, fy = y / h * O.h;
+        var x0 = Math.floor(fx), y0 = Math.floor(fy);
+        var tx = fx - x0, ty = fy - y0;
+        tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
+        var xa = ((x0 % O.w) + O.w) % O.w, xb = (xa + 1) % O.w;
+        var ya = clamp(y0, 0, O.h - 1), yb = clamp(y0 + 1, 0, O.h - 1);
+        var a = O.g[ya * O.w + xa], b = O.g[ya * O.w + xb];
+        var c2 = O.g[yb * O.w + xa], d = O.g[yb * O.w + xb];
+        var t1 = a + (b - a) * tx, t2 = c2 + (d - c2) * tx;
+        s += (t1 + (t2 - t1) * ty) * amp[o];
+      }
+      out[y * w + x] = s / tot;
+    }
+  }
+  return out;
+}
+
 function glMakeSky() {
-  var c = document.createElement('canvas'); c.width = 8; c.height = 256;
+  var P = glSkyPalette();
+  var W = 1024, H = 512;
+  var c = document.createElement('canvas'); c.width = W; c.height = H;
   var g = c.getContext('2d');
-  var grd = g.createLinearGradient(0, 0, 0, 256);
-  grd.addColorStop(0.00, '#1a3352');
-  grd.addColorStop(0.45, '#5b7f9e');
-  grd.addColorStop(0.72, '#9fb6c4');
-  grd.addColorStop(1.00, '#c3cdd2');
-  g.fillStyle = grd; g.fillRect(0, 0, 8, 256);
+
+  /* zenith -> horizon -> below. The lower half is never really seen (the lot
+     covers it) but it has to be the horizon colour or the dome shows a seam
+     wherever the ground plane ends. */
+  var grd = g.createLinearGradient(0, 0, 0, H);
+  grd.addColorStop(0.00, _rgb(P.zen, 0.86));
+  grd.addColorStop(0.18, _rgb(P.zen));
+  grd.addColorStop(0.38, _rgb(P.mid));
+  grd.addColorStop(0.485, _rgb(P.hor));
+  grd.addColorStop(0.50, _rgb(P.hor));
+  grd.addColorStop(1.00, _rgb(P.hor, 0.72));
+  g.fillStyle = grd; g.fillRect(0, 0, W, H);
+
+  /* SUN. Three nested glows: a wide atmospheric bloom, a tight forward-scatter
+     halo, and the disc itself. Drawn additively so it brightens the sky it
+     sits in rather than stamping a pale circle on top of it. */
+  var S = glSunUV(), sx = S.u * W, sy = S.v * H;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  var bloom = W * P.gsize * 0.62;
+  for (var pass = 0; pass < 3; pass++) {
+    var rr = [bloom, bloom * 0.34, bloom * 0.075][pass];
+    var aa = [0.30, 0.42, 0.95][pass] * P.glow;
+    /* wrap: draw at u, u-1 and u+1 so a sun near the seam is not cut in half */
+    for (var wrp = -1; wrp <= 1; wrp++) {
+      var gx = sx + wrp * W;
+      if (gx < -rr || gx > W + rr) continue;
+      var rg = g.createRadialGradient(gx, sy, 0, gx, sy, rr);
+      rg.addColorStop(0.00, _rgba(P.sun, aa));
+      rg.addColorStop(0.35, _rgba(P.sun, aa * 0.35));
+      rg.addColorStop(1.00, _rgba(P.sun, 0));
+      g.fillStyle = rg;
+      g.fillRect(gx - rr, sy - rr, rr * 2, rr * 2);
+    }
+  }
+  if (P.glow > 0.4) {
+    for (var wd = -1; wd <= 1; wd++) {
+      g.fillStyle = _rgba(P.sun, 0.95);
+      g.beginPath();
+      g.arc(sx + wd * W, sy, W * 0.011, 0, 6.2832);
+      g.fill();
+    }
+  }
+  g.restore();
+
+  /* HAZE: the band of scattered light that sits on every real horizon. It is
+     what separates "far away" from "small" - without it distant scenery reads
+     as a toy. Densest right at the horizon line, gone by 20 degrees up. */
+  var hz = g.createLinearGradient(0, H * 0.34, 0, H * 0.52);
+  hz.addColorStop(0.00, _rgba(P.haze, 0));
+  hz.addColorStop(0.62, _rgba(P.haze, P.hazeA * 0.55));
+  hz.addColorStop(1.00, _rgba(P.haze, P.hazeA));
+  g.fillStyle = hz; g.fillRect(0, H * 0.34, W, H * 0.19);
+
+  /* a warm lift in the haze on the sun's side of the sky */
+  if (P.glow > 0.3) {
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    var hw = W * 0.34;
+    for (var hwp = -1; hwp <= 1; hwp++) {
+      var hx = sx + hwp * W;
+      var hg = g.createRadialGradient(hx, H * 0.5, 0, hx, H * 0.5, hw);
+      hg.addColorStop(0.00, _rgba(P.sun, 0.22 * P.glow));
+      hg.addColorStop(1.00, _rgba(P.sun, 0));
+      g.fillStyle = hg;
+      g.fillRect(hx - hw, H * 0.34, hw * 2, H * 0.22);
+    }
+    g.restore();
+  }
+
   var t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
-  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.needsUpdate = true;
   return t;
+}
+
+/* Cumulus on their own transparent dome, so the layer can rotate against the
+   fixed sky and give the sky some motion. Shading comes from comparing each
+   pixel's density against the density a little way toward the sun: where the
+   cloud is thinning on the sun side it is a lit edge, where it is thickening
+   it is in its own shadow. That one trick is what turns a noise field into
+   something with volume. */
+function glMakeClouds(seed) {
+  var P = glSkyPalette();
+  var W = 1024, H = 512;
+  var NW = 256, NH = 128;
+  var n = _skyNoise(NW, NH, seed || 1337);
+  function sample(u, v) {
+    u = ((u % 1) + 1) % 1;
+    v = clamp(v, 0, 0.999);
+    var fx = u * NW, fy = v * NH;
+    var x0 = Math.floor(fx) % NW, y0 = clamp(Math.floor(fy), 0, NH - 1);
+    var tx = fx - Math.floor(fx), ty = fy - Math.floor(fy);
+    var x1 = (x0 + 1) % NW, y1 = Math.min(y0 + 1, NH - 1);
+    var a = n[y0 * NW + x0], b = n[y0 * NW + x1];
+    var c2 = n[y1 * NW + x0], d = n[y1 * NW + x1];
+    var t1 = a + (b - a) * tx, t2 = c2 + (d - c2) * tx;
+    return t1 + (t2 - t1) * ty;
+  }
+
+  var c = document.createElement('canvas'); c.width = W; c.height = H;
+  var g = c.getContext('2d');
+  var img = g.createImageData(W, H);
+  var D = img.data;
+
+  var S = glSunUV();
+  /* step toward the sun, in UV, for the shading probe */
+  var sdx = 0.010, sdy = 0.006;
+  var thresh = 1 - P.cover;
+  var soft = P.soft;
+
+  for (var y = 0; y < H; y++) {
+    var v = y / H;
+    /* Clouds live in the upper hemisphere. Near the horizon they compress and
+       thin out with distance, and below it there are none at all. */
+    var band;
+    if (v > 0.487) band = 0;
+    else if (v > 0.40) band = (0.487 - v) / 0.087;
+    else band = 1;
+    band *= 0.35 + 0.65 * Math.min(1, (0.487 - v) / 0.30);
+    /* squash the sample toward the horizon so cumulus foreshorten */
+    var vs = Math.pow(clamp(v / 0.487, 0, 1), 0.55) * 0.9;
+    for (var x = 0; x < W; x++) {
+      var idx = (y * W + x) * 4;
+      if (band <= 0) { D[idx + 3] = 0; continue; }
+      var u = x / W;
+      var dens = sample(u, vs) - thresh;
+      if (dens <= 0) { D[idx + 3] = 0; continue; }
+      var a = clamp(dens / soft, 0, 1);
+      a = a * a * (3 - 2 * a);
+      a *= band;
+      if (a < 0.004) { D[idx + 3] = 0; continue; }
+      /* lit if the cloud thins toward the sun from here */
+      var toward = sample(u + (S.u - u > 0 ? sdx : -sdx), vs + (S.v < v ? -sdy : sdy)) - thresh;
+      var lit = clamp(0.5 + (dens - toward) * 2.6, 0, 1);
+      lit = 0.18 + 0.82 * lit;
+      /* thick cores stay grey underneath however lit the top is */
+      var body = clamp(1 - dens * 1.4, 0, 1);
+      var mix = lit * (0.35 + 0.65 * body);
+      D[idx] = P.dark[0] + (P.lit[0] - P.dark[0]) * mix;
+      D[idx + 1] = P.dark[1] + (P.lit[1] - P.dark[1]) * mix;
+      D[idx + 2] = P.dark[2] + (P.lit[2] - P.dark[2]) * mix;
+      D[idx + 3] = a * 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+
+  var t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.needsUpdate = true;
+  return t;
+}
+
+/* Rebuild both domes. Called whenever the weather or sun changes, which for a
+   daily-seeded course is once per layout - so the cost never lands in a lap. */
+function glRefreshSky() {
+  if (!_glReady) return;
+  var P = glSkyPalette();
+  if (_skyMesh) {
+    if (_skyMesh.material.map) _skyMesh.material.map.dispose();
+    _skyMesh.material.map = glMakeSky();
+    _skyMesh.material.needsUpdate = true;
+  }
+  if (_cloudMesh) {
+    if (_cloudMesh.material.map) _cloudMesh.material.map.dispose();
+    _cloudMesh.material.map = glMakeClouds((course && course.seed) || 1337);
+    _cloudMesh.material.needsUpdate = true;
+  }
+  /* FOG MUST BE THE HORIZON COLOUR. It was set to the zenith, so anything in
+     the distance faded toward the darkest part of the sky while the sky
+     directly behind it was pale - which is exactly what makes a far treeline
+     look like it is painted on a wall rather than sitting in air. */
+  if (scene && scene.fog) scene.fog.color.setRGB(P.hor[0] / 255, P.hor[1] / 255, P.hor[2] / 255);
+  if (scene) scene.background = new THREE.Color(P.hor[0] / 255, P.hor[1] / 255, P.hor[2] / 255);
 }
 
 /* ---------- static world: lot, swept course, cones, gates, scenery -------- */
@@ -3449,6 +3865,7 @@ function glEnsureWorld() {
   if (_worldFor === course) return true;
   if (worldGroup) { scene.remove(worldGroup); worldGroup = null; }
   _skidPool = []; _skidNext = 0; skidMarks.length = 0;
+  _skidIM = null; _skidUsed = [0, 0, 0]; _skidHead = [0, 0, 0];
   worldGroup = new THREE.Group();
   scene.add(worldGroup);
   glBuildWorld();
@@ -3457,19 +3874,79 @@ function glEnsureWorld() {
   return true;
 }
 function glBuildWorld() {
+  /* ---- GROUND: a paved pad sitting in a field, not tarmac to the horizon ---
+     The pad is sized off the actual course footprint plus enough margin to
+     cover LOT_HALF, which is the boundary the physics already uses for the
+     rolling-resistance penalty when you run out of pavement. So what you SEE
+     as the edge of the asphalt is genuinely where the car starts dragging. */
+  if (!_grassTex) _grassTex = glMakeGrass();
+  _grassTex.repeat.set(520, 520);
+  var grass = new THREE.Mesh(new THREE.PlaneGeometry(7000, 7000),
+    new THREE.MeshStandardMaterial({ map: _grassTex, color: 0xffffff, roughness: 1.0 }));
+  grass.rotation.x = -Math.PI / 2;
+  grass.position.y = -0.05;
+  grass.receiveShadow = true;
+  worldGroup.add(grass);
+
   if (!_asphaltTex) _asphaltTex = glMakeAsphalt();
-  _asphaltTex.repeat.set(224, 224);   /* keep ~11.6 m per tile on the bigger lot */
+  var LP = course.lot;
+  var padPadX = 14, padPadZ = 14;
+  var padW = (LP.x1 - LP.x0) + padPadX * 2, padD = (LP.z1 - LP.z0) + padPadZ * 2;
+  var padCX = -((LP.x0 + LP.x1) / 2), padCZ = (LP.z0 + LP.z1) / 2;
+  _asphaltTex.repeat.set(padW / 11.6, padD / 11.6);
   var lotMat = new THREE.MeshStandardMaterial({ map: _asphaltTex, color: 0xffffff, roughness: 0.95 });
-  var lot = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), lotMat);
-  lot.rotation.x = -Math.PI / 2; lot.receiveShadow = true;
+  var lot = new THREE.Mesh(new THREE.PlaneGeometry(padW, padD), lotMat);
+  lot.rotation.x = -Math.PI / 2;
+  lot.position.set(padCX, 0, padCZ);
+  lot.receiveShadow = true;
   worldGroup.add(lot);
 
-  /* sky dome: a flat background colour is most of what read as "grey" */
+  /* the crumbling lip where the pavement gives up - a thin gravel apron all
+     the way round, which is what actually reads as "edge" at speed */
+  var lipMat = new THREE.MeshStandardMaterial({ color: 0x6b6659, roughness: 1.0 });
+  var lipW = 2.2;
+  var lips = [
+    [padW + lipW * 2, lipW, padCX, padCZ - padD / 2 - lipW / 2],
+    [padW + lipW * 2, lipW, padCX, padCZ + padD / 2 + lipW / 2],
+    [lipW, padD, padCX - padW / 2 - lipW / 2, padCZ],
+    [lipW, padD, padCX + padW / 2 + lipW / 2, padCZ]
+  ];
+  for (var lpi = 0; lpi < lips.length; lpi++) {
+    var L = lips[lpi];
+    var lm = new THREE.Mesh(new THREE.PlaneGeometry(L[0], L[1]), lipMat);
+    lm.rotation.x = -Math.PI / 2;
+    lm.position.set(L[2], -0.02, L[3]);
+    lm.receiveShadow = true;
+    worldGroup.add(lm);
+  }
+
+  /* SKY DOME + CLOUD DOME. Two shells: the painted sky with its sun and haze,
+     and a transparent cumulus layer just inside it that rotates slowly. The
+     second one is what makes the sky feel like air rather than wallpaper -
+     the clouds shift against the fixed sun over the length of a lap.
+     Both render before everything else and never write depth. */
   if (!_skyMesh) {
-    _skyMesh = new THREE.Mesh(new THREE.SphereGeometry(2200, 32, 20),
-      new THREE.MeshBasicMaterial({ map: glMakeSky(), side: THREE.BackSide, fog: false, depthWrite: false }));
+    _skyMesh = new THREE.Mesh(new THREE.SphereGeometry(2650, 48, 28),
+      new THREE.MeshBasicMaterial({
+        map: glMakeSky(), side: THREE.BackSide, fog: false,
+        depthWrite: false, depthTest: false
+      }));
+    _skyMesh.renderOrder = -20;
+    _skyMesh.frustumCulled = false;
     scene.add(_skyMesh);
   }
+  if (!_cloudMesh) {
+    _cloudMesh = new THREE.Mesh(new THREE.SphereGeometry(2500, 48, 28),
+      new THREE.MeshBasicMaterial({
+        map: glMakeClouds((course && course.seed) || 1337), side: THREE.BackSide,
+        transparent: true, fog: false, depthWrite: false, depthTest: false
+      }));
+    _cloudMesh.renderOrder = -19;
+    _cloudMesh.frustumCulled = false;
+    scene.add(_cloudMesh);
+  }
+  /* the layout seed changes the cloud field, so rebuild on a new course */
+  if (_skyFor !== course) { _skyFor = course; glRefreshSky(); }
 
   /* swept racing surface follows the generated centreline */
   var pts = [], N = course.segs.length;
@@ -3507,23 +3984,36 @@ function glBuildWorld() {
      obvious - which is exactly how a real autocross course is set. Four
      instanced meshes total, so 238 cones cost four draw calls. */
   var N_CONE = Math.max(1, course.cones.length);
-  var gBody = new THREE.CylinderGeometry(0.035, 0.135, 0.46, 12);
+  /* SQUARE body, not round. A traffic cone is a square tapered shell on a
+     square base and those four flat faces are most of what makes the
+     silhouette read correctly - a 12-sided frustum looks like a witch's hat.
+     A 4-segment cylinder gives exactly the right solid; the 45 degree twist
+     puts the flats square to the base rather than the corners. */
+  var gBody = new THREE.CylinderGeometry(0.038, 0.145, 0.46, 4);
+  gBody.rotateY(Math.PI / 4);
   gBody.translate(0, 0.23, 0);
   coneMesh = new THREE.InstancedMesh(gBody,
-    new THREE.MeshStandardMaterial({ color: 0xf4661b, roughness: 0.62 }), N_CONE);
+    new THREE.MeshStandardMaterial({ color: 0xf4611a, roughness: 0.58 }), N_CONE);
   coneMesh.castShadow = true;
   worldGroup.add(coneMesh);
 
-  var gCollar = new THREE.CylinderGeometry(0.079, 0.098, 0.085, 12);
-  gCollar.translate(0, 0.30, 0);
+  /* the retroreflective collar - white sleeve, slightly proud of the shell so
+     it catches a highlight instead of z-fighting the orange */
+  var gCollar = new THREE.CylinderGeometry(0.083, 0.104, 0.088, 4);
+  gCollar.rotateY(Math.PI / 4);
+  gCollar.translate(0, 0.305, 0);
   coneCollar = new THREE.InstancedMesh(gCollar,
-    new THREE.MeshStandardMaterial({ color: 0xf2f3f0, roughness: 0.45 }), N_CONE);
+    new THREE.MeshStandardMaterial({
+      color: 0xf6f7f4, roughness: 0.28, metalness: 0.05,
+      emissive: 0x1a1c1e, emissiveIntensity: 0.6
+    }), N_CONE);
+  coneCollar.castShadow = true;
   worldGroup.add(coneCollar);
 
-  var gBase = new THREE.BoxGeometry(0.30, 0.028, 0.30);
-  gBase.translate(0, 0.014, 0);
+  var gBase = new THREE.BoxGeometry(0.31, 0.030, 0.31);
+  gBase.translate(0, 0.015, 0);
   coneBase = new THREE.InstancedMesh(gBase,
-    new THREE.MeshStandardMaterial({ color: 0x191a1c, roughness: 0.85 }), N_CONE);
+    new THREE.MeshStandardMaterial({ color: 0x191a1c, roughness: 0.88 }), N_CONE);
   worldGroup.add(coneBase);
 
   var gChalk = new THREE.PlaneGeometry(0.46, 0.46);
@@ -3576,6 +4066,9 @@ function glBuildWorld() {
   var sg = new THREE.Group();
   var M_TRUNK = new THREE.MeshStandardMaterial({ color: 0x4a3d30, roughness: 0.95 });
   var M_LEAF  = new THREE.MeshStandardMaterial({ color: 0x3f5a34, roughness: 1.0 });
+  /* a small spread of canopy greens - cooler and darker through to dry olive */
+  var _leafMats = [0x3a5330, 0x44603a, 0x4e6a3c, 0x374d2f, 0x596f3e, 0x415c37]
+    .map(function (h) { return new THREE.MeshStandardMaterial({ color: h, roughness: 1.0 }); });
   var M_SHED  = new THREE.MeshStandardMaterial({ color: 0x8d9298, roughness: 0.85, metalness: 0.25 });
   var M_ROOF  = new THREE.MeshStandardMaterial({ color: 0x53585d, roughness: 0.8, metalness: 0.35 });
   var M_TENT  = new THREE.MeshStandardMaterial({ color: 0xd8dbdd, roughness: 0.9 });
@@ -3585,29 +4078,73 @@ function glBuildWorld() {
   var G_LEAF  = new THREE.SphereGeometry(1, 7, 6);
   var G_BOX   = new THREE.BoxGeometry(1, 1, 1);
   var G_ROOF  = new THREE.ConeGeometry(1, 1, 4);
+  var G_CONE_S = new THREE.CylinderGeometry(0.26, 1.0, 1, 4);
+  G_CONE_S.rotateY(Math.PI / 4);
+  var M_CONE_S = new THREE.MeshStandardMaterial({ color: 0xe8601a, roughness: 0.6 });
+  var G_HEAD  = new THREE.SphereGeometry(1, 6, 5);
+  var M_SKIN  = new THREE.MeshStandardMaterial({ color: 0x8d6a52, roughness: 0.9 });
+  var M_LEGS  = new THREE.MeshStandardMaterial({ color: 0x2c3138, roughness: 0.95 });
+  var M_HIVIZ = new THREE.MeshStandardMaterial({ color: 0xd8e83a, roughness: 0.75,
+                                                 emissive: 0x2a3006, emissiveIntensity: 0.5 });
+  /* spectators do not all wear the same jacket */
+  var PERSON_COL = [0xb4483c, 0x2f5f8a, 0xd8d5cc, 0x3c6b4a, 0x8a7a52, 0x54486b, 0xc9743a]
+    .map(function (h) { return new THREE.MeshStandardMaterial({ color: h, roughness: 0.9 }); });
+  var BANNER_MAT = [0xe8601a, 0x1f6f66, 0x24282e, 0xc8ccd0]
+    .map(function (h) { return new THREE.MeshStandardMaterial({ color: h, roughness: 0.8 }); });
+
+  /* One figure: legs, torso, head. Three boxes is enough at the distance
+     these are ever seen from, and it reads as a person instantly where a
+     single box reads as a bollard.
+
+     It RECORDS rather than builds. A few hundred spectators at three meshes
+     each is six hundred draw calls for scenery on the far side of a field,
+     and every one of them is the same box. glFlushCrowd turns the whole
+     population into one instanced draw per jacket colour at the end. */
+  var _batLeg = [], _batHead = [], _batTorso = [], _batCone = [];
+  for (var bti = 0; bti <= PERSON_COL.length; bti++) _batTorso.push([]);
+  function glPerson(px, pz, torsoMat, tall, face) {
+    var legH = tall * 0.47, torH = tall * 0.36, headR = tall * 0.055;
+    _batLeg.push([px, legH / 2, pz, 0.30, legH, 0.22, face]);
+    var slot = PERSON_COL.indexOf(torsoMat);
+    if (slot < 0) slot = PERSON_COL.length;              /* hi-viz worker */
+    _batTorso[slot].push([px, legH + torH / 2, pz, 0.42, torH, 0.26, face]);
+    _batHead.push([px, legH + torH + headR, pz, headR, headR * 1.15, headR, face]);
+  }
+  function glSpareCone(px, py, pz, rot) {
+    _batCone.push([px, py, pz, 0.145, 0.46, 0.145, rot]);
+  }
+  function glFlushCrowd() {
+    var dmy = new THREE.Object3D();
+    function batch(arr, geo, mat, shadow) {
+      if (!arr.length) return;
+      var im = new THREE.InstancedMesh(geo, mat, arr.length);
+      im.castShadow = !!shadow;
+      im.frustumCulled = false;
+      for (var i = 0; i < arr.length; i++) {
+        var A = arr[i];
+        dmy.position.set(A[0], A[1], A[2]);
+        dmy.rotation.set(0, A[6], 0);
+        dmy.scale.set(A[3], A[4], A[5]);
+        dmy.updateMatrix();
+        im.setMatrixAt(i, dmy.matrix);
+      }
+      im.instanceMatrix.needsUpdate = true;
+      sg.add(im);
+    }
+    batch(_batLeg, G_BOX, M_LEGS, true);
+    for (var t = 0; t < _batTorso.length; t++) {
+      batch(_batTorso[t], G_BOX, t < PERSON_COL.length ? PERSON_COL[t] : M_HIVIZ, true);
+    }
+    batch(_batHead, G_HEAD, M_SKIN, false);
+    batch(_batCone, G_CONE_S, M_CONE_S, true);
+  }
   for (var o = 0; o < course.scenery.length; o++) {
     var ob = course.scenery[o];
     var x = -ob.x, z = ob.z, wid = ob.w || 1.6, hgt = ob.h || 2.2;
     /* a real autocross site is a wide open lot: push anything tall well
        clear of the course so the driver sees sky and asphalt, not woodland */
-    if (ob.t === 'tree' && Math.hypot(ob.x, ob.z) < 95) continue;
-    if (ob.t === 'tree') {
-      hgt = ob.h || 7.5;
-      var tr = new THREE.Mesh(G_TRUNK, M_TRUNK);
-      tr.scale.set(1, hgt * 0.45, 1);
-      tr.position.set(x, hgt * 0.225, z);
-      tr.castShadow = true; sg.add(tr);
-      /* two offset canopy blobs read as foliage far better than one sphere */
-      var cr = hgt * 0.30;
-      var c1 = new THREE.Mesh(G_LEAF, M_LEAF);
-      c1.scale.set(cr, cr * 0.85, cr);
-      c1.position.set(x, hgt * 0.62, z);
-      c1.castShadow = true; sg.add(c1);
-      var c2 = new THREE.Mesh(G_LEAF, M_LEAF);
-      c2.scale.set(cr * 0.7, cr * 0.6, cr * 0.7);
-      c2.position.set(x + cr * 0.35, hgt * 0.82, z - cr * 0.2);
-      c2.castShadow = true; sg.add(c2);
-    } else if (ob.t === 'tent') {
+    if (ob.t === 'tree') continue;            /* instanced in a batch below */
+    if (ob.t === 'tent') {
       var tw2 = Math.max(2.4, wid), th2 = 2.5;
       var walls = new THREE.Mesh(G_BOX, M_TENT);
       walls.scale.set(tw2, th2 * 0.55, tw2);
@@ -3628,6 +4165,44 @@ function glBuildWorld() {
       legs.scale.set(bw2 * 0.9, 0.55, bl * 0.8);
       legs.position.set(x, 0.275, z);
       sg.add(legs);
+    } else if (ob.t === 'crowd') {
+      /* a loose knot of people, not a building. Four to seven figures at
+         mixed heights, turned to face roughly toward the course. */
+      var nP = 4 + ((ob.r * 4) | 0);
+      for (var pi = 0; pi < nP; pi++) {
+        var pa = ob.r * 6.2832 + pi * 1.94;
+        glPerson(x + Math.cos(pa) * (0.4 + (pi % 3) * 0.62),
+                 z + Math.sin(pa) * (0.4 + (pi % 2) * 0.70),
+                 PERSON_COL[(pi + ((ob.r * 9) | 0)) % PERSON_COL.length],
+                 1.58 + (pi % 3) * 0.07, ob.th || 0);
+      }
+    } else if (ob.t === 'banner') {
+      /* sponsor board: two posts and a stretched panel, angled to face the
+         course rather than planted square to the world */
+      var bw3 = 4.6 + ob.r * 2.4, bh3 = 1.15, bph = 1.9;
+      var bang = (ob.th || 0) + Math.PI / 2;
+      for (var bp = -1; bp <= 1; bp += 2) {
+        var pst2 = new THREE.Mesh(G_BOX, M_ROOF);
+        pst2.scale.set(0.10, bph, 0.10);
+        pst2.position.set(x + Math.sin(bang) * bp * bw3 / 2, bph / 2, z + Math.cos(bang) * bp * bw3 / 2);
+        pst2.castShadow = true; sg.add(pst2);
+      }
+      var pan = new THREE.Mesh(G_BOX, BANNER_MAT[(ob.r * BANNER_MAT.length) | 0] || BANNER_MAT[0]);
+      pan.scale.set(bw3, bh3, 0.05);
+      pan.rotation.y = -bang;
+      pan.position.set(x, bph - bh3 / 2 + 0.05, z);
+      pan.castShadow = true; sg.add(pan);
+    } else if (ob.t === 'stack') {
+      /* spare cones. Every station has a pile of them, and they are the one
+         prop that says "autocross" rather than "generic race track". */
+      var nS = 3 + ((ob.r * 3) | 0);
+      for (var si = 0; si < nS; si++) {
+        var sa = ob.r * 6.2832 + si * 2.1, srad = 0.35 + (si % 2) * 0.42;
+        var stx = x + Math.cos(sa) * srad, stz = z + Math.sin(sa) * srad;
+        var tall = 3 + ((ob.r * 4 + si) % 5);      /* cones per stack */
+        /* stacked cones nest, so each one only adds a few centimetres */
+        for (var ci = 0; ci < tall; ci++) glSpareCone(stx, 0.23 + ci * 0.075, stz, ci * 0.4 + sa);
+      }
     } else if (ob.t === 'gantry') {
       /* The start/finish gantry is an ARCH you drive through. It was falling
          into the generic 'shed' branch below, so it rendered as a solid
@@ -3663,20 +4238,145 @@ function glBuildWorld() {
       rr.castShadow = true; sg.add(rr);
     }
   }
-  /* one contact shadow per trackside object, sized to its footprint */
+  /* ---- CORNER WORKERS ------------------------------------------------------
+     Every autocross is run by people standing in the infield with flags and
+     spare cones, and an empty venue is one of those things you do not notice
+     until it is fixed. Stations go on the OUTSIDE of the tight corners,
+     eighteen metres back - clear of the course corridor, clear of the cull
+     pass, and roughly where a worker would actually choose to stand. */
+  (function () {
+    var segs2 = course.segs, lastW = -999, placed = 0;
+    for (var wi = 14; wi < segs2.length - 14 && placed < 7; wi++) {
+      var kk = Math.abs(segs2[wi].k);
+      if (kk < 1 / 24) continue;
+      if (kk < Math.abs(segs2[wi - 4].k) || kk < Math.abs(segs2[wi + 4].k)) continue;
+      if (wi - lastW < 42) continue;
+      lastW = wi; placed++;
+      var sgw = segs2[wi];
+      var out = segs2[wi].k > 0 ? -1 : 1;                 /* outside of the turn */
+      var lat2 = out * 18;
+      var wx = sgw.x + Math.cos(sgw.th) * lat2, wz = sgw.z - Math.sin(sgw.th) * lat2;
+      var rx = -wx, rz2 = wz;
+      if (Math.abs(rx - padCX) > padW / 2 || Math.abs(rz2 - padCZ) > padD / 2) continue;
+      /* face the corner */
+      var faceY = -(Math.atan2(sgw.x - wx, sgw.z - wz));
+      glPerson(rx, rz2, M_HIVIZ, 1.72, faceY);
+      /* flag on a pole, held out toward the course */
+      var pole = new THREE.Mesh(G_BOX, M_ROOF);
+      pole.scale.set(0.05, 1.5, 0.05);
+      pole.position.set(rx + Math.sin(faceY) * 0.34, 1.05, rz2 + Math.cos(faceY) * 0.34);
+      pole.castShadow = true; sg.add(pole);
+      var flag = new THREE.Mesh(G_BOX, (placed % 3 === 0) ? BANNER_MAT[0] : M_HIVIZ);
+      flag.scale.set(0.52, 0.38, 0.03);
+      flag.rotation.y = faceY;
+      flag.position.set(rx + Math.sin(faceY) * 0.60, 1.62, rz2 + Math.cos(faceY) * 0.60);
+      flag.castShadow = true; sg.add(flag);
+      /* their pile of spares */
+      for (var sc2 = 0; sc2 < 4; sc2++) {
+        glSpareCone(rx - Math.sin(faceY) * 1.1, 0.23 + sc2 * 0.075,
+                    rz2 - Math.cos(faceY) * 1.1, sc2 * 0.5);
+      }
+    }
+  })();
+
+  /* ---- TREELINE, INSTANCED ------------------------------------------------
+     Two hundred and sixty trees at a trunk plus three canopy blobs each was
+     over a thousand draw calls for scenery nobody looks at directly. Every
+     one of them is the same two geometries, so they collapse into one
+     instanced trunk plus one instanced canopy per leaf colour: seven calls
+     for the whole treeline, and the variation survives because the colours
+     were already only six materials deep. */
+  (function () {
+    var keep = [];
+    for (var ti = 0; ti < course.scenery.length; ti++) {
+      var T = course.scenery[ti];
+      if (T.t !== 'tree') continue;
+      if (Math.hypot(T.x, T.z) < 95) continue;
+      /* the treeline is scattered on a RING but the pad is a RECTANGLE, so at
+         the corners the ring cuts inside the asphalt - cull anything on it */
+      var tx = -T.x, tz = T.z;
+      if (Math.abs(tx - padCX) < padW / 2 + 6 && Math.abs(tz - padCZ) < padD / 2 + 6) continue;
+      keep.push(T);
+    }
+    if (!keep.length) return;
+    var dm = new THREE.Object3D();
+    var trunks = new THREE.InstancedMesh(G_TRUNK, M_TRUNK, keep.length);
+    trunks.castShadow = true;
+    trunks.frustumCulled = false;
+    sg.add(trunks);
+
+    /* bucket canopies by leaf material so each colour is one instanced draw */
+    var buckets = [];
+    for (var bi = 0; bi < _leafMats.length; bi++) buckets.push([]);
+    for (var ki = 0; ki < keep.length; ki++) {
+      var K = keep[ki];
+      var hh2 = K.h || 7.5, kx = -K.x, kz = K.z;
+      dm.position.set(kx, hh2 * 0.225, kz);
+      dm.rotation.set(0, K.r * 5.0, 0);
+      dm.scale.set(1, hh2 * 0.45, 1);
+      dm.updateMatrix();
+      trunks.setMatrixAt(ki, dm.matrix);
+
+      var cr = hh2 * 0.30, lean = (K.r - 0.5) * cr * 0.5;
+      var b = buckets[Math.min(_leafMats.length - 1, (K.r * _leafMats.length) | 0)];
+      b.push([kx + lean * 0.3, hh2 * 0.60, kz, cr, cr * 0.82, cr * 0.94, K.r * 5.0]);
+      b.push([kx + cr * 0.34 + lean, hh2 * 0.83, kz - cr * 0.22, cr * 0.72, cr * 0.62, cr * 0.72, K.r * 3.1]);
+      b.push([kx - cr * 0.40 + lean, hh2 * 0.72, kz + cr * 0.30, cr * 0.58, cr * 0.50, cr * 0.58, K.r * 1.7]);
+    }
+    trunks.instanceMatrix.needsUpdate = true;
+
+    for (var mi = 0; mi < buckets.length; mi++) {
+      var arr = buckets[mi];
+      if (!arr.length) continue;
+      var im = new THREE.InstancedMesh(G_LEAF, _leafMats[mi], arr.length);
+      im.castShadow = true;
+      im.frustumCulled = false;
+      for (var ai = 0; ai < arr.length; ai++) {
+        var A = arr[ai];
+        dm.position.set(A[0], A[1], A[2]);
+        dm.rotation.set(0, A[6], 0);
+        dm.scale.set(A[3], A[4], A[5]);
+        dm.updateMatrix();
+        im.setMatrixAt(ai, dm.matrix);
+      }
+      im.instanceMatrix.needsUpdate = true;
+      sg.add(im);
+    }
+  })();
+
+  /* one contact shadow per trackside object, sized to its footprint - also
+     instanced, since it is the same quad several hundred times */
   if (!_aoTex) _aoTex = glMakeAO();
   var aoGeo = new THREE.PlaneGeometry(1, 1);
   aoGeo.rotateX(-Math.PI / 2);
   var aoMat = new THREE.MeshBasicMaterial({ map: _aoTex, transparent: true, depthWrite: false, opacity: 0.85 });
-  for (var ao = 0; ao < course.scenery.length; ao++) {
-    var ob2 = course.scenery[ao];
-    if (ob2.t === 'decal' || ob2.t === 'gantry') continue;
-    var aw = (ob2.t === 'tree') ? 3.4 : Math.max(2.2, (ob2.w || 1.6) * 1.9);
-    var am = new THREE.Mesh(aoGeo, aoMat);
-    am.scale.set(aw, 1, aw);
-    am.position.set(-ob2.x, 0.02, ob2.z);
-    sg.add(am);
-  }
+  (function () {
+    var list = [];
+    for (var ao = 0; ao < course.scenery.length; ao++) {
+      var ob2 = course.scenery[ao];
+      if (ob2.t === 'decal' || ob2.t === 'gantry') continue;
+      var ax2 = -ob2.x, az2 = ob2.z;
+      if (ob2.t === 'tree') {
+        if (Math.hypot(ob2.x, ob2.z) < 95) continue;
+        if (Math.abs(ax2 - padCX) < padW / 2 + 6 && Math.abs(az2 - padCZ) < padD / 2 + 6) continue;
+      }
+      list.push([ax2, az2, (ob2.t === 'tree') ? 3.4 : Math.max(2.2, (ob2.w || 1.6) * 1.9)]);
+    }
+    if (!list.length) return;
+    var aoIM = new THREE.InstancedMesh(aoGeo, aoMat, list.length);
+    aoIM.frustumCulled = false;
+    var ad = new THREE.Object3D();
+    for (var li = 0; li < list.length; li++) {
+      ad.position.set(list[li][0], 0.02, list[li][1]);
+      ad.rotation.set(0, 0, 0);
+      ad.scale.set(list[li][2], 1, list[li][2]);
+      ad.updateMatrix();
+      aoIM.setMatrixAt(li, ad.matrix);
+    }
+    aoIM.instanceMatrix.needsUpdate = true;
+    sg.add(aoIM);
+  })();
+  glFlushCrowd();
   worldGroup.add(sg);
 
   skidGroup = new THREE.Group(); worldGroup.add(skidGroup);
@@ -3689,16 +4389,46 @@ function glSyncCones(force) {
   if (!coneMesh) return;
   /* cones only move when one is struck - rewriting 238 instance matrices
      every frame was pure waste */
+  /* Cones only need re-uploading when something about them changed. The hit
+     COUNT alone was not enough: a cone is counted the moment it is struck and
+     then spends the next second or so flying, bouncing and rolling, so the
+     matrices froze on the first frame of the impact and the cone hung in the
+     air. Anything still carrying velocity keeps the rewrite alive. */
   var sig = (typeof run !== 'undefined' && run) ? (run.cones | 0) : 0;
-  if (!force && sig === _coneSig) return;
+  var busy = false;
+  for (var mv = 0; mv < course.cones.length; mv++) {
+    var cm = course.cones[mv];
+    if (cm.down && (cm.vx || cm.vz || cm.vy || cm.y > 0 || cm.tumble)) { busy = true; break; }
+  }
+  if (!force && !busy && sig === _coneSig) return;
   _coneSig = sig;
   if (!_dummy) _dummy = new THREE.Object3D();
   for (var i = 0; i < course.cones.length; i++) {
     var c = course.cones[i];
-    var laid = c.hit || c.kind === 'pointer';    /* pointers are laid down by design */
-    var sc = c.kind === 'pointer' ? 0.9 : 1;
-    _dummy.position.set(-c.x, laid ? 0.10 : 0, c.z);
-    _dummy.rotation.set(laid ? Math.PI / 2.05 : 0, c.th || 0, 0);
+    var pointer = c.kind === 'pointer';
+    var laid = c.hit || pointer;              /* pointers are laid by design */
+    var sc = pointer ? 0.94 : 1;
+
+    /* ---- ORIENTATION -------------------------------------------------------
+       The body is modelled base-at-origin, tip at +Y. Tipping it PI/2 about
+       its own X swings the tip to local +Z; yawing after that aims the tip
+       around the compass. The order matters and it is the whole bug that was
+       here: default XYZ Euler builds Rx*Ry*Rz, so the yaw was consumed by a
+       body that is symmetric about the axis it was being spun on, and every
+       laid cone came out pointing the same way. YXZ tips first, then yaws in
+       world space.
+
+       Heading convention matches the car: course heading th has world
+       direction (sin th, cos th), and this renderer mirrors X, so the mesh
+       yaw is -th - exactly what carGroup uses. A knocked cone uses its own
+       tumbled rotation instead; a pointer uses the heading the course set. */
+    var head = pointer ? (c.th || 0) : (c.rot || 0);
+    var tip = laid ? Math.PI / 2 : 0;
+    /* a struck cone rarely lands perfectly flat - give it a little residual
+       roll so a field of hit cones does not look stamped from one mould */
+    var roll = (c.hit && !pointer) ? Math.sin(c.rot * 1.7) * 0.16 : 0;
+    _dummy.position.set(-c.x, laid ? 0.118 * sc : c.y || 0, c.z);
+    _dummy.rotation.set(tip, -head, roll, 'YXZ');
     _dummy.scale.setScalar(sc);
     _dummy.updateMatrix();
     coneMesh.setMatrixAt(i, _dummy.matrix);
@@ -3707,17 +4437,23 @@ function glSyncCones(force) {
     /* the chalk box never moves - that is the whole point of it */
     if (coneAO) {
       /* the shadow belongs to the ground, so it does not tip over with a
-         struck cone - it just stays where the cone was standing */
+         struck cone - it stretches along the cone where it now lies */
       _dummy.position.set(-c.x, 0.014, c.z);
-      _dummy.rotation.set(0, 0, 0);
-      _dummy.scale.setScalar(sc * (laid ? 1.15 : 1));
+      _dummy.rotation.set(0, -head, 0, 'YXZ');
+      if (laid) _dummy.scale.set(sc * 0.95, 1, sc * 1.7);
+      else _dummy.scale.setScalar(sc);
       _dummy.updateMatrix();
       coneAO.setMatrixAt(i, _dummy.matrix);
     }
     if (coneChalk) {
+      /* Pointers are laid ON the line, not boxed - a chalk square around one
+         reads as a cone that has been knocked out of its box. Scaled to zero
+         rather than pushed off into the distance: a hidden instance parked at
+         some far Z is still inside the fog range and still gets drawn, so a
+         row of stray chalk squares turns up on the horizon. */
       _dummy.position.set(-c.x, 0.006, c.z);
-      _dummy.rotation.set(0, c.th || 0, 0);
-      _dummy.scale.setScalar(sc);
+      _dummy.rotation.set(0, -(c.chalkTh || 0), 0, 'YXZ');
+      _dummy.scale.setScalar(pointer ? 0 : sc);
       _dummy.updateMatrix();
       coneChalk.setMatrixAt(i, _dummy.matrix);
     }
@@ -3752,6 +4488,12 @@ function taCamUpdate(dt) {
   /* run is null until a lap starts - showroom orbit until then */
   if ((typeof run === 'undefined' || !run || !run.started) && m !== 'cockpit') {
     _orbitA += 0.42 * dt;
+    /* Ease the FOV back to its resting value between runs. Without this the
+       showroom inherits whatever the camera was at when the last lap ended,
+       so a fast finish left the grid rendered at a fisheye 85 degrees. */
+    if (_camFov === undefined) _camFov = 62;
+    _camFov += (62 - _camFov) * (1 - Math.pow(0.05, dt));
+    if (Math.abs(camera.fov - _camFov) > 0.01) { camera.fov = _camFov; camera.updateProjectionMatrix(); }
     var r = 5.6;
     camX = car.x + Math.sin(_orbitA) * r; camZ = car.z + Math.cos(_orbitA) * r;
     camera.position.set(-camX, 1.15 + 0.5, camZ);
@@ -3787,19 +4529,102 @@ function taCamUpdate(dt) {
   while (dY < -Math.PI) dY += 6.283185;
   var kY = 1 - Math.pow(m === 'cockpit' ? 0.0000001 : 0.0005, dt);
   camYaw += dY * kY;
+
+  var spd = Math.abs(car.v);
+
+  /* ---- FIELD OF VIEW ------------------------------------------------------
+     The strongest speed cue available, and it was fixed at 70 for everything
+     from a standstill to terminal. Opening it with speed pushes the edges of
+     the frame outward as you accelerate, which is the whole reason a fast car
+     feels fast on a screen. Held on a filter so it swells and settles rather
+     than snapping, and given a small extra kick when the throttle is actually
+     doing something so a launch reads as a launch. */
+  var fovWant = (m === 'cockpit' ? 74 : 68) + Math.min(15, spd * 0.42)
+              + (car.thr > 0.5 && spd > 4 ? 2.0 : 0);
+  if (_camFov === undefined) _camFov = fovWant;
+  _camFov += (fovWant - _camFov) * (1 - Math.pow(0.06, dt));
+  if (Math.abs(camera.fov - _camFov) > 0.01) {
+    camera.fov = _camFov;
+    camera.updateProjectionMatrix();
+  }
+
+  /* ---- LOAD ---------------------------------------------------------------
+     The physics already knows the car is squatting or diving; nobody was ever
+     shown it. Longitudinal acceleration lifts the eye slightly under power
+     and drops it under braking - small numbers, but it is the difference
+     between the car reacting to the throttle and the scenery just scrolling
+     faster. */
+  if (_camVPrev === undefined) _camVPrev = car.v;
+  var ax = (car.v - _camVPrev) / Math.max(dt, 0.0001);
+  _camVPrev = car.v;
+  if (_camAx === undefined) _camAx = 0;
+  _camAx += (clamp(ax, -14, 14) - _camAx) * (1 - Math.pow(0.02, dt));
+  var hLoad = (m === 'cockpit' ? 0.018 : 0.032) * _camAx;
+
+  /* ---- SHAKE --------------------------------------------------------------
+     A rigidly smooth camera at 70 mph looks like a flythrough. Amplitude
+     rises with speed and again with wheelspin and lock-up, because that is
+     when a real car is genuinely shaking. Kept small enough to be felt rather
+     than seen. */
+  var rough = Math.min(1, spd / 42) * 0.010
+            + Math.min(0.6, (car.wheelspin || 0)) * 0.012
+            + Math.min(0.6, (car.locked || 0)) * 0.010
+            + (car.offLine ? 0.020 : 0);
+  var tsh = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+  var shx = (Math.sin(tsh * 41.3) + Math.sin(tsh * 27.1)) * 0.5 * rough;
+  var shy = (Math.sin(tsh * 33.7) + Math.sin(tsh * 19.9)) * 0.5 * rough;
+
   var useYaw = (m === 'cockpit') ? car.yaw : camYaw;
   var bx = car.x - Math.sin(useYaw) * back, bz = car.z - Math.cos(useYaw) * back;
   /* lateral offset is perpendicular to heading */
   bx += Math.cos(useYaw) * lat; bz -= Math.sin(useYaw) * lat;
   /* placed, not lerped - no positional lag */
-  camera.position.set(-bx, hh, bz);
-  /* look from the EYE down the road, not from the car's centre */
-  camera.lookAt(-(bx + Math.sin(useYaw) * 14), hh - 0.10, bz + Math.cos(useYaw) * 14);
+  camera.position.set(-bx, hh + hLoad + shy, bz);
+
+  /* ---- WHERE TO LOOK ------------------------------------------------------
+     Down the car's nose is wrong the moment the car is sideways: in a slide
+     the nose points into the infield while the car travels down the road, and
+     a camera locked to the nose swings away from everything the driver needs
+     to see. Biasing the aim point toward the direction of TRAVEL - the body
+     slip angle - keeps the corner exit in frame and makes a slide readable.
+     A little lead on yaw rate does the same job for ordinary cornering: the
+     camera looks into the turn slightly before the car gets there. */
+  var beta = car.beta || 0;
+  var driftBias = clamp(-beta, -0.55, 0.55) * (m === 'cockpit' ? 0.45 : 0.80);
+  var yawLead = clamp(car.r || 0, -1.4, 1.4) * (m === 'cockpit' ? 0.10 : 0.22);
+  var aimYaw = useYaw + driftBias + yawLead + shx;
+  var reach = 14 + Math.min(12, spd * 0.30);
+  camera.lookAt(
+    -(bx + Math.sin(aimYaw) * reach),
+    hh - 0.10 + hLoad * 0.6,
+    bz + Math.cos(aimYaw) * reach
+  );
+
+  /* ---- ROLL ---------------------------------------------------------------
+     One and a half degrees at most, tied to lateral load. Too little to
+     notice on its own and quite noticeable by its absence. */
+  if (m !== 'cockpit') {
+    var rollWant = clamp(-(car.bodyRoll || 0) * 0.34 + clamp(car.r || 0, -1.2, 1.2) * -0.012, -0.028, 0.028);
+    if (_camRoll === undefined) _camRoll = 0;
+    _camRoll += (rollWant - _camRoll) * (1 - Math.pow(0.03, dt));
+    camera.rotateZ(_camRoll);
+  }
+
   camX = bx; camZ = bz;
 }
 
 function taRenderFrame(ghostPose, rivalPose) {
   if (!_glReady || !glEnsureWorld()) return;
+  /* Both domes ride with the camera. At 2.6 km across, a fixed dome lets the
+     car drive measurably closer to one side of the sky than the other, and
+     the horizon visibly tilts. Anchored to the eye it never can. Only the
+     cloud layer turns, at a hair under a degree every ten seconds. */
+  if (_skyMesh) _skyMesh.position.set(camera.position.x, 0, camera.position.z);
+  if (_cloudMesh) {
+    _cloudMesh.position.set(camera.position.x, 0, camera.position.z);
+    var _pd = glSkyPalette().drift;
+    _cloudMesh.rotation.y = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.0000060 * _pd;
+  }
   carGroup.position.set(-car.x, 0.0, car.z);
   carGroup.rotation.set(car.pitch, -car.yaw, -car.bodyRoll);
   /* ---- wheels: steer, spin, suspension travel, camber --------------------
@@ -3902,15 +4727,54 @@ function taRenderFrame(ghostPose, rivalPose) {
 }
 
 /* ---------- rubber + particles: same data model as the canvas build -------- */
+/* Three intensity tiers rather than a per-mark opacity, because an
+   InstancedMesh shares one material and cannot vary alpha per instance
+   without a custom shader. Light scuff / working the tyre / fully locked is
+   all the resolution this needs, and it costs three draw calls for what used
+   to cost two hundred and sixty. */
 var _skidPool = [], _skidNext = 0, SKID_POOL = 260;
+var SKID_OPA = [0.16, 0.32, 0.52];
+var SKID_PER_TIER = 900;
+var _skidIM = null, _skidUsed = [0, 0, 0], _skidHead = [0, 0, 0], _skidDummy = null;
+function glEnsureSkid() {
+  if (_skidIM || !skidGroup) return;
+  if (!_skidTex) _skidTex = glMakeSkid();
+  if (!_skidDummy) _skidDummy = new THREE.Object3D();
+  /* flat quad, long axis down local -Z, so a Y rotation aims it */
+  var g = new THREE.PlaneGeometry(1, 1);
+  g.rotateX(-Math.PI / 2);
+  _skidIM = [];
+  for (var t = 0; t < SKID_OPA.length; t++) {
+    var im = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({
+      map: _skidTex, transparent: true, opacity: SKID_OPA[t], depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -4, color: 0xffffff
+    }), SKID_PER_TIER);
+    im.count = 0;                  /* grows as rubber is actually laid */
+    im.frustumCulled = false;
+    skidGroup.add(im);
+    _skidIM.push(im);
+  }
+  _skidUsed = [0, 0, 0];
+  _skidHead = [0, 0, 0];
+}
+
 function taLayRubber() {
   if (!_glReady || !skidGroup) return;
+  glEnsureSkid();
   var spec = car.spec || { track: 1.64, wb: 2.92 };
   var tw = spec.track / 2, fz = spec.wb / 2, rz = -spec.wb / 2;
   var cy = Math.cos(car.yaw), sy = Math.sin(car.yaw);
   var sr = Math.max(Math.abs(car.slipR) * 3.2, car.wheelspin || 0, car.locked || 0, (car.hb || 0) * 0.8);
   var sf = Math.max(Math.abs(car.slipF) * 2.4, car.locked || 0);
   var defs = [[-tw, fz, sf], [tw, fz, sf], [-tw, rz, sr], [tw, rz, sr]];
+
+  /* THE MARK RUNS ALONG THE DIRECTION OF TRAVEL, not the way the nose points.
+     Identical until the car has slip angle, and slip angle is the entire
+     reason there is a mark to draw. beta is already solved by the chassis. */
+  var travel = car.yaw + (car.beta || 0);
+  /* a wider tyre lays a wider mark - the fleet spans 225 to 285 section */
+  var wide = ((spec.tw || 0.245) / 0.245) * 0.34;
+
   for (var i = 0; i < 4; i++) {
     var d = defs[i];
     if (d[2] < 0.35 || Math.abs(car.v) < 2) continue;
@@ -3918,61 +4782,143 @@ function taLayRubber() {
     var last = skidMarks[skidMarks.length - 1];
     if (last && (last.x - px) * (last.x - px) + (last.z - pz) * (last.z - pz) < 0.05) continue;
     skidMarks.push({ x: px, z: pz });
-    var q = _skidPool[_skidNext];
-    if (!q) {
-      if (!_skidTex) _skidTex = glMakeSkid();
-      q = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.50),
-        new THREE.MeshBasicMaterial({ map: _skidTex, transparent: true, opacity: 0.5,
-          depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
-      q.rotation.x = -Math.PI / 2;
-      _skidPool[_skidNext] = q; skidGroup.add(q);
-    }
-    q.position.set(-px, 0.016, pz);
-    q.rotation.z = car.yaw;
-    q.material.opacity = clamp((d[2] - 0.3) * 0.55, 0, 0.5);
-    _skidNext = (_skidNext + 1) % SKID_POOL;
+    if (!_skidIM) continue;
+
+    /* pick a tier from how hard the tyre is actually working */
+    var t = d[2] > 1.05 ? 2 : (d[2] > 0.62 ? 1 : 0);
+    var im = _skidIM[t], h = _skidHead[t];
+    _skidDummy.position.set(-px, 0.016, pz);
+    /* rotation.y = -heading. Verified against three.js: +heading lays the
+       mark across the tyre's path at every angle that is not a multiple of
+       90 degrees, which is what the old rotation.z = +car.yaw was doing. */
+    _skidDummy.rotation.set(0, -travel, 0, 'YXZ');
+    /* longer streak the faster it is being dragged, so a lock-up at speed
+       leaves a stripe and a low-speed scrub leaves a smudge */
+    _skidDummy.scale.set(wide, 1, 0.42 + Math.min(0.55, Math.abs(car.v) * 0.012));
+    _skidDummy.updateMatrix();
+    im.setMatrixAt(h, _skidDummy.matrix);
+    im.instanceMatrix.needsUpdate = true;
+    _skidHead[t] = (h + 1) % SKID_PER_TIER;
+    if (_skidUsed[t] < SKID_PER_TIER) _skidUsed[t]++;
+    im.count = _skidUsed[t];
   }
-  if (skidMarks.length > 1600) skidMarks.splice(0, skidMarks.length - 1600);
+  if (skidMarks.length > 4000) skidMarks.splice(0, skidMarks.length - 4000);
 }
 
+var PARTICLE_MAX = 320;
 function taSpawnSmoke(x, z, heat) {
-  particles.push({ x: x, y: 0.16, z: z, vx: (Math.random() - 0.5) * 0.5, vy: 0.5 + heat,
-                   vz: (Math.random() - 0.5) * 0.5, life: 1, kind: 'smoke', r: 0.4 });
+  if (particles.length >= PARTICLE_MAX) return;
+  /* SMOKE LEAVES THE TYRE AT ROAD SPEED. It is burnt rubber boiling off a
+     contact patch that is itself travelling, so the puff is launched with the
+     car's velocity and then bled off by drag - which is what makes a slide
+     lay down a streaming trail behind the car rather than a tidy vertical
+     column the car drives away from. It only looks right once the smoke is
+     briefly moving WITH you and then falling behind. */
+  var cvx = 0, cvz = 0;
+  if (typeof car !== 'undefined' && car) {
+    var cy = Math.cos(car.yaw), sy = Math.sin(car.yaw);
+    /* body velocity into world, at ~62 percent - the rest is shed instantly
+       into the turbulent wake behind the wheel */
+    cvx = (car.v * sy + (car.vy || 0) * cy) * 0.62;
+    cvz = (car.v * cy - (car.vy || 0) * sy) * 0.62;
+  }
+  var h = clamp(heat, 0, 1.6);
+  particles.push({
+    x: x, y: 0.10 + Math.random() * 0.10, z: z,
+    vx: cvx + (Math.random() - 0.5) * 1.7,
+    vy: 0.35 + h * 0.85 + Math.random() * 0.35,
+    vz: cvz + (Math.random() - 0.5) * 1.7,
+    life: 1, kind: 'smoke',
+    r: 0.30 + Math.random() * 0.26,
+    /* hotter slip makes denser, whiter, longer-lived smoke */
+    dens: 0.30 + h * 0.52,
+    decay: 0.78 - h * 0.20,
+    rot: Math.random() * 6.2832,
+    spin: (Math.random() - 0.5) * 1.5
+  });
 }
 function taSpawn(x, z, y, kind, n) {
   for (var i = 0; i < (n || 1); i++) {
+    if (particles.length >= PARTICLE_MAX) return;
     particles.push({ x: x, y: y || 0.1, z: z, vx: (Math.random() - 0.5) * 3, vy: Math.random() * 2.2,
-                     vz: (Math.random() - 0.5) * 3, life: 1, kind: kind || 'dust', r: 0.16 });
+                     vz: (Math.random() - 0.5) * 3, life: 1, kind: kind || 'dust', r: 0.16,
+                     dens: 1, decay: 1.5, rot: Math.random() * 6.2832, spin: (Math.random() - 0.5) * 6 });
   }
 }
 var _smokePool = [];
+var SMOKE_POOL_MAX = 320;
 function taParticles(dt) {
   for (var i = particles.length - 1; i >= 0; i--) {
     var p = particles[i];
+    var smoke = p.kind === 'smoke';
     p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-    p.vy -= (p.kind === 'smoke' ? 0.2 : 7) * dt;
-    p.life -= dt * (p.kind === 'smoke' ? 0.65 : 1.5);
-    if (p.y < 0.02) { p.y = 0.02; p.vy *= -0.25; }
+    if (smoke) {
+      /* Drag, not gravity, is what governs a smoke puff: it is barely denser
+         than the air it is in, so it sheds the velocity it was launched with
+         over about a second and then just rises. Quadratic-ish drag gives the
+         hard initial deceleration that makes the trail hang exactly where the
+         tyre was rather than trailing off in a straight line. */
+      var d = 1 - Math.min(0.92, 2.4 * dt);
+      p.vx *= d; p.vz *= d;
+      p.vy = p.vy * (1 - Math.min(0.9, 1.1 * dt)) + 0.28 * dt;   /* buoyancy */
+      p.rot += p.spin * dt;
+      p.spin *= 1 - Math.min(0.9, 0.7 * dt);
+      p.life -= dt * p.decay;
+    } else {
+      p.vy -= 7 * dt;
+      p.rot += p.spin * dt;
+      p.life -= dt * 1.5;
+    }
+    if (p.y < 0.02) { p.y = 0.02; p.vy *= smoke ? 0.10 : -0.25; }
     if (p.life <= 0) particles.splice(i, 1);
   }
   if (!_glReady) return;
-  for (var s = 0; s < Math.max(particles.length, _smokePool.length); s++) {
+
+  var need = Math.min(particles.length, SMOKE_POOL_MAX);
+  for (var s = 0; s < Math.max(need, _smokePool.length); s++) {
     var m = _smokePool[s];
-    if (!m && s < particles.length) {
+    if (!m && s < need) {
       if (!_smokeTex) _smokeTex = glMakeSmoke();
-      m = new THREE.Sprite(new THREE.SpriteMaterial({ map: _smokeTex, color: 0xdfe2e5,
-        transparent: true, depthWrite: false, opacity: 0.85 }));
+      m = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: _smokeTex, color: 0xdfe2e5, transparent: true,
+        depthWrite: false, opacity: 0.85
+      }));
       _smokePool[s] = m; smokeGroup.add(m);
     }
     if (!m) continue;
     var pp = particles[s];
-    if (!pp) { m.visible = false; continue; }
+    if (!pp || s >= need) { m.visible = false; continue; }
     m.visible = true;
     m.position.set(-pp.x, pp.y, pp.z);
-    var sz = pp.kind === 'smoke' ? (0.5 + (1 - pp.life) * 2.4) : 0.22;
-    m.scale.set(sz, sz, sz);
-    m.material.color.setHex(pp.kind === 'smoke' ? 0xdfe2e5 : (pp.kind === 'cone' ? 0xe07b28 : 0x9a8a74));
-    m.material.opacity = clamp(pp.life, 0, 1) * (pp.kind === 'smoke' ? 0.34 : 0.5);
+
+    if (pp.kind === 'smoke') {
+      var age = 1 - clamp(pp.life, 0, 1);
+      /* EXPANSION: fast at first as the hot gas dumps into cool air, then
+         asymptotic. A linear ramp made every puff grow forever at one rate,
+         which is what gave the old smoke its uniform beachball look. */
+      var sz = pp.r * (1 + 3.4 * Math.pow(age, 0.62));
+      m.scale.set(sz, sz, sz);
+      m.material.rotation = pp.rot;
+      /* OPACITY ENVELOPE: blooms over the first ~12 percent of life while the
+         rubber is still boiling, then a long thin decay. Squared tail so it
+         disappears by dispersing rather than by fading as a solid shape. */
+      var env = age < 0.12 ? (age / 0.12) : Math.pow(clamp(pp.life / 0.88, 0, 1), 1.7);
+      m.material.opacity = clamp(env * pp.dens * 0.52, 0, 1);
+      /* COLOUR: fresh smoke off a hot tyre is blue-white and dense; as it
+         cools and thins it goes flat cold grey. */
+      var w = 1 - Math.min(1, age * 1.5);
+      m.material.color.setRGB(
+        (0.74 + 0.20 * w),
+        (0.75 + 0.20 * w),
+        (0.77 + 0.21 * w)
+      );
+    } else {
+      var dz = 0.16 + (1 - pp.life) * 0.22;
+      m.scale.set(dz, dz, dz);
+      m.material.rotation = pp.rot;
+      m.material.color.setHex(pp.kind === 'cone' ? 0xe07b28 : 0x9a8a74);
+      m.material.opacity = clamp(pp.life, 0, 1) * 0.5;
+    }
   }
 }
 
@@ -4655,7 +5601,16 @@ function taInputs(dt) {
   if (keys['d'] || keys['arrowright']) sTarget += 1;
   /* caster self-centres the wheel: return speeds up with road speed,
      exactly like trail does in the real car */
-  var rate = sTarget === 0 ? (11.0 + Math.min(9, Math.abs(car.v) * 0.28)) : 9.0;
+  var absv = Math.abs(car.v);
+  /* A wheel does not slew at one rate regardless of speed. At a standstill
+     you can spin it lock to lock; at 60 mph you make small, deliberate
+     inputs, partly because the effort is higher and mostly because you do not
+     want the car to bite. Winding the application rate down with speed - but
+     NOT the return rate, which caster genuinely does speed up - is most of
+     what stops a keyboard feeling like an on/off switch at the fast end. */
+  var rate = sTarget === 0
+    ? (11.0 + Math.min(9, absv * 0.28))
+    : (9.4 - Math.min(3.4, absv * 0.10));
   var d = sTarget - car.steer;
   car.steer += clamp(d, -rate * dt, rate * dt);
   car.steer = clamp(car.steer, -1, 1);
