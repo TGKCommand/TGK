@@ -131,6 +131,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <div id="people-filters"></div>
       <div class="sidebar-footer">
         <div class="sync-pill"><span class="sync-dot" id="sync-dot"></span><span class="sync-label" id="sync-label">Connecting...</span></div>
+        <div id="gcal-connect-box" style="margin-top:8px"></div>
       </div>
     </div>
   </div>
@@ -212,6 +213,9 @@ var S={
   events:[],
   members:[],                 // [{email,display_name}]
   me:null,                    // {email,name}
+  meVerified:false,           // true only when identity came from a real Supabase Auth session -
+                               // this is the gate for offering Google Calendar sync, since Google's
+                               // own consent screen will check this is a real tgkmotorsport.com account
   hideTypes:{},               // type -> true if hidden
   hidePeople:{},              // email -> true if hidden
   editId:null,
@@ -262,6 +266,7 @@ async function boot(){
   await loadEvents();
   render();
   subscribeRealtime();
+  await gcalHandleRedirect();   // finish an in-progress Google connect before resolving identity
   resolveIdentity();
 }
 
@@ -276,7 +281,7 @@ async function resolveIdentity(){
   // 1) authenticated session on this origin (same as ERP)
   try{
     var u=await db.auth.getUser();
-    if(u&&u.data&&u.data.user&&u.data.user.email){setMe(u.data.user.email,null);return;}
+    if(u&&u.data&&u.data.user&&u.data.user.email){S.meVerified=true;setMe(u.data.user.email,null);return;}
   }catch(e){}
   // 2) URL params (Command Center can pass ?email=&name=)
   var q=new URLSearchParams(location.search);
@@ -295,6 +300,7 @@ function setMe(email,name){
   S.me={email:email,name:name||displayFor(email)||email};
   try{localStorage.setItem('tgk_cal_me',JSON.stringify(S.me));}catch(e){}
   renderChrome();render();
+  S_gcalConnected=null;gcalCheckConnected();
 }
 
 window.addEventListener('message',function(ev){
@@ -303,6 +309,27 @@ window.addEventListener('message',function(ev){
     hide('pick-overlay');
     setMe(d.email,d.name);
   }
+});
+
+// Same handoff the ERP already uses: the Command Center hands over its OWN real Supabase
+// session so this page does not need its own login. Only a session that genuinely verifies via
+// getUser() afterward ever sets meVerified - receiving the message is not itself proof, since a
+// message alone (without the origin+source check plus a working session) proves nothing.
+window.addEventListener('message', async function(ev){
+  if(ev.origin!=='https://command.tgkmotorsport.com')return;
+  var d=ev.data;
+  if(!d||d.source!=='TGK_CC'||d.type!=='AUTH_TOKEN'||!d.access_token)return;
+  try{
+    if(typeof db==='undefined'||!db||!db.auth)return;
+    var res=await db.auth.setSession({access_token:d.access_token,refresh_token:d.refresh_token||''});
+    if(res&&res.error){console.warn('[cal-sso] setSession failed:',res.error.message);return;}
+    var u=await db.auth.getUser();
+    var em=u&&u.data&&u.data.user&&u.data.user.email;
+    if(!em)return;
+    S.meVerified=true;
+    setMe(em,null);
+    console.log('[cal-sso] verified session established as',em);
+  }catch(e){console.warn('[cal-sso] token accept failed:',e);}
 });
 
 function pickIdentity(){
@@ -325,8 +352,13 @@ function pickIdentity(){
         }else{
           S.me={email:b.getAttribute('data-email'),name:b.getAttribute('data-name')};
         }
+        // Any manual pick is, by definition, not a verified sign-in - even picking a real
+        // teammate's name from the list is not the same as THEM having signed in. Google
+        // Calendar sync must never be offered off the back of this path.
+        S.meVerified=false;
         try{localStorage.setItem('tgk_cal_me',JSON.stringify(S.me));}catch(e){}
         hide('pick-overlay');renderChrome();resolve();
+        S_gcalConnected=null;gcalCheckConnected();
       };
     });
   });
@@ -541,10 +573,15 @@ async function saveEntry(){
   var btn=document.getElementById('entry-save');btn.disabled=true;btn.textContent='Saving...';
   try{
     var res;
-    if(S.editId){res=await db.from('calendar_events').update(row).eq('id',S.editId);}
-    else{res=await db.from('calendar_events').insert(row);}
+    // .select().single() so the saved row (with its id) comes back - needed to push to Google,
+    // and for a fresh INSERT there is no id to push with otherwise.
+    if(S.editId){res=await db.from('calendar_events').update(row).eq('id',S.editId).select().single();}
+    else{res=await db.from('calendar_events').insert(row).select().single();}
     if(res.error){toast('Save failed: '+res.error.message);}
-    else{toast(S.editId?'Updated':'Added');closeEntry();await loadEvents();render();}
+    else{
+      toast(S.editId?'Updated':'Added');closeEntry();await loadEvents();render();
+      if(res.data)gcalPush(res.data,false);
+    }
   }catch(e){toast('Save failed: '+e.message);}
   btn.disabled=false;btn.textContent='Save';
 }
@@ -552,16 +589,102 @@ async function saveEntry(){
 async function deleteEntry(){
   if(!S.editId)return;
   if(!confirm('Delete this entry?'))return;
+  // Captured BEFORE the delete, since there is nothing left to fetch afterward - this is what
+  // tells the sync which Google Calendar events need removing.
+  var evBeforeDelete=S.events.filter(function(e){return e.id===S.editId;})[0]||null;
   try{
     var res=await db.from('calendar_events').delete().eq('id',S.editId);
     if(res.error){toast('Delete failed: '+res.error.message);return;}
     toast('Deleted');closeEntry();await loadEvents();render();
+    if(evBeforeDelete)gcalPush(evBeforeDelete,true);
   }catch(e){toast('Delete failed: '+e.message);}
 }
 
 function show(id){document.getElementById(id).classList.remove('hidden');}
 function hide(id){document.getElementById(id).classList.add('hidden');}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){hide('entry-overlay');}});
+
+// ---- Google Calendar sync (one-way push: TGK -> Google) --------------------
+// Only offered when identity came from a real Supabase Auth session (S.meVerified), since that
+// is the same tgkmotorsport.com login Google's own consent screen will check against. The
+// manual name-picker fallback never unlocks this - there is nothing to verify a picked name
+// against.
+var GCAL_FN_URL='https://piamamighqiielfztgic.supabase.co/functions/v1/calendar-google-sync';
+var S_gcalConnected=null; // null = not checked yet, true/false once known
+
+async function gcalCheckConnected(){
+  if(!S.me||!S.meVerified){S_gcalConnected=false;renderGcalBox();return;}
+  try{
+    var r=await db.from('calendar_google_tokens').select('email,connected_at,last_sync_error').eq('email',S.me.email).maybeSingle();
+    S_gcalConnected=!!(r&&r.data);
+    S._gcalLastError=r&&r.data?r.data.last_sync_error:null;
+  }catch(e){S_gcalConnected=false;}
+  renderGcalBox();
+}
+
+function renderGcalBox(){
+  var box=document.getElementById('gcal-connect-box');
+  if(!box)return;
+  if(!S.me||!S.meVerified){
+    box.innerHTML='<div style="font-size:10.5px;color:var(--text3);line-height:1.4">Google Calendar sync needs a real tgkmotorsport.com sign-in (not the name picker).</div>';
+    return;
+  }
+  if(S_gcalConnected===null){box.innerHTML='<div style="font-size:11px;color:var(--text3)">Checking Google Calendar...</div>';return;}
+  if(S_gcalConnected){
+    box.innerHTML='<div style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:4px"><span style="margin-right:4px">&#10003;</span>Synced to Google Calendar</div>'
+      +(S._gcalLastError?('<div style="font-size:10px;color:var(--red);margin-bottom:4px">Last sync error: '+esc(S._gcalLastError)+'</div>'):'')
+      +'<button class="btn btn-sm" style="width:100%" onclick="gcalDisconnect()">Disconnect</button>';
+  }else{
+    box.innerHTML='<button class="btn btn-sm btn-primary" style="width:100%" onclick="gcalConnect()">Connect Google Calendar</button>';
+  }
+}
+
+async function gcalConnect(){
+  try{
+    var r=await fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'oauth_url',email:S.me.email})});
+    var d=await r.json();
+    if(!d.url){toast('Could not start Google connect: '+(d.error||'unknown error'));return;}
+    // Full-page redirect rather than a popup: Google's own consent screen for a Workspace
+    // domain can be blocked by popup blockers more often than a normal top-level navigation.
+    window.location.href=d.url;
+  }catch(e){toast('Could not start Google connect: '+e.message);}
+}
+
+async function gcalDisconnect(){
+  if(!confirm('Stop syncing to Google Calendar? Events already on your Google Calendar will stay there, but will no longer update.'))return;
+  try{
+    await fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'disconnect',email:S.me.email})});
+    S_gcalConnected=false;renderGcalBox();toast('Disconnected from Google Calendar');
+  }catch(e){toast('Disconnect failed: '+e.message);}
+}
+
+// If Google just redirected back here with ?code=&state=, finish the connection.
+async function gcalHandleRedirect(){
+  var q=new URLSearchParams(location.search);
+  var code=q.get('code'),state=q.get('state');
+  if(!code||!state)return;
+  // Strip the query string immediately so a page refresh never resubmits the same code.
+  history.replaceState({},'',location.pathname);
+  toast('Connecting Google Calendar...');
+  try{
+    var r=await fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'oauth_exchange',code:code,state:state})});
+    var d=await r.json();
+    if(d.ok){toast('Google Calendar connected');S_gcalConnected=true;renderGcalBox();}
+    else{toast('Google connect failed: '+(d.error||'unknown error'),6000);}
+  }catch(e){toast('Google connect failed: '+e.message,6000);}
+}
+
+// Fire-and-forget: a push failure must never block saving to the shop calendar, which is the
+// source of truth. Google is allowed to be temporarily behind.
+function gcalPush(ev,isDelete){
+  if(!ev||!ev.id)return;
+  fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'push_event',event:ev,deleted:!!isDelete})})
+    .catch(function(e){console.warn('[gcal] push failed:',e);});
+}
 </script>
 </body>
 </html>

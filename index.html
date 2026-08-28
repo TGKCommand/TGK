@@ -12628,6 +12628,19 @@ function _calSendIdentity() {
     if (!email || !frame || !frame.contentWindow) return;
     var name = email.split('@')[0];
     frame.contentWindow.postMessage({ type: 'tgk-identity', email: email, name: name }, '*');
+    // Also hand over the REAL session, exactly as already done for the ERP - a plain email
+    // label is spoofable by anything that can post into this frame, so it is only ever used as
+    // a display fallback. Google Calendar access is gated on a genuine Supabase session, which
+    // only this token exchange can establish.
+    if (sess && sess.access_token) {
+      frame.contentWindow.postMessage({
+        source: 'TGK_CC',
+        type: 'AUTH_TOKEN',
+        access_token: sess.access_token,
+        refresh_token: sess.refresh_token || '',
+        email: sess.email || ''
+      }, 'https://command.tgkmotorsport.com');
+    }
   } catch (e) {}
 }
 
