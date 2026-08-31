@@ -722,14 +722,23 @@ async function gcalBackfillAll(showStart){
   if(_gcalBackfillRunning)return;
   if(!S.me||!S_gcalConnected){toast('Connect Google Calendar first');return;}
   _gcalBackfillRunning=true;
-  var events=S.events||[];
-  if(showStart)toast('Syncing '+events.length+' existing entr'+(events.length===1?'y':'ies')+' to Google Calendar...',4000);
+  // S.events is scoped to whatever month is currently on screen (loadEvents() bounds its query
+  // to gridBounds()) - reusing it here meant the backfill only ever pushed the visible month,
+  // silently skipping everything else on the calendar. This queries every row directly instead,
+  // with no date filter, so a backfill genuinely means everything.
+  var events=[];
+  try{
+    var r=await db.from('calendar_events').select('*').order('start_date',{ascending:true});
+    if(r.error){toast('Sync failed to load events: '+r.error.message);_gcalBackfillRunning=false;return;}
+    events=r.data||[];
+  }catch(e){toast('Sync failed to load events: '+e.message);_gcalBackfillRunning=false;return;}
+  if(showStart)toast('Syncing '+events.length+' entr'+(events.length===1?'y':'ies')+' to Google Calendar...',4000);
   var pushed=0,failed=0;
   for(var i=0;i<events.length;i++){
     try{
-      var r=await fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      var rr=await fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'push_event',event:events[i],deleted:false})});
-      var d=await r.json();
+      var d=await rr.json();
       if(d&&d.ok)pushed++;else failed++;
     }catch(e){failed++;}
     await new Promise(function(res){setTimeout(res,150);}); // pace, do not hammer the API
