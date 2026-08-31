@@ -633,6 +633,7 @@ function renderGcalBox(){
   if(S_gcalConnected){
     box.innerHTML='<div style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:4px"><span style="margin-right:4px">&#10003;</span>Synced to Google Calendar</div>'
       +(S._gcalLastError?('<div style="font-size:10px;color:var(--red);margin-bottom:4px">Last sync error: '+esc(S._gcalLastError)+'</div>'):'')
+      +'<button class="btn btn-sm" style="width:100%;margin-bottom:4px" onclick="gcalBackfillAll(true)">Sync all entries now</button>'
       +'<button class="btn btn-sm" style="width:100%" onclick="gcalDisconnect()">Disconnect</button>';
   }else{
     box.innerHTML='<button class="btn btn-sm btn-primary" style="width:100%" onclick="gcalConnect()">Connect Google Calendar</button>';
@@ -680,6 +681,10 @@ async function gcalHandleRedirect(){
     var d=await r.json();
     if(d.ok){
       toast('Google Calendar connected');S_gcalConnected=true;renderGcalBox();
+      // Connecting only makes GOING-FORWARD pushes work. Everything already on the shop
+      // calendar before this moment needs a one-time backfill, or it would look "connected"
+      // while nothing anyone had already entered ever shows up on the actual Google Calendar.
+      gcalBackfillAll(true);
       // Google's redirect always lands on this bare page's own URL, outside the Command
       // Center's iframe - that is unavoidable, since the whole point of breaking out to the
       // top frame was to get somewhere Google is willing to render at all. window.self!==top
@@ -698,14 +703,42 @@ async function gcalHandleRedirect(){
   }catch(e){toast('Google connect failed: '+e.message,6000);}
 }
 
-// Fire-and-forget: a push failure must never block saving to the shop calendar, which is the
-// source of truth. Google is allowed to be temporarily behind.
+// Fire-and-forget for a single new change (used by saveEntry/deleteEntry) - a save should never
+// wait on a network round-trip to Google before the person sees their edit land.
 function gcalPush(ev,isDelete){
   if(!ev||!ev.id)return;
   fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({action:'push_event',event:ev,deleted:!!isDelete})})
     .catch(function(e){console.warn('[gcal] push failed:',e);});
 }
+
+// Backfill: connecting Google only means push-going-forward works - everything already on the
+// shop calendar before that moment was never sent, since nothing triggered a push for it. This
+// walks every current event once and pushes it, exactly like a normal save would. Awaited and
+// paced (not fired all at once) so a calendar with many entries does not slam the edge function
+// or hit Google's per-user rate limit, and so the person gets a real count instead of silence.
+var _gcalBackfillRunning=false;
+async function gcalBackfillAll(showStart){
+  if(_gcalBackfillRunning)return;
+  if(!S.me||!S_gcalConnected){toast('Connect Google Calendar first');return;}
+  _gcalBackfillRunning=true;
+  var events=S.events||[];
+  if(showStart)toast('Syncing '+events.length+' existing entr'+(events.length===1?'y':'ies')+' to Google Calendar...',4000);
+  var pushed=0,failed=0;
+  for(var i=0;i<events.length;i++){
+    try{
+      var r=await fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'push_event',event:events[i],deleted:false})});
+      var d=await r.json();
+      if(d&&d.ok)pushed++;else failed++;
+    }catch(e){failed++;}
+    await new Promise(function(res){setTimeout(res,150);}); // pace, do not hammer the API
+  }
+  _gcalBackfillRunning=false;
+  toast('Google Calendar sync complete: '+pushed+' pushed'+(failed?(', '+failed+' failed \u2014 check console'):''),6000);
+  gcalCheckConnected();
+}
+window.gcalBackfillAll=gcalBackfillAll;
 </script>
 </body>
 </html>
