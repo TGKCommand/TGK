@@ -645,9 +645,15 @@ async function gcalConnect(){
       body:JSON.stringify({action:'oauth_url',email:S.me.email})});
     var d=await r.json();
     if(!d.url){toast('Could not start Google connect: '+(d.error||'unknown error'));return;}
-    // Full-page redirect rather than a popup: Google's own consent screen for a Workspace
-    // domain can be blocked by popup blockers more often than a normal top-level navigation.
-    window.location.href=d.url;
+    // This page is normally loaded inside the Command Center's iframe. Google refuses to render
+    // its own sign-in/consent screens inside ANY iframe, from anyone - a deliberate, permanent
+    // anti-phishing policy with no setting on our side that changes it. window.location.href
+    // would navigate the IFRAME to Google, which Google then blocks outright.
+    // window.top breaks out to the real browser tab instead - same origin as this page
+    // (command.tgkmotorsport.com either way), so no cross-origin restriction applies. After
+    // consent, Google redirects that tab straight back to this same URL, outside the Command
+    // Center's chrome, where gcalHandleRedirect() finishes the connection normally.
+    window.top.location.href=d.url;
   }catch(e){toast('Could not start Google connect: '+e.message);}
 }
 
@@ -672,7 +678,22 @@ async function gcalHandleRedirect(){
     var r=await fetch(GCAL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'oauth_exchange',code:code,state:state})});
     var d=await r.json();
-    if(d.ok){toast('Google Calendar connected');S_gcalConnected=true;renderGcalBox();}
+    if(d.ok){
+      toast('Google Calendar connected');S_gcalConnected=true;renderGcalBox();
+      // Google's redirect always lands on this bare page's own URL, outside the Command
+      // Center's iframe - that is unavoidable, since the whole point of breaking out to the
+      // top frame was to get somewhere Google is willing to render at all. window.self!==top
+      // means we are still framed for some other reason; only show this when genuinely
+      // standalone, so the link never appears for people who never left the iframe.
+      if(window.self===window.top){
+        var bar=document.createElement('div');
+        bar.style.cssText='position:fixed;top:0;left:0;right:0;background:var(--teal);color:#fff;'
+          +'padding:8px 14px;text-align:center;font-size:13px;z-index:999;font-weight:600';
+        bar.innerHTML='Google Calendar connected. <a href="https://command.tgkmotorsport.com" '
+          +'style="color:#fff;text-decoration:underline;margin-left:6px">Return to Command Center</a>';
+        document.body.appendChild(bar);
+      }
+    }
     else{toast('Google connect failed: '+(d.error||'unknown error'),6000);}
   }catch(e){toast('Google connect failed: '+e.message,6000);}
 }
