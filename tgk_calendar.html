@@ -135,6 +135,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <div class="sidebar-footer">
         <div class="sync-pill"><span class="sync-dot" id="sync-dot"></span><span class="sync-label" id="sync-label">Connecting...</span></div>
         <div id="gcal-connect-box" style="margin-top:8px"></div>
+        <div style="margin-top:8px;font-size:10px;font-family:monospace;color:#9ca3af;letter-spacing:.03em" id="cal-version-badge"></div>
       </div>
     </div>
   </div>
@@ -208,6 +209,11 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 "use strict";
 var SUPA_URL='https://piamamighqiielfztgic.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA';
+// No version tracking existed on this file before now - starting fresh at v1.0, matching the
+// same badge pattern already used in the ERP, Support Center, and Command Center. Bump this on
+// every future change so it's always possible to tell, at a glance, whether the calendar
+// someone is looking at is current.
+var TGK_CAL_VERSION='v1.0';
 var db=null;
 
 // ---- state ----
@@ -280,6 +286,7 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 async function boot(){
+  var vb=document.getElementById('cal-version-badge');if(vb){vb.textContent=TGK_CAL_VERSION;vb.title='TGK Team Calendar '+TGK_CAL_VERSION;}
   await loadEventTypes();
   await loadMembers();
   await loadEvents();
