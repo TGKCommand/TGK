@@ -12264,7 +12264,15 @@ function doLogout() {
 function showLoginScreen() {
   document.getElementById('cc-login').style.display = 'flex';
   document.getElementById('cc-topbar').style.display = 'none';
-  document.getElementById('cc-breadcrumb').style.display = 'none';
+  // The breadcrumb's visibility is governed by a .visible CLASS (its base CSS rule is
+  // display:none) - setting an inline style here instead used to leave that inline value
+  // stuck after signing back in, since nothing later ever cleared it. Inline style always
+  // beats a class rule, so the breadcrumb could stay invisible even after its .visible class
+  // was correctly re-added by whichever module opened next - fixable only by a full refresh,
+  // which resets inline styles back to nothing. Using classList here means signing back in
+  // only has to manage ONE thing (the class), the same thing every module-open function
+  // already manages, rather than two competing mechanisms for the same element.
+  document.getElementById('cc-breadcrumb').classList.remove('visible');
   document.getElementById('cc-shell').style.display = 'none';
   setTimeout(function(){ document.getElementById('login-email').focus(); }, 100);
 }
@@ -15954,13 +15962,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // kind -> where it comes from and which tool it belongs to
   var SOURCES = {
-    orders:  { table:'sales',   tool:'erp',     openLbl:'Open ERP',     tag:'ORDER'  },
-    tickets: { table:'tickets', tool:'support', openLbl:'Open Support', tag:'TICKET' }
+    orders:        { table:'sales',           tool:'erp',     openLbl:'Open ERP',      tag:'ORDER',     filter:null },
+    tickets:       { table:'tickets',         tool:'support', openLbl:'Open Support',  tag:'TICKET',    filter:'is_live_chat=not.is.true' },
+    livechat:      { table:'tickets',         tool:'support', openLbl:'Open Chat',     tag:'CHAT',      filter:'is_live_chat=eq.true' },
+    warranty:      { table:'warranty_claims', tool:'support', openLbl:'Open Support',  tag:'WARRANTY',  filter:null },
+    shiperrors:    { table:'shipment_errors', tool:'support', openLbl:'Open Support',  tag:'SHIP ERR',  filter:null },
+    // Support's inbox (table: emails) is an ongoing thread, not a one-shot record like the
+    // others above - the same row can go unread -> replied -> unread again as a conversation
+    // continues. created_at only ever reflects when the THREAD started, so a new reply on an
+    // old thread would never register. last_message_at tracks the most recent activity - but
+    // it updates on staff's OWN outbound replies too, so it can't be used alone or a reply
+    // would notify the person who just sent it. has_unread is what Support's own inbox already
+    // uses to mean "the customer said something staff has not addressed" - filtering on both
+    // together is what makes this correct: recent AND still actually unread.
+    orderemails:   { table:'emails', tool:'support', openLbl:'Open Support', tag:'ORDER EMAIL', tsField:'last_message_at', filter:'mailbox=eq.orders&has_unread=eq.true' },
+    supportemails: { table:'emails', tool:'support', openLbl:'Open Support', tag:'EMAIL',       tsField:'last_message_at', filter:'mailbox=not.eq.orders&has_unread=eq.true' }
   };
   // which on-screen elements turn red for each kind
   var HOT = {
-    orders:  ['cc-bc-erp', 'erp-hero-card'],
-    tickets: ['cc-bc-support', 'support-hero-card']
+    orders:        ['cc-bc-erp', 'erp-hero-card'],
+    tickets:       ['cc-bc-support', 'support-hero-card'],
+    livechat:      ['cc-bc-support', 'support-hero-card'],
+    warranty:      ['cc-bc-support', 'support-hero-card'],
+    shiperrors:    ['cc-bc-support', 'support-hero-card'],
+    orderemails:   ['cc-bc-support', 'support-hero-card'],
+    supportemails: ['cc-bc-support', 'support-hero-card']
   };
 
   var active = [];   // [{kind, id, label, ts}]
@@ -16070,6 +16096,35 @@ document.addEventListener('DOMContentLoaded', function() {
     if (who)  return 'New ticket from ' + who;
     return 'New ticket #' + (r.id != null ? r.id : '');
   }
+  function livechatLabel(r){
+    var who = r.customer_name || r.name || r.customer || r.email || 'a visitor';
+    return 'Live chat waiting \u2014 ' + who;
+  }
+  function warrantyLabel(r){
+    var pn = r.pn || '';
+    var ord = r.order_number ? (' \u00b7 order #' + r.order_number) : '';
+    return 'New warranty claim' + (pn ? ': ' + pn : '') + ord;
+  }
+  function shiperrorsLabel(r){
+    var ord = r.order_number ? ('#' + r.order_number) : '';
+    var pn = r.expected_pn ? (' \u00b7 reship ' + r.expected_pn) : '';
+    return 'New shipment error' + (ord ? ' \u2014 order ' + ord : '') + pn;
+  }
+  function orderEmailLabel(r){
+    var who = r.ship_name || r.customer_email || 'a customer';
+    var num = r.display_number ? (' (' + r.display_number + ')') : '';
+    return 'New order email \u2014 ' + who + num;
+  }
+  function supportEmailLabel(r){
+    var subj = r.subject || '';
+    if (subj) return 'New email: ' + String(subj).slice(0, 48);
+    return 'New email from ' + (r.customer_email || 'a customer');
+  }
+  var LABELERS = {
+    orders: orderLabel, tickets: ticketLabel, livechat: livechatLabel,
+    warranty: warrantyLabel, shiperrors: shiperrorsLabel,
+    orderemails: orderEmailLabel, supportemails: supportEmailLabel
+  };
   function rowId(kind, r){
     return String(r.id != null ? r.id : (r.order_number || r.created_at || Math.random()));
   }
@@ -16088,9 +16143,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // ---- Baseline: on first ever run, ignore the existing backlog ----------
   async function initHwm(kind){
     if (hwm[kind]) return;
+    var src = SOURCES[kind];
+    var tsField = src.tsField || 'created_at';
     try {
-      var rows = await sbQuery(SOURCES[kind].table, 'select=created_at&order=created_at.desc&limit=1');
-      hwm[kind] = (rows && rows[0] && rows[0].created_at) || new Date().toISOString();
+      var qs = 'select=' + tsField + '&order=' + tsField + '.desc&limit=1';
+      if (src.filter) qs += '&' + src.filter;
+      var rows = await sbQuery(src.table, qs);
+      hwm[kind] = (rows && rows[0] && rows[0][tsField]) || new Date().toISOString();
     } catch(e){
       hwm[kind] = new Date().toISOString();
       console.warn('[notif] baseline failed for ' + kind + ': ' + e.message);
@@ -16101,17 +16160,20 @@ document.addEventListener('DOMContentLoaded', function() {
   // ---- Poll one source for rows newer than the high-water mark -----------
   async function pollKind(kind){
     var src = SOURCES[kind];
+    var tsField = src.tsField || 'created_at';
     var since = hwm[kind] || new Date().toISOString();
     var rows;
     try {
-      rows = await sbQuery(src.table,
-        'select=*&created_at=gt.' + encodeURIComponent(since) + '&order=created_at.asc&limit=50');
+      var qs = 'select=*&' + tsField + '=gt.' + encodeURIComponent(since) + '&order=' + tsField + '.asc&limit=50';
+      if (src.filter) qs += '&' + src.filter;
+      rows = await sbQuery(src.table, qs);
     } catch(e){
       console.warn('[notif] poll failed for ' + kind + ': ' + e.message);
       return false;
     }
     if (!rows || !rows.length) return false;
     var maxTs = since, added = false;
+    var labelFn = LABELERS[kind] || ticketLabel;
     rows.forEach(function(r){
       var id = rowId(kind, r);
       if (active.some(function(n){ return n.kind === kind && n.id === id; })) return;
@@ -16119,11 +16181,11 @@ document.addEventListener('DOMContentLoaded', function() {
       active.push({
         kind:  kind,
         id:    id,
-        label: (kind === 'orders' ? orderLabel(r) : ticketLabel(r)),
-        ts:    r.created_at || new Date().toISOString()
+        label: labelFn(r),
+        ts:    r[tsField] || new Date().toISOString()
       });
       added = true;
-      if ((r.created_at || '') > maxTs) maxTs = r.created_at;
+      if ((r[tsField] || '') > maxTs) maxTs = r[tsField];
     });
     hwm[kind] = maxTs;
     return added;
@@ -16340,8 +16402,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Pull this user's dismissals before polling, so anything already handled on another
     // machine never gets re-added to the panel here.
     await loadDismissals();
-    await initHwm('orders');
-    await initHwm('tickets');
+    // Generic over every key in SOURCES, so a future addition here does not also require
+    // remembering to update this list separately - exactly the gap that left three real
+    // notification kinds silently uninitialized until now.
+    await Promise.all(Object.keys(SOURCES).map(initHwm));
     await pollAll();
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(pollAll, POLL_MS);
@@ -16435,7 +16499,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.24';
+var TGK_CC_VERSION='v2.27';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
