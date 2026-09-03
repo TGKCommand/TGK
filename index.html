@@ -12093,6 +12093,28 @@ var CAL_URL = 'https://command.tgkmotorsport.com/tgk_calendar.html';
 var TA_URL  = 'https://command.tgkmotorsport.com/TGK_TimeAttack.html';
 var SUPPORT_URL = 'https://support.tgkmotorsport.com';
 var NOTES_URL = 'https://command.tgkmotorsport.com/notes.html';
+
+// Every embedded module receives identity ONCE, on its own first load - nothing re-sent it if
+// the Command Center's own session changed afterward. That meant signing out here never told
+// an already-open module to sign out too (so it looked like sign-out required a separate click
+// in each one), and logging back in as someone else never refreshed a module that was already
+// sitting open with the previous person's session.
+//
+// Sent to whichever of these frames actually exist and have something loaded, each to its own
+// exact origin - a message can never reach a frame it wasn't meant for. Confirmed working
+// end-to-end for ERP, Support, and the Calendar (each has a matching listener). Notes, SKU
+// Manager, and Time Attack will receive this too, but whether they DO anything with it depends
+// on whether each of those files has its own listener - that's outside what this file controls.
+function _ccBroadcastToFrames(msg){
+  [['erp-frame',ERP_URL],['support-frame',SUPPORT_URL],['cal-frame',CAL_URL],
+   ['notes-frame',NOTES_URL],['sku-frame',SKU_URL],['ta-frame',TA_URL]].forEach(function(pair){
+    try{
+      var frame=document.getElementById(pair[0]);
+      if(!frame||!frame.src)return;
+      frame.contentWindow.postMessage(msg, new URL(pair[1]).origin);
+    }catch(e){}
+  });
+}
 var SB_AUTH_URL = 'https://piamamighqiielfztgic.supabase.co';
 var SB_ANON_KEY = 'sb_publishable_JHTuiKlkCD_EHoyDtWtKsQ_gyQ6kgfJ';
 var AUTH_KEY = 'tgk_cc_session';
@@ -12232,6 +12254,9 @@ async function doForgotPassword() {
 }
 
 function doLogout() {
+  // Tell every currently-open module to sign itself out too, so this one click is actually
+  // enough - not a separate sign-out inside whichever module happened to be open.
+  _ccBroadcastToFrames({source:'TGK_CC', type:'SIGN_OUT'});
   _clearSession();
   showLoginScreen();
 }
@@ -12253,6 +12278,17 @@ function showDashboardScreen(sess) {
   if (u && sess && sess.email) u.textContent = sess.email.split('@')[0];
   var lb = document.getElementById('logout-btn');
   if (lb) lb.style.display = '';
+  // Refresh identity in any module that is ALREADY open, not just ones opened from here on.
+  // The original handoff only ever fired once, on a module's own first load - so signing out
+  // and back in as someone else while, say, the ERP was still sitting open left it running the
+  // previous person's session indefinitely. A no-op when nothing is open yet (each frame check
+  // skips silently if it has no src), so this is safe to run on every login, not just a switch.
+  if (sess && sess.access_token) {
+    _ccBroadcastToFrames({
+      source:'TGK_CC', type:'AUTH_TOKEN',
+      access_token: sess.access_token, refresh_token: sess.refresh_token || '', email: sess.email || ''
+    });
+  }
   // Boot dashboard
   loadLayout(); renderDashboard(); setupDragBuiltIn(); dashLoadExt();
 }
@@ -16399,7 +16435,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.23';
+var TGK_CC_VERSION='v2.24';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');

@@ -213,7 +213,7 @@ var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 // same badge pattern already used in the ERP, Support Center, and Command Center. Bump this on
 // every future change so it's always possible to tell, at a glance, whether the calendar
 // someone is looking at is current.
-var TGK_CAL_VERSION='v1.0';
+var TGK_CAL_VERSION='v1.1';
 var db=null;
 
 // ---- state ----
@@ -369,6 +369,21 @@ window.addEventListener('message',function(ev){
 window.addEventListener('message', async function(ev){
   if(ev.origin!=='https://command.tgkmotorsport.com')return;
   var d=ev.data;
+
+  if(d&&d.source==='TGK_CC'&&d.type==='SIGN_OUT'){
+    try{
+      if(typeof db!=='undefined'&&db&&db.auth)await db.auth.signOut();
+      // Also drop the remembered manual pick - otherwise the calendar would silently fall
+      // straight back to "you're still Jon" from localStorage immediately after an explicit
+      // sign-out, defeating the point of it.
+      try{localStorage.removeItem('tgk_cal_me');}catch(_){}
+      S.me=null;S.meVerified=false;
+      renderChrome();
+      pickIdentity();
+    }catch(e){console.warn('[cal-sso] remote sign-out failed:',e);}
+    return;
+  }
+
   if(!d||d.source!=='TGK_CC'||d.type!=='AUTH_TOKEN'||!d.access_token)return;
   try{
     if(typeof db==='undefined'||!db||!db.auth)return;
