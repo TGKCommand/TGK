@@ -4250,9 +4250,9 @@ function _finishLoadEdit(html) {
     if (!e.target.closest(BLOCK_SELS) && !e.target.closest('.blk-toolbar') && !e.target.closest('.clr-picker-panel') && !e.target.closest('.txt-panel') && !(_activeBlk && _activeBlk.contains(e.target))) hideBlkToolbar();
   });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { hideTableToolbar(); hideSectionToolbar(); } });
-  _undoStack = [];
+  _wUndoStack = [];
   syncHtml();
-  _pushUndo(wysiwyg);
+  _wPushUndo(wysiwyg);
   document.getElementById('edit-step2').style.display = 'block';
   document.getElementById('edit-step2').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -4384,7 +4384,7 @@ function syncHtml() {
     document.getElementById('edit-source-out').value = _cleanWysiwygHtml(wysiwyg);
   }
   clearTimeout(_syncUndoTimer);
-  _syncUndoTimer = setTimeout(function(){ _pushUndo(wysiwyg); }, 800);
+  _syncUndoTimer = setTimeout(function(){ _wPushUndo(wysiwyg); }, 800);
 }
 
 // ── SECTION TOOLBAR ──────────────────────────────────────────────────────
@@ -4625,7 +4625,7 @@ function _secDragEnd(e){
 
   if(!over || !wysiwyg){ return; } // dropped nowhere — no move
 
-  _pushUndo(wysiwyg);
+  _wPushUndo(wysiwyg);
   if(zone === 'top'){ over.parentNode.insertBefore(src, over); }
   else { over.parentNode.insertBefore(src, over.nextSibling); }
 
@@ -4767,9 +4767,9 @@ function loadConvEdit(html) {
   wysiwyg.addEventListener('click', _convWysiwygClick);
   wysiwyg.removeEventListener('input', syncConvHtml);
   wysiwyg.addEventListener('input', syncConvHtml);
-  _undoStack = [];
+  _wUndoStack = [];
   syncConvHtml();
-  _pushUndo(wysiwyg);
+  _wPushUndo(wysiwyg);
 }
 
 function _convWysiwygClick(e) {
@@ -6827,7 +6827,7 @@ function _getColCount(blk){
 }
 
 function _setColLayout(blk, cols, wysiwyg, syncFn){
-  _pushUndo(wysiwyg);
+  _wPushUndo(wysiwyg);
   var p = blk.parentNode;
   var inRow = p && p.classList.contains('tgk-col-row');
 
@@ -7383,7 +7383,7 @@ function showClrPanel(blk, wysiwyg, syncFn, anchorEl){
     _refresh();
     btn.addEventListener('mousedown', function(e){
       e.preventDefault(); e.stopPropagation();
-      _pushUndo(blk.closest('#tllib-wysiwyg') || blk.closest('#o-conv-wysiwyg') || document.getElementById('edit-wysiwyg'));
+      _wPushUndo(blk.closest('#tllib-wysiwyg') || blk.closest('#o-conv-wysiwyg') || document.getElementById('edit-wysiwyg'));
       var on = _hasBorder(prop);
       var sides = prop === 'all' ? ['top','right','bottom','left'] : [prop];
       // Pick the current border color or fall back to teal
@@ -7476,7 +7476,7 @@ function showClrPanel(blk, wysiwyg, syncFn, anchorEl){
     if(hex==='#fff') sw.style.border='2px solid #444';
     sw.addEventListener('mousedown', function(e){
       e.preventDefault(); e.stopPropagation();
-      _pushUndo(blk.closest('#tllib-wysiwyg') || blk.closest('#o-conv-wysiwyg') || document.getElementById('edit-wysiwyg'));
+      _wPushUndo(blk.closest('#tllib-wysiwyg') || blk.closest('#o-conv-wysiwyg') || document.getElementById('edit-wysiwyg'));
       sel.t.set(hex); syncFn();
       hexInput.value = hex;
       try{ colorInput.value = hex; }catch(ex){}
@@ -7497,7 +7497,7 @@ function showClrPanel(blk, wysiwyg, syncFn, anchorEl){
   applyBtn.addEventListener('mousedown', function(e){
     e.preventDefault(); e.stopPropagation();
     var v = hexInput.value.trim() || colorInput.value;
-    _pushUndo(blk.closest('#tllib-wysiwyg') || blk.closest('#o-conv-wysiwyg') || document.getElementById('edit-wysiwyg'));
+    _wPushUndo(blk.closest('#tllib-wysiwyg') || blk.closest('#o-conv-wysiwyg') || document.getElementById('edit-wysiwyg'));
     sel.t.set(v); syncFn();
   });
   customRow.appendChild(colorInput); customRow.appendChild(hexInput); customRow.appendChild(applyBtn);
@@ -7944,24 +7944,24 @@ document.addEventListener('keydown', function(e){
 });
 
 // ── UNDO HISTORY ──────────────────────────────────────────────────────────────
-var _undoStack = [], _undoMax = 40;
+var _wUndoStack = [], _wUndoMax = 40;
 
-function _pushUndo(wysiwyg) {
+function _wPushUndo(wysiwyg) {
   if (!wysiwyg) wysiwyg = document.getElementById('edit-wysiwyg');
   if (!wysiwyg) return;
   var clone = wysiwyg.cloneNode(true);
   clone.querySelectorAll('.blk-drag-handle,.blk-resize-handle,.add-block-btn').forEach(function(el){ el.remove(); });
   clone.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); el.removeAttribute('spellcheck'); });
   clone.querySelectorAll('.blk-hover,.blk-active,.blk-dragging').forEach(function(el){ el.classList.remove('blk-hover','blk-active','blk-dragging'); });
-  _undoStack.push({ html: clone.innerHTML, id: wysiwyg.id });
-  if (_undoStack.length > _undoMax) _undoStack.shift();
-  _updateUndoBtn();
+  _wUndoStack.push({ html: clone.innerHTML, id: wysiwyg.id });
+  if (_wUndoStack.length > _wUndoMax) _wUndoStack.shift();
+  _wUpdateUndoBtn();
 }
 
 function _doUndo() {
-  if (_undoStack.length < 2) return;
-  _undoStack.pop();
-  var prev = _undoStack[_undoStack.length - 1];
+  if (_wUndoStack.length < 2) return;
+  _wUndoStack.pop();
+  var prev = _wUndoStack[_wUndoStack.length - 1];
   if (!prev) return;
   var wysiwyg = document.getElementById(prev.id);
   if (!wysiwyg) return;
@@ -7973,11 +7973,11 @@ function _doUndo() {
   wysiwyg.querySelectorAll('.tgk-section').forEach(function(sec){ wireSection(sec); });
   enableBlockEditing(wysiwyg, syncFn);
   syncFn();
-  _updateUndoBtn();
+  _wUpdateUndoBtn();
 }
 
-function _updateUndoBtn() {
-  var disabled = _undoStack.length < 2;
+function _wUpdateUndoBtn() {
+  var disabled = _wUndoStack.length < 2;
   var opacity = disabled ? '0.35' : '1';
   var btn1 = document.getElementById('undo-edit-btn');
   var btn2 = document.getElementById('undo-conv-btn');
@@ -8036,7 +8036,7 @@ function startBlockDrag(blk, e, wysiwyg, syncFn){
   _initDragLine();
   _dragSrc=blk; _dragWysiwyg=wysiwyg; _dragSyncFn=syncFn;
   hideBlkToolbar(); hideAddMenu(); hideClrPanel();
-  _pushUndo(wysiwyg);
+  _wPushUndo(wysiwyg);
 
   _dragGhost = document.createElement('div');
   _dragGhost.style.cssText = 'position:fixed;pointer-events:none;z-index:9998;opacity:.85;background:#1e2a2e;border:2px solid #2ABFAA;border-radius:var(--r-md);padding:7px 14px;font-size:var(--t-sm);color:#2ABFAA;font-weight:700;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 24px rgba(0,0,0,.6)';
@@ -13010,7 +13010,7 @@ function _gs(){  /* active board data \u2014 every downstream call uses this */
 }
 var _isSaving=false,_saveQueued=false;
 function _save(){
-  _pushUndo();
+  _wPushUndo();
   try{localStorage.setItem(PW_KEY,JSON.stringify(_stripFiles(_st)));}catch(e){}
   if(typeof sbSet!=='function')return;
   if(_isSaving){_saveQueued=true;return;}
@@ -16399,7 +16399,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.22';
+var TGK_CC_VERSION='v2.23';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16416,6 +16416,12 @@ var TGK_CC_VERSION='v2.22';
 </script>
 
 
+<!-- Closes #cc-main and #cc-shell, opened near the top of the document. Every browser's
+     HTML5 parser was already auto-closing these correctly at end-of-document since nothing
+     followed them, so this had no visible effect - added for hygiene and to remove any
+     ambiguity for future edits, not because anything was actually broken. -->
+</div>
+</div>
 
 </body>
 </html>
