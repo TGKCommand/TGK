@@ -2593,6 +2593,13 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
           .blk-move-btn{background:#1a1a3a;color:#9a9aee;min-width:24px;text-align:center}.blk-move-btn:hover{background:#9a9aee;color:#000}
           .blk-hover{outline:1px dashed rgba(224,123,40,.4)!important;cursor:pointer}
           .blk-active{outline:2px solid #E07B28!important;outline-offset:2px}
+          .blk-multisel{outline:2px solid #185FA5!important;outline-offset:2px;background:rgba(24,95,165,.08)!important}
+          .blk-multi-toolbar{display:flex;align-items:center;gap:8px;background:#1e2022;border:1px solid #185FA5;border-radius:var(--r-md);padding:8px 10px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+          .blk-multi-label{font-size:var(--t-xs);color:#7ab8f5;font-weight:700;letter-spacing:.03em;white-space:nowrap;padding:0 2px}
+          .blk-multi-merge-btn{background:#185FA5;color:#fff;font-size:var(--t-xs);font-weight:700;padding:6px 12px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:inherit;letter-spacing:.03em;white-space:nowrap}
+          .blk-multi-merge-btn:hover{background:#1470c4}
+          .blk-multi-close-btn{background:#3a1a1a;color:#f87171;padding:6px 8px;border-radius:var(--r-sm);border:none;cursor:pointer;line-height:1}
+          .blk-multi-close-btn:hover{background:#f87171;color:#000}
           
           .add-block-btn{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:5px;margin:4px 0;border:1px dashed rgba(42,191,170,.3);border-radius:var(--r-md);background:none;color:#2ABFAA;font-size:var(--t-sm);font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.05em;transition:all .15s;opacity:0}
           .add-block-btn:hover{background:rgba(42,191,170,.08);border-color:#2ABFAA;opacity:1!important}
@@ -6757,6 +6764,15 @@ const SWATCHES = ['#2ABFAA','#E07B28','#f87171','#60a5fa','#a78bfa','#34d399','#
 
 let _blkToolbar=null, _activeBlk=null, _addMenu=null, _clrPanel=null, _clrTarget=null, _clrTargetType=null, _clrInsertRef=null, _draggingBlk=null;
 
+// ── MULTI-BLOCK SELECTION (for merging several blocks into one) ─────────────────────────────
+// Each visible "line" in a note is its own separate block: its own contenteditable element, with
+// its own drag handle and resize handle. That's why dragging the mouse to select text across
+// several lines doesn't work the way it would in a normal document -- browser text selection
+// can't cross from one contenteditable element into another. This gives block-level selection
+// instead: shift-click extends a contiguous range, cmd/ctrl-click toggles one block at a time,
+// and Merge concatenates the selected blocks' content into the first one.
+let _multiSel = [], _multiAnchor = null, _multiToolbar = null;
+
 const BLOCK_SELS = '.tgk-p, .tgk-feat, .tgk-faq-item, .tgk-disc-card, .tgk-disc-nvh-box, .tgk-disc-fit-box, .tgk-disc-legal';
 
 function enableBlockEditing(wysiwyg, syncFn) {
@@ -6816,7 +6832,18 @@ function wireBlock(blk, wysiwyg, syncFn) {
     if(e.target === dragHandle || dragHandle.contains(e.target)) return;
     if(e.target === resizeHandle || resizeHandle.contains(e.target)) return;
     if(e.target.getAttribute('contenteditable') === 'true' && e.target !== blk) return;
+
+    // Shift/Cmd/Ctrl-click select a range or toggle a block for merging, instead of opening the
+    // normal single-block toolbar. Checked first so the two interactions can never conflict.
+    if(e.shiftKey || e.metaKey || e.ctrlKey){
+      e.preventDefault(); e.stopPropagation();
+      hideBlkToolbar();
+      _multiSelectClick(blk, e.shiftKey, wysiwyg, syncFn);
+      return;
+    }
+
     e.stopPropagation();
+    if(_multiSel.length) _clearMultiSel();
     // If already active, only close toolbar if no text is being selected
     if(_activeBlk === blk && _blkToolbar){
       var sel = window.getSelection();
@@ -6825,6 +6852,142 @@ function wireBlock(blk, wysiwyg, syncFn) {
     }
     showBlkToolbar(blk, wysiwyg, syncFn);
   });
+}
+
+// ── MULTI-SELECT: click handling, visuals, and the merge action ─────────────────────────────
+
+function _blockSiblingsOf(blk){
+  // The set a range/selection can be built from: all real blocks sharing blk's parent, in DOM
+  // order. Kept to one container so merge never has to reason about crossing into/out of a
+  // column row or a different section -- that's a deliberate scope limit, not an oversight.
+  var p = blk.parentNode;
+  if(!p) return [blk];
+  return Array.from(p.children).filter(function(c){
+    return c.matches && c.matches(BLOCK_SELS);
+  });
+}
+
+function _multiSelectClick(blk, isShift, wysiwyg, syncFn){
+  if(isShift && _multiAnchor && _multiAnchor.parentNode === blk.parentNode){
+    var sibs = _blockSiblingsOf(blk);
+    var ai = sibs.indexOf(_multiAnchor), bi = sibs.indexOf(blk);
+    if(ai===-1||bi===-1) return;
+    var lo = Math.min(ai,bi), hi = Math.max(ai,bi);
+    _multiSel = sibs.slice(lo, hi+1);
+  } else if(isShift){
+    // Shift-click into a different container than the anchor: no sensible contiguous range
+    // exists, so start a fresh anchor here instead of silently doing nothing.
+    _multiAnchor = blk;
+    _multiSel = [blk];
+  } else {
+    // Cmd/Ctrl-click: toggle this one block in or out of the selection.
+    var idx = _multiSel.indexOf(blk);
+    if(idx > -1){ _multiSel.splice(idx,1); }
+    else { _multiSel.push(blk); }
+    _multiAnchor = blk;
+    _multiSel.sort(function(a,b){
+      return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+    });
+  }
+  if(!_multiAnchor) _multiAnchor = blk;
+  _renderMultiSel(wysiwyg, syncFn);
+}
+
+function _renderMultiSel(wysiwyg, syncFn){
+  document.querySelectorAll('.blk-multisel').forEach(function(el){ el.classList.remove('blk-multisel'); });
+  _multiSel.forEach(function(el){ el.classList.add('blk-multisel'); });
+  if(_multiSel.length >= 2) _showMultiToolbar(wysiwyg, syncFn);
+  else _hideMultiToolbar();
+}
+
+function _clearMultiSel(){
+  document.querySelectorAll('.blk-multisel').forEach(function(el){ el.classList.remove('blk-multisel'); });
+  _multiSel = []; _multiAnchor = null;
+  _hideMultiToolbar();
+}
+
+function _showMultiToolbar(wysiwyg, syncFn){
+  _hideMultiToolbar();
+  var tb = document.createElement('div');
+  tb.className = 'blk-multi-toolbar';
+  var label = document.createElement('span');
+  label.className = 'blk-multi-label';
+  label.textContent = _multiSel.length + ' blocks selected';
+  var mergeBtn = document.createElement('button');
+  mergeBtn.className = 'blk-multi-merge-btn';
+  mergeBtn.textContent = 'Merge into one';
+  mergeBtn.addEventListener('mousedown', function(e){ e.preventDefault(); mergeSelectedBlocks(wysiwyg, syncFn); });
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'blk-multi-close-btn';
+  closeBtn.innerHTML = '<span class="ic ic-x"></span>';
+  closeBtn.title = 'Clear selection';
+  closeBtn.addEventListener('mousedown', function(e){ e.preventDefault(); _clearMultiSel(); });
+  tb.appendChild(label); tb.appendChild(mergeBtn); tb.appendChild(closeBtn);
+  document.body.appendChild(tb);
+  tb.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1001';
+  _multiToolbar = tb;
+}
+
+function _hideMultiToolbar(){
+  if(_multiToolbar){ _multiToolbar.remove(); _multiToolbar = null; }
+}
+
+// Content of one block, safe to fold into another. `.tgk-p` keeps its innerHTML (so bold,
+// links, inline color -- anything the user actually formatted -- survives the merge). The
+// other BLOCK_SELS types (feature callouts, FAQ items, disclaimer boxes) are structured cards,
+// not plain text, so pulling their innerHTML into a paragraph would drag their card markup and
+// styling along with it; textContent keeps the merge safe for those at the cost of formatting
+// they didn't put there in the first place. Either way, the block's own drag/resize handles are
+// stripped first so they never end up appended as literal children of the merged block.
+function _extractMergeContent(blk){
+  var clone = blk.cloneNode(true);
+  clone.querySelectorAll('.blk-drag-handle, .blk-resize-handle').forEach(function(el){ el.remove(); });
+  if(blk.classList.contains('tgk-p')) return clone.innerHTML;
+  var txt = (clone.textContent||'').trim();
+  return txt ? escHtmlNote(txt) : '';
+}
+
+function escHtmlNote(s){
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML.replace(/\n/g,'<br>');
+}
+
+function mergeSelectedBlocks(wysiwyg, syncFn){
+  if(_multiSel.length < 2) return;
+  _wPushUndo(wysiwyg);
+  var blocks = _multiSel.slice().sort(function(a,b){
+    return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+  });
+  var dest = blocks[0];
+  var parts = [_extractMergeContent(dest)];
+  for(var i=1;i<blocks.length;i++){
+    var piece = _extractMergeContent(blocks[i]);
+    if(piece) parts.push(piece);
+  }
+  var merged = parts.filter(function(x){ return x !== ''; }).join('<br>');
+
+  // Rebuild dest's content, keeping its own drag/resize handles rather than the ones that were
+  // just stripped out of the clones -- they're still live, wired elements on this exact node.
+  var keepHandles = Array.from(dest.querySelectorAll('.blk-drag-handle, .blk-resize-handle'));
+  dest.innerHTML = merged;
+  keepHandles.forEach(function(h){ dest.appendChild(h); });
+
+  for(var j=1;j<blocks.length;j++){
+    var b = blocks[j];
+    var p = b.parentNode;
+    var inRow = p && p.classList.contains('tgk-col-row');
+    b.remove();
+    if(inRow){
+      var rem = Array.from(p.children).filter(function(c){ return !c.classList.contains('add-block-btn'); });
+      if(rem.length === 0) p.remove();
+      else if(rem.length === 1){ p.parentNode.insertBefore(rem[0], p); p.remove(); }
+      else _updateColRow(p);
+    }
+  }
+
+  _clearMultiSel();
+  syncFn(); injectAddButtons(wysiwyg, syncFn);
 }
 
 function _getColCount(blk){
@@ -7947,7 +8110,18 @@ function closeBlkIconModal(){
 
 // Close panels on escape
 document.addEventListener('keydown', function(e){
-  if(e.key==='Escape'){ hideBlkToolbar(); hideAddMenu(); hideClrPanel(); if(typeof hideInlineIconModal==='function') hideInlineIconModal(); }
+  if(e.key==='Escape'){ hideBlkToolbar(); hideAddMenu(); hideClrPanel(); if(typeof hideInlineIconModal==='function') hideInlineIconModal(); if(_multiSel.length) _clearMultiSel(); }
+});
+
+// Clicking anywhere that isn't a block or the merge toolbar itself clears a multi-selection.
+// A plain click on a block clears it too (handled in wireBlock's own click handler, which calls
+// _clearMultiSel() directly and stops propagation before this ever runs) -- this only needs to
+// catch clicks on the page background, another block's shift/ctrl-click case already returning
+// its own updated selection instead of an empty one.
+document.addEventListener('click', function(e){
+  if(!_multiSel.length) return;
+  if(e.target.closest(BLOCK_SELS) || e.target.closest('.blk-multi-toolbar')) return;
+  _clearMultiSel();
 });
 
 // ── UNDO HISTORY ──────────────────────────────────────────────────────────────
