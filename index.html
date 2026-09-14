@@ -16506,7 +16506,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.31';
+var TGK_CC_VERSION='v2.32';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16555,7 +16555,7 @@ var TGK_CC_VERSION='v2.31';
 .aig-float{position:fixed;z-index:2060;font-size:13px;font-weight:800;font-family:var(--font,inherit);pointer-events:none;animation:aigFloatUp 1.1s ease forwards}
 @keyframes aigFloatUp{0%{opacity:0;transform:translateY(0)}15%{opacity:1}100%{opacity:0;transform:translateY(-36px)}}
 .aig-pop{position:fixed;z-index:2050;background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:5px;font-family:var(--font,inherit)}
-.aig-tool-row{display:flex;gap:5px}
+.aig-tool-row{display:flex;flex-wrap:wrap;gap:5px;max-width:194px}
 .aig-tool-row.aig-tool-good{padding-bottom:6px;margin-bottom:1px;border-bottom:1px solid #232527}
 .aig-tool-btn{width:32px;height:32px;border-radius:8px;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid #2e2e2e;transition:transform .1s,background .15s;padding:0}
 .aig-tool-btn:hover{transform:scale(1.14)}
@@ -16568,6 +16568,19 @@ var TGK_CC_VERSION='v2.31';
 @keyframes aigToolFly{0%{opacity:0;transform:scale(.4) rotate(var(--r0,0deg))}60%{opacity:1;transform:scale(1.3) rotate(var(--r1,10deg))}100%{opacity:0;transform:scale(.9) rotate(var(--r2,-10deg))}}
 .aig-burst{position:fixed;z-index:2065;width:6px;height:6px;border-radius:50%;pointer-events:none;animation:aigBurst .55s ease-out forwards}
 @keyframes aigBurst{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--bx),var(--by)) scale(.3)}}
+.aig-combo{position:fixed;z-index:2075;font-weight:800;pointer-events:none;color:#FFD166;text-shadow:0 0 6px rgba(255,209,102,.6);animation:aigFloatUp 1s ease forwards}
+.aig-bandaid{position:absolute;font-size:12px;line-height:1;z-index:3;pointer-events:none}
+.aig-dizzy{position:absolute;top:-4px;left:50%;width:44px;height:44px;margin-left:-22px;pointer-events:none;animation:aigDizzySpin 1.3s linear;z-index:4}
+.aig-dizzy span{position:absolute;font-size:11px}
+.aig-dizzy span:nth-child(1){top:0;left:18px}
+.aig-dizzy span:nth-child(2){top:16px;left:0}
+.aig-dizzy span:nth-child(3){top:16px;left:34px}
+@keyframes aigDizzySpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.aig-ko{animation:aigKoWobble 1.3s ease}
+@keyframes aigKoWobble{0%{transform:rotate(0) translateY(0)}10%{transform:rotate(-20deg) translateY(-6px)}25%{transform:rotate(16deg) translateY(4px)}40%{transform:rotate(-12deg)}55%{transform:rotate(9deg)}70%{transform:rotate(-5deg)}85%{transform:rotate(3deg)}100%{transform:rotate(0)}}
+.aig-tray-head{display:flex;justify-content:flex-end;margin-bottom:-2px}
+.aig-mute-btn{width:20px;height:20px;border-radius:6px;background:none;border:1px solid #2e2e2e;color:#6b7076;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.aig-mute-btn:hover{color:#9CA3AF;border-color:#3a3a3a}
 #ai-guy-toggle-btn.aig-toggle-off{opacity:.45}
 #aig-history-body::-webkit-scrollbar{width:8px}
 .aig-hist-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #232527}
@@ -16680,9 +16693,10 @@ var TGK_CC_VERSION='v2.31';
     var goodBtns = TOOLS.filter(function(t){ return t.type==='good'; }).map(toolBtnHtml).join('');
     var badBtns = TOOLS.filter(function(t){ return t.type==='bad'; }).map(toolBtnHtml).join('');
     pop.innerHTML =
+      '<div class="aig-tray-head"><button class="aig-mute-btn" onclick="aiGuyToggleMute()" id="aig-mute-btn" title="Mute sound">'+(muted?'\u2716':'\u266A')+'</button></div>'+
       '<div class="aig-tool-row aig-tool-good">'+goodBtns+'</div>'+
       '<div class="aig-tool-row aig-tool-bad">'+badBtns+'</div>'+
-      '<button class="aig-pop-score" onclick="aiGuyShowHistory()">'+aigState.good+' good &middot; '+aigState.bad+' bad &middot; history</button>';
+      '<button class="aig-pop-score" onclick="aiGuyShowHistory()">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 history</button>';
     document.body.appendChild(pop);
     pop.style.left = '-9999px';
     pop.style.top = '-9999px';
@@ -16708,28 +16722,88 @@ var TGK_CC_VERSION='v2.31';
     document.removeEventListener('click', outsideClose);
   }
 
+  var MUTE_KEY = 'tgk_ai_guy_muted';
+  var muted = localStorage.getItem(MUTE_KEY) === '1';
+  var audioCtx = null;
+  function tone(freq, dur, kind, vol, delay){
+    if(muted) return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      var t = audioCtx.currentTime + (delay||0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = kind||'square';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(vol||0.05, t+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t+dur+0.03);
+    }catch(err){}
+  }
+  window.aiGuyToggleMute = function(){
+    muted = !muted;
+    try{ localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); }catch(err){}
+    var btn = document.getElementById('aig-mute-btn');
+    if(btn) btn.textContent = muted ? '\u2716' : '\u266A';
+  };
+  function playToolSound(tool){
+    switch(tool.id){
+      case 'thumbs': tone(660,.08,'sine',.05); tone(880,.1,'sine',.05,.08); break;
+      case 'heart': tone(520,.1,'sine',.05); tone(780,.12,'sine',.05,.1); break;
+      case 'trophy': tone(523,.08,'triangle',.05); tone(659,.08,'triangle',.05,.08); tone(880,.16,'triangle',.06,.16); break;
+      case 'confetti': tone(600,.06,'triangle',.05); tone(750,.06,'triangle',.05,.06); tone(950,.14,'triangle',.06,.12); break;
+      case 'tomato': tone(260,.1,'sine',.05); break;
+      case 'pie': tone(300,.09,'sine',.05); break;
+      case 'hammer': tone(130,.18,'square',.06); break;
+      case 'glove': tone(95,.14,'sawtooth',.06); break;
+      case 'zap': tone(1200,.06,'square',.05); tone(220,.06,'square',.04,.05); break;
+      case 'bomb': tone(60,.4,'square',.07); tone(45,.35,'sawtooth',.05,.03); break;
+      default: tone(300,.1,'sine',.05);
+    }
+  }
+
   var ICN = {
     hammer: String.fromCodePoint(0x1F528),
     zap: '\u26A1',
     glove: String.fromCodePoint(0x1F94A),
     tomato: String.fromCodePoint(0x1F345),
+    pie: String.fromCodePoint(0x1F967),
+    bomb: String.fromCodePoint(0x1F4A3),
     thumbs: String.fromCodePoint(0x1F44D),
     heart: '\u2764',
-    trophy: String.fromCodePoint(0x1F3C6)
+    trophy: String.fromCodePoint(0x1F3C6),
+    confetti: String.fromCodePoint(0x1F389),
+    bandaid: String.fromCodePoint(0x1FA79),
+    star: '\u2B50'
   };
   var TOOLS = [
-    { id:'thumbs', type:'good', icon:ICN.thumbs, label:'Thumbs up', phrases:['Nice!','Solid work!','Love it!','Clean fix!'] },
-    { id:'heart',  type:'good', icon:ICN.heart,  label:'Heart',     phrases:['Great job!','So good!','Appreciated!','Well done!'] },
-    { id:'trophy', type:'good', icon:ICN.trophy, label:'Trophy',    phrases:['Champion!','Top tier!','Flawless!','Nailed it!'] },
-    { id:'hammer', type:'bad',  icon:ICN.hammer, label:'Hammer',    phrases:['Bonk!','Thwack!','Down goes the bot!','Right on the dome!'] },
-    { id:'zap',    type:'bad',  icon:ICN.zap,    label:'Zap',       phrases:['Zzzzap!','Shocking!','Sparks fly!','Overloaded!'] },
-    { id:'glove',  type:'bad',  icon:ICN.glove,  label:'Punch',     phrases:['Pow!','Right hook!','Down for the count!','Ouch!'] },
-    { id:'tomato', type:'bad',  icon:ICN.tomato, label:'Tomato',    phrases:['Splat!','Direct hit!','Saucy!','Messy!'] }
+    { id:'thumbs',   type:'good', icon:ICN.thumbs,   label:'Thumbs up', weight:1, phrases:['Nice!','Solid work!','Love it!','Clean fix!'] },
+    { id:'heart',    type:'good', icon:ICN.heart,    label:'Heart',     weight:1, phrases:['Great job!','So good!','Appreciated!','Well done!'] },
+    { id:'trophy',   type:'good', icon:ICN.trophy,   label:'Trophy',    weight:2, phrases:['Champion!','Top tier!','Flawless!','Nailed it!'] },
+    { id:'confetti', type:'good', icon:ICN.confetti, label:'Confetti',  weight:2, phrases:['Party time!','Woo!','Celebrate!','Yes!'] },
+    { id:'tomato',   type:'bad',  icon:ICN.tomato,   label:'Tomato',    weight:1, phrases:['Splat!','Direct hit!','Saucy!','Messy!'] },
+    { id:'pie',      type:'bad',  icon:ICN.pie,      label:'Pie',       weight:1, phrases:['Creamed!','Splat!','Right in the face!','Messy!'] },
+    { id:'hammer',   type:'bad',  icon:ICN.hammer,   label:'Hammer',    weight:2, phrases:['Bonk!','Thwack!','Down goes the bot!','Right on the dome!'] },
+    { id:'glove',    type:'bad',  icon:ICN.glove,    label:'Punch',     weight:2, phrases:['Pow!','Right hook!','Down for the count!','Ouch!'] },
+    { id:'zap',      type:'bad',  icon:ICN.zap,      label:'Zap',       weight:2, phrases:['Zzzzap!','Shocking!','Sparks fly!','Overloaded!'] },
+    { id:'bomb',     type:'bad',  icon:ICN.bomb,     label:'Bomb',      weight:3, phrases:['Kaboom!','Boom!','Blown away!','Flattened!'] }
   ];
   function findTool(id){
     for(var i=0;i<TOOLS.length;i++){ if(TOOLS[i].id===id) return TOOLS[i]; }
     return null;
   }
+
+  var comboType = null, comboCount = 0, comboAt = 0;
+  var badStreak = 0;
+  var bandaids = [];
+  var BANDAID_SPOTS = [
+    { top:-2, left:-4 },
+    { top:4, left:32 },
+    { top:24, left:-6 }
+  ];
 
   window.aiGuyUseTool = function(toolId){
     var tool = findTool(toolId);
@@ -16740,17 +16814,70 @@ var TGK_CC_VERSION='v2.31';
     if(tool.type==='good') aigState.good++; else aigState.bad++;
     saveState();
     updateBadge();
+    playToolSound(tool);
+
+    var now = Date.now();
+    if(comboType === tool.type && (now-comboAt) < 2500) comboCount++; else comboCount = 1;
+    comboType = tool.type;
+    comboAt = now;
+
+    if(tool.type === 'bad'){
+      badStreak++;
+      if(badStreak >= 4){
+        triggerKO();
+        badStreak = 0;
+      } else {
+        addBandaid();
+      }
+    } else {
+      badStreak = 0;
+      clearBandaids();
+    }
+
     playReaction(tool, phrase);
+    if(comboCount >= 2) spawnComboText(comboCount, tool.type);
+
     var scoreLine = document.querySelector('#aig-pop .aig-pop-score');
     if(scoreLine) scoreLine.textContent = aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 history';
   };
 
+  function addBandaid(){
+    if(bandaids.length >= BANDAID_SPOTS.length) return;
+    var spot = BANDAID_SPOTS[bandaids.length];
+    var b = document.createElement('div');
+    b.className = 'aig-bandaid';
+    b.textContent = ICN.bandaid;
+    b.style.top = spot.top+'px';
+    b.style.left = spot.left+'px';
+    bounce.appendChild(b);
+    bandaids.push(b);
+  }
+  function clearBandaids(){
+    bandaids.forEach(function(b){ b.remove(); });
+    bandaids = [];
+  }
+  function triggerKO(){
+    clearBandaids();
+    bounce.classList.remove('aig-happy','aig-sad');
+    bounce.classList.add('aig-ko');
+    var dizzy = document.createElement('div');
+    dizzy.className = 'aig-dizzy';
+    dizzy.innerHTML = '<span>'+ICN.star+'</span><span>'+ICN.star+'</span><span>'+ICN.star+'</span>';
+    bounce.appendChild(dizzy);
+    spawnFloatText('KO!', 'bad', 15);
+    setTimeout(function(){
+      bounce.classList.remove('aig-ko');
+      dizzy.remove();
+    }, 1300);
+  }
+
   function playReaction(tool, phrase){
     bounce.classList.remove('aig-happy','aig-sad');
     void bounce.offsetWidth;
-    var amp = tool.type==='bad' ? (5+Math.random()*7) : (5+Math.random()*5);
+    var base = tool.type==='bad' ? 5 : 5;
+    var amp = base + tool.weight*3 + Math.random()*4;
     bounce.style.setProperty('--aig-amp', amp.toFixed(1)+'px');
-    bounce.classList.add(tool.type==='good' ? 'aig-happy' : 'aig-sad');
+    if(!bounce.classList.contains('aig-ko')) bounce.classList.add(tool.type==='good' ? 'aig-happy' : 'aig-sad');
     spawnEffect(tool);
     spawnFloatText(phrase, tool.type);
     setTimeout(function(){ if(bounce) bounce.classList.remove('aig-happy','aig-sad'); }, 850);
@@ -16765,6 +16892,7 @@ var TGK_CC_VERSION='v2.31';
     fly.textContent = tool.icon;
     fly.style.left = (cx-14)+'px';
     fly.style.top = (cy-14)+'px';
+    fly.style.fontSize = (18+tool.weight*3)+'px';
     var r0 = (Math.random()<0.5 ? -1 : 1) * (20+Math.random()*30);
     fly.style.setProperty('--r0', r0+'deg');
     fly.style.setProperty('--r1', (-r0*0.6)+'deg');
@@ -16773,13 +16901,13 @@ var TGK_CC_VERSION='v2.31';
     setTimeout(function(){ fly.remove(); }, 550);
 
     var colors = tool.type==='good' ? ['#4ADE9F','#2ABFAA','#FFD166'] : ['#FF6B6B','#F0812E','#FF8A5B'];
-    var n = 8;
+    var n = 6 + tool.weight*2;
     for(var i=0;i<n;i++){
       (function(i){
         var b = document.createElement('div');
         b.className = 'aig-burst';
         var ang = (Math.PI*2/n)*i + Math.random()*0.4;
-        var dist = 24+Math.random()*18;
+        var dist = (20+tool.weight*6)+Math.random()*18;
         b.style.setProperty('--bx', Math.cos(ang)*dist+'px');
         b.style.setProperty('--by', Math.sin(ang)*dist+'px');
         b.style.left = cx+'px';
@@ -16791,17 +16919,31 @@ var TGK_CC_VERSION='v2.31';
     }
   }
 
-  function spawnFloatText(text, type){
+  function spawnFloatText(text, type, yOffset){
     var f = document.createElement('div');
     f.className = 'aig-float';
     f.textContent = text;
     f.style.color = type==='good' ? '#4ADE9F' : '#FF6B6B';
     var r = root.getBoundingClientRect();
     f.style.left = (r.left + r.width/2 - 30) + 'px';
-    f.style.top = (r.top - 10) + 'px';
+    f.style.top = (r.top - 10 - (yOffset||0)) + 'px';
     document.body.appendChild(f);
     setTimeout(function(){ f.remove(); }, 1150);
   }
+
+  function spawnComboText(count, type){
+    var c = document.createElement('div');
+    c.className = 'aig-combo';
+    c.textContent = 'x'+count+' combo';
+    var r = root.getBoundingClientRect();
+    c.style.left = (r.left + r.width/2 - 24) + 'px';
+    c.style.top = (r.top - 30) + 'px';
+    c.style.fontSize = Math.min(20, 12+count) + 'px';
+    document.body.appendChild(c);
+    setTimeout(function(){ c.remove(); }, 1000);
+  }
+
+
 
   function renderHistoryList(){
     var body = document.getElementById('aig-history-body');
