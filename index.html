@@ -16506,7 +16506,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.32';
+var TGK_CC_VERSION='v2.33';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16531,7 +16531,9 @@ var TGK_CC_VERSION='v2.32';
 </div>
 
 <style>
-#aig-root{position:fixed;bottom:6px;left:10px;z-index:850;width:46px;height:66px;pointer-events:auto;cursor:pointer}
+#aig-root{position:fixed;top:0;left:10px;z-index:850;width:46px;height:66px;pointer-events:auto;cursor:grab;touch-action:none}
+#aig-root.aig-dragging{cursor:grabbing}
+#aig-phys{width:100%;height:100%;transform-origin:50% 62%}
 #aig-flip{width:100%;height:100%;transition:transform .12s linear}
 #aig-bounce{width:100%;height:100%;position:relative}
 #aig-badge{position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:800;color:#9CA3AF;white-space:nowrap;font-family:var(--font,inherit)}
@@ -16541,17 +16543,31 @@ var TGK_CC_VERSION='v2.32';
 .aig-antenna::after{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#2ABFAA;box-shadow:0 0 6px #2ABFAA}
 .aig-head{position:absolute;top:2px;left:6px;width:34px;height:34px;border-radius:50%;border:2px solid #2ABFAA;box-shadow:0 3px 8px rgba(0,0,0,.45),0 0 6px rgba(42,191,170,.5);overflow:hidden;background:#24282c;transition:border-color .15s,box-shadow .15s}
 .aig-head img{width:100%;height:100%;object-fit:cover;display:block}
-.aig-body{position:absolute;top:35px;left:4px;width:38px;height:18px;background:linear-gradient(180deg,#34383e,#22262a);border:2px solid #141618;border-radius:7px}
+.aig-head::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.6),rgba(255,255,255,0) 42%),radial-gradient(circle at 72% 78%,rgba(0,0,0,.5),rgba(0,0,0,0) 55%);mix-blend-mode:overlay}
+.aig-body{position:absolute;top:35px;left:4px;width:38px;height:18px;background:linear-gradient(180deg,#34383e,#22262a);border:2px solid #141618;border-radius:7px;z-index:1}
+.aig-arm{position:absolute;top:37px;width:5px;height:15px;background:linear-gradient(180deg,#34383e,#22262a);border:1px solid #141618;border-radius:3px;transform-origin:50% 0%;z-index:0}
+.aig-arm.l{left:-3px;transform:rotate(16deg);animation:aigArmSwingL 1s ease-in-out infinite}
+.aig-arm.r{right:-3px;transform:rotate(-16deg);animation:aigArmSwingR 1s ease-in-out infinite}
+@keyframes aigArmSwingL{0%,100%{transform:rotate(16deg)}50%{transform:rotate(-10deg)}}
+@keyframes aigArmSwingR{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(10deg)}}
 .aig-legs{position:absolute;top:53px;left:8px;width:30px;display:flex;justify-content:space-between}
-.aig-leg{width:6px;height:11px;background:#22262a;border-radius:0 0 3px 3px;animation:aigStep .5s ease-in-out infinite}
+.aig-leg{width:6px;height:11px;background:#22262a;border-radius:0 0 3px 3px;animation:aigStep .5s ease-in-out infinite;transform-origin:50% 0%}
 .aig-leg:nth-child(2){animation-delay:.25s}
-@keyframes aigStep{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes aigStep{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(6deg)}}
 @keyframes aigHappyBounce{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(calc(-1*var(--aig-amp,9px))) rotate(-6deg)}50%{transform:translateY(0) rotate(6deg)}75%{transform:translateY(calc(-0.6*var(--aig-amp,9px))) rotate(-3deg)}}
 @keyframes aigSadShake{0%,100%{transform:translateX(0)}20%{transform:translateX(calc(-1*var(--aig-amp,6px))) rotate(-4deg)}40%{transform:translateX(var(--aig-amp,6px)) rotate(4deg)}60%{transform:translateX(calc(-0.8*var(--aig-amp,6px))) rotate(-3deg)}80%{transform:translateX(calc(0.8*var(--aig-amp,6px))) rotate(3deg)}}
 .aig-happy{animation:aigHappyBounce .6s ease}
 .aig-sad{animation:aigSadShake .5s ease}
+.aig-happy .aig-arm{animation:aigArmCheer .5s ease 2}
+@keyframes aigArmCheer{0%,100%{transform:rotate(16deg)}50%{transform:rotate(-70deg)}}
+.aig-happy .aig-arm.r{animation-name:aigArmCheerR}
+@keyframes aigArmCheerR{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(70deg)}}
 .aig-happy .aig-head{border-color:#4ADE9F!important;box-shadow:0 3px 8px rgba(0,0,0,.45),0 0 10px #4ADE9F!important}
 .aig-sad .aig-head{border-color:#FF6B6B!important;box-shadow:0 3px 8px rgba(0,0,0,.45),0 0 10px #FF6B6B!important}
+.aig-fly .aig-leg,.aig-fly .aig-arm,.aig-ko .aig-leg,.aig-ko .aig-arm,.aig-drag .aig-leg,.aig-drag .aig-arm{animation:none!important;transform:rotate(55deg)!important}
+.aig-fly .aig-arm.r,.aig-ko .aig-arm.r,.aig-drag .aig-arm.r{transform:rotate(-55deg)!important}
+.aig-squash{animation:aigSquash .22s ease}
+@keyframes aigSquash{0%{transform:scaleY(1)}40%{transform:scaleY(.72)}100%{transform:scaleY(1)}}
 .aig-float{position:fixed;z-index:2060;font-size:13px;font-weight:800;font-family:var(--font,inherit);pointer-events:none;animation:aigFloatUp 1.1s ease forwards}
 @keyframes aigFloatUp{0%{opacity:0;transform:translateY(0)}15%{opacity:1}100%{opacity:0;transform:translateY(-36px)}}
 .aig-pop{position:fixed;z-index:2050;background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:5px;font-family:var(--font,inherit)}
@@ -16586,15 +16602,19 @@ var TGK_CC_VERSION='v2.32';
 .aig-hist-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #232527}
 </style>
 
-<div id="aig-root" title="Click for tools">
+<div id="aig-root" title="Click for tools, or drag to throw">
+  <div id="aig-phys">
   <div id="aig-flip">
     <div id="aig-bounce">
       <div id="aig-badge">0</div>
       <div class="aig-antenna"></div>
       <div class="aig-head"><img src="data:image/jpeg;base64,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" alt="" aria-hidden="true"></div>
       <div class="aig-body"></div>
+      <div class="aig-arm l"></div>
+      <div class="aig-arm r"></div>
       <div class="aig-legs"><div class="aig-leg"></div><div class="aig-leg"></div></div>
     </div>
+  </div>
   </div>
 </div>
 
@@ -16636,26 +16656,37 @@ var TGK_CC_VERSION='v2.32';
   var aigState = loadState();
   function saveState(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(aigState)); }catch(e){} }
 
-  var root, flip, bounce, badge;
+  var root, phys, flip, bounce, badge;
   var pos = 10 + Math.random()*40;
+  var posY = 0;
   var dir = 1;
   var pauseUntil = 0;
   var lastTs = 0;
+  var mode = 'walk'; // 'walk' | 'drag' | 'fly'
+  var vx = 0, vy = 0, rotVel = 0, rotAngle = 0;
+  var dragOffX = 0, dragOffY = 0, dragHist = [], downInfo = null;
+  var GRAVITY = 0.0022, BOUNCE_DAMP = 0.48, WALL_DAMP = 0.55, SETTLE_V = 0.03;
+
+  function groundY(){ return window.innerHeight - 72; }
 
   function build(){
     root = document.getElementById('aig-root');
+    phys = document.getElementById('aig-phys');
     flip = document.getElementById('aig-flip');
     bounce = document.getElementById('aig-bounce');
     badge = document.getElementById('aig-badge');
     if(!root) return;
+    posY = groundY();
     root.style.left = pos+'px';
+    root.style.top = posY+'px';
     updateBadge();
-    root.addEventListener('click', onGuyClick);
+    root.addEventListener('pointerdown', onPointerDown);
     if(localStorage.getItem(HIDE_KEY)==='1'){
       root.style.display = 'none';
       var btn = document.getElementById('ai-guy-toggle-btn');
       if(btn) btn.classList.add('aig-toggle-off');
     }
+    window.addEventListener('resize', function(){ if(mode==='walk'){ posY = groundY(); root.style.top = posY+'px'; } });
     requestAnimationFrame(tick);
   }
 
@@ -16670,7 +16701,8 @@ var TGK_CC_VERSION='v2.32';
     if(!lastTs) lastTs = ts;
     var dt = Math.min(64, ts-lastTs);
     lastTs = ts;
-    if(root && root.style.display!=='none' && !document.getElementById('aig-pop') && ts > pauseUntil){
+
+    if(mode==='walk' && root && root.style.display!=='none' && !document.getElementById('aig-pop') && ts > pauseUntil){
       var maxX = Math.max(20, window.innerWidth - 60);
       pos += dir * 0.045 * dt;
       if(pos > maxX){ pos = maxX; dir = -1; }
@@ -16679,13 +16711,99 @@ var TGK_CC_VERSION='v2.32';
       if(Math.random() < 0.002) pauseUntil = ts + (700+Math.random()*1600);
       root.style.left = pos+'px';
       flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)';
+    } else if(mode==='fly'){
+      vy += GRAVITY*dt;
+      pos += vx*dt;
+      posY += vy*dt;
+      rotAngle += rotVel*dt;
+      var wallMax = window.innerWidth - 46;
+      if(pos < 0){ pos = 0; vx = -vx*WALL_DAMP; rotVel *= -0.6; }
+      if(pos > wallMax){ pos = wallMax; vx = -vx*WALL_DAMP; rotVel *= -0.6; }
+      var gy = groundY();
+      if(posY > gy){
+        posY = gy;
+        if(Math.abs(vy) > SETTLE_V){
+          playImpact(Math.min(1, Math.abs(vy)/0.9));
+          vy = -vy*BOUNCE_DAMP;
+          vx *= 0.75;
+          rotVel *= 0.7;
+          squash();
+        } else {
+          vy = 0; vx *= 0.5; rotVel *= 0.4;
+          if(Math.abs(vx) < 0.015 && Math.abs(rotVel) < 0.4){
+            mode = 'walk';
+            bounce.classList.remove('aig-fly');
+            rotAngle = 0;
+            phys.style.transform = '';
+          }
+        }
+      }
+      root.style.left = pos+'px';
+      root.style.top = posY+'px';
+      phys.style.transform = 'rotate('+rotAngle.toFixed(1)+'deg)';
     }
     requestAnimationFrame(tick);
   }
 
-  function onGuyClick(e){
-    e.stopPropagation();
-    if(document.getElementById('aig-pop')){ closePop(); return; }
+  function squash(){
+    bounce.classList.remove('aig-squash');
+    void bounce.offsetWidth;
+    bounce.classList.add('aig-squash');
+  }
+
+  function onPointerDown(e){
+    e.preventDefault();
+    closePop();
+    mode = 'drag';
+    vx = 0; vy = 0; rotVel = 0;
+    bounce.classList.remove('aig-fly');
+    bounce.classList.add('aig-drag');
+    var rect = root.getBoundingClientRect();
+    dragOffX = e.clientX - rect.left;
+    dragOffY = e.clientY - rect.top;
+    dragHist = [{ x:e.clientX, y:e.clientY, t:performance.now() }];
+    downInfo = { x:e.clientX, y:e.clientY, t:performance.now() };
+    try{ root.setPointerCapture(e.pointerId); }catch(err){}
+    root.classList.add('aig-dragging');
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }
+  function onPointerMove(e){
+    if(mode !== 'drag') return;
+    pos = Math.max(-10, Math.min(window.innerWidth-36, e.clientX - dragOffX));
+    posY = Math.max(-10, Math.min(window.innerHeight-56, e.clientY - dragOffY));
+    root.style.left = pos+'px';
+    root.style.top = posY+'px';
+    dragHist.push({ x:e.clientX, y:e.clientY, t:performance.now() });
+    if(dragHist.length > 6) dragHist.shift();
+    var tilt = Math.max(-18, Math.min(18, (e.movementX||0)*1.4));
+    phys.style.transform = 'rotate('+tilt+'deg)';
+  }
+  function onPointerUp(e){
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    root.classList.remove('aig-dragging');
+    bounce.classList.remove('aig-drag');
+    var moved = downInfo ? Math.hypot(e.clientX-downInfo.x, e.clientY-downInfo.y) : 999;
+    var held = downInfo ? performance.now()-downInfo.t : 0;
+    if(moved < 6 && held < 300){
+      mode = 'walk';
+      phys.style.transform = '';
+      openToolTray();
+      return;
+    }
+    var a = dragHist[0], b = dragHist[dragHist.length-1];
+    var dtHist = Math.max(16, b.t-a.t);
+    vx = (b.x-a.x)/dtHist * 0.9;
+    vy = (b.y-a.y)/dtHist * 0.9;
+    rotVel = vx*0.5;
+    mode = 'fly';
+    bounce.classList.add('aig-fly');
+    playThrow();
+  }
+
+  function openToolTray(){
+    if(document.getElementById('aig-pop')) return;
     var r = root.getBoundingClientRect();
     var pop = document.createElement('div');
     pop.id = 'aig-pop';
@@ -16725,22 +16843,47 @@ var TGK_CC_VERSION='v2.32';
   var MUTE_KEY = 'tgk_ai_guy_muted';
   var muted = localStorage.getItem(MUTE_KEY) === '1';
   var audioCtx = null;
+  function getCtx(){
+    if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(err){ return null; } }
+    return audioCtx;
+  }
   function tone(freq, dur, kind, vol, delay){
     if(muted) return;
+    var ctx = getCtx(); if(!ctx) return;
     try{
-      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-      var t = audioCtx.currentTime + (delay||0);
-      var osc = audioCtx.createOscillator();
-      var gain = audioCtx.createGain();
+      var t = ctx.currentTime + (delay||0);
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
       osc.type = kind||'square';
       osc.frequency.setValueAtTime(freq, t);
       gain.gain.setValueAtTime(0.0001, t);
       gain.gain.exponentialRampToValueAtTime(vol||0.05, t+0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, t+dur);
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(ctx.destination);
       osc.start(t);
       osc.stop(t+dur+0.03);
+    }catch(err){}
+  }
+  function noiseBurst(dur, filterFreq, vol, decay){
+    if(muted) return;
+    var ctx = getCtx(); if(!ctx) return;
+    try{
+      var size = Math.max(1, Math.floor(ctx.sampleRate*dur));
+      var buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for(var i=0;i<size;i++){ data[i] = (Math.random()*2-1) * Math.pow(1-i/size, decay||2); }
+      var src = ctx.createBufferSource();
+      src.buffer = buffer;
+      var filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = filterFreq||800;
+      var gain = ctx.createGain();
+      gain.gain.value = vol||0.15;
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start();
     }catch(err){}
   }
   window.aiGuyToggleMute = function(){
@@ -16755,15 +16898,23 @@ var TGK_CC_VERSION='v2.32';
       case 'heart': tone(520,.1,'sine',.05); tone(780,.12,'sine',.05,.1); break;
       case 'trophy': tone(523,.08,'triangle',.05); tone(659,.08,'triangle',.05,.08); tone(880,.16,'triangle',.06,.16); break;
       case 'confetti': tone(600,.06,'triangle',.05); tone(750,.06,'triangle',.05,.06); tone(950,.14,'triangle',.06,.12); break;
-      case 'tomato': tone(260,.1,'sine',.05); break;
-      case 'pie': tone(300,.09,'sine',.05); break;
-      case 'hammer': tone(130,.18,'square',.06); break;
-      case 'glove': tone(95,.14,'sawtooth',.06); break;
-      case 'zap': tone(1200,.06,'square',.05); tone(220,.06,'square',.04,.05); break;
-      case 'bomb': tone(60,.4,'square',.07); tone(45,.35,'sawtooth',.05,.03); break;
+      case 'tomato': noiseBurst(.14, 1400, 0.12, 4); break;
+      case 'pie': noiseBurst(.16, 1000, 0.12, 4); break;
+      case 'hammer': noiseBurst(.12, 320, 0.18, 3); tone(110,.1,'sine',.05,.02); break;
+      case 'glove': noiseBurst(.1, 500, 0.16, 3); break;
+      case 'zap': tone(1400,.05,'square',.05); tone(280,.07,'sawtooth',.04,.05); break;
+      case 'bomb': noiseBurst(.5, 220, 0.24, 1.5); tone(55,.4,'sine',.08); break;
       default: tone(300,.1,'sine',.05);
     }
   }
+  function playImpact(strength){
+    noiseBurst(0.1+strength*0.15, 200+strength*200, 0.06+strength*0.14, 2.5);
+  }
+  function playThrow(){
+    tone(500,.05,'sine',.04);
+    tone(300,.06,'sine',.03,.04);
+  }
+
 
   var ICN = {
     hammer: String.fromCodePoint(0x1F528),
@@ -16878,9 +17029,35 @@ var TGK_CC_VERSION='v2.32';
     var amp = base + tool.weight*3 + Math.random()*4;
     bounce.style.setProperty('--aig-amp', amp.toFixed(1)+'px');
     if(!bounce.classList.contains('aig-ko')) bounce.classList.add(tool.type==='good' ? 'aig-happy' : 'aig-sad');
+    applyImpulse(tool);
     spawnEffect(tool);
     spawnFloatText(phrase, tool.type);
     setTimeout(function(){ if(bounce) bounce.classList.remove('aig-happy','aig-sad'); }, 850);
+    setTimeout(repositionPop, 160);
+  }
+
+  function applyImpulse(tool){
+    if(mode === 'drag') return;
+    var kick = 0.018 + tool.weight*0.013;
+    var dirSign = Math.random() < 0.5 ? -1 : 1;
+    vx += dirSign * kick * (0.7+Math.random()*0.6);
+    vy += -(0.03 + tool.weight*0.018);
+    rotVel += dirSign * 0.05 * tool.weight;
+    if(mode !== 'fly'){
+      mode = 'fly';
+      bounce.classList.add('aig-fly');
+    }
+  }
+
+  function repositionPop(){
+    var pop = document.getElementById('aig-pop');
+    if(!pop || !root) return;
+    var r = root.getBoundingClientRect();
+    var h = pop.offsetHeight, w = pop.offsetWidth;
+    var top = Math.max(8, r.top - h - 10);
+    var left = Math.max(8, Math.min(r.left + r.width/2 - w/2, window.innerWidth - w - 8));
+    pop.style.top = top+'px';
+    pop.style.left = left+'px';
   }
 
   function spawnEffect(tool){
