@@ -16506,7 +16506,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.29';
+var TGK_CC_VERSION='v2.30';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16546,30 +16546,34 @@ var TGK_CC_VERSION='v2.29';
 .aig-leg{width:6px;height:11px;background:#22262a;border-radius:0 0 3px 3px;animation:aigStep .5s ease-in-out infinite}
 .aig-leg:nth-child(2){animation-delay:.25s}
 @keyframes aigStep{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-@keyframes aigHappyBounce{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-9px) rotate(-6deg)}50%{transform:translateY(0) rotate(6deg)}75%{transform:translateY(-5px) rotate(-3deg)}}
-@keyframes aigSadShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px) rotate(-4deg)}40%{transform:translateX(5px) rotate(4deg)}60%{transform:translateX(-4px) rotate(-3deg)}80%{transform:translateX(4px) rotate(3deg)}}
+@keyframes aigHappyBounce{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(calc(-1*var(--aig-amp,9px))) rotate(-6deg)}50%{transform:translateY(0) rotate(6deg)}75%{transform:translateY(calc(-0.6*var(--aig-amp,9px))) rotate(-3deg)}}
+@keyframes aigSadShake{0%,100%{transform:translateX(0)}20%{transform:translateX(calc(-1*var(--aig-amp,6px))) rotate(-4deg)}40%{transform:translateX(var(--aig-amp,6px)) rotate(4deg)}60%{transform:translateX(calc(-0.8*var(--aig-amp,6px))) rotate(-3deg)}80%{transform:translateX(calc(0.8*var(--aig-amp,6px))) rotate(3deg)}}
 .aig-happy{animation:aigHappyBounce .6s ease}
 .aig-sad{animation:aigSadShake .5s ease}
 .aig-happy .aig-head{border-color:#4ADE9F!important;box-shadow:0 3px 8px rgba(0,0,0,.45),0 0 10px #4ADE9F!important}
 .aig-sad .aig-head{border-color:#FF6B6B!important;box-shadow:0 3px 8px rgba(0,0,0,.45),0 0 10px #FF6B6B!important}
 .aig-float{position:fixed;z-index:2060;font-size:13px;font-weight:800;font-family:var(--font,inherit);pointer-events:none;animation:aigFloatUp 1.1s ease forwards}
 @keyframes aigFloatUp{0%{opacity:0;transform:translateY(0)}15%{opacity:1}100%{opacity:0;transform:translateY(-36px)}}
-.aig-pop{position:fixed;z-index:2050;background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:7px;min-width:180px;font-family:var(--font,inherit)}
-.aig-pop-title{font-size:10px;color:#9CA3AF;text-align:center;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.aig-pop-row{display:flex;gap:6px}
-.aig-pop-row button{flex:1;border-radius:8px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
-.aig-praise-btn{background:rgba(74,222,159,.16);color:#4ADE9F;border:1px solid rgba(74,222,159,.4)}
-.aig-praise-btn:hover{background:rgba(74,222,159,.3)}
-.aig-punish-btn{background:rgba(255,107,107,.16);color:#FF6B6B;border:1px solid rgba(255,107,107,.4)}
-.aig-punish-btn:hover{background:rgba(255,107,107,.3)}
-.aig-pop-score{font-size:11px;color:#9CA3AF;text-align:center;cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;font-family:inherit;padding:2px}
-.aig-pop-score:hover{color:#e0e0e0}
+.aig-pop{position:fixed;z-index:2050;background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:5px;font-family:var(--font,inherit)}
+.aig-tool-row{display:flex;gap:5px}
+.aig-tool-row.aig-tool-good{padding-bottom:6px;margin-bottom:1px;border-bottom:1px solid #232527}
+.aig-tool-btn{width:32px;height:32px;border-radius:8px;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid #2e2e2e;transition:transform .1s,background .15s;padding:0}
+.aig-tool-btn:hover{transform:scale(1.14)}
+.aig-tool-btn:active{transform:scale(.9)}
+.aig-tool-row.aig-tool-good .aig-tool-btn:hover{background:rgba(74,222,159,.18);border-color:rgba(74,222,159,.4)}
+.aig-tool-row.aig-tool-bad .aig-tool-btn:hover{background:rgba(255,107,107,.18);border-color:rgba(255,107,107,.4)}
+.aig-pop-score{font-size:10px;color:#6b7076;text-align:center;cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;font-family:inherit;padding:2px}
+.aig-pop-score:hover{color:#9CA3AF}
+.aig-tool-fly{position:fixed;z-index:2070;font-size:22px;line-height:1;pointer-events:none;animation:aigToolFly .5s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes aigToolFly{0%{opacity:0;transform:scale(.4) rotate(var(--r0,0deg))}60%{opacity:1;transform:scale(1.3) rotate(var(--r1,10deg))}100%{opacity:0;transform:scale(.9) rotate(var(--r2,-10deg))}}
+.aig-burst{position:fixed;z-index:2065;width:6px;height:6px;border-radius:50%;pointer-events:none;animation:aigBurst .55s ease-out forwards}
+@keyframes aigBurst{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--bx),var(--by)) scale(.3)}}
 #ai-guy-toggle-btn.aig-toggle-off{opacity:.45}
 #aig-history-body::-webkit-scrollbar{width:8px}
 .aig-hist-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #232527}
 </style>
 
-<div id="aig-root" title="Click to praise or flag Claude's last file/deploy">
+<div id="aig-root" title="Click for tools">
   <div id="aig-flip">
     <div id="aig-bounce">
       <div id="aig-badge">0</div>
@@ -16673,13 +16677,12 @@ var TGK_CC_VERSION='v2.29';
     var pop = document.createElement('div');
     pop.id = 'aig-pop';
     pop.className = 'aig-pop';
+    var goodBtns = TOOLS.filter(function(t){ return t.type==='good'; }).map(toolBtnHtml).join('');
+    var badBtns = TOOLS.filter(function(t){ return t.type==='bad'; }).map(toolBtnHtml).join('');
     pop.innerHTML =
-      '<div class="aig-pop-title">How did Claude do?</div>'+
-      '<div class="aig-pop-row">'+
-        '<button class="aig-praise-btn" onclick="aiGuyReact(\'good\')">&#128077; Nice work</button>'+
-        '<button class="aig-punish-btn" onclick="aiGuyReact(\'bad\')">&#9889; Not good</button>'+
-      '</div>'+
-      '<button class="aig-pop-score" onclick="aiGuyShowHistory()">'+aigState.good+' good &middot; '+aigState.bad+' bad &middot; view history</button>';
+      '<div class="aig-tool-row aig-tool-good">'+goodBtns+'</div>'+
+      '<div class="aig-tool-row aig-tool-bad">'+badBtns+'</div>'+
+      '<button class="aig-pop-score" onclick="aiGuyShowHistory()">'+aigState.good+' good &middot; '+aigState.bad+' bad &middot; history</button>';
     document.body.appendChild(pop);
     pop.style.left = '-9999px';
     pop.style.top = '-9999px';
@@ -16692,6 +16695,9 @@ var TGK_CC_VERSION='v2.29';
     });
     setTimeout(function(){ document.addEventListener('click', outsideClose); }, 0);
   }
+  function toolBtnHtml(t){
+    return '<button class="aig-tool-btn" onclick="aiGuyUseTool(\''+t.id+'\')" title="'+t.label+'">'+t.icon+'</button>';
+  }
   function outsideClose(e){
     var pop = document.getElementById('aig-pop');
     if(pop && !pop.contains(e.target)) closePop();
@@ -16702,32 +16708,97 @@ var TGK_CC_VERSION='v2.29';
     document.removeEventListener('click', outsideClose);
   }
 
-  window.aiGuyReact = function(type){
-    aigState.log.unshift({ ts: new Date().toISOString(), type: type });
+  var ICN = {
+    hammer: String.fromCodePoint(0x1F528),
+    zap: '\u26A1',
+    glove: String.fromCodePoint(0x1F94A),
+    tomato: String.fromCodePoint(0x1F345),
+    thumbs: String.fromCodePoint(0x1F44D),
+    heart: '\u2764',
+    trophy: String.fromCodePoint(0x1F3C6)
+  };
+  var TOOLS = [
+    { id:'thumbs', type:'good', icon:ICN.thumbs, label:'Thumbs up', phrases:['Nice!','Solid work!','Love it!','Clean fix!'] },
+    { id:'heart',  type:'good', icon:ICN.heart,  label:'Heart',     phrases:['Great job!','So good!','Appreciated!','Well done!'] },
+    { id:'trophy', type:'good', icon:ICN.trophy, label:'Trophy',    phrases:['Champion!','Top tier!','Flawless!','Nailed it!'] },
+    { id:'hammer', type:'bad',  icon:ICN.hammer, label:'Hammer',    phrases:['Bonk!','Thwack!','Down goes the bot!','Right on the dome!'] },
+    { id:'zap',    type:'bad',  icon:ICN.zap,    label:'Zap',       phrases:['Zzzzap!','Shocking!','Sparks fly!','Overloaded!'] },
+    { id:'glove',  type:'bad',  icon:ICN.glove,  label:'Punch',     phrases:['Pow!','Right hook!','Down for the count!','Ouch!'] },
+    { id:'tomato', type:'bad',  icon:ICN.tomato, label:'Tomato',    phrases:['Splat!','Direct hit!','Saucy!','Messy!'] }
+  ];
+  function findTool(id){
+    for(var i=0;i<TOOLS.length;i++){ if(TOOLS[i].id===id) return TOOLS[i]; }
+    return null;
+  }
+
+  window.aiGuyUseTool = function(toolId){
+    var tool = findTool(toolId);
+    if(!tool || !bounce) return;
+    var phrase = tool.phrases[Math.floor(Math.random()*tool.phrases.length)];
+    aigState.log.unshift({ ts: new Date().toISOString(), type: tool.type, tool: tool.id });
     if(aigState.log.length > 500) aigState.log.length = 500;
-    if(type==='good') aigState.good++; else aigState.bad++;
+    if(tool.type==='good') aigState.good++; else aigState.bad++;
     saveState();
     updateBadge();
-    closePop();
-    playReaction(type);
+    playReaction(tool, phrase);
+    var scoreLine = document.querySelector('#aig-pop .aig-pop-score');
+    if(scoreLine) scoreLine.textContent = aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 history';
   };
 
-  function playReaction(type){
-    if(!bounce) return;
+  function playReaction(tool, phrase){
     bounce.classList.remove('aig-happy','aig-sad');
     void bounce.offsetWidth;
-    bounce.classList.add(type==='good' ? 'aig-happy' : 'aig-sad');
-    spawnFloat(type);
+    var amp = tool.type==='bad' ? (5+Math.random()*7) : (5+Math.random()*5);
+    bounce.style.setProperty('--aig-amp', amp.toFixed(1)+'px');
+    bounce.classList.add(tool.type==='good' ? 'aig-happy' : 'aig-sad');
+    spawnEffect(tool);
+    spawnFloatText(phrase, tool.type);
     setTimeout(function(){ if(bounce) bounce.classList.remove('aig-happy','aig-sad'); }, 850);
   }
-  function spawnFloat(type){
+
+  function spawnEffect(tool){
+    var r = root.getBoundingClientRect();
+    var cx = r.left + r.width/2, cy = r.top + r.height*0.35;
+
+    var fly = document.createElement('div');
+    fly.className = 'aig-tool-fly';
+    fly.textContent = tool.icon;
+    fly.style.left = (cx-14)+'px';
+    fly.style.top = (cy-14)+'px';
+    var r0 = (Math.random()<0.5 ? -1 : 1) * (20+Math.random()*30);
+    fly.style.setProperty('--r0', r0+'deg');
+    fly.style.setProperty('--r1', (-r0*0.6)+'deg');
+    fly.style.setProperty('--r2', (r0*1.2)+'deg');
+    document.body.appendChild(fly);
+    setTimeout(function(){ fly.remove(); }, 550);
+
+    var colors = tool.type==='good' ? ['#4ADE9F','#2ABFAA','#FFD166'] : ['#FF6B6B','#F0812E','#FF8A5B'];
+    var n = 8;
+    for(var i=0;i<n;i++){
+      (function(i){
+        var b = document.createElement('div');
+        b.className = 'aig-burst';
+        var ang = (Math.PI*2/n)*i + Math.random()*0.4;
+        var dist = 24+Math.random()*18;
+        b.style.setProperty('--bx', Math.cos(ang)*dist+'px');
+        b.style.setProperty('--by', Math.sin(ang)*dist+'px');
+        b.style.left = cx+'px';
+        b.style.top = cy+'px';
+        b.style.background = colors[i%colors.length];
+        document.body.appendChild(b);
+        setTimeout(function(){ b.remove(); }, 560);
+      })(i);
+    }
+  }
+
+  function spawnFloatText(text, type){
     var f = document.createElement('div');
     f.className = 'aig-float';
-    f.textContent = type==='good' ? '+1 \u2728' : '\u26a1 -1';
+    f.textContent = text;
     f.style.color = type==='good' ? '#4ADE9F' : '#FF6B6B';
     var r = root.getBoundingClientRect();
-    f.style.left = (r.left + r.width/2 - 18) + 'px';
-    f.style.top = (r.top - 8) + 'px';
+    f.style.left = (r.left + r.width/2 - 30) + 'px';
+    f.style.top = (r.top - 10) + 'px';
     document.body.appendChild(f);
     setTimeout(function(){ f.remove(); }, 1150);
   }
@@ -16748,9 +16819,12 @@ var TGK_CC_VERSION='v2.29';
       aigState.log.forEach(function(e){
         var d = new Date(e.ts);
         var good = e.type === 'good';
+        var toolDef = findTool(e.tool);
+        var icon = toolDef ? toolDef.icon : (good ? '\u2705' : '\u26a1');
+        var name = toolDef ? toolDef.label : (good ? 'Good' : 'Bad');
         html += '<div class="aig-hist-row">'+
-          '<span style="font-size:16px">'+(good?'\u2705':'\u26a1')+'</span>'+
-          '<span style="font-size:13px;font-weight:700;min-width:44px;color:'+(good?'#4ADE9F':'#FF6B6B')+'">'+(good?'Good':'Bad')+'</span>'+
+          '<span style="font-size:16px">'+icon+'</span>'+
+          '<span style="font-size:13px;font-weight:700;min-width:70px;color:'+(good?'#4ADE9F':'#FF6B6B')+'">'+name+'</span>'+
           '<span style="font-size:12px;color:#9CA3AF;margin-left:auto">'+d.toLocaleString()+'</span>'+
         '</div>';
       });
