@@ -117,6 +117,21 @@ body.dark .btn:not(.btn-primary):hover{background:#2e3235;border-color:#3c4145}
 .bk{display:flex;align-items:flex-start;gap:3px;position:relative;padding:2px 0;border-radius:3px}
 .bk.dz-above{box-shadow:inset 0 2px 0 var(--teal)}
 .bk.dz-below{box-shadow:inset 0 -2px 0 var(--teal)}
+/* Multi-block selection, for merging several blocks into one. Purple rather than the teal used
+   for hover/drag/drop everywhere else, so a selected-for-merge block reads as a distinct state
+   rather than a stronger hover. */
+.bk-multisel{box-shadow:inset 0 0 0 2px var(--purple);background:rgba(124,92,214,.07);border-radius:4px}
+.notes-msel-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:521;
+  display:flex;align-items:center;gap:8px;background:#fff;border-radius:var(--r-lg);
+  box-shadow:0 10px 34px rgba(14,20,24,.2),0 0 0 1px var(--border);padding:8px 10px}
+body.dark .notes-msel-bar{background:#202325}
+.notes-msel-label{font-size:12px;color:var(--text3);font-weight:600;white-space:nowrap;padding:0 2px}
+.notes-msel-merge{background:var(--purple);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;
+  border:none;border-radius:6px;cursor:pointer;white-space:nowrap}
+.notes-msel-merge:hover{opacity:.88}
+.notes-msel-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;
+  padding:4px 6px;line-height:1;border-radius:6px}
+.notes-msel-close:hover{background:var(--field);color:var(--text)}
 .doc-tail{min-height:120px;cursor:text}
 .bk-handle{opacity:0;flex-shrink:0;width:20px;height:23px;display:flex;align-items:center;justify-content:center;color:var(--text3);cursor:grab;font-size:14px;user-select:none;border-radius:5px;transition:opacity .1s,background .1s}
 .bk:hover .bk-handle{opacity:.5}
@@ -710,7 +725,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.67';
+const TGK_NOTES_VERSION='v1.68';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1058,6 +1073,7 @@ function renderBlocks(){
   }
   $('blocks').innerHTML=_out;
   if(typeof cbGrow==='function')document.querySelectorAll('.cb-ta').forEach(cbGrow);
+  if(typeof _paintMultiSel==='function')_paintMultiSel();   // re-apply block multi-select highlight, since it just got wiped by the innerHTML rebuild above
 }
 function blockHTML(bl,i){
     const pad=bl.cg?0:(bl.indent||0)*24;
@@ -1230,6 +1246,125 @@ document.addEventListener('keydown',e=>{
   }
   if(e.key==='ArrowUp'&&i>0&&caretOffset(t)===0){e.preventDefault();focusBlock(b[i-1].id);}
   if(e.key==='ArrowDown'&&i<b.length-1&&caretOffset(t)===(bl.text||'').length){e.preventDefault();focusBlock(b[i+1].id,true);}
+},true);
+
+// ── MULTI-BLOCK SELECTION (select several blocks, then merge them into one) ─────────────────
+// Backspace at the start of a block already merges it into the previous one (see the Backspace
+// branch above: prev.text = prev.text + bl.text). That's fine for pulling one stray block back
+// into the one above it, but doing that one at a time across many blocks -- placing the cursor
+// exactly at position 0 of each and hitting Backspace -- is exactly the kind of tedious that
+// reads as "broken" when there are a dozen+ of them. This adds the bulk version: shift-click (or
+// cmd/ctrl-click) to build a selection across several blocks, then Merge combines them at once.
+let _multiSel=[], _multiAnchor=null, _multiBar=null;
+
+function _multiSelectClick(id,isShift){
+  const b=blocks();
+  if(isShift && _multiAnchor && blockIndex(_multiAnchor)>=0){
+    const ai=blockIndex(_multiAnchor), bi=blockIndex(id);
+    if(ai<0||bi<0)return;
+    const lo=Math.min(ai,bi), hi=Math.max(ai,bi);
+    _multiSel=b.slice(lo,hi+1).map(x=>x.id);
+  } else if(isShift){
+    _multiAnchor=id; _multiSel=[id];
+  } else {
+    const idx=_multiSel.indexOf(id);
+    if(idx>-1)_multiSel.splice(idx,1); else _multiSel.push(id);
+    _multiAnchor=id;
+    _multiSel.sort((x,y)=>blockIndex(x)-blockIndex(y));
+  }
+  _paintMultiSel();
+}
+
+function _paintMultiSel(){
+  document.querySelectorAll('.bk').forEach(el=>{
+    const id=el.getAttribute('data-bid');
+    el.classList.toggle('bk-multisel', id&&_multiSel.includes(id));
+  });
+  if(_multiSel.length>=2)_showMultiBar(); else _hideMultiBar();
+}
+
+function _clearMultiSel(){
+  _multiSel=[]; _multiAnchor=null;
+  document.querySelectorAll('.bk-multisel').forEach(el=>el.classList.remove('bk-multisel'));
+  _hideMultiBar();
+}
+
+function _showMultiBar(){
+  _hideMultiBar();
+  const bar=document.createElement('div');
+  bar.className='notes-msel-bar';
+  const label=document.createElement('span');
+  label.className='notes-msel-label';
+  label.textContent=_multiSel.length+' blocks selected';
+  const mergeBtn=document.createElement('button');
+  mergeBtn.className='notes-msel-merge';
+  mergeBtn.textContent='Merge into one';
+  mergeBtn.onmousedown=e=>{e.preventDefault();mergeSelectedBlocks();};
+  const closeBtn=document.createElement('button');
+  closeBtn.className='notes-msel-close';
+  closeBtn.innerHTML='&times;';
+  closeBtn.title='Clear selection';
+  closeBtn.onmousedown=e=>{e.preventDefault();_clearMultiSel();};
+  bar.appendChild(label);bar.appendChild(mergeBtn);bar.appendChild(closeBtn);
+  document.body.appendChild(bar);
+  _multiBar=bar;
+}
+function _hideMultiBar(){ if(_multiBar){_multiBar.remove();_multiBar=null;} }
+
+// Types whose `.text` is plain rich text content -- safe to concatenate into a merged block.
+// Everything else (divider/image/table/dbembed/subpage/embed/toc/code/bookmark) either has no
+// meaningful single text string or has its real content somewhere other than `.text`, so folding
+// it into a paragraph would either lose the content or corrupt it. Those are left out of the
+// merge rather than guessed at.
+const MERGEABLE_TYPES=['p','h1','h2','h3','bullet','num','todo','quote','callout','toggle'];
+
+function mergeSelectedBlocks(){
+  if(_multiSel.length<2)return;
+  const b=blocks();
+  let chosen=_multiSel.map(id=>({id,idx:blockIndex(id)})).filter(x=>x.idx>=0);
+  chosen.sort((x,y)=>x.idx-y.idx);
+  const skipped=chosen.filter(x=>!MERGEABLE_TYPES.includes(b[x.idx].type)).length;
+  chosen=chosen.filter(x=>MERGEABLE_TYPES.includes(b[x.idx].type));
+  if(chosen.length<2){
+    _clearMultiSel();
+    toast(skipped?'Nothing to merge — selected block(s) aren\u2019t plain text':'Select at least two blocks first');
+    return;
+  }
+  const destIdx=chosen[0].idx;
+  const dest=b[destIdx];
+  const parts=[dest.text||''];
+  const removeIdx=[];
+  for(let k=1;k<chosen.length;k++){
+    const src=b[chosen[k].idx];
+    if((src.text||'').trim())parts.push(src.text);
+    removeIdx.push(chosen[k].idx);
+  }
+  dest.text=parts.filter(x=>x!=='').join('<br>');
+  removeIdx.sort((x,y)=>y-x).forEach(ix=>b.splice(ix,1));   // remove highest index first
+  _clearMultiSel();
+  renderBlocks();focusBlock(dest.id);markDirty();
+  if(skipped)toast(skipped+' block'+(skipped!==1?'s':'')+' skipped (not plain text) — merged the rest');
+}
+
+// Shift/cmd/ctrl-click on a block's TEXT builds or extends the selection instead of placing a
+// cursor. Scoped to `.bk-t` specifically so the drag handle, plus button, checkboxes, and any
+// other block controls are never intercepted -- they aren't descendants of `.bk-t`, so this
+// never sees clicks on them at all. A plain click anywhere clears whatever selection existed,
+// matching how clicking away from a selection normally works.
+document.addEventListener('click',e=>{
+  const t=e.target.closest('.bk-t');
+  if(!t){
+    if(_multiSel.length && !e.target.closest('.notes-msel-bar'))_clearMultiSel();
+    return;
+  }
+  const host=t.closest('.bk'),id=host&&host.getAttribute('data-bid');
+  if(!id)return;
+  if(e.shiftKey||e.metaKey||e.ctrlKey){
+    e.preventDefault();e.stopPropagation();
+    _multiSelectClick(id,e.shiftKey);
+    return;
+  }
+  if(_multiSel.length)_clearMultiSel();
 },true);
 
 document.addEventListener('change',e=>{
