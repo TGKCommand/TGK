@@ -2045,6 +2045,7 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
     </div>
   </div>
   <button id="cc-theme-btn" onclick="ccToggleTheme()" title="Switch theme" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:var(--r-md);cursor:pointer;padding:5px 8px;color:#9CA3AF;margin-left:8px;line-height:1;transition:all .15s;display:flex;align-items:center;justify-content:center;font-size:var(--t-lg);flex-shrink:0">&#9788;</button>
+  <button id="ai-guy-toggle-btn" onclick="aiGuyToggleVisible()" title="Show/hide AI Guy" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:var(--r-md);cursor:pointer;padding:5px 8px;color:#9CA3AF;margin-left:8px;line-height:1;transition:all .15s;display:flex;align-items:center;justify-content:center;font-size:var(--t-lg);flex-shrink:0">&#129302;</button>
 </div>
 
 <div id="cc-notif-banner"></div>
@@ -16505,7 +16506,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.27';
+var TGK_CC_VERSION='v2.28';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16528,6 +16529,269 @@ var TGK_CC_VERSION='v2.27';
      ambiguity for future edits, not because anything was actually broken. -->
 </div>
 </div>
+
+<style>
+#aig-root{position:fixed;bottom:6px;left:10px;z-index:850;width:46px;height:66px;pointer-events:auto;cursor:pointer}
+#aig-flip{width:100%;height:100%;transition:transform .12s linear}
+#aig-bounce{width:100%;height:100%;position:relative}
+#aig-badge{position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:800;color:#9CA3AF;white-space:nowrap;font-family:var(--font,inherit)}
+.aig-badge-pos{color:#4ADE9F!important;border-color:rgba(74,222,159,.4)!important}
+.aig-badge-neg{color:#FF6B6B!important;border-color:rgba(255,107,107,.4)!important}
+.aig-antenna{width:3px;height:9px;background:#565b60;position:absolute;left:50%;top:-2px;transform:translateX(-50%)}
+.aig-antenna::after{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#2ABFAA;box-shadow:0 0 6px #2ABFAA}
+.aig-head{position:absolute;top:7px;left:0;width:46px;height:30px;background:linear-gradient(180deg,#3c4148,#24282c);border:2px solid #141618;border-radius:11px;box-shadow:0 3px 8px rgba(0,0,0,.45)}
+.aig-eye{position:absolute;top:11px;width:8px;height:8px;border-radius:50%;background:#2ABFAA;box-shadow:0 0 6px #2ABFAA;transition:background .15s}
+.aig-eye.l{left:8px}
+.aig-eye.r{right:8px}
+.aig-mouth{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:14px;height:2px;background:#141618;border-radius:2px}
+.aig-body{position:absolute;top:35px;left:4px;width:38px;height:18px;background:linear-gradient(180deg,#34383e,#22262a);border:2px solid #141618;border-radius:7px}
+.aig-legs{position:absolute;top:53px;left:8px;width:30px;display:flex;justify-content:space-between}
+.aig-leg{width:6px;height:11px;background:#22262a;border-radius:0 0 3px 3px;animation:aigStep .5s ease-in-out infinite}
+.aig-leg:nth-child(2){animation-delay:.25s}
+@keyframes aigStep{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes aigHappyBounce{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-9px) rotate(-6deg)}50%{transform:translateY(0) rotate(6deg)}75%{transform:translateY(-5px) rotate(-3deg)}}
+@keyframes aigSadShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px) rotate(-4deg)}40%{transform:translateX(5px) rotate(4deg)}60%{transform:translateX(-4px) rotate(-3deg)}80%{transform:translateX(4px) rotate(3deg)}}
+.aig-happy{animation:aigHappyBounce .6s ease}
+.aig-sad{animation:aigSadShake .5s ease}
+.aig-happy .aig-eye{background:#4ADE9F!important;box-shadow:0 0 8px #4ADE9F!important}
+.aig-sad .aig-eye{background:#FF6B6B!important;box-shadow:0 0 8px #FF6B6B!important}
+.aig-float{position:fixed;z-index:2060;font-size:13px;font-weight:800;font-family:var(--font,inherit);pointer-events:none;animation:aigFloatUp 1.1s ease forwards}
+@keyframes aigFloatUp{0%{opacity:0;transform:translateY(0)}15%{opacity:1}100%{opacity:0;transform:translateY(-36px)}}
+.aig-pop{position:fixed;z-index:2050;background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:7px;min-width:180px;font-family:var(--font,inherit)}
+.aig-pop-title{font-size:10px;color:#9CA3AF;text-align:center;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.aig-pop-row{display:flex;gap:6px}
+.aig-pop-row button{flex:1;border-radius:8px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.aig-praise-btn{background:rgba(74,222,159,.16);color:#4ADE9F;border:1px solid rgba(74,222,159,.4)}
+.aig-praise-btn:hover{background:rgba(74,222,159,.3)}
+.aig-punish-btn{background:rgba(255,107,107,.16);color:#FF6B6B;border:1px solid rgba(255,107,107,.4)}
+.aig-punish-btn:hover{background:rgba(255,107,107,.3)}
+.aig-pop-score{font-size:11px;color:#9CA3AF;text-align:center;cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;font-family:inherit;padding:2px}
+.aig-pop-score:hover{color:#e0e0e0}
+#ai-guy-toggle-btn.aig-toggle-off{opacity:.45}
+#aig-history-body::-webkit-scrollbar{width:8px}
+.aig-hist-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #232527}
+</style>
+
+<div id="aig-root" title="Click to praise or flag Claude's last file/deploy">
+  <div id="aig-flip">
+    <div id="aig-bounce">
+      <div id="aig-badge">0</div>
+      <div class="aig-antenna"></div>
+      <div class="aig-head"><div class="aig-eye l"></div><div class="aig-eye r"></div><div class="aig-mouth"></div></div>
+      <div class="aig-body"></div>
+      <div class="aig-legs"><div class="aig-leg"></div><div class="aig-leg"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="aig-modal-overlay" class="tbx-modal-overlay">
+  <div class="tbx-modal" style="width:520px">
+    <div class="tbx-modal-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>AI Guy &mdash; Claude Score History</span>
+      <button onclick="aiGuyCloseHistory()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:18px">&#x2715;</button>
+    </div>
+    <div id="aig-history-body"></div>
+    <div class="tbx-modal-row">
+      <button class="tbx-modal-cancel" onclick="aiGuyClearHistory()">Clear History</button>
+      <button class="tbx-modal-save" onclick="aiGuyCloseHistory()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   AI GUY -- little mascot you praise/flag when Claude does
+   good or bad work on a file/deploy. Score + log persist in
+   localStorage (per-device), same pattern as the rest of the
+   app's local caches (tgk_templates, tgk_tbx_v1, etc.)
+   ============================================================ */
+(function(){
+  var STORE_KEY = 'tgk_ai_guy_v1';
+  var HIDE_KEY = 'tgk_ai_guy_hidden';
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[] };
+      }
+    }catch(e){}
+    return { good:0, bad:0, log:[] };
+  }
+  var aigState = loadState();
+  function saveState(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(aigState)); }catch(e){} }
+
+  var root, flip, bounce, badge;
+  var pos = 10 + Math.random()*40;
+  var dir = 1;
+  var pauseUntil = 0;
+  var lastTs = 0;
+
+  function build(){
+    root = document.getElementById('aig-root');
+    flip = document.getElementById('aig-flip');
+    bounce = document.getElementById('aig-bounce');
+    badge = document.getElementById('aig-badge');
+    if(!root) return;
+    root.style.left = pos+'px';
+    updateBadge();
+    root.addEventListener('click', onGuyClick);
+    if(localStorage.getItem(HIDE_KEY)==='1'){
+      root.style.display = 'none';
+      var btn = document.getElementById('ai-guy-toggle-btn');
+      if(btn) btn.classList.add('aig-toggle-off');
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function updateBadge(){
+    if(!badge) return;
+    var net = aigState.good - aigState.bad;
+    badge.textContent = (net>0?'+':'')+net;
+    badge.className = net>0 ? 'aig-badge-pos' : (net<0 ? 'aig-badge-neg' : '');
+  }
+
+  function tick(ts){
+    if(!lastTs) lastTs = ts;
+    var dt = Math.min(64, ts-lastTs);
+    lastTs = ts;
+    if(root && root.style.display!=='none' && !document.getElementById('aig-pop') && ts > pauseUntil){
+      var maxX = Math.max(20, window.innerWidth - 60);
+      pos += dir * 0.045 * dt;
+      if(pos > maxX){ pos = maxX; dir = -1; }
+      if(pos < 4){ pos = 4; dir = 1; }
+      if(Math.random() < 0.0025) dir *= -1;
+      if(Math.random() < 0.002) pauseUntil = ts + (700+Math.random()*1600);
+      root.style.left = pos+'px';
+      flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)';
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function onGuyClick(e){
+    e.stopPropagation();
+    if(document.getElementById('aig-pop')){ closePop(); return; }
+    var r = root.getBoundingClientRect();
+    var pop = document.createElement('div');
+    pop.id = 'aig-pop';
+    pop.className = 'aig-pop';
+    pop.innerHTML =
+      '<div class="aig-pop-title">How did Claude do?</div>'+
+      '<div class="aig-pop-row">'+
+        '<button class="aig-praise-btn" onclick="aiGuyReact(\'good\')">&#128077; Nice work</button>'+
+        '<button class="aig-punish-btn" onclick="aiGuyReact(\'bad\')">&#9889; Not good</button>'+
+      '</div>'+
+      '<button class="aig-pop-score" onclick="aiGuyShowHistory()">'+aigState.good+' good &middot; '+aigState.bad+' bad &middot; view history</button>';
+    document.body.appendChild(pop);
+    pop.style.left = '-9999px';
+    pop.style.top = '-9999px';
+    requestAnimationFrame(function(){
+      var h = pop.offsetHeight, w = pop.offsetWidth;
+      var top = Math.max(8, r.top - h - 10);
+      var left = Math.max(8, Math.min(r.left + r.width/2 - w/2, window.innerWidth - w - 8));
+      pop.style.top = top+'px';
+      pop.style.left = left+'px';
+    });
+    setTimeout(function(){ document.addEventListener('click', outsideClose); }, 0);
+  }
+  function outsideClose(e){
+    var pop = document.getElementById('aig-pop');
+    if(pop && !pop.contains(e.target)) closePop();
+  }
+  function closePop(){
+    var pop = document.getElementById('aig-pop');
+    if(pop) pop.remove();
+    document.removeEventListener('click', outsideClose);
+  }
+
+  window.aiGuyReact = function(type){
+    aigState.log.unshift({ ts: new Date().toISOString(), type: type });
+    if(aigState.log.length > 500) aigState.log.length = 500;
+    if(type==='good') aigState.good++; else aigState.bad++;
+    saveState();
+    updateBadge();
+    closePop();
+    playReaction(type);
+  };
+
+  function playReaction(type){
+    if(!bounce) return;
+    bounce.classList.remove('aig-happy','aig-sad');
+    void bounce.offsetWidth;
+    bounce.classList.add(type==='good' ? 'aig-happy' : 'aig-sad');
+    spawnFloat(type);
+    setTimeout(function(){ if(bounce) bounce.classList.remove('aig-happy','aig-sad'); }, 850);
+  }
+  function spawnFloat(type){
+    var f = document.createElement('div');
+    f.className = 'aig-float';
+    f.textContent = type==='good' ? '+1 \u2728' : '\u26a1 -1';
+    f.style.color = type==='good' ? '#4ADE9F' : '#FF6B6B';
+    var r = root.getBoundingClientRect();
+    f.style.left = (r.left + r.width/2 - 18) + 'px';
+    f.style.top = (r.top - 8) + 'px';
+    document.body.appendChild(f);
+    setTimeout(function(){ f.remove(); }, 1150);
+  }
+
+  function renderHistoryList(){
+    var body = document.getElementById('aig-history-body');
+    if(!body) return;
+    var net = aigState.good - aigState.bad;
+    var html = '<div style="display:flex;gap:26px;margin:4px 0 18px">'+
+      '<div><div style="font-size:22px;font-weight:800;color:#4ADE9F">'+aigState.good+'</div><div style="font-size:11px;color:#9CA3AF;letter-spacing:.04em">GOOD</div></div>'+
+      '<div><div style="font-size:22px;font-weight:800;color:#FF6B6B">'+aigState.bad+'</div><div style="font-size:11px;color:#9CA3AF;letter-spacing:.04em">BAD</div></div>'+
+      '<div><div style="font-size:22px;font-weight:800;color:#f0f0f0">'+(net>0?'+':'')+net+'</div><div style="font-size:11px;color:#9CA3AF;letter-spacing:.04em">NET SCORE</div></div>'+
+    '</div>';
+    if(!aigState.log.length){
+      html += '<div style="text-align:center;color:#9CA3AF;padding:20px 0">No reactions logged yet &mdash; click the little guy at the bottom of the screen.</div>';
+    } else {
+      html += '<div id="aig-history-list" style="max-height:320px;overflow-y:auto;border-top:1px solid #2e2e2e">';
+      aigState.log.forEach(function(e){
+        var d = new Date(e.ts);
+        var good = e.type === 'good';
+        html += '<div class="aig-hist-row">'+
+          '<span style="font-size:16px">'+(good?'\u2705':'\u26a1')+'</span>'+
+          '<span style="font-size:13px;font-weight:700;min-width:44px;color:'+(good?'#4ADE9F':'#FF6B6B')+'">'+(good?'Good':'Bad')+'</span>'+
+          '<span style="font-size:12px;color:#9CA3AF;margin-left:auto">'+d.toLocaleString()+'</span>'+
+        '</div>';
+      });
+      html += '</div>';
+    }
+    body.innerHTML = html;
+  }
+
+  window.aiGuyShowHistory = function(){
+    closePop();
+    renderHistoryList();
+    var ov = document.getElementById('aig-modal-overlay');
+    if(ov) ov.classList.add('open');
+  };
+  window.aiGuyCloseHistory = function(){
+    var ov = document.getElementById('aig-modal-overlay');
+    if(ov) ov.classList.remove('open');
+  };
+  window.aiGuyClearHistory = function(){
+    if(!confirm('Clear all AI Guy history and reset the score? This cannot be undone.')) return;
+    aigState = { good:0, bad:0, log:[] };
+    saveState();
+    updateBadge();
+    renderHistoryList();
+  };
+  window.aiGuyToggleVisible = function(){
+    if(!root) return;
+    var willHide = root.style.display !== 'none';
+    root.style.display = willHide ? 'none' : '';
+    try{ localStorage.setItem(HIDE_KEY, willHide ? '1' : '0'); }catch(e){}
+    var btn = document.getElementById('ai-guy-toggle-btn');
+    if(btn) btn.classList.toggle('aig-toggle-off', willHide);
+    closePop();
+  };
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', build); else build();
+})();
+</script>
 
 </body>
 </html>
