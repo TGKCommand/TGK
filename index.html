@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.60';
+var TGK_CC_VERSION='v2.61';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16843,6 +16843,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-mood-sulk .aig-body,.aig-mood-asleep .aig-body{transform:translateY(2px) scaleY(.92)}
 .aig-mood-happy .aig-body{transform:translateY(-2px)}
 .aig-mood-scared .aig-body{transform:translateY(1px) scaleX(.94)}
+.aig-remote{position:fixed;left:0;top:0;z-index:848;width:46px;height:66px;pointer-events:none;will-change:transform;opacity:.92}
+.aig-remote .aig-scale-c{width:100%;height:100%;transform-origin:50% 100%}
+.aig-remote .aig-phys-c,.aig-remote .aig-flip-c{width:100%;height:100%}
+.aig-remote .aig-bounce-c{width:100%;height:100%;position:relative}
+.aig-remote .aig-body{background:linear-gradient(180deg,#3d3a2e,#26231a)}
+.aig-tag{position:absolute;left:50%;top:-30px;transform:translateX(-50%);background:#18191b;border:1px solid rgba(255,209,102,.5);color:#FFD166;font-size:9px;font-weight:800;letter-spacing:.06em;padding:1px 6px;border-radius:8px;white-space:nowrap;font-family:var(--font,inherit)}
+.aig-remote-bub{position:fixed;left:0;top:0;z-index:2038;max-width:160px;background:#fff7e0;color:#111;font-size:10px;line-height:1.3;padding:4px 7px;border-radius:8px;font-family:var(--font,inherit);pointer-events:none;will-change:transform;box-shadow:0 3px 8px rgba(0,0,0,.3)}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17030,7 +17037,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     return { left:left, top:top, right:left+w, bottom:top+h, width:w, height:h };
   }
   var SETTINGS_KEY = 'tgk_ai_guy_settings';
-  var settings = { size:1, speed:1, taunts:true, hide:true, rapid:true, fight:true, steal:true, eyes:true, brain:true, swear:true };
+  var settings = { size:1, speed:1, taunts:true, hide:true, rapid:true, fight:true, steal:true, eyes:true, brain:true, swear:true, mp:true };
   try{ var sv = JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(sv) settings = Object.assign(settings, sv); }catch(e){}
   var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var rage = 0, rageMode = false, rageUntil = 0, lastHitAt = 0, nextTauntAt = 0;
@@ -17074,6 +17081,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       window.addEventListener('beforeunload', saveWorld);
       headImg = root.querySelector('.aig-head img');
       hookApp();
+      setTimeout(mpStart, 3000);
       document.addEventListener('visibilitychange', function(){
         if(document.hidden){ hiddenAt = Date.now(); }
         else if(hiddenAt){
@@ -17118,7 +17126,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length;
   }
   function tick(ts){
     loopArmed = false;
@@ -17310,6 +17318,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     updateAnger(ts, rawDt);
     updateMind(ts, rawDt);
+    mpTick(ts, rawDt);
     fxTick(rawDt);
     updateHead(ts, dt);
     updateBubble();
@@ -17848,6 +17857,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(kind === 'cannon'){ fireShirt(); return; }
     if(kind === 'sling'){ return; }
     var pad = hitPad;
+    for(var ri=mpRemotes.length-1; ri>=0; ri--){
+      var rr = mpRemotes[ri], rx = rr.x, ry = rr.y;
+      if(x >= rx-pad && x <= rx+46+pad && y >= ry-pad && y <= ry+66+pad){ mpHit(rr, heldTool, x, y); return; }
+    }
     for(var ci=clones.length-1; ci>=0; ci--){
       var cr = clones[ci].el.getBoundingClientRect();
       if(x >= cr.left-pad && x <= cr.right+pad && y >= cr.top-pad && y <= cr.bottom+pad){ cloneHit(clones[ci], heldTool, x, y, 1); return; }
@@ -19350,12 +19363,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       tog('eyes', 'Looks at the cursor', settings.eyes !== false) +
       tog('brain', 'AI brain (Claude writes his lines)', settings.brain !== false) +
       tog('swear', 'Swears (adults only, no slurs)', settings.swear !== false) +
+      tog('mp', 'Teammates\' guys on my screen (realtime)', settings.mp !== false) +
       '<div style="font-size:10px;color:#4a4f55">Lite mode also switches itself on if the page drops below ~35 fps.</div>'+
     '</div>';
   }
   window.aiGuyToggleSettings = function(){ var p = document.getElementById('aig-settings'); if(p){ p.classList.toggle('open'); requestAnimationFrame(function(){ repositionPop(); }); } };
   window.aiGuySetting = function(k, v){
     if(k==='size' || k==='speed') settings[k] = parseFloat(v); else settings[k] = !!v;
+    if(k === 'mp'){ if(settings.mp) mpStart(); else mpStop(); }
     saveSettings(); applySettings();
   };
   window.aiGuyHeal = function(){
@@ -19777,6 +19792,108 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   window.aiGuyThink = think;
   window.aiGuyDebug = { sleep: fallAsleep, wake: wakeUp, skit: startSkit, state: function(){ return { mode:mode, asleep:asleep, skit:skit?skit.kind:null, anger:Math.round(anger), mad:madOn, fight:fightOn, stolen:cursorStolen, truce_s: Math.max(0, Math.ceil((fightCooldownUntil-performance.now())/1000)), steal_on: settings.steal !== false, fight_on: settings.fight !== false }; } };
+
+  // ---------------- Two players: teammates' guys on your screen (Supabase Realtime broadcast) ----------------
+  // Positions are broadcast as fractions of the viewport so a 1440px screen and a 1920px screen agree on
+  // "where he is". No tables, no writes: broadcast + presence only. Fails closed if the lib or socket is unavailable.
+  var mpClient = null, mpChan = null, mpOn = false, mpRemotes = [], mpLastSend = 0, mpLastState = '', mpName = '', mpFails = 0;
+  function mpStart(){
+    if(settings.mp === false || mpOn || typeof TGK_SB_URL === 'undefined' || typeof TGK_SB_KEY === 'undefined') return;
+    mpName = sharedEmail().split('@')[0] || 'someone';
+    if(!mpName || mpName === 'anonymous') return;   // need a signed-in identity to be a player
+    var go = function(){
+      try{
+        if(!window.supabase || !window.supabase.createClient) return;
+        mpClient = window.supabase.createClient(TGK_SB_URL, TGK_SB_KEY, { realtime: { params: { eventsPerSecond: 12 } } });
+        mpChan = mpClient.channel('aig-room', { config: { broadcast: { self: false }, presence: { key: sharedEmail() } } });
+        mpChan.on('broadcast', { event: 'state' }, function(m){ mpOnState(m.payload); })
+              .on('broadcast', { event: 'hit' },   function(m){ mpOnHit(m.payload); })
+              .on('broadcast', { event: 'bye' },   function(m){ mpRemove(m.payload && m.payload.who); })
+              .on('presence', { event: 'leave' },  function(p){ (p.leftPresences||[]).forEach(function(x){ mpRemove(x.who); }); })
+              .subscribe(function(status){
+                if(status === 'SUBSCRIBED'){ mpOn = true; mpChan.track({ who: sharedEmail(), name: mpName, at: Date.now() }); }
+                else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT'){ if(++mpFails > 3) mpStop(); }
+              });
+        window.addEventListener('beforeunload', function(){ try{ mpChan.send({ type:'broadcast', event:'bye', payload:{ who: sharedEmail() } }); }catch(e){} });
+      }catch(e){ mpStop(); }
+    };
+    if(window.supabase && window.supabase.createClient) go();
+    else { var s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'; s.async = true; s.onload = go; s.onerror = function(){ mpStop(); }; document.head.appendChild(s); }
+  }
+  function mpStop(){ mpOn = false; try{ if(mpChan) mpClient.removeChannel(mpChan); }catch(e){} mpChan = null; mpRemotes.slice().forEach(function(r){ mpRemove(r.who); }); }
+  window.aiGuyMultiplayer = function(on){ if(on) { settings.mp = true; mpStart(); } else { settings.mp = false; mpStop(); } saveSettings(); };
+  function mpSnapshot(){
+    var W = window.innerWidth || 1, H = window.innerHeight || 1;
+    return { who: sharedEmail(), name: mpName, fx: +(pos/W).toFixed(4), fy: +((posY - groundY())/H).toFixed(4), d: dir, m: mode, mad: madOn?1:0, z: asleep?1:0, st: cursorStolen?1:0,
+             hat: hatKind||'', b: bubbleShown && bubbleEl ? String(bubbleEl.textContent).slice(0,80) : '', rot: Math.round(rotAngle), sz: settings.size };
+  }
+  function mpTick(ts, rawDt){
+    if(mpOn && mpChan && ts - mpLastSend > 100){
+      var snap = mpSnapshot(), key = JSON.stringify(snap);
+      if(key !== mpLastState || ts - mpLastSend > 1500){ mpLastState = key; mpLastSend = ts; try{ mpChan.send({ type:'broadcast', event:'state', payload: snap }); }catch(e){} }
+    }
+    // interpolate remotes toward their last reported spot; drop anyone silent for 20s
+    for(var i=mpRemotes.length-1;i>=0;i--){
+      var r = mpRemotes[i];
+      if(ts - r.seen > 20000){ mpRemove(r.who); continue; }
+      r.x += (r.tx - r.x) * Math.min(1, rawDt/90); r.y += (r.ty - r.y) * Math.min(1, rawDt/90);
+      r.el.style.transform = 'translate3d('+r.x.toFixed(1)+'px,'+r.y.toFixed(1)+'px,0)';
+      if(r.phys) r.phys.style.transform = 'rotate('+r.rot+'deg)';
+      if(r.bub){ if(r.btxt){ r.bub.style.display=''; r.bub.style.transform = 'translate3d('+(r.x-10).toFixed(0)+'px,'+(r.y-40).toFixed(0)+'px,0)'; } else r.bub.style.display='none'; }
+    }
+  }
+  function mpOnState(p){
+    if(!p || !p.who || p.who === sharedEmail()) return;
+    var r = mpRemotes.filter(function(q){ return q.who === p.who; })[0];
+    var W = window.innerWidth, H = window.innerHeight;
+    if(!r){
+      var el = root.cloneNode(true); el.removeAttribute('id'); el.removeAttribute('title'); el.className = 'aig-remote'; el.style.display = '';
+      el.querySelectorAll('[id]').forEach(function(n){ var id = n.id; n.removeAttribute('id'); n.classList.add(id+'-c'); });
+      el.querySelectorAll('.aig-hat,.aig-bandaid,.aig-splat,.aig-dizzy,.aig-ice,.aig-inhand,.aig-sweat,.aig-stolen,.aig-steam').forEach(function(n){ n.remove(); });
+      var tag = document.createElement('div'); tag.className = 'aig-tag'; tag.textContent = (p.name||p.who.split('@')[0]).toUpperCase(); el.querySelector('.aig-bounce-c').appendChild(tag);
+      var bub = document.createElement('div'); bub.className = 'aig-remote-bub'; bub.style.display = 'none'; document.body.appendChild(bub);
+      document.body.appendChild(el);
+      r = { who: p.who, el: el, phys: el.querySelector('.aig-phys-c'), flip: el.querySelector('.aig-flip-c'), bounce: el.querySelector('.aig-bounce-c'), bub: bub, x: p.fx*W, y: groundY() + p.fy*H, tx: 0, ty: 0, rot: 0, seen: 0, name: p.name };
+      mpRemotes.push(r);
+      say((p.name||'Someone')+' is here too. Their guy is on your screen.', 2600);
+    }
+    r.seen = performance.now();
+    r.tx = p.fx*W; r.ty = groundY() + p.fy*H; r.rot = p.rot||0;
+    if(r.flip) r.flip.style.transform = p.d < 0 ? 'scaleX(-1)' : 'scaleX(1)';
+    r.bounce.classList.toggle('aig-mad', !!p.mad); r.bounce.classList.toggle('aig-asleep', !!p.z); r.bounce.classList.toggle('aig-fly', p.m === 'fly');
+    var sc = r.el.querySelector('.aig-scale-c'); if(sc) sc.style.transform = 'scale('+(p.sz||1)+')';
+    r.btxt = p.b || ''; if(r.bub) r.bub.textContent = r.btxt;
+  }
+  function mpRemove(who){
+    var r = mpRemotes.filter(function(q){ return q.who === who; })[0]; if(!r) return;
+    if(r.el) r.el.remove(); if(r.bub) r.bub.remove();
+    mpRemotes.splice(mpRemotes.indexOf(r), 1);
+  }
+  // You hit a teammate's guy: local effects here, the real hit lands on THEIR screen.
+  function mpHit(r, tool, x, y){
+    if(!mpChan || !tool) return;
+    var rect = { left:r.x, top:r.y, right:r.x+46, bottom:r.y+66, width:46, height:66 };
+    playToolSound(tool); spawnEffect(tool, rect); toolFx(tool, rect, x, y);
+    spawnFloatText(tool.type==='good' ? 'Nice!' : pick(['Long distance!','Across the office!','Airmail!']), tool.type, 0, rect);
+    try{ mpChan.send({ type:'broadcast', event:'hit', payload: { to: r.who, from: mpName, tool: tool.id, fx: (x - r.x)/46 } }); }catch(e){}
+    r.bounce.classList.remove('aig-happy','aig-sad'); void r.bounce.offsetWidth; r.bounce.classList.add(tool.type==='good' ? 'aig-happy' : 'aig-sad');
+    setTimeout(function(){ r.bounce.classList.remove('aig-happy','aig-sad'); }, 850);
+  }
+  // Someone hit YOUR guy from their screen.
+  function mpOnHit(p){
+    if(!p || p.to !== sharedEmail()) return;
+    var tool = findTool(p.tool); if(!tool) return;
+    var r = guyRect(); var hx = r.left + (typeof p.fx === 'number' ? p.fx*46 : 23), hy = r.top + 20;
+    touch(); lookAt(hx, hy - 60, 1200);
+    applyToolHit(tool, hx, hy, 1);
+    var from = p.from || 'Someone'; from = from.charAt(0).toUpperCase() + from.slice(1);
+    remember('hit from '+from, tool.label.toLowerCase());
+    setTimeout(function(){
+      var canned = tool.type === 'good' ? pick([from+' says nice work. Finally, some manners.', 'Praise from '+from+'. Suspicious.']) : pick(spicy([from+' just hit me from across the office.', 'That was '+from+'. I felt that through the wall.', from+'. Of course it was '+from+'.'], [from+', you absolute ass.', 'Who the hell-- oh. '+from+'.']));
+      think(from+' just hit you with a '+tool.label.toLowerCase()+' from THEIR computer across the office', '', canned, 3000, true);
+    }, 400);
+    aigToast(from+' hit your guy', 'with a '+tool.label.toLowerCase()+', from their screen.');
+  }
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
