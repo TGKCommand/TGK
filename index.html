@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.75';
+var TGK_CC_VERSION='v2.77';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16843,7 +16843,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-mood-sulk .aig-body,.aig-mood-asleep .aig-body{transform:translateY(2px) scaleY(.92)}
 .aig-mood-happy .aig-body{transform:translateY(-2px)}
 .aig-mood-scared .aig-body{transform:translateY(1px) scaleX(.94)}
-.aig-remote{position:fixed;left:0;top:0;z-index:848;width:46px;height:66px;pointer-events:none;will-change:transform;opacity:.92}
+.aig-remote{position:fixed;left:0;top:0;z-index:848;width:46px;height:66px;pointer-events:auto;cursor:grab;touch-action:none;will-change:transform;opacity:.92}
+.aig-remote.dragging{cursor:grabbing;z-index:2100}
 .aig-remote .aig-scale-c{width:100%;height:100%;transform-origin:50% 100%}
 .aig-remote .aig-phys-c,.aig-remote .aig-flip-c{width:100%;height:100%}
 .aig-remote .aig-bounce-c{width:100%;height:100%;position:relative}
@@ -17917,7 +17918,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
   var holdTimer = null, holdSwung = false, curX = 0, curY = 0;
   function isUiTarget(el){
-    return !!(el && el.closest && el.closest('#aig-held-chip, #aig-vent, #aig-rage, #aig-modal-overlay, #cc-topbar, #aig-pop'));
+    return !!(el && el.closest && el.closest('#aig-held-chip, #aig-vent, #aig-rage, #aig-modal-overlay, #cc-topbar, #aig-pop, .aig-remote'));
   }
   function swingAt(x, y){
     if(!heldTool || !root) return;
@@ -19967,6 +19968,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         mpChan = mpClient.channel('aig-room', { config: { broadcast: { self: false }, presence: { key: sharedEmail() } } });
         mpChan.on('broadcast', { event: 'state' }, function(m){ mpOnState(m.payload); })
               .on('broadcast', { event: 'hit' },   function(m){ mpOnHit(m.payload); })
+              .on('broadcast', { event: 'grab' },  function(m){ mpOnGrab(m.payload); })
+              .on('broadcast', { event: 'carry' }, function(m){ mpOnCarry(m.payload); })
+              .on('broadcast', { event: 'throw' }, function(m){ mpOnThrow(m.payload); })
+              .on('broadcast', { event: 'car' },   function(m){ var p = m.payload||{}; if(p.from && p.from !== mpName) sendCar(p.from, p.dir); })
               .on('broadcast', { event: 'bye' },   function(m){ mpRemove(m.payload && m.payload.who); })
               .on('presence', { event: 'leave' },  function(p){ (p.leftPresences||[]).forEach(function(x){ mpRemove(x.who); }); })
               .on('presence', { event: 'sync' }, function(){ try{ var st = mpChan.presenceState(); mpOnline = Object.keys(st).map(function(k){ return (st[k][0] && st[k][0].name) || k.split('@')[0]; }); }catch(e){} })
@@ -19990,7 +19995,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
              hat: hatKind||'', b: bubbleShown && bubbleEl ? String(bubbleEl.textContent).slice(0,80) : '', rot: Math.round(rotAngle), sz: settings.size, sh: myShirt().id };
   }
   function mpTick(ts, rawDt){
-    if(mpOn && mpChan && ts - mpLastSend > 100){
+    if(mpOn && mpChan && ts - mpLastSend > 100 && !carriedBy){
       var snap = mpSnapshot(), key = JSON.stringify(snap);
       if(key !== mpLastState || ts - mpLastSend > 1500){ mpLastState = key; mpLastSend = ts; try{ mpChan.send({ type:'broadcast', event:'state', payload: snap }); }catch(e){} }
     }
@@ -20016,11 +20021,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var bub = document.createElement('div'); bub.className = 'aig-remote-bub'; bub.style.display = 'none'; document.body.appendChild(bub);
       document.body.appendChild(el);
       applyShirt(el, shirtFor(p.who, p.sh));
+      el.addEventListener('pointerdown', function(e){ mpGrabStart(e, p.who); });
       r = { who: p.who, el: el, phys: el.querySelector('.aig-phys-c'), flip: el.querySelector('.aig-flip-c'), bounce: el.querySelector('.aig-bounce-c'), bub: bub, x: p.fx*W, y: groundY() + p.fy*H, tx: 0, ty: 0, rot: 0, seen: 0, name: p.name };
       mpRemotes.push(r);
       say((p.name||'Someone')+' is here too. Their guy is on your screen.', 2600);
     }
     r.seen = performance.now();
+    if(r.dragging){ return; }                       // my hand overrides their reported position while I hold them
     r.tx = p.fx*W; r.ty = groundY() + p.fy*H; r.rot = p.rot||0;
     if(r.flip) r.flip.style.transform = p.d < 0 ? 'scaleX(-1)' : 'scaleX(1)';
     r.bounce.classList.toggle('aig-mad', !!p.mad); r.bounce.classList.toggle('aig-asleep', !!p.z); r.bounce.classList.toggle('aig-fly', p.m === 'fly');
@@ -20032,6 +20039,70 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var r = mpRemotes.filter(function(q){ return q.who === who; })[0]; if(!r) return;
     if(r.el) r.el.remove(); if(r.bub) r.bub.remove();
     mpRemotes.splice(mpRemotes.indexOf(r), 1);
+  }
+  // Pick up a teammate's guy and throw him: the carry + throw are relayed so THEIR guy does it too.
+  var mpGrab = null;
+  function mpGrabStart(e, who){
+    if(heldTool) return;                             // holding a tool = you swing at him instead
+    var r = mpRemotes.filter(function(q){ return q.who === who; })[0]; if(!r || !mpChan) return;
+    e.preventDefault(); e.stopPropagation();
+    r.dragging = true; r.el.classList.add('dragging');
+    mpGrab = { r: r, offX: e.clientX - r.x, offY: e.clientY - r.y, hist: [{ x:e.clientX, y:e.clientY, t:performance.now() }], lastSend: 0 };
+    try{ r.el.setPointerCapture(e.pointerId); }catch(err){}
+    document.addEventListener('pointermove', mpGrabMove);
+    document.addEventListener('pointerup', mpGrabEnd);
+    try{ mpChan.send({ type:'broadcast', event:'grab', payload:{ to: who, from: mpName } }); }catch(err){}
+    playToolSound(findTool('thumbs'));
+  }
+  function mpGrabMove(e){
+    var g = mpGrab; if(!g) return;
+    var r = g.r; r.x = e.clientX - g.offX; r.y = e.clientY - g.offY; r.tx = r.x; r.ty = r.y;
+    r.el.style.transform = 'translate3d('+r.x.toFixed(1)+'px,'+r.y.toFixed(1)+'px,0)';
+    g.hist.push({ x:e.clientX, y:e.clientY, t:performance.now() }); if(g.hist.length > 6) g.hist.shift();
+    var now = performance.now();
+    if(now - g.lastSend > 60){ g.lastSend = now; var W = window.innerWidth, H = window.innerHeight; try{ mpChan.send({ type:'broadcast', event:'carry', payload:{ to: r.who, fx: r.x/W, fy: (r.y - groundY())/H } }); }catch(err){} }
+  }
+  function mpGrabEnd(e){
+    var g = mpGrab; if(!g) return; mpGrab = null;
+    document.removeEventListener('pointermove', mpGrabMove); document.removeEventListener('pointerup', mpGrabEnd);
+    var r = g.r; r.dragging = false; r.el.classList.remove('dragging');
+    var h = g.hist, a = h[0], b = h[h.length-1], dtm = Math.max(16, b.t - a.t);
+    var vx = (b.x - a.x)/dtm, vy = (b.y - a.y)/dtm;                 // px/ms, same units as his physics
+    vx = Math.max(-2.2, Math.min(2.2, vx)); vy = Math.max(-2.2, Math.min(2.2, vy));
+    var W = window.innerWidth, H = window.innerHeight;
+    try{ mpChan.send({ type:'broadcast', event:'throw', payload:{ to: r.who, from: mpName, fx: r.x/W, fy: (r.y - groundY())/H, vx: vx/W*1000, vy: vy/H*1000 } }); }catch(err){}
+    if(Math.hypot(vx, vy) > 0.5){ spawnFloatText(pick(['YEET','Airmail!','Bye.']), 'bad', 0, { left:r.x, top:r.y, width:46, height:66 }); noiseBurst(.15, 1200, 0.1, 3); }
+    else spawnFloatText('Dropped.', 'bad', 0, { left:r.x, top:r.y, width:46, height:66 });
+  }
+  // --- owner side: someone across the office has me ---
+  var carriedBy = null, carryTimer = null;
+  function mpOnGrab(p){
+    if(!p || p.to !== sharedEmail()) return;
+    carriedBy = p.from || 'Someone'; carriedBy = carriedBy.charAt(0).toUpperCase() + carriedBy.slice(1);
+    touch(); if(asleep) wakeUp(true); if(cursorStolen) returnCursor(false); if(fightOn) endFightBack();
+    mode = 'drag'; vx = 0; vy = 0; rotVel = 0; bounce.classList.remove('aig-fly'); bounce.classList.add('aig-drag');
+    say(pick(spicy(['Hey! Put me down, '+carriedBy+'.','HEY. '+carriedBy+'. Down.','Not you too, '+carriedBy+'.','Where are we going, '+carriedBy+'?'],[carriedBy+', put me the hell down.','Oh for-- '+carriedBy+'!'])), 1800, true);
+    aigToast(carriedBy+' grabbed your guy', 'from their screen. Hold on.');
+    clearTimeout(carryTimer); carryTimer = setTimeout(function(){ if(mode === 'drag' && carriedBy){ carriedBy = null; mode = 'fly'; bounce.classList.remove('aig-drag'); bounce.classList.add('aig-fly'); } }, 6000);   // dropped connection: fall
+  }
+  function mpOnCarry(p){
+    if(!p || p.to !== sharedEmail() || mode !== 'drag' || !carriedBy) return;
+    var W = window.innerWidth, H = window.innerHeight;
+    pos = Math.max(-20, Math.min(W - 26, p.fx*W)); posY = Math.max(-20, Math.min(groundY(), groundY() + p.fy*H));
+    setRootPos(); rotAngle = Math.max(-25, Math.min(25, rotAngle*0.9)); phys.style.transform = 'rotate('+rotAngle.toFixed(1)+'deg)';
+    clearTimeout(carryTimer); carryTimer = setTimeout(function(){ if(mode === 'drag' && carriedBy){ carriedBy = null; mode = 'fly'; bounce.classList.remove('aig-drag'); bounce.classList.add('aig-fly'); } }, 6000);
+  }
+  function mpOnThrow(p){
+    if(!p || p.to !== sharedEmail() || !carriedBy) return;
+    clearTimeout(carryTimer);
+    var W = window.innerWidth, H = window.innerHeight, who = carriedBy; carriedBy = null;
+    pos = p.fx*W; posY = groundY() + p.fy*H;
+    vx = Math.max(-2.2, Math.min(2.2, (p.vx||0)*W/1000)); vy = Math.max(-2.2, Math.min(2.2, (p.vy||0)*H/1000)); rotVel = vx*0.8;
+    mode = 'fly'; bounce.classList.remove('aig-drag'); bounce.classList.add('aig-fly'); setRootPos();
+    remember('thrown by '+who, '');
+    var hard = Math.hypot(vx, vy) > 0.6;
+    if(hard){ playThrow(); think(who+' just picked you up and THREW you across the office from their computer', '', pick(spicy(['WHEEEE-- '+who+'!','I will remember this, '+who+'.','Tell HR it was '+who+'.'],[who+', you absolute ass!','What the hell, '+who+'!'])), 2400); }
+    else say(pick(['Rude, '+who+'.','...okay then.']), 1400, true);
   }
   // You hit a teammate's guy: local effects here, the real hit lands on THEIR screen.
   function mpHit(r, tool, x, y){
@@ -20067,10 +20138,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // The sprite's nose must point the way the car travels (toward him). Built-in art faces right;
   // a custom image may face left, so that is a setting.
   function carFlip(dir){ var facesRight = !(settings.carImg && settings.carFacesLeft); var flip = (dir < 0) === facesRight; return flip ? ' scaleX(-1)' : ''; }
-  function sendCar(){
+  function sendCar(remoteFrom, remoteDir){
     if(carObj || !root) return;
     var W = window.innerWidth, fy = floorY();
-    var fromLeft = (pos + 23) > W/2;                       // enters on the side he is NOT on
+    var fromLeft = (typeof remoteDir === 'number') ? remoteDir > 0 : (pos + 23) > W/2;   // local: from the side he is NOT on; shared: same direction on every screen
+    if(!remoteFrom && mpOn && mpChan){ try{ mpChan.send({ type:'broadcast', event:'car', payload:{ from: mpName, dir: fromLeft ? 1 : -1 } }); }catch(e){} }
     var el = document.createElement('div'); el.className = 'aig-car';
     if(settings.carImg && /^(https?:|data:image)/i.test(settings.carImg)){ el.classList.add('custom'); el.style.backgroundImage = 'url("'+settings.carImg.replace(/"/g,'')+'")'; }
     document.body.appendChild(el);
@@ -20080,8 +20152,15 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     tone(60,.5,'sawtooth',.06); tone(90,.6,'sawtooth',.05,.15); noiseBurst(.4, 300, 0.08, 1.2);
     setTimeout(function(){ tone(470,.18,'square',.06); tone(370,.22,'square',.06,.02); }, 500);
     touch(); unhide();
-    say(pick(spicy(['Is that... the S6?','Oh no. Oh no no no.','Not the car. NOT THE CAR.','Quattro. Of course it is quattro.'],['Oh SHIT, the S6.','Who gave the car keys to-- oh, hell.'])), 1800, true);
-    remember('the S6 was sent', '');
+    if(remoteFrom){
+      var rf = remoteFrom.charAt(0).toUpperCase() + remoteFrom.slice(1);
+      say(pick(spicy([rf+' sent the S6. For ALL of us.',rf+'! The CAR, '+rf+'?!','Everyone run. '+rf+' has the keys.'],[rf+', you absolute-- CAR.'])), 1800, true);
+      aigToast(rf+' sent the S6', 'It is coming for everyone. Run.');
+      remember('the S6 was sent by '+rf, '');
+    } else {
+      say(pick(spicy(['Is that... the S6?','Oh no. Oh no no no.','Not the car. NOT THE CAR.','Quattro. Of course it is quattro.'],['Oh SHIT, the S6.','Who gave the car keys to-- oh, hell.'])), 1800, true);
+      remember('the S6 was sent', '');
+    }
   }
   function updateCar(ts, dt){
     var c = carObj; if(!c) return;
@@ -20125,8 +20204,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       fxBurst(gcx, posY + 30, 24, ['#c8c8c8','#fff','#FF6B6B','#333'], { speed: 0.2, g: 0.0015, size: 4, ttl: 800, shape:'rect' });
       lastBadTool = 'car';
     }
+    mpRemotes.forEach(function(rr){ if(!rr.carHit && ((c.dir > 0 && frontX >= rr.x && c.x < rr.x) || (c.dir < 0 && frontX <= rr.x + 46 && c.x + 200 > rr.x))){ rr.carHit = true; powBurst(rr.x + 23, rr.y, ['SPLAT','HONK']); fxBurst(rr.x + 23, rr.y + 30, 14, ['#fff','#c8c8c8','#FF6B6B'], { speed: 0.18, g: 0.0014, size: 4, ttl: 700, shape:'rect' }); } });
     if((c.dir > 0 && c.x > W + 40) || (c.dir < 0 && c.x < -250)){
-      c.el.remove(); carObj = null;
+      c.el.remove(); carObj = null; mpRemotes.forEach(function(rr){ rr.carHit = false; });
       if(!c.hit) setTimeout(function(){ say(pick(['Missed me. Terrible driver.','That was close. Check your mirrors.','Not today, Ingolstadt.']), 2000, true); }, 300);
     }
   }
