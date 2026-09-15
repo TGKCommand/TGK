@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.71';
+var TGK_CC_VERSION='v2.73';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16858,6 +16858,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 @keyframes aigShieldIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes aigShieldHit{0%{filter:brightness(2.2)}100%{filter:brightness(1)}}
 .aig-blocking .aig-arm{transition:none}
+.aig-talk{display:flex;gap:6px;border-top:1px solid #232527;padding-top:8px}
+.aig-talk input{flex:1;font-size:11px!important;padding:6px 9px!important;background:#101214!important;border:1px solid #2e2e2e!important;color:#f0f0f0!important;border-radius:8px!important;width:auto!important;-webkit-appearance:none!important}
+.aig-talk button{background:rgba(42,191,170,.15);border:1px solid rgba(42,191,170,.5);color:#2ABFAA;border-radius:8px;padding:0 10px;font-size:11px;cursor:pointer;font-family:inherit}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17010,10 +17013,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var raw = localStorage.getItem(STORE_KEY);
       if(raw){
         var parsed = JSON.parse(raw);
-        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[] };
+        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[], players: parsed.players||{}, learn: parsed.learn||{}, chat: parsed.chat||[] };
       }
     }catch(e){}
-    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[] };
+    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[] };
   }
   function stat(key, inc){ aigState.stats[key] = (aigState.stats[key]||0) + (inc==null?1:inc); return aigState.stats[key]; }
   var aigState = loadState();
@@ -17026,6 +17029,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var gravSign = 1, gravTimer = null, fearTool = null, fearSaidAt = 0, lastBadTool = null;
   var slingOn = false, slingAnchor = null, bandEl = null, hitPad = 14;
   var lastDir = 0, shakeUntil = 0, shakeAmp = 0, popOpen = false, hiddenPoll = null;
+  var hitFrom = null;
   var blockUntil = 0, shieldEl = null, shieldUntil = 0, recentHits = [], lastDefendAt = -1e9, lastShieldAt = -1e9, defenseStats = { blocks:0, catches:0, parries:0 };
   var anger = 0, madHits = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
   var cursorStolen = false, stolenUntil = 0, stolenEl = null, lastDodgeAt = 0, fleeDir = 1, fleeHopAt = 0;
@@ -17135,7 +17139,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal;
   }
   function tick(ts){
     loopArmed = false;
@@ -17232,7 +17236,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
             if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
           }
         } else {
-        if(heldTool && fearTool && heldTool.id === fearTool){
+        if(heldTool && fearTool && heldTool.id === fearTool && !trusts(playerOf())){
           var fcx = pos + 23;
           if(Math.abs(curX - fcx) < 170 && Math.abs(curY - (posY+30)) < 220){
             fleeing = true; dir = curX < fcx ? 1 : -1;
@@ -17327,6 +17331,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     updateAnger(ts, rawDt);
     updateMind(ts, rawDt);
+    updateDrives(ts, rawDt);
     mpTick(ts, rawDt);
     fxTick(rawDt);
     updateHead(ts, dt);
@@ -17563,6 +17568,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       sec('aig-tool-bad',  'Whack',  'click him \u00b7 hold to rapid-fire', whack) +
       sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
       '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.join(', ') : '')+'</span></div>'+
+      '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something to him..." onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div>'+
       '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
       settingsHtml();
     document.body.appendChild(pop);
@@ -17797,7 +17803,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(toolLocked(tool)){ window.aiGuyLockedTap(toolId); return; }
     heldTool = tool;
     closePop();
-    unhide(); touch();
+    unhide(); touch(); onEquipLearned(tool);
     if(!cursorEl){
       cursorEl = document.createElement('div');
       cursorEl.id = 'aig-cursor-tool';
@@ -17960,6 +17966,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     unhide();
     lookAt(hitX, hitY, 900);
     squish(hitX);
+    learnHit(hitFrom || sharedEmail(), tool, hitY); hitFrom = null;
     if(tool.id === 'coffee'){
       aigState.good += 2; saveState();                // counts as 3 praises total
       anger = 0; madOn = false; bounce.classList.remove('aig-mad','aig-sulk'); sulkUntil = 0;
@@ -17978,6 +17985,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       badStreak++; saveCond();
       return;
     }
+    if(tool.type === 'bad' && badStreak >= 3) learnOutcome(tool.id, false);   // about to be KO'd by this: it got through
     if(mode === 'frozen'){
       if(tool.type === 'bad' && tool.weight >= 2){ shatterIce(); force = (force||1) * 1.4; }
       else if(tool.type === 'bad'){ tone(2400,.04,'sine',.03); spawnEffect(tool); return; }
@@ -19649,6 +19657,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function runSkit(ts){
     var age = performance.now() - skit.t0;
     if(age > 9000){ endSkit(); return; }
+    if(skit.kind === 'goto'){
+      var dg = skit.target - pos;
+      if(Math.abs(dg) > 10){ dir = dg > 0 ? 1 : -1; pos += dir * 0.08 * dt_last; }
+      else { var fn = skit.done; endSkit(); if(fn) try{ fn(); }catch(e){} }
+      if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
+      return;
+    }
     if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
     if(skit.kind === 'lap'){
       dir = skit.target > pos ? 1 : -1; pos += dir * 0.09 * dt_last;
@@ -19787,7 +19802,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       last_ko_by: aigState.stats.lastKoBy ? { who: String(aigState.stats.lastKoBy.who||'').split('@')[0], tool: aigState.stats.lastKoBy.tool } : null,
       open_notifications: openItems, clones_on_screen: clones.length, traps_on_floor: traps.length,
       recent_events: (aigState.memory||[]).slice(0,8).map(function(m){ return Math.round((Date.now()-m.t)/60000)+'m ago: '+m.k+(m.d?' '+m.d:'')+(m.who?' (by '+m.who+')':''); }),
-      achievements: (aigState.ach||[]).length
+      achievements: (aigState.ach||[]).length,
+      this_person: playerSummary(),
+      drives: drivesSnapshot()
     };
   }
   var BRAIN_SYSTEM = [
@@ -19910,7 +19927,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var rect = { left:r.x, top:r.y, right:r.x+46, bottom:r.y+66, width:46, height:66 };
     playToolSound(tool); spawnEffect(tool, rect); toolFx(tool, rect, x, y);
     spawnFloatText(tool.type==='good' ? 'Nice!' : pick(['Long distance!','Across the office!','Airmail!']), tool.type, 0, rect);
-    try{ mpChan.send({ type:'broadcast', event:'hit', payload: { to: r.who, from: mpName, tool: tool.id, fx: (x - r.x)/46 } }); }catch(e){}
+    try{ mpChan.send({ type:'broadcast', event:'hit', payload: { to: r.who, from: mpName, fromEmail: sharedEmail(), tool: tool.id, fx: (x - r.x)/46 } }); }catch(e){}
     r.bounce.classList.remove('aig-happy','aig-sad'); void r.bounce.offsetWidth; r.bounce.classList.add(tool.type==='good' ? 'aig-happy' : 'aig-sad');
     setTimeout(function(){ r.bounce.classList.remove('aig-happy','aig-sad'); }, 850);
   }
@@ -19920,6 +19937,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var tool = findTool(p.tool); if(!tool) return;
     var r = guyRect(); var hx = r.left + (typeof p.fx === 'number' ? p.fx*46 : 23), hy = r.top + 20;
     touch(); lookAt(hx, hy - 60, 1200);
+    hitFrom = p.to && p.fromEmail ? p.fromEmail : (p.from||'remote');
     applyToolHit(tool, hx, hy, 1);
     var from = p.from || 'Someone'; from = from.charAt(0).toUpperCase() + from.slice(1);
     remember('hit from '+from, tool.label.toLowerCase());
@@ -20021,7 +20039,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     if(recentHits.length >= 4 && !shieldEl && now - lastShieldAt > 14000){ lastShieldAt = now; raiseShield(); }
     var alert = now - lastHitAt < 6000;
-    var pBlock = madOn ? 0.32 : (alert ? 0.2 : 0.07);
+    var P = playerOf();
+    var pBlock = (madOn ? 0.32 : (alert ? 0.2 : 0.07)) * defW(tool.id);
+    if(now < preGuardUntil) pBlock += 0.2;              // he saw you pick your favorite
+    if(isRapid(P) && (alert || madOn)) pBlock += 0.1;   // learned your rhythm
+    if(trusts(P)) pBlock *= 0.4;                        // he does not brace against friends
+    pBlock = Math.min(0.7, pBlock);
     // catch a thrown thing and throw it straight back
     if((tool.id === 'tomato' || tool.id === 'pie' || tool.id === 'shirt') && Math.random() < (madOn ? 0.35 : 0.18)){
       defenseStats.catches++; lastDefendAt = now; blockUntil = now + 500;
@@ -20031,7 +20054,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       addAnger(3); return true;
     }
     if(mode === 'walk' && Math.random() < pBlock){
-      defenseStats.blocks++; lastDefendAt = now; blockUntil = now + 650;
+      defenseStats.blocks++; lastDefendAt = now; blockUntil = now + 650; learnOutcome(tool.id, true);
       bounce.classList.add('aig-blocking'); setTimeout(function(){ bounce.classList.remove('aig-blocking'); }, 700);
       // a block still stings: small knock, no bandaid, no streak
       applyImpulse({ weight: 1, type:'bad' }, x, y, 0.35);
@@ -20074,6 +20097,136 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     tone(700,.06,'sine',.04);
   }
 
+  // ---------------- Learning: a model of each person who touches him ----------------
+  // Updated on every hit/praise (local and relayed). Drives pre-guarding, trust, rhythm-dodging,
+  // and the defence odds themselves (outcome-weighted: what worked gets used more).
+  function playerOf(email){
+    var k = String(email||sharedEmail()||'anonymous').toLowerCase();
+    var P = aigState.players[k]; if(!P){ P = aigState.players[k] = { hits:0, praises:0, tools:{}, lastAt:0, cadence:800, esc:0, kos:0, clickTop:0.5, first:Date.now() }; }
+    return P;
+  }
+  function learnHit(email, tool, hitY){
+    var P = playerOf(email), now = Date.now();
+    if(tool.type === 'bad'){ P.hits++; P.tools[tool.id] = (P.tools[tool.id]||0)+1; if(tool.weight >= 3) P.esc++; }
+    else P.praises++;
+    if(P.lastAt) P.cadence = P.cadence*0.7 + Math.min(4000, now - P.lastAt)*0.3;
+    P.lastAt = now;
+    if(typeof hitY === 'number'){ var r = guyRect(); P.clickTop = P.clickTop*0.8 + Math.max(0, Math.min(1, (hitY - r.top)/r.height))*0.2; }
+    saveState();
+  }
+  function favTool(P){ var best = null; Object.keys(P.tools).forEach(function(k){ if(!best || P.tools[k] > P.tools[best]) best = k; }); return (best && P.hits >= 6 && P.tools[best]/P.hits >= 0.35) ? best : null; }
+  function trusts(P){ return (P.hits + P.praises) >= 8 && P.praises / Math.max(1, P.hits + P.praises) >= 0.7; }
+  function isRapid(P){ return P.cadence < 420 && Date.now() - P.lastAt < 3000; }
+  // outcome-weighted defence: per-tool multiplier on block odds, nudged by what happened
+  function defW(toolId){ var L = aigState.learn; return (L[toolId] && L[toolId].w) || 1; }
+  function learnOutcome(toolId, good){
+    var L = aigState.learn; var e = L[toolId] || (L[toolId] = { w:1, tries:0 });
+    e.tries++; e.w = Math.max(0.6, Math.min(1.8, e.w + (good ? 0.06 : -0.04))); saveState();
+  }
+  var preGuardUntil = 0, preGuardSaidFor = '';
+  function onEquipLearned(tool){
+    if(!tool || tool.type !== 'bad') return;
+    var P = playerOf(), f = favTool(P), nm = sharedEmail().split('@')[0]; nm = nm.charAt(0).toUpperCase()+nm.slice(1);
+    if(f && f === tool.id){
+      preGuardUntil = performance.now() + 4000; blockUntil = performance.now() + 900;
+      if(preGuardSaidFor !== tool.id + Date.now().toString().slice(0,-5)){ preGuardSaidFor = tool.id + Date.now().toString().slice(0,-5); say(pick(['The '+tool.label.toLowerCase()+' again, '+nm+'?','Ah. Your favorite.','I know what you do with that.',P.tools[f]+' times with that thing. I have notes.']), 2000); }
+    }
+  }
+  function playerSummary(){
+    var P = playerOf(), f = favTool(P);
+    return { hits:P.hits, praises:P.praises, favorite_tool:f, escalations_to_heavy:P.esc, cadence_ms:Math.round(P.cadence), trusted: trusts(P), tends_to_hit: P.clickTop < 0.4 ? 'head' : (P.clickTop > 0.65 ? 'legs' : 'body') };
+  }
+
+  // ---------------- Drives: he chooses what to do, instead of only reacting ----------------
+  var drives = { safety:0, curiosity:0, social:0, mischief:0, rest:0, pride:0 };
+  var nextDriveAt = 0, lastDriveAction = '', lastMischiefAt = -1e9, knownTraps = 0, knownRemotes = 0, driveGoal = null;
+  function drivesSnapshot(){ var o = {}; Object.keys(drives).forEach(function(k){ o[k] = Math.round(drives[k]*100)/100; }); o.current_goal = driveGoal || null; return o; }
+  function updateDrives(ts, rawDt){
+    var s = rawDt/1000, idle = (performance.now() - lastInteractAt)/1000;
+    drives.rest      = Math.min(1, drives.rest + (idle > 60 ? 0.004*s : -0.02*s));
+    drives.safety    = Math.max(0, Math.min(1, anger/100*0.6 + (performance.now()-lastHitAt < 8000 ? 0.4 : 0) - (trusts(playerOf()) ? 0.3 : 0)));
+    if(traps.length > knownTraps) drives.curiosity = Math.min(1, drives.curiosity + 0.5); knownTraps = traps.length;
+    if(mpRemotes.length > knownRemotes) drives.social = Math.min(1, drives.social + 0.6); knownRemotes = mpRemotes.length;
+    drives.social    = Math.max(0, Math.min(1, drives.social + (mpRemotes.length ? 0.01*s : -0.03*s)));
+    drives.curiosity = Math.max(0, drives.curiosity - 0.01*s);
+    drives.mischief  = Math.max(0, Math.min(1, drives.mischief + (idle > 20 && anger < 40 ? 0.012*s : -0.01*s)));
+    drives.pride     = Math.max(0, Math.min(1, drives.pride + (performance.now() - lastPraiseAt < 6000 ? 0.15*s : -0.02*s)));
+    if(ts < nextDriveAt || mode !== 'walk' || skit || heldTool || fightOn || cursorStolen || asleep || hiding || badDayOn || popOpen) return;
+    nextDriveAt = ts + 5000 + Math.random()*5000;
+    var best = null, bv = 0.55;
+    Object.keys(drives).forEach(function(k){ if(drives[k] > bv){ bv = drives[k]; best = k; } });
+    if(!best || best === lastDriveAction && Math.random() < 0.6) return;
+    lastDriveAction = best; driveGoal = best; setTimeout(function(){ if(driveGoal === best) driveGoal = null; }, 9000);
+    switch(best){
+      case 'rest':      if(drives.rest > 0.9) fallAsleep(); else startSkit('watch'); drives.rest *= 0.5; break;
+      case 'curiosity': startSkit('trap'); drives.curiosity = 0; break;
+      case 'social':    if(mpRemotes.length){ var r = mpRemotes[0]; driveWalkTo(r.x + 60, function(){ say(pick(['Hey. Other me.','You look tired, other me.','Do you also get the hammer?']), 1800); cloneSay(r, pick(['...','Same.','Every day.'])); }); } drives.social *= 0.3; break;
+      case 'mischief':
+        if(performance.now() - lastMischiefAt > 240000 && settings.steal !== false && Math.random() < 0.5){ lastMischiefAt = performance.now(); driveWalkTo(curX - 23, function(){ if(Math.abs((pos+23) - curX) < 60){ say('Boop.', 800, true); stealCursor(); } }); }
+        else { driveWalkTo(curX - 23, function(){ say(pick(['Brought you something.','Gift. For you.','Catch.']), 1200); throwAtCursor(); }); }
+        drives.mischief = 0; break;
+      case 'pride':     bounce.classList.add('aig-happy'); setTimeout(function(){ bounce.classList.remove('aig-happy'); }, 1800); confettiRain(pos+23, posY-30, 14); say(pick(['Look at me. LOOK at me.','Employee of the month. Unofficially.','Strut.']), 1600); drives.pride = 0; break;
+      case 'safety':    if(!hiding && settings.hide !== false){ hiding = true; hideHold = 0; hideTarget = (pos < window.innerWidth/2) ? -30 : window.innerWidth - 16; say(pick(['I am going over here now.','Nope. Corner.']), 1400); } drives.safety *= 0.5; break;
+    }
+  }
+  function driveWalkTo(x, done){
+    skit = { kind:'goto', t0: performance.now(), target: Math.max(4, Math.min(window.innerWidth - 50, x)), done: done };
+  }
+  // ---------------- Talk to him ----------------
+  // Claude decides both what he SAYS and what he DOES; the local code executes the action.
+  var talkBusy = false;
+  var TALK_ACTIONS = { calm:1, come:1, nap:1, dance:1, sulk:1, attack:1, hide:1, wave:1, none:1 };
+  window.aiGuyTalk = function(text){
+    text = String(text||'').trim(); if(!text) return;
+    closePop(); touch(); if(asleep) wakeUp(true);
+    remember('you said', text.slice(0,50));
+    aigState.chat.push({ who:'you', t:text.slice(0,140), at:Date.now() }); if(aigState.chat.length > 12) aigState.chat.shift(); saveState();
+    var lower = text.toLowerCase();
+    var fallback = function(){
+      var act = 'none', line;
+      if(/calm|relax|chill|sorry|truce/.test(lower)){ act = 'calm'; line = pick(['...fine. Fine.','Apology noted. Filed. Ignored.','Breathing. Counting backorders.']); }
+      else if(/come|here|closer/.test(lower)){ act = 'come'; line = pick(['Coming. Hold your hammer.','On my way. Slowly.']); }
+      else if(/sleep|nap|rest|tired/.test(lower)){ act = 'nap'; line = pick(['Do not have to tell me twice.','Wake me for the deploy.']); }
+      else if(/dance|celebrate|party/.test(lower)){ act = 'dance'; line = pick(['Watch this.','Strut mode.']); }
+      else if(/who hit|most|leader|score/.test(lower)){ var P = playerOf(); line = 'You: '+P.hits+' hits, '+P.praises+' praises. Favorite: '+(favTool(P)||'undecided')+'.'; }
+      else if(/how are|you ok|feel/.test(lower)){ line = anger > 60 ? pick(spicy(['Mad. Obviously.','Been better. Been hit less.'],['Pissed, since you ask.'])) : pick(['Alive. Employed. Walking.','Fine until you reach for the tray.']); }
+      else if(/hello|hi\b|hey|yo\b/.test(lower)){ act = 'wave'; line = pick(['Hey.','Yo.','Present.']); }
+      else line = pick(['Noted.','Write that in Notes.','Is that a request or a threat?','Cool. Anyway.','I heard you. I am choosing not to respond.']);
+      talkDo(act); sayTalk(line);
+    };
+    if(!brainOn() || talkBusy){ fallback(); return; }
+    talkBusy = true;
+    var ctx = brainContext(); ctx.recent_chat = aigState.chat.slice(-6);
+    var sys = BRAIN_SYSTEM + (settings.swear === false ? ' No profanity.' : ' Profanity allowed in moderation, never slurs.') +
+      ' The user is TALKING to you now. Reply ONLY with JSON: {"say": "<one line, max 90 chars>", "action": "<one of calm|come|nap|dance|sulk|attack|hide|wave|none>"}. Choose the action that fits what you would actually do given your anger and what they said - you may refuse requests. Use the context to answer factual questions about scores and who hit you.';
+    var timer = setTimeout(function(){ if(talkBusy){ talkBusy = false; fallback(); } }, 5000); var done = false;
+    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 90, system: sys, messages:[{ role:'user', content: 'They said: "'+text.slice(0,200)+'"\nContext: '+JSON.stringify(ctx)+'\nJSON:' }] })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(done) return; done = true; clearTimeout(timer); talkBusy = false;
+        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
+        var m = /\{[\s\S]*\}/.exec(txt); var obj = null; try{ obj = m ? JSON.parse(m[0]) : null; }catch(e){}
+        if(!obj || !obj.say || SLUR_RX.test(obj.say)){ fallback(); return; }
+        var line = String(obj.say).replace(/\s+/g,' ').slice(0, 110);
+        talkDo(TALK_ACTIONS[obj.action] ? obj.action : 'none');
+        sayTalk('\u2726 ' + line);
+        brainFails = 0;
+      })
+      .catch(function(){ if(done) return; done = true; clearTimeout(timer); talkBusy = false; brainFails++; fallback(); });
+  };
+  function sayTalk(line){ aiHoldUntil = -1e9; say(line, Math.min(5000, 2200 + line.length*30), true); aigState.chat.push({ who:'him', t:line.replace(/^\u2726 /,'').slice(0,140), at:Date.now() }); if(aigState.chat.length > 12) aigState.chat.shift(); saveState(); }
+  function talkDo(act){
+    switch(act){
+      case 'calm':  anger = Math.max(0, anger - 35); if(anger < 55 && madOn){ madOn = false; bounce.classList.remove('aig-mad'); } if(fightOn) endFightBack(); break;
+      case 'come':  driveWalkTo(curX - 23, function(){ lookAt(curX, curY, 2000); }); break;
+      case 'nap':   setTimeout(fallAsleep, 600); break;
+      case 'dance': bounce.classList.add('aig-happy'); setTimeout(function(){ bounce.classList.remove('aig-happy'); }, 1800); confettiRain(pos+23, posY-30, 18); break;
+      case 'sulk':  sulkUntil = performance.now() + 20000; bounce.classList.add('aig-sulk'); break;
+      case 'attack': addAnger(30); if(anger >= 85) startFightBack(); else throwAtCursor(); break;
+      case 'hide':  if(settings.hide !== false){ hiding = true; hideHold = 0; hideTarget = (pos < window.innerWidth/2) ? -30 : window.innerWidth - 16; } break;
+      case 'wave':  blockUntil = performance.now() + 700; vy = -0.25; if(mode==='walk'){ mode='fly'; bounce.classList.add('aig-fly'); } break;
+    }
+  }
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
     if(!pop || !root) return;
@@ -20253,7 +20406,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   };
   window.aiGuyClearHistory = function(){
     if(!confirm('Clear all AI Guy history and reset the score? This cannot be undone.')) return;
-    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[] };
+    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[] };
     saveState();
     updateBadge();
     renderHistoryList();
