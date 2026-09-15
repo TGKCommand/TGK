@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.47';
+var TGK_CC_VERSION='v2.48';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16768,7 +16768,13 @@ var TGK_CC_VERSION='v2.47';
 .aig-settings{display:none;flex-direction:column;gap:8px;border-top:1px solid #232527;padding-top:8px;font-size:11px;color:#9CA3AF;font-family:var(--font,inherit)}
 .aig-settings.open{display:flex}
 .aig-settings label{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.aig-settings input[type=range]{width:120px;accent-color:#2ABFAA}
+.aig-settings input[type=range]{-webkit-appearance:auto!important;appearance:auto!important;width:120px!important;min-width:0!important;height:18px!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;accent-color:#2ABFAA;font-size:inherit!important}
+.aig-tog{width:38px;height:22px;border-radius:11px;border:1px solid #2e2e2e;background:#232527;position:relative;cursor:pointer;padding:0;flex:0 0 auto;transition:background .15s,border-color .15s}
+.aig-tog::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#6b7076;transition:left .15s,background .15s}
+.aig-tog.on{background:rgba(42,191,170,.25);border-color:rgba(42,191,170,.6)}
+.aig-tog.on::after{left:18px;background:#2ABFAA}
+.aig-settings label{cursor:default}
+.aig-settings .aig-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .aig-settings button{background:none;border:1px solid #2e2e2e;color:#9CA3AF;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:inherit}
 .aig-today{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:2px 0 14px}
 .aig-today div{background:#101214;border:1px solid #232527;border-radius:8px;padding:8px}
@@ -19093,17 +19099,26 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     // hit-testing pads scale with him so he stays clickable when small
     hitPad = Math.round(14 * Math.max(1, 1/settings.size));
   }
+  function tog(key, label, on){
+    return '<div class="aig-row"><span>'+label+'</span><button type="button" class="aig-tog'+(on?' on':'')+'" role="switch" aria-checked="'+(on?'true':'false')+'" data-key="'+key+'" onclick="aiGuyToggleSetting(\''+key+'\', this)"></button></div>';
+  }
+  window.aiGuyToggleSetting = function(key, btn){
+    var on = !btn.classList.contains('on');
+    btn.classList.toggle('on', on); btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    window.aiGuySetting(key, on);
+    tone(on ? 880 : 520, .05, 'sine', .03);
+  };
   function settingsHtml(){
     return '<div class="aig-settings" id="aig-settings">'+
       '<div class="aig-sec-label">Settings</div>'+
       '<label>Size <span style="display:flex;align-items:center;gap:6px"><input type="range" min="0.6" max="2.2" step="0.1" value="'+settings.size+'" oninput="aiGuySetting(\'size\',this.value);this.nextSibling.textContent=(+this.value).toFixed(1)+\'x\'"><span style="width:30px;text-align:right;color:#f0f0f0">'+settings.size.toFixed(1)+'x</span></span></label>'+
       '<label>Walk speed <span style="display:flex;align-items:center;gap:6px"><input type="range" min="0.4" max="2.5" step="0.1" value="'+settings.speed+'" oninput="aiGuySetting(\'speed\',this.value);this.nextSibling.textContent=(+this.value).toFixed(1)+\'x\'"><span style="width:30px;text-align:right;color:#f0f0f0">'+settings.speed.toFixed(1)+'x</span></span></label>'+
-      '<label>Taunts <input type="checkbox" '+(settings.taunts?'checked':'')+' onchange="aiGuySetting(\'taunts\',this.checked)"></label>'+
-      '<label>Wanders off to hide <input type="checkbox" '+(settings.hide?'checked':'')+' onchange="aiGuySetting(\'hide\',this.checked)"></label>'+
-      '<label>Hold to rapid-fire <input type="checkbox" '+(settings.rapid!==false?'checked':'')+' onchange="aiGuySetting(\'rapid\',this.checked)"></label>'+
-      '<label>Lite mode (fewer effects) <input type="checkbox" '+(settings.lite?'checked':'')+' onchange="aiGuySetting(\'lite\',this.checked)"></label>'+
-      '<label>He fights back when mad <input type="checkbox" '+(settings.fight!==false?'checked':'')+' onchange="aiGuySetting(\'fight\',this.checked)"></label>'+
-      '<label>He can steal the cursor <input type="checkbox" '+(settings.steal!==false?'checked':'')+' onchange="aiGuySetting(\'steal\',this.checked)"></label>'+
+      tog('taunts', 'Taunts', settings.taunts !== false) +
+      tog('hide', 'Wanders off to hide', settings.hide !== false) +
+      tog('rapid', 'Hold to rapid-fire', settings.rapid !== false) +
+      tog('lite', 'Lite mode (fewer effects)', !!settings.lite) +
+      tog('fight', 'He fights back when mad', settings.fight !== false) +
+      tog('steal', 'He can steal the cursor', settings.steal !== false) +
       '<div style="font-size:10px;color:#4a4f55">Lite mode also switches itself on if the page drops below ~35 fps.</div>'+
     '</div>';
   }
