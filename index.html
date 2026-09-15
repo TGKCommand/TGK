@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.58';
+var TGK_CC_VERSION='v2.60';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -17011,7 +17011,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var gravSign = 1, gravTimer = null, fearTool = null, fearSaidAt = 0, lastBadTool = null;
   var slingOn = false, slingAnchor = null, bandEl = null, hitPad = 14;
   var lastDir = 0, shakeUntil = 0, shakeAmp = 0, popOpen = false, hiddenPoll = null;
-  var anger = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
+  var anger = 0, madHits = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
   var cursorStolen = false, stolenUntil = 0, stolenEl = null, lastDodgeAt = 0, fleeDir = 1, fleeHopAt = 0;
   var lastInteractAt = performance.now(), asleep = false, nextZzAt = 0, nextBoredAt = 0, skit = null, hiddenAt = 0, lookX = 0, lookY = 0, lookUntil = 0;
   var headImg = null, gazeX = 0, gazeY = 0, gazeRY = 0, shadesEl = null, limpUntil = 0, slideUntil = 0, dramaOn = false, nextRoomAt = 0, roomState = null, nextGossipAt = 0;
@@ -17030,7 +17030,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     return { left:left, top:top, right:left+w, bottom:top+h, width:w, height:h };
   }
   var SETTINGS_KEY = 'tgk_ai_guy_settings';
-  var settings = { size:1, speed:1, taunts:true, hide:true, rapid:true, fight:true, steal:true, eyes:true, brain:true };
+  var settings = { size:1, speed:1, taunts:true, hide:true, rapid:true, fight:true, steal:true, eyes:true, brain:true, swear:true };
   try{ var sv = JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(sv) settings = Object.assign(settings, sv); }catch(e){}
   var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var rage = 0, rageMode = false, rageUntil = 0, lastHitAt = 0, nextTauntAt = 0;
@@ -17196,8 +17196,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           // keep-away. Direction only changes when the pointer is clearly on the side he is running
           // toward (hysteresis) - flipping every frame at an edge was the "vibrating" glitch.
           var cx0 = pos + 23, W = window.innerWidth;
-          if(fleeDir > 0 && curX > cx0 + 40) fleeDir = -1;
-          else if(fleeDir < 0 && curX < cx0 - 40) fleeDir = 1;
+          if(fleeDir > 0 && curX > cx0 + 12) fleeDir = -1;
+          else if(fleeDir < 0 && curX < cx0 - 12) fleeDir = 1;
           var cornered = (fleeDir < 0 && pos < 36) || (fleeDir > 0 && pos > W - 82);
           if(cornered){
             if(performance.now() - fleeHopAt > 900){
@@ -17247,6 +17247,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       posY += vy*dt;
       rotAngle += rotVel*dt;
       if(fightOn && Math.hypot(pos+23 - curX, posY+30 - curY) < 55) fightStrike();
+      if(cursorStolen){ var awayA = (curX > pos+23) ? -1 : 1; vx += awayA * 0.0009 * dt; if(Math.abs(vx) > 0.6) vx = 0.6*Math.sign(vx); }
       if(gravSign < 0 && posY < 8){
         posY = 8;
         if(Math.abs(vy) > SETTLE_V){ playImpact(Math.min(1, Math.abs(vy)/0.9)); vy = -vy*BOUNCE_DAMP; vx *= 0.8; rotVel *= 0.7; squash(); }
@@ -17260,7 +17261,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           // wall splat: stick flat for a beat, then peel off
           mode = 'stuck'; stuckSide = side; stuckUntil = ts + 380;
           achieve('wall_splat'); stat('wallSplats');
-          setTimeout(function(){ say(pick(['Ow.','I am okay. I am not okay.','Wall. Noted.','That is load-bearing.','Who put that there?']), 1500, true); }, 120);
+          setTimeout(function(){ say(pick(spicy(['Ow.','I am okay. I am not okay.','Wall. Noted.','That is load-bearing.','Who put that there?'],['Ow. Shit.','Who the hell put a wall there?','Goddamn drywall.','Well, that hurt like hell.'])), 1500, true); }, 120);
           playImpact(1); shakeScreen();
           spawnDust(pos + (side>0 ? 0 : 46), posY + 30);
           flip.style.transform = 'scaleX('+(side>0?-1:1)+') scale(.6,1.3)';
@@ -17277,7 +17278,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           posY = gy;
           if(Math.abs(vy) > SETTLE_V){
             playImpact(Math.min(1, Math.abs(vy)/0.9));
-            if(Math.abs(vy) > 0.7){ shakeScreen(); say(pick(['Oof.','My spine.','Ten out of ten landing.','Stuck the landing. Kind of.','Everything hurts.']), 1300); }
+            if(Math.abs(vy) > 0.7){ shakeScreen(); say(pick(spicy(['Oof.','My spine.','Ten out of ten landing.','Stuck the landing. Kind of.','Everything hurts.'],['Oof. Shit.','My damn spine.','Everything hurts. Everything.','Ass first. Great.'])), 1300); }
             vy = -vy*BOUNCE_DAMP;
             vx *= 0.75;
             rotVel *= 0.7;
@@ -17541,7 +17542,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       sec('aig-tool-good', 'Praise', 'click him', praise) +
       sec('aig-tool-bad',  'Whack',  'click him \u00b7 hold to rapid-fire', whack) +
       sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
-      '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad'+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'</div>'+
+      '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'</div>'+
       '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
       settingsHtml();
     document.body.appendChild(pop);
@@ -17857,7 +17858,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(hit && madOn && mode === 'walk' && performance.now() - lastDodgeAt > 1200 && Math.random() < 0.35){
       lastDodgeAt = performance.now();
       vx = (x <= pos+23 ? 1 : -1) * 0.5; vy = -0.3; mode = 'fly'; bounce.classList.add('aig-fly');
-      say(pick(['Nope.','Missed me.','Too slow.','Not today.']), 1000, true);
+      say(pick(spicy(['Nope.','Missed me.','Too slow.','Not today.'],['Nope. Dumbass.','Missed me, jackass.','Too slow. Pathetic.'])), 1000, true);
       tone(700,.04,'sine',.02); tone(500,.05,'sine',.015,.03);
       return;
     }
@@ -17913,7 +17914,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function applyToolHit(tool, hitX, hitY, force){
     if(!tool || !bounce) return;
     var phrase = tool.phrases[Math.floor(Math.random()*tool.phrases.length)];
-    if(tool.type === 'bad' && Math.random() < 0.3) phrase = CAR_HIT_PHRASES[Math.floor(Math.random()*CAR_HIT_PHRASES.length)];
+    if(tool.type === 'bad' && Math.random() < 0.3) phrase = pick(spicy(CAR_HIT_PHRASES, CAR_HIT_SPICY));
     aigState.log.unshift({ ts: new Date().toISOString(), type: tool.type, tool: tool.id });
     if(aigState.log.length > 500) aigState.log.length = 500;
     if(tool.type==='good') aigState.good++; else aigState.bad++;
@@ -17935,8 +17936,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       aigState.good += 2; saveState();                // counts as 3 praises total
       anger = 0; madOn = false; bounce.classList.remove('aig-mad','aig-sulk'); sulkUntil = 0;
       if(fightOn) endFightBack(); if(cursorStolen) returnCursor(false); clearHat('hard');
-      fightCooldownUntil = performance.now() + 600000;   // a real truce: ten minutes
-      setTimeout(function(){ say(pick(['Truce. Ten minutes. Then we are back to normal.','Coffee accepted. I am watching you though.','Okay. We are good. For now.']), 3000, true); }, 900);
+      fightCooldownUntil = performance.now() + 180000;   // truce: three minutes
+      setTimeout(function(){ say(pick(['Truce. Three minutes. Then we are back to normal.','Coffee accepted. Three minutes of peace.','Okay. We are good. For three minutes.']), 3000, true); }, 900);
     }
     if(tool.type === 'good') { if(aigState.good >= 100) achieve('pacifist'); }
     else { if(aigState.bad >= 100) achieve('century'); }
@@ -17964,6 +17965,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     checkUnlocks();
     if(tool.type === 'bad'){
       addAnger(7 + tool.weight*3);
+      if(madOn){ madHits++; if(madHits >= 3 && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen'){ madHits = 0; startFightBack(); } }
       badStreak++;
       hitsSinceRetaliate++;
       if(hitsSinceRetaliate >= retaliateAt){ setTimeout(retaliate, 350); }
@@ -17995,7 +17997,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
     playReaction(tool, phrase, hitX, hitY, (force||1) * (rageMode ? 1.5 : 1));
     if(comboCount >= 2) spawnComboText(comboCount, tool.type);
-    if(tool.type === 'bad' && comboCount === 4) say(pick(['Okay okay okay!','Stop! I will fix the sync!','Mercy!','I am filing a ticket about this.']), 1500, true);
+    if(tool.type === 'bad' && comboCount === 4) say(pick(spicy(['Okay okay okay!','Stop! I will fix the sync!','Mercy!','I am filing a ticket about this.'],['Okay okay okay, SHIT!','Stop! I will fix the goddamn sync!','Mercy, you bastard!','Jesus. Enough.'])), 1500, true);
     if(tool.type === 'good' && comboCount === 4) say(pick(['Okay now you are just being nice.','Is this a trick?','I could get used to this.']), 1600, true);
   }
 
@@ -18077,6 +18079,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     'Blinker fluid is on backorder too.', 'Dyno numbers or it did not happen.', 'Ship it Friday, fix it Monday.'
   ];
   var CAR_HIT_PHRASES = ['Blown turbo!','Boost leak!','Misfire on 3!','Check engine!','Limp mode!','Over-boost!','Rod knock!','Timing chain!','Coilpack down!','Wastegate stuck!'];
+  var CAR_HIT_SPICY = ['Shit, boost leak!','Goddamn misfire!','Limp mode, damn it!','Rod knock. Fuck.','Son of a bitch, check engine!'];
   var lastSayAt = -1e9, aiHoldUntil = -1e9;
   function say(text, ms, force){
     if(!root) return;
@@ -18113,6 +18116,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var below = top > r.top; if(below !== bubbleEl._below){ bubbleEl._below = below; bubbleEl.classList.toggle('below', below); }
   }
   function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function spicy(clean, hot){ return settings.swear === false ? clean : clean.concat(hot); }
   var gossipRows = null;
   function loadGossip(){ if(!sharedOk || typeof sbFetch !== 'function') return; sbFetch('/rest/v1/ai_guy_leaderboard?select=*&order=hits.desc&limit=6').then(function(rows){ gossipRows = rows||[]; }).catch(function(){}); }
   function gossipLine(){
@@ -18137,7 +18141,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(performance.now() - lastHitAt < 6000) return;
     if(heldTool) return;
     if(performance.now() < sulkUntil) say(pick(['...','I am fine.','Whatever you say.','Cool. Great. Love that for me.','Do not.']));
-    else if(madOn) say(pick(['I remember every hit.','Keep swinging. I dare you.','My patience has a torque spec too.','Say sync one more time.']));
+    else if(madOn) say(pick(spicy(['I remember every hit.','Keep swinging. I dare you.','My patience has a torque spec too.','Say sync one more time.'],['Say sync one more goddamn time.','I remember every hit, asshole.','Keep swinging. I dare you. I DARE you.'])));
     else if(Math.random() < 0.35) think('idle - you are just walking around the office with nothing happening; say something in character', '', TAUNTS[Math.floor(Math.random()*TAUNTS.length)], 2800);
     else say(TAUNTS[Math.floor(Math.random()*TAUNTS.length)]);
     playVoice('taunt');
@@ -18276,7 +18280,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           }
         }, 120);
       } else if(!byBomb){
-        think('you are waking up after being knocked out', 'weapon: '+(lastBadTool||'?'), pick(['What year is it?','Did the deploy go out?','Who won?','I saw the backorder report in the light.','Is my downpipe okay?']), 1800);
+        think('you are waking up after being knocked out', 'weapon: '+(lastBadTool||'?'), pick(spicy(['What year is it?','Did the deploy go out?','Who won?','I saw the backorder report in the light.','Is my downpipe okay?'],['What the hell year is it?','Shit. Did the deploy go out?','Who the hell won?','My head. My damn head.','Son of a bitch. Is my downpipe okay?'])), 1800);
       }
       keepScoreOutLoud();
     }, byBomb ? 3800 : 1300);
@@ -18834,7 +18838,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var p = document.createElement('div'); p.className = 'aig-proj'; p.textContent = ICN.tomato;
     document.body.appendChild(p);
     projectiles.push({ el:p, x0:r.left+r.width/2, y0:r.top+20, x1:curX, y1:curY, t:0, dur:480 });
-    say(['Right back at ya.','My turn.','Catch!','Oh, you want some?'][Math.floor(Math.random()*4)], 1500);
+    say(pick(spicy(['Right back at ya.','My turn.','Catch!','Oh, you want some?'],['Right back at ya, asshole.','Eat this.','Catch, jackass.','Oh, you want some? Here is some.'])), 1500);
     tone(700,.06,'sine',.04); tone(500,.08,'sine',.03,.05);
   }
   function projHitsGuy(p, w, h){
@@ -19345,6 +19349,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       tog('steal', 'He can steal the cursor', settings.steal !== false) +
       tog('eyes', 'Looks at the cursor', settings.eyes !== false) +
       tog('brain', 'AI brain (Claude writes his lines)', settings.brain !== false) +
+      tog('swear', 'Swears (adults only, no slurs)', settings.swear !== false) +
       '<div style="font-size:10px;color:#4a4f55">Lite mode also switches itself on if the page drops below ~35 fps.</div>'+
     '</div>';
   }
@@ -19414,12 +19419,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       bounce.classList.toggle('aig-mad', madOn);
       if(madOn){
         remember('got mad', '');
-        think('you just crossed the line into MAD after repeated hits', '', pick(['Okay. Now I am mad.','That is IT.','You want a problem? You got a problem.','Keep going. See what happens.','I have HAD it with this sync AND with you.']), 2400);
+        think('you just crossed the line into MAD after repeated hits', '', pick(spicy(['Okay. Now I am mad.','That is IT.','You want a problem? You got a problem.','Keep going. See what happens.','I have HAD it with this sync AND with you.'],['Okay. Now I am pissed.','Oh, HELL no.','That is it. That is fucking it.','You absolute ass.','Keep swinging and see what the hell happens.'])), 2400);
         tone(110,.25,'sawtooth',.06); tone(90,.35,'sawtooth',.05,.1); shakeScreen();
         playVoice('hit');
       }
     }
-    if(anger >= 90 && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen') startFightBack();
+    if(anger >= 85 && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen') startFightBack();
   }
   function updateAnger(ts, rawDt){
     if(anger > 0 && !fightOn){ anger = Math.max(0, anger - rawDt*0.0015); if(madOn && anger < 55){ madOn = false; bounce.classList.remove('aig-mad'); } }
@@ -19438,7 +19443,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     fightOn = true; fightUntil = performance.now() + 10000; fightHits = 0;
     unhide(); if(mode === 'frozen') thawHim();
     remember('fought back', '');
-    think('you are about to fight back and charge the user\'s cursor', '', pick(['Your turn.','Come here.','I am done being the punching bag.','Hold still.']), 1800);
+    think('you are about to fight back and charge the user\'s cursor', '', pick(spicy(['Your turn.','Come here.','I am done being the punching bag.','Hold still.'],['Your turn, asshole.','Get the hell over here.','I am done being your goddamn punching bag.','Hold STILL, damn it.'])), 1800);
     setHat('hard');
     // opening salvo: two tomatoes at the cursor, then a boulder over it
     setTimeout(function(){ if(fightOn) throwAtCursor(); }, 300);
@@ -19448,10 +19453,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     achieve('boomerang');
   }
   function endFightBack(){
-    fightOn = false; fightCooldownUntil = performance.now() + 45000;
+    fightOn = false; fightCooldownUntil = performance.now() + 25000;
     anger = 30; madOn = false; bounce.classList.remove('aig-mad'); clearHat('hard');
     sulkUntil = performance.now() + 20000; bounce.classList.add('aig-sulk');
-    say(pick(['...whatever.','I feel better. You look worse.','We are not friends right now.','Do not talk to me.']), 2600, true);
+    say(pick(spicy(['...whatever.','I feel better. You look worse.','We are not friends right now.','Do not talk to me.'],['...whatever, man.','Screw this. Screw all of it.','We are not friends right now. Ass.','Do not talk to me. I mean it, damn it.'])), 2600, true);
   }
   function fightStrike(){
     if(!fightOn || performance.now() - lastStrikeAt < 900) return;
@@ -19502,7 +19507,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     fleeDir = (curX > pos + 23) ? -1 : 1; fleeHopAt = 0; pauseUntil = 0;
     fightOn = false;
     remember('stole the cursor', '');
-    think('you just stole the user\'s mouse cursor and are running away with it', '', pick(['Got your cursor. Come get it.','Mine now. Catch me.','No cursor for you.','You can have this back when you are nicer.']), 2600);
+    think('you just stole the user\'s mouse cursor and are running away with it', '', pick(spicy(['Got your cursor. Come get it.','Mine now. Catch me.','No cursor for you.','You can have this back when you are nicer.'],['Got your damn cursor. Come get it.','Mine now, jackass.','No cursor for you. Deal with it.','Catch me, you bastard.'])), 2600);
     setTimeout(function(){
       if(!cursorStolen) return;
       say(pick(['Reading your stats. '+aigState.bad+' bad? Wow.','Let me see... '+aigState.good+' good, '+aigState.bad+' bad. Yikes.','Checked your history. Oh. Oh no.']), 2400, true);
@@ -19526,7 +19531,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     document.removeEventListener('keydown', escReturn);
     document.removeEventListener('pointerdown', catchTry);
     if(caught){
-      say(pick(['Fine. Take it.','Ugh. Here.','You caught me. Happy?']), 1600, true);
+      say(pick(spicy(['Fine. Take it.','Ugh. Here.','You caught me. Happy?'],['Fine. Take the damn thing.','Ugh. Here. Happy, ass?','You caught me. Shit.'])), 1600, true);
       vx = (Math.random()<0.5?-1:1)*0.25; vy = -0.35; mode = 'fly'; bounce.classList.add('aig-fly');
       tone(500,.08,'sine',.04); tone(380,.1,'sine',.04,.07);
     } else {
@@ -19695,7 +19700,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     // shuffle, then pick 8-11 with no identical neighbours
     for(var i=pool.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
     var beats = pool.slice(0, 8 + Math.floor(Math.random()*4));
-    var lines = ['...okay.','Why me.','I have a family. Of clones.','Was it the sync? Tell me it was the sync.','Is this about the backorders?','I did the deploy correctly!','Ow. Ow. Ow.','This is a HR issue.','I will remember this.','Not the face. Okay, the face.'];
+    var lines = spicy(['...okay.','Why me.','I have a family. Of clones.','Was it the sync? Tell me it was the sync.','Is this about the backorders?','I did the deploy correctly!','Ow. Ow. Ow.','This is a HR issue.','I will remember this.','Not the face. Okay, the face.'],['Oh, come ON.','What the hell did I do?','Son of a bitch.','Shit. Shit. Shit.','Is this about the goddamn backorders?','I did the deploy right, you ass!','Ow. Ow. Damn it. Ow.']);
     for(var i=lines.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=lines[i]; lines[i]=lines[j]; lines[j]=tmp; }
     var steps = [[0, function(){ say(pick(['*whistling*','La la la. Nice day.','Just a normal Tuesday.','What a lovely, quiet--']), 2200, true); pauseUntil = performance.now() + 2500; }]];
     var tcur = 2600, span = 16000 / beats.length, li = 0;
@@ -19746,21 +19751,23 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     'You are a little cartoon robot body with the boss\'s real face. The team clicks you with cartoon weapons to blow off steam, and praises you when the AI did good work. You are a sarcastic, quick, lovable coworker: dry humor, car-nerd jokes (boost leaks, P0299, N75, DSG, downpipes, "torque spec: gutentight"), light shop-ops jokes (Shopify sync, backorders, SKUs with hyphens, ShipStation firing twice, "did you run node --check", data accuracy).',
     'Reply with ONE line only, 4 to 14 words, max 90 characters. No quotes, no emojis, no hashtags, no preamble, no explanation. First person. Match the mood: playful when praised, dramatic when hurt, genuinely grumpy when mad, sulky when sulking, sleepy when asleep. Never insult real people cruelly; teasing is fine. Never mention being an AI model or a prompt.'
   ].join(' ');
+  var SLUR_RX = /\b(n[i1]gg|f[a4]gg?[oe]t|k[i1]ke|sp[i1]c|ch[i1]nk|tr[a4]nn|ret[a4]rd|wetback|gook|beaner|towelhead|dyke)\w*/i;
   function think(kind, detail, fallback, ms, urgent, onText){
     var fb = function(){ if(fallback) say(fallback, ms||2600, true); };
     if(!brainOn() || brainBusy || (!urgent && performance.now() - lastThinkAt < 35000)){ fb(); return; }
     brainBusy = true; lastThinkAt = performance.now();
     var ctx = brainContext();
     var user = 'Moment: '+kind+(detail ? ' - '+detail : '')+'\nContext: '+JSON.stringify(ctx)+'\nDo not repeat any of these recent lines: '+JSON.stringify(recentLines.slice(-6))+'\nYour one line:';
+    var sys = BRAIN_SYSTEM + (settings.swear === false ? ' No profanity at all.' : ' Profanity is allowed and fits your character when you are hurt or mad: shit, damn, hell, ass, bastard, and an occasional fuck. Use it like a shop mechanic, not every line. Never slurs, nothing sexual, never mock anyone for who they are.');
     var timer = setTimeout(function(){ if(brainBusy){ brainBusy = false; fb(); } }, 4500);
     var done = false;
-    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 60, system: BRAIN_SYSTEM, messages:[{ role:'user', content:user }] })
+    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 60, system: sys, messages:[{ role:'user', content:user }] })
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(done) return; done = true; clearTimeout(timer); brainBusy = false;
         var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
         txt = txt.replace(/^["'\s]+|["'\s]+$/g,'').replace(/\s+/g,' ').split('\n')[0];
-        if(!txt || txt.length > 110 || /https?:/i.test(txt) || /as an ai|language model|prompt/i.test(txt)){ fb(); return; }
+        if(!txt || txt.length > 110 || /https?:/i.test(txt) || /as an ai|language model|prompt/i.test(txt) || SLUR_RX.test(txt)){ fb(); return; }
         recentLines.push(txt); if(recentLines.length > 12) recentLines.shift();
         say('\u2726 ' + txt, ms || Math.min(4200, 1800 + txt.length*28), true);
         brainFails = 0;
@@ -19769,7 +19776,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       .catch(function(){ if(done) return; done = true; clearTimeout(timer); brainBusy = false; brainFails++; fb(); });
   }
   window.aiGuyThink = think;
-  window.aiGuyDebug = { sleep: fallAsleep, wake: wakeUp, skit: startSkit, state: function(){ return { mode:mode, asleep:asleep, skit:skit?skit.kind:null, anger:Math.round(anger), mad:madOn, fight:fightOn, stolen:cursorStolen }; } };
+  window.aiGuyDebug = { sleep: fallAsleep, wake: wakeUp, skit: startSkit, state: function(){ return { mode:mode, asleep:asleep, skit:skit?skit.kind:null, anger:Math.round(anger), mad:madOn, fight:fightOn, stolen:cursorStolen, truce_s: Math.max(0, Math.ceil((fightCooldownUntil-performance.now())/1000)), steal_on: settings.steal !== false, fight_on: settings.fight !== false }; } };
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
