@@ -12478,6 +12478,7 @@ function showDashboardScreen(sess) {
       access_token: sess.access_token, refresh_token: sess.refresh_token || '', email: sess.email || ''
     });
   }
+  try{ window.dispatchEvent(new CustomEvent('tgk:event', { detail:{ type:'login', label: (sess && sess.email) ? sess.email.split('@')[0] : '' } })); }catch(e){}
   // Boot dashboard
   loadLayout(); renderDashboard(); setupDragBuiltIn(); dashLoadExt();
 }
@@ -13152,10 +13153,12 @@ window.addEventListener('message', function(e) {
   if (type === 'SKU_CREATED') {
     erpToast('SKU created in ERP', e.data.sku || '');
     dashBridgeSet('sku', e.data.sku);
+    try{ window.dispatchEvent(new CustomEvent('tgk:event', { detail:{ type:'sku_created', label: e.data.sku || '' } })); }catch(err){}
   }
 
   if (type === 'PRODUCT_IMPORTED') {
     erpToast('Product imported to ERP', e.data.name || '');
+    try{ window.dispatchEvent(new CustomEvent('tgk:event', { detail:{ type:'product_imported', label: e.data.name || '' } })); }catch(err){}
   }
 
   if (type === 'CLOSE_ERP') {
@@ -13697,7 +13700,9 @@ async function _loadWikiNotifs(){
   var me=_wikiEmail();if(!me)return;
   try{
     var rows=await _wikiFetch('/rest/v1/wiki_notifications?recipient=eq.'+encodeURIComponent(me)+'&select=*&order=created_at.desc&limit=40');
+    var _prevIds = {}; (_wikiNotifs||[]).forEach(function(n){ _prevIds[n.id]=true; });
     _wikiNotifs=Array.isArray(rows)?rows:[];
+    if(_wikiSeen!==null){ _wikiNotifs.forEach(function(n){ if(!_prevIds[n.id] && !n.read){ try{ window.dispatchEvent(new CustomEvent('tgk:event',{detail:{type:'mention',label:String(n.actor||'Someone').split('@')[0]}})); }catch(e){} } }); }
   }catch(e){return;}
   var unread=_wikiNotifs.filter(function(n){return !n.read;});
   var topId=unread.length?unread[0].id:null;
@@ -16366,6 +16371,10 @@ document.addEventListener('DOMContentLoaded', function() {
         ts:    r[tsField] || new Date().toISOString()
       });
       added = true;
+      // Let the AI Guy react to the real thing (he ignores the initial backlog on first load).
+      try{
+        if (hwm[kind]) window.dispatchEvent(new CustomEvent('tgk:event', { detail:{ type:'notif_'+kind, kind:kind, label: labelFn(r), row: r } }));
+      }catch(e){}
       if ((r[tsField] || '') > maxTs) maxTs = r[tsField];
     });
     hwm[kind] = maxTs;
@@ -16680,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.41';
+var TGK_CC_VERSION='v2.43';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16813,6 +16822,9 @@ var TGK_CC_VERSION='v2.41';
 .aig-bubble{position:fixed;z-index:2040;max-width:170px;background:#f4f5f7;color:#111;font-size:11px;line-height:1.35;padding:6px 9px;border-radius:10px;font-family:var(--font,inherit);pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.35);opacity:0;transition:opacity .2s}
 .aig-bubble.show{opacity:1}
 .aig-bubble::after{content:'';position:absolute;left:14px;bottom:-6px;border:6px solid transparent;border-top-color:#f4f5f7;border-bottom:0}
+.aig-bubble.flip::after{left:auto;right:14px}
+.aig-bubble.below::after{bottom:auto;top:-6px;border-top:0;border-bottom:6px solid #f4f5f7}
+.aig-bubble{transition:opacity .2s,left .08s linear,top .08s linear}
 #aig-rage{position:fixed;left:12px;bottom:52px;z-index:3050;width:150px;height:8px;background:#18191b;border:1px solid #2e2e2e;border-radius:6px;overflow:hidden;display:none}
 #aig-rage > div{height:100%;width:0;background:linear-gradient(90deg,#F0812E,#FF4B4B);transition:width .15s}
 #aig-rage.full{box-shadow:0 0 10px rgba(255,75,75,.7);border-color:#FF4B4B}
@@ -16979,6 +16991,17 @@ var TGK_CC_VERSION='v2.41';
       nextTauntAt = performance.now() + 9000 + Math.random()*8000;
       nextIdleAnimAt = performance.now() + 6000;
       restoreCond();
+      setTimeout(restoreWorld, 600);
+      window.addEventListener('beforeunload', saveWorld);
+      setTimeout(function(){
+        if(heldTool) return;
+        try{ if(JSON.parse(localStorage.getItem('tgk_cc_session')||'null')) return; }catch(e){}
+        var hr = new Date().getHours(), dow = new Date().getDay();
+        var g = hr < 5 ? 'Why are we awake.' : hr < 11 ? 'Morning. Coffee first, then Shopify.' : hr < 14 ? 'Lunch? No? Cool. Fine.' : hr < 17 ? 'Afternoon. Backorder count is climbing.' : hr < 21 ? 'Evening. Ship it Friday, fix it Monday.' : 'Late night deploy? Bold.';
+        if(dow === 1 && hr < 12) g = 'Monday. The sync broke over the weekend. Probably.';
+        if(dow === 5 && hr >= 14) g = 'Friday afternoon. Do NOT deploy.';
+        say(g, 3200);
+      }, 2500);
     }
     if(!root) return;
     applySettings();
@@ -17079,6 +17102,7 @@ var TGK_CC_VERSION='v2.41';
           // wall splat: stick flat for a beat, then peel off
           mode = 'stuck'; stuckSide = side; stuckUntil = ts + 380;
           achieve('wall_splat'); stat('wallSplats');
+          setTimeout(function(){ say(pick(['Ow.','I am okay. I am not okay.','Wall. Noted.','That is load-bearing.','Who put that there?']), 1500, true); }, 120);
           playImpact(1); shakeScreen();
           spawnDust(pos + (side>0 ? 0 : 46), posY + 30);
           flip.style.transform = 'scaleX('+(side>0?-1:1)+') scale(.6,1.3)';
@@ -17095,7 +17119,7 @@ var TGK_CC_VERSION='v2.41';
           posY = gy;
           if(Math.abs(vy) > SETTLE_V){
             playImpact(Math.min(1, Math.abs(vy)/0.9));
-            if(Math.abs(vy) > 0.7) shakeScreen();
+            if(Math.abs(vy) > 0.7){ shakeScreen(); say(pick(['Oof.','My spine.','Ten out of ten landing.','Stuck the landing. Kind of.','Everything hurts.']), 1300); }
             vy = -vy*BOUNCE_DAMP;
             vx *= 0.75;
             rotVel *= 0.7;
@@ -17130,6 +17154,7 @@ var TGK_CC_VERSION='v2.41';
       }
     }
     updateHead(ts, dt);
+    updateBubble();
     updateLimbs(ts, dt);
     updateProjectiles(ts, dt);
     updateClones(ts, dt);
@@ -17231,7 +17256,16 @@ var TGK_CC_VERSION='v2.41';
     headVel = (headVel + (target - headAng) * k) * damp;
     headAng += headVel;
     var turn = (mode === 'walk') ? 10 : 0;
-    headEl.style.transform = 'perspective(140px) rotateY(' + turn + 'deg) rotate(' + headAng.toFixed(2) + 'deg)';
+    if(heldTool && mode === 'walk'){
+      var rr = root.getBoundingClientRect(), hcx = rr.left + rr.width/2;
+      var dxc = curX - hcx;
+      if(Math.abs(dxc) < 260){
+        // look at the threat: the flip container mirrors him, so turn relative to facing
+        var toward = Math.max(-28, Math.min(28, dxc*0.12));
+        turn = (dir < 0 ? -toward : toward);
+      }
+    }
+    headEl.style.transform = 'perspective(140px) rotateY(' + turn.toFixed(1) + 'deg) rotate(' + headAng.toFixed(2) + 'deg)';
   }
 
   function squash(){
@@ -17248,6 +17282,7 @@ var TGK_CC_VERSION='v2.41';
     vx = 0; vy = 0; rotVel = 0;
     bounce.classList.remove('aig-fly');
     bounce.classList.add('aig-drag');
+    dragSaidAt = performance.now();
     var rect = root.getBoundingClientRect();
     dragOffX = e.clientX - rect.left;
     dragOffY = e.clientY - rect.top;
@@ -17258,8 +17293,10 @@ var TGK_CC_VERSION='v2.41';
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerUp);
   }
+  var dragSaidAt = 0;
   function onPointerMove(e){
     if(mode !== 'drag') return;
+    if(performance.now() - dragSaidAt > 900){ dragSaidAt = performance.now() + 999999; say(pick(['Hey!','Put me down.','Where are we going?','Careful, I am fragile.','Not the face.','This is a HR issue.']), 1400); }
     pos = Math.max(-10, Math.min(window.innerWidth-36, e.clientX - dragOffX));
     posY = Math.max(-10, Math.min(window.innerHeight-56, e.clientY - dragOffY));
     root.style.left = pos+'px';
@@ -17290,6 +17327,7 @@ var TGK_CC_VERSION='v2.41';
     mode = 'fly';
     bounce.classList.add('aig-fly');
     playThrow();
+    if(Math.hypot(vx, vy) > 0.9) say(pick(['Wheeee!','Aaaaaah!','Not again!','Tell my wife I love h--','I regret everything!','Sending it!']), 1200, true);
   }
 
   function openToolTray(){
@@ -17719,11 +17757,14 @@ var TGK_CC_VERSION='v2.41';
       clearSplats();
       clearHat('cone');
       playVoice('praise');
+      if(Math.random() < 0.55) say(pick(['Aw, thanks.','Finally, some recognition.','I did do that.','Put it in my review.','Was that so hard?','More of this, please.','Boost is a mindset.']), 1600);
       if(comboType==='good' && comboCount >= 3) setHat('party', 6000);
     }
 
     playReaction(tool, phrase, hitX, hitY, (force||1) * (rageMode ? 1.5 : 1));
     if(comboCount >= 2) spawnComboText(comboCount, tool.type);
+    if(tool.type === 'bad' && comboCount === 4) say(pick(['Okay okay okay!','Stop! I will fix the sync!','Mercy!','I am filing a ticket about this.']), 1500, true);
+    if(tool.type === 'good' && comboCount === 4) say(pick(['Okay now you are just being nice.','Is this a trick?','I could get used to this.']), 1600, true);
   }
 
   // ---- props that stick to him ----
@@ -17804,18 +17845,36 @@ var TGK_CC_VERSION='v2.41';
     'Blinker fluid is on backorder too.', 'Dyno numbers or it did not happen.', 'Ship it Friday, fix it Monday.'
   ];
   var CAR_HIT_PHRASES = ['Blown turbo!','Boost leak!','Misfire on 3!','Check engine!','Limp mode!','Over-boost!','Rod knock!','Timing chain!','Coilpack down!','Wastegate stuck!'];
-  function say(text, ms){
+  var lastSayAt = -1e9;
+  function say(text, ms, force){
     if(!root) return;
+    var now = performance.now();
+    if(!force && now - lastSayAt < 700) return;   // do not machine-gun bubbles
+    lastSayAt = now;
     if(!bubbleEl){ bubbleEl = document.createElement('div'); bubbleEl.className = 'aig-bubble'; document.body.appendChild(bubbleEl); }
     bubbleEl.textContent = text;
-    var r = root.getBoundingClientRect();
-    bubbleEl.style.left = Math.max(6, Math.min(window.innerWidth - 180, r.left - 8))+'px';
-    bubbleEl.style.top = (r.top - 46)+'px';
     bubbleEl.classList.add('show');
+    updateBubble();
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(hideBubble, ms || 2600);
   }
   function hideBubble(){ if(bubbleEl) bubbleEl.classList.remove('show'); }
+  // Called every frame: the bubble rides along with him wherever he is (walking, flying, dragged).
+  function updateBubble(){
+    if(!bubbleEl || !bubbleEl.classList.contains('show') || !root) return;
+    var r = root.getBoundingClientRect();
+    var w = bubbleEl.offsetWidth || 150, h = bubbleEl.offsetHeight || 30;
+    var flip = (r.left + r.width/2 + w) > window.innerWidth - 8;   // near the right edge: hang it to the left
+    var left = flip ? (r.left + r.width/2 - w + 18) : (r.left + r.width/2 - 18);
+    left = Math.max(6, Math.min(window.innerWidth - w - 6, left));
+    var top = r.top - h - 14;
+    if(top < 6) top = r.bottom + 10;                                 // on the ceiling: bubble below
+    bubbleEl.style.left = left+'px';
+    bubbleEl.style.top = top+'px';
+    bubbleEl.classList.toggle('flip', flip);
+    bubbleEl.classList.toggle('below', top > r.top);
+  }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
   function maybeTaunt(ts){
     if(!settings.taunts) return;
     if(ts < nextTauntAt) return;
@@ -17916,6 +17975,7 @@ var TGK_CC_VERSION='v2.41';
     bounce.appendChild(dizzy);
     spawnFloatText('KO!', 'bad', 15);
     stat('ko'); achieve('first_ko');
+    aigState.stats.lastKoBy = { who: sharedEmail(), tool: lastBadTool||'', at: Date.now() }; saveState();
     if(lastBadTool){ fearTool = lastBadTool; }
     aigState.log.unshift({ ts: new Date().toISOString(), type: 'ko', tool: lastBadTool||'' }); saveState();
     queueShared('ko', lastBadTool||'');
@@ -17928,6 +17988,7 @@ var TGK_CC_VERSION='v2.41';
     setTimeout(function(){
       bounce.classList.remove('aig-ko');
       dizzy.remove();
+      say(pick(['What year is it?','Did the deploy go out?','Who won?','I saw the backorder report in the light.','Is my downpipe okay?']), 1800, true);
     }, 1300);
   }
 
@@ -17976,7 +18037,7 @@ var TGK_CC_VERSION='v2.41';
   var MAX_TRAPS = 5;
   function floorY(){ return window.innerHeight - 6; }
   function guyCenter(){ var r = root.getBoundingClientRect(); return { x:r.left+r.width/2, y:r.top+r.height/2, r:r }; }
-  function removeTrap(t){ if(t.el) t.el.remove(); var i = traps.indexOf(t); if(i>=0) traps.splice(i,1); }
+  function removeTrap(t){ if(t.el) t.el.remove(); var i = traps.indexOf(t); if(i>=0) traps.splice(i,1); saveWorld(); }
 
   function placeTrap(tool, x){
     var live = traps.filter(function(t){ return t.kind !== 'boulder'; }).length;
@@ -18013,8 +18074,38 @@ var TGK_CC_VERSION='v2.41';
     }
     document.body.appendChild(el);
     traps.push(t);
+    saveWorld();
   }
-  window.aiGuyClearTraps = function(){ traps.slice().forEach(removeTrap); tone(400,.06,'sine',.03); };
+  window.aiGuyClearTraps = function(){ traps.slice().forEach(removeTrap); tone(400,.06,'sine',.03); saveWorld(); };
+  var WORLD_KEY = 'tgk_ai_guy_world';
+  var worldRestoring = false;
+  function saveWorld(){
+    if(worldRestoring) return;
+    try{
+      var w = window.innerWidth || 1;
+      localStorage.setItem(WORLD_KEY, JSON.stringify({
+        traps: traps.filter(function(t){ return t.kind !== 'boulder' && t.kind !== 'dynamite'; }).map(function(t){ return { kind:t.kind, fx: t.x / w }; }),
+        clones: clones.map(function(b){ return { fx: (b.pos+23) / w, hp: b.hp, age: performance.now() - b.born }; }),
+        savedAt: Date.now()
+      }));
+    }catch(e){}
+  }
+  function restoreWorld(){
+    var data = null;
+    try{ data = JSON.parse(localStorage.getItem(WORLD_KEY)||'null'); }catch(e){}
+    if(!data) return;
+    if(Date.now() - (data.savedAt||0) > 3*86400000){ try{ localStorage.removeItem(WORLD_KEY); }catch(e){} return; }
+    worldRestoring = true;
+    var w = window.innerWidth;
+    (data.traps||[]).forEach(function(t){ var tool = findTool(t.kind); if(tool) placeTrap(tool, Math.max(20, Math.min(w-20, t.fx*w))); });
+    (data.clones||[]).slice(0, MAX_CLONES).forEach(function(c){
+      spawnClone(Math.max(20, Math.min(w-20, c.fx*w)));
+      var b = clones[clones.length-1];
+      if(b){ b.hp = c.hp || 4; b.born = performance.now() - Math.max(0, c.age||0); }
+    });
+    worldRestoring = false;
+    if((data.traps||[]).length || (data.clones||[]).length) setTimeout(function(){ say(pick(['Everything is exactly where you left it.','You left the mines out.','Still here. Still armed.']), 2600); }, 4000);
+  }
 
   function dropBoulder(tool, x){
     var el = document.createElement('div');
@@ -18391,6 +18482,7 @@ var TGK_CC_VERSION='v2.41';
   function thawHim(){
     if(mode !== 'frozen') return;
     if(iceEl) iceEl.remove();
+    say(pick(['Br-r-rrr.','Cold start.','I could not feel my SKUs.','Heated seats, please.']), 1500, true);
     tone(900,.08,'sine',.03); tone(600,.1,'sine',.03,.08);
     mode = (posY < groundY()-2 || frozenWasAir) ? 'fly' : 'walk';
     if(mode === 'fly') bounce.classList.add('aig-fly');
@@ -18512,9 +18604,72 @@ var TGK_CC_VERSION='v2.41';
   // ---------------- Real-event reactions ----------------
   // Fire from anywhere in the app: window.aiGuyEvent('ticket_closed')  or
   // window.dispatchEvent(new CustomEvent('tgk:event', { detail:{ type:'deploy_failed' } }))
-  window.aiGuyEvent = function(type){
+  function greetByName(name){
+    if(!root || heldTool) return;
+    var me = sharedEmail();
+    var local = aigState.stats.lastKoBy || null;
+    var finish = function(ko){
+      var koName = ko && ko.who ? String(ko.who).split('@')[0] : '';
+      var t = ko && ko.tool ? findTool(ko.tool) : null;
+      var nm = name || (me ? me.split('@')[0] : '');
+      nm = nm ? nm.charAt(0).toUpperCase() + nm.slice(1) : '';
+      if(koName && ko.who === me){
+        say(pick([nm+'. We meet again.', 'Oh good, it is '+nm+'. Owner of the '+(t?t.label.toLowerCase():'weapon')+'.', nm+'. My spine remembers you.', 'Back for more, '+nm+'?']), 3600, true);
+      } else if(koName){
+        say(pick([koName+' knocked me out last. Watch yourself, '+nm+'.', 'Hey '+nm+'. Tell '+koName+' I know what they did.', nm+'! Finally, a reasonable person. Unlike '+koName+'.']), 3800, true);
+      } else if(nm){
+        say(pick(['Hey '+nm+'.', nm+'! Backorders are that way.', 'Morning '+nm+'. Or whenever it is.', nm+'. The sync is fine. For now.']), 3000, true);
+      }
+    };
+    if(sharedOk && typeof sbFetch === 'function'){
+      sbFetch('/rest/v1/ai_guy_events?select=user_email,tool,created_at&kind=eq.ko&order=created_at.desc&limit=1')
+        .then(function(rows){ var r = rows && rows[0]; finish(r ? { who:r.user_email, tool:r.tool, at:new Date(r.created_at).getTime() } : local); })
+        .catch(function(){ finish(local); });
+    } else finish(local);
+  }
+  var lastBizEventAt = -1e9;
+  window.aiGuyEvent = function(type, detail){
     if(!root || mode === 'frozen') return;
     type = String(type||'');
+    detail = detail || {};
+    var label = detail.label ? String(detail.label).slice(0, 48) : '';
+    var nowB = performance.now();
+    if(/^notif_|^sku_created$|^product_imported$|^login$|^mention$/.test(type)){
+      if(type !== 'login' && nowB - lastBizEventAt < 4000) return;
+      lastBizEventAt = nowB;
+      var hop = function(v){ if(mode === 'walk'){ vy = -(v||0.3); vx = 0; mode = 'fly'; bounce.classList.add('aig-fly'); } };
+      switch(type){
+        case 'notif_orders':
+          hop(0.45); bounce.classList.add('aig-happy'); setTimeout(function(){ bounce.classList.remove('aig-happy'); }, 850);
+          spawnEffect(findTool('confetti')); confettiRain(root.getBoundingClientRect().left+23, root.getBoundingClientRect().top-30, 20);
+          say(pick(['New order! ','Cha-ching. ','Money in the door. ','Someone bought a downpipe. ','Order up! '])+(label?label:''), 3200, true);
+          tone(660,.08,'triangle',.05); tone(990,.14,'triangle',.05,.08); return;
+        case 'notif_tickets':
+          hop(0.25); say(pick(['New ticket. ','Support needs you. ','Ticket incoming: ','Customer has thoughts: '])+(label?label:''), 3200, true);
+          tone(880,.06,'triangle',.04); tone(1320,.08,'triangle',.04,.06); return;
+        case 'notif_livechat':
+          hop(0.3); say(pick(['Live chat! Someone is typing at you. ','Chat waiting. Go go go. ','Customer on the line: '])+(label?label:''), 3200, true);
+          for(var i=0;i<2;i++) tone(1200,.05,'square',.03,i*0.12); return;
+        case 'notif_warranty':
+          say(pick(['Warranty claim. Deep breaths. ','Another warranty. It is always the PCV valve. ','Claim filed: '])+(label?label:''), 3400, true);
+          sweatDrops(3); tone(440,.1,'sine',.04); return;
+        case 'notif_shiperrors':
+          say(pick(['Shipment error. ShipStation strikes again. ','Wrong box, wrong label, wrong day. ','Ship error: '])+(label?label:''), 3400, true);
+          bounce.classList.add('aig-ko'); var dz2 = document.createElement('div'); dz2.className='aig-dizzy'; dz2.innerHTML='<span>'+ICN.star+'</span><span>'+ICN.star+'</span><span>'+ICN.star+'</span>'; bounce.appendChild(dz2);
+          setTimeout(function(){ bounce.classList.remove('aig-ko'); dz2.remove(); }, 1200);
+          tone(220,.2,'sawtooth',.04); return;
+        case 'notif_orderemails': case 'notif_supportemails':
+          hop(0.2); say(pick(['Email. Customer wants answers. ','Unread mail piling up. ','Inbox: '])+(label?label:''), 3000, true); tone(880,.05,'sine',.03); return;
+        case 'sku_created':
+          hop(0.35); spawnEffect(findTool('thumbs')); say('New SKU minted: '+label+'. No hyphen drama please.', 3200, true); return;
+        case 'product_imported':
+          hop(0.3); say('Imported '+label+'. Shopify sync in 3... 2...', 3000, true); return;
+        case 'mention':
+          hop(0.25); say((label||'Someone')+' mentioned you in Notes. Probably about the sync.', 3200, true); return;
+        case 'login':
+          setTimeout(function(){ greetByName(label); }, 1800); return;
+      }
+    }
     var isBad = /fail|error|down|crash/i.test(type);
     var isWarn = /backorder|warn|stale|urgent/i.test(type);
     if(!isBad && !isWarn && /closed|resolved|sync_ok|success|order|shipped/i.test(type)){
@@ -18543,7 +18698,14 @@ var TGK_CC_VERSION='v2.41';
       say('!', 1200);
     }
   };
-  window.addEventListener('tgk:event', function(e){ window.aiGuyEvent(e && e.detail && e.detail.type); });
+  window.addEventListener('tgk:event', function(e){ var dd = (e && e.detail) || {}; window.aiGuyEvent(dd.type, dd); });
+  function sweatDrops(n){
+    for(var i=0;i<n;i++){ (function(i){ setTimeout(function(){
+      var s = document.createElement('div'); s.className = 'aig-sweat';
+      s.style.left = (2 + Math.random()*36)+'px'; s.style.top = (-4 + Math.random()*10)+'px';
+      bounce.appendChild(s); setTimeout(function(){ s.remove(); }, 950);
+    }, i*220); })(i); }
+  }
 
   // ---------------- Clones ----------------
   var clones = [], MAX_CLONES = 5, CLONE_LIFE = 90000;
@@ -18567,11 +18729,13 @@ var TGK_CC_VERSION='v2.41';
     b.bounce.style.transform = ''; b.phys.style.transform = ''; b.flip.style.transform = '';
     el.style.left = b.pos+'px'; el.style.top = b.posY+'px';
     document.body.appendChild(el); clones.push(b);
+    saveWorld();
     spawnDust(x, groundY()+60);
     tone(600,.08,'sine',.04); tone(900,.1,'sine',.04,.07);
+    say(pick(['There are two of me now?','He does not speak for me.','Great, more of me to hit.','Twins!','Split shift.']), 1600);
     if(clones.length >= 5) achieve('clone_wars');
   }
-  function removeClone(b){ if(b.el) b.el.remove(); var i = clones.indexOf(b); if(i>=0) clones.splice(i,1); }
+  function removeClone(b){ if(b.el) b.el.remove(); var i = clones.indexOf(b); if(i>=0) clones.splice(i,1); saveWorld(); }
   function popClone(b){
     var r = b.el.getBoundingClientRect(), cx = r.left+r.width/2, cy = r.top+r.height/2;
     for(var i=0;i<2;i++){
