@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.55';
+var TGK_CC_VERSION='v2.57';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -17118,7 +17118,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length;
   }
   function tick(ts){
     loopArmed = false;
@@ -17148,6 +17148,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
     if(frozen){
       updateTraps(ts, dt);
+      fxTick(rawDt);
       armLoop();
       return;
     }
@@ -17308,6 +17309,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     updateAnger(ts, rawDt);
     updateMind(ts, rawDt);
+    fxTick(rawDt);
     updateHead(ts, dt);
     updateBubble();
     updateLimbs(ts, dt);
@@ -17331,14 +17333,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function spawnTrail(speed){
     if(perf.on) return;
     var r = guyRect();
-    var t = document.createElement('div');
-    t.className = 'aig-trail';
-    var s = 14 + Math.min(16, speed*14);
-    t.style.width = s+'px'; t.style.height = s+'px';
-    t.style.left = (r.left + r.width/2 - s/2)+'px';
-    t.style.top = (r.top + r.height*0.35 - s/2)+'px';
-    document.body.appendChild(t);
-    setTimeout(function(){ t.remove(); }, 380);
+    fxEmit({ x:r.left + r.width/2, y:r.top + r.height*0.35, vx:0, vy:0, size: 7 + Math.min(8, speed*7), color:'rgba(160,170,180,.35)', ttl: 340, shape:'dot', shrink:true, fade:true });
   }
 
   // JS-driven ragdoll limbs: each limb is a damped pendulum. In walk mode they
@@ -18499,8 +18494,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       } else if(t.kind === 'fan'){
         if(ts > (t.nextAir||0)){
           t.nextAir = ts + (perf.on ? 260 : 150);
-          var a = fxNode('aig-air', 820);
-          if(a){ a.style.left = (t.x - 8 + Math.random()*16)+'px'; a.style.top = (fy - 30)+'px'; document.body.appendChild(a); }
+          fxEmit({ x: t.x - 8 + Math.random()*16, y: fy - 30, vx:(Math.random()-0.5)*0.01, vy:-0.16-Math.random()*0.06, size:1.5, color:'rgba(160,200,255,.55)', ttl: 800, shape:'line', drag:1 });
         }
         if(Math.abs(t.x - g.x) < 30 && g.y < fy){
           if(mode === 'walk'){ mode = 'fly'; bounce.classList.add('aig-fly'); }
@@ -18555,36 +18549,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
   function explodeAt(x, y, radius){
     if(radius >= 100) mushroomCloud(x, y);
-    var fl = document.createElement('div'); fl.className = 'aig-flash';
-    var sz = radius*1.6; fl.style.width = sz+'px'; fl.style.height = sz+'px';
-    fl.style.left = x+'px'; fl.style.top = y+'px';
-    document.body.appendChild(fl); setTimeout(function(){ fl.remove(); }, 480);
-    for(var i=0;i<3;i++){
-      (function(i){
-        var s = document.createElement('div'); s.className = 'aig-smoke';
-        var ss = radius*(0.5+Math.random()*0.5);
-        s.style.width = ss+'px'; s.style.height = ss+'px';
-        s.style.left = (x+(Math.random()-0.5)*radius*0.6)+'px'; s.style.top = (y-10)+'px';
-        s.style.animationDelay = (i*70)+'ms';
-        document.body.appendChild(s); setTimeout(function(){ s.remove(); }, 1300);
-      })(i);
-    }
-    var colors = ['#FFD166','#F0812E','#FF6B6B','#c8c8c8','#8a8a8a'];
-    var n = perf.on ? 8 : 18;
-    for(var j=0;j<n;j++){
-      (function(j){
-        var b = fxNode('aig-burst', 600); if(!b) return;
-        var ang = (Math.PI*2/n)*j + Math.random()*0.5;
-        var dist = radius*0.5 + Math.random()*radius*0.6;
-        b.style.setProperty('--bx', Math.cos(ang)*dist+'px');
-        b.style.setProperty('--by', (Math.sin(ang)*dist-10)+'px');
-        var w = 4+Math.random()*5;
-        b.style.width = w+'px'; b.style.height = w+'px';
-        b.style.left = x+'px'; b.style.top = y+'px';
-        b.style.background = colors[j%colors.length];
-        document.body.appendChild(b);
-      })(j);
-    }
+    // flash core + two shock rings + smoke + debris, all on the canvas
+    fxEmit({ x:x, y:y, vx:0, vy:0, size: radius*0.55, color:'rgba(255,236,170,.95)', ttl: 260, shape:'dot', shrink:false, fade:true });
+    fxEmit({ x:x, y:y, vx:0, vy:0, size: radius*0.9, color:'rgba(255,220,150,.9)', ttl: 520, shape:'ring' });
+    fxEmit({ x:x, y:y, vx:0, vy:0, size: radius*1.4, color:'rgba(255,255,255,.6)', ttl: 700, shape:'ring' });
+    for(var i=0;i<(perf.on?3:6);i++) fxEmit({ x:x+(Math.random()-0.5)*radius*0.5, y:y-6, vx:(Math.random()-0.5)*0.04, vy:-0.05-Math.random()*0.05, size: radius*0.22, color:'rgba(120,120,125,.7)', ttl: 1100+Math.random()*400, shape:'smoke', drag:0.99 });
+    fxBurst(x, y-6, perf.on ? 14 : 34, ['#FFD166','#F0812E','#FF6B6B','#c8c8c8','#8a8a8a'], { speed: 0.12 + radius*0.0008, g: 0.0012, size: 5, ttl: 700, shape: Math.random()<0.5?'dot':'rect' });
+    fxBurst(x, y, perf.on ? 6 : 14, ['#3a3a3a','#555','#777'], { speed: 0.16, g: 0.0016, size: 3, ttl: 900, shape:'rect' });   // heavier debris
     noiseBurst(.55, 260, 0.26, 1.4); tone(48,.5,'sine',.09);
     shakeScreen();
     if(stat('explosions') >= 10) achieve('demolition');
@@ -18659,9 +18630,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     hitStop(70);
   }
   function shockwave(x, y, size){
-    var ring = document.createElement('div'); ring.className = 'aig-ring';
-    ring.style.width = size+'px'; ring.style.height = size+'px'; ring.style.left = x+'px'; ring.style.top = y+'px';
-    document.body.appendChild(ring); setTimeout(function(){ ring.remove(); }, 520);
+    fxEmit({ x:x, y:y, vx:0, vy:0, size: size/2, color:'rgba(255,220,150,.9)', ttl: 500, shape:'ring' });
   }
   function floorCracks(x, y, n){
     for(var i=0;i<n;i++){
@@ -18690,43 +18659,15 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     shockwave(x, y+20, 160);
   }
   function frostBurst(x, y){
-    for(var i=0;i<12;i++){
-      (function(i){
-        var f = document.createElement('div'); f.className = 'aig-frost';
-        var ang = (Math.PI*2/12)*i, dist = 20 + Math.random()*26;
-        f.style.setProperty('--bx', Math.cos(ang)*dist+'px'); f.style.setProperty('--by', Math.sin(ang)*dist+'px');
-        f.style.left = x+'px'; f.style.top = y+'px';
-        document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 720);
-      })(i);
-    }
+    fxBurst(x, y, 18, ['rgba(215,240,255,.95)','rgba(160,210,255,.9)'], { speed: 0.05, g: 0.0002, size: 4, ttl: 800, shape:'shard' });
+    fxEmit({ x:x, y:y, vx:0, vy:0, size: 70, color:'rgba(190,230,255,.7)', ttl: 600, shape:'ring' });
   }
   function heartsUp(x, y, n){
-    for(var i=0;i<n;i++){
-      (function(i){
-        setTimeout(function(){
-          var hh = document.createElement('div'); hh.className = 'aig-heart'; hh.textContent = '\u2764';
-          hh.style.left = (x + (Math.random()-0.5)*30)+'px'; hh.style.top = y+'px';
-          hh.style.setProperty('--hx', ((Math.random()-0.5)*40)+'px');
-          hh.style.fontSize = (10 + Math.random()*10)+'px';
-          document.body.appendChild(hh); setTimeout(function(){ hh.remove(); }, 1350);
-        }, i*90);
-      })(i);
-    }
+    for(var i=0;i<n;i++) fxEmit({ x:x+(Math.random()-0.5)*30, y:y, vx:(Math.random()-0.5)*0.02, vy:-0.05-Math.random()*0.03, g:0, size:3+Math.random()*3, color:'#ff6b9d', ttl:1300+i*90, shape:'heart', sway:true, phase:Math.random()*6, drag:1 });
   }
   function confettiRain(x, y, n){
     var cols = ['#FFD166','#4ADE9F','#2ABFAA','#ff6b9d','#60a5fa','#f97316'];
-    for(var i=0;i<n;i++){
-      (function(i){
-        setTimeout(function(){
-          var c = document.createElement('div'); c.className = 'aig-confetti';
-          c.style.left = (x + (Math.random()-0.5)*120)+'px'; c.style.top = (y + Math.random()*20)+'px';
-          c.style.background = cols[i%cols.length];
-          c.style.setProperty('--cx', ((Math.random()-0.5)*80)+'px');
-          c.style.animationDuration = (1.2 + Math.random()*0.8)+'s';
-          document.body.appendChild(c); setTimeout(function(){ c.remove(); }, 2100);
-        }, i*25);
-      })(i);
-    }
+    for(var i=0;i<n;i++) fxEmit({ x:x+(Math.random()-0.5)*120, y:y+Math.random()*20, vx:(Math.random()-0.5)*0.06, vy:0.02+Math.random()*0.04, g:0.00025, size:4+Math.random()*3, color:cols[i%cols.length], ttl:1400+Math.random()*900, shape:'rect', rot:Math.random()*6, vr:(Math.random()-0.5)*0.03, sway:true, phase:Math.random()*6, drag:0.995 });
   }
 
   var glassMarks = [];
@@ -18758,18 +18699,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function wipeGlass(){ glassMarks.forEach(function(g){ g.classList.add('fade'); setTimeout(function(){ g.remove(); }, 1300); }); glassMarks = []; }
 
   function spawnDust(x, y){
-    for(var j=0;j<10;j++){
-      (function(){
-        var b = document.createElement('div'); b.className = 'aig-burst';
-        var ang = Math.PI + Math.random()*Math.PI;
-        var dist = 14 + Math.random()*22;
-        b.style.setProperty('--bx', Math.cos(ang)*dist+'px');
-        b.style.setProperty('--by', Math.sin(ang)*dist+'px');
-        b.style.left = x+'px'; b.style.top = y+'px';
-        b.style.background = '#9a9a9a';
-        document.body.appendChild(b); setTimeout(function(){ b.remove(); }, 600);
-      })();
-    }
+    fxBurst(x, y, perf.on ? 8 : 16, ['#9a9a9a','#b0aa9a','#7a7a7a'], { speed: 0.06, g: 0.0003, size: 4, ttl: 650, spread: Math.PI, angle: Math.PI, shape:'smoke' });
   }
 
   // ---------------- Achievements ----------------
@@ -18794,6 +18724,16 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     aigState.ach.push(id); saveState();
     aigToast('Achievement unlocked', a.name + ' \u2014 ' + a.desc);
     tone(660,.07,'triangle',.05); tone(880,.07,'triangle',.05,.08); tone(1320,.18,'triangle',.06,.16);
+    remember('achievement', a.name);
+    // let him rename it (urgent: skips the idle throttle, still one request at a time; at most one rename per 25s)
+    if(performance.now() - lastRenameAt < 25000) return; lastRenameAt = performance.now();
+    setTimeout(function(){
+      think('you just unlocked the achievement "'+a.name+'" ('+a.desc+'). Reply ONLY in this exact form: I am calling that one: <a funnier 2-4 word name>', '', null, 3200, true, function(txt){
+        var m = /calling that one:\s*(.+)$/i.exec(txt); if(!m) return;
+        var nm = m[1].replace(/[."']+$/,'').trim().slice(0, 28); if(!nm) return;
+        if(!aigState.achNames) aigState.achNames = {}; aigState.achNames[id] = nm; saveState();
+      });
+    }, 1400);
   }
   function aigToast(title, msg){
     var existing = document.querySelectorAll('.aig-toast').length;
@@ -18809,7 +18749,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!ACH.length) return '';
     return '<div style="margin:2px 0 14px">' + ACH.map(function(a){
       var on = (aigState.ach||[]).indexOf(a.id) >= 0;
-      return '<span class="aig-ach'+(on?' on':'')+'" title="'+a.desc+'">'+(on?'\u2605':'\u2606')+' '+a.name+'</span>';
+      var shown = (aigState.achNames && aigState.achNames[a.id]) ? aigState.achNames[a.id] : a.name;
+      return '<span class="aig-ach'+(on?' on':'')+'" title="'+a.name+' \u2014 '+a.desc+'">'+(on?'\u2605':'\u2606')+' '+shown+'</span>';
     }).join('') + '</div>';
   }
 
@@ -18859,15 +18800,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(mode !== 'frozen') return;
     if(iceEl) iceEl.remove();
     var r = root.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height*0.4;
-    for(var i=0;i<14;i++){
-      (function(i){
-        var s = document.createElement('div'); s.className = 'aig-shard';
-        var ang = (Math.PI*2/14)*i + Math.random()*0.5, dist = 26 + Math.random()*34;
-        s.style.setProperty('--bx', Math.cos(ang)*dist+'px'); s.style.setProperty('--by', (Math.sin(ang)*dist-8)+'px');
-        s.style.left = cx+'px'; s.style.top = cy+'px'; s.style.transform = 'rotate('+(Math.random()*360)+'deg)';
-        document.body.appendChild(s); setTimeout(function(){ s.remove(); }, 620);
-      })(i);
-    }
+    fxBurst(cx, cy, 22, ['rgba(200,238,255,.95)','rgba(150,205,255,.9)','rgba(255,255,255,.9)'], { speed: 0.11, g: 0.0012, size: 5, ttl: 800, shape:'shard' });
     noiseBurst(.22, 4200, 0.16, 3); tone(3200,.06,'triangle',.05); tone(2100,.09,'triangle',.04,.05);
     hitStop(90); shakeScreen();
     achieve('frostbite'); stat('shatters');
@@ -18972,6 +18905,36 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // ---------------- Real-event reactions ----------------
   // Fire from anywhere in the app: window.aiGuyEvent('ticket_closed')  or
   // window.dispatchEvent(new CustomEvent('tgk:event', { detail:{ type:'deploy_failed' } }))
+  // First login of the day: one line on what happened overnight (orders, tickets, who hit him).
+  function morningReport(){
+    var today = new Date().toISOString().slice(0,10), key = 'tgk_ai_guy_lastday';
+    try{ if(localStorage.getItem(key) === today) return; localStorage.setItem(key, today); }catch(e){}
+    if(typeof sbFetch !== 'function') return;
+    var since = new Date(); since.setDate(since.getDate()-1); since.setHours(18,0,0,0); var iso = since.toISOString();
+    var q = function(t){ return sbFetch('/rest/v1/'+t+'?select=id&created_at=gt.'+encodeURIComponent(iso)+'&limit=200').then(function(r){ return (r||[]).length; }).catch(function(){ return null; }); };
+    Promise.all([q('sales'), q('tickets')]).then(function(res){
+      var orders = res[0], tickets = res[1];
+      var ko = aigState.stats.lastKoBy, koTxt = ko && ko.who ? (String(ko.who).split('@')[0]+' KO\'d me with a '+(findTool(ko.tool)||{label:'something'}).label.toLowerCase()) : 'nobody knocked me out';
+      var parts = [];
+      if(orders != null) parts.push(orders+' order'+(orders===1?'':'s')+' overnight');
+      if(tickets != null) parts.push(tickets+' new ticket'+(tickets===1?'':'s'));
+      var summary = parts.join(', ') + (parts.length ? '. ' : '') + koTxt + '.';
+      remember('morning report', summary.slice(0,60));
+      think('morning report: first login of the day, summarize the overnight facts in one line with your usual attitude', summary, 'Overnight: '+summary, 4200, true);
+    });
+  }
+  function partRiff(name){
+    var n = String(name||'').toLowerCase(); if(!n) return null;
+    if(/downpipe|exhaust|muffler/.test(n)) return pick(['A downpipe. Of course it is a downpipe.','Exhaust parts. The neighbours will love it.','Stage 2 energy right there.']);
+    if(/intercooler|fmic/.test(n)) return pick(['Intercooler. Oil inside sold separately.','Bigger intercooler, same boost leak.']);
+    if(/turbo|k04|is38|gtx/.test(n)) return pick(['Turbo. Hold my downpipe.','More snail, more problems.']);
+    if(/intake|filter/.test(n)) return pick(['An intake. For the sound. Admit it.','Intake. Plus five horsepower, plus fifty decibels.']);
+    if(/brake|rotor|pad/.test(n)) return pick(['Brakes. Someone has to slow down eventually.','Pads. Responsible. Boring. Respect.']);
+    if(/coilover|spring|suspension|sway/.test(n)) return pick(['Suspension. Lower is faster. Probably.','Coilovers. Goodbye, driveways.']);
+    if(/tune|ecu|dsg|tcu/.test(n)) return pick(['A tune. Warranty has left the chat.','DSG tune. Flappy paddles intensify.']);
+    if(/wheel|tire|tyre/.test(n)) return pick(['Wheels. Please measure twice.','Tires. The only part that touches reality.']);
+    return null;
+  }
   function greetByName(name){
     if(!root || heldTool) return;
     var me = sharedEmail();
@@ -18987,6 +18950,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       else if(nm) canned = pick(['Hey '+nm+'.', nm+'! Backorders are that way.', 'Morning '+nm+'. Or whenever it is.', nm+'. The sync is fine. For now.']);
       if(canned) think('greeting '+nm+' who just logged in', koName ? ('last KO was by '+koName+(t?' with a '+t.label.toLowerCase():'')) : 'nobody has KO\'d you yet', canned, 3600);
     };
+    setTimeout(morningReport, 7000);
     if(sharedOk && typeof sbFetch === 'function'){
       sbFetch('/rest/v1/ai_guy_events?select=user_email,tool,created_at&kind=eq.ko&order=created_at.desc&limit=1')
         .then(function(rows){ var r = rows && rows[0]; finish(r ? { who:r.user_email, tool:r.tool, at:new Date(r.created_at).getTime() } : local); })
@@ -19000,7 +18964,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     detail = detail || {};
     var label = detail.label ? String(detail.label).slice(0, 48) : '';
     var nowB = performance.now();
-    if(/^notif_|^sku_created$|^product_imported$|^login$|^mention$/.test(type)){
+    if(/^notif_|^sku_created$|^product_imported$|^product_sent$|^login$|^mention$/.test(type)){
       if(type !== 'login' && nowB - lastBizEventAt < 4000) return;
       lastBizEventAt = nowB;
       var hop = function(v){ if(mode === 'walk'){ vy = -(v||0.3); vx = 0; mode = 'fly'; bounce.classList.add('aig-fly'); } };
@@ -19029,9 +18993,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         case 'notif_orderemails': case 'notif_supportemails':
           hop(0.2); say(pick(['Email. Customer wants answers. ','Unread mail piling up. ','Inbox: '])+(label?label:''), 3000, true); tone(880,.05,'sine',.03); return;
         case 'sku_created':
-          hop(0.35); spawnEffect(findTool('thumbs')); say('New SKU minted: '+label+'. No hyphen drama please.', 3200, true); return;
+          hop(0.35); spawnEffect(findTool('thumbs')); remember('new SKU', label);
+          think('a new SKU was just created in the ERP', label, 'New SKU minted: '+label+'. No hyphen drama please.', 3200); return;
         case 'product_imported':
-          hop(0.3); say('Imported '+label+'. Shopify sync in 3... 2...', 3000, true); return;
+          hop(0.3); remember('product imported', label);
+          think('a product was just imported into the ERP', label, partRiff(label) || ('Imported '+label+'. Shopify sync in 3... 2...'), 3000); return;
+        case 'product_sent':
+          lookAt(window.innerWidth/2, 120, 1500); remember('product to ERP', label);
+          think('the user just sent this product to the ERP', label, partRiff(label) || ('Sending '+label+' to the ERP. Bold.'), 3000); return;
         case 'mention':
           hop(0.25); say((label||'Someone')+' mentioned you in Notes. Probably about the sync.', 3200, true); return;
         case 'login':
@@ -19692,6 +19661,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       openCalendar: ['Meetings. My favorite. I am not invited.'],
       openTA: ['Time attack. Send it.']
     };
+    // product handoff to the ERP: he riffs on the actual part
+    var sp = window.sendProductToERP;
+    if(typeof sp === 'function' && !sp._aigHooked){
+      var wrappedSp = function(){ try{ var nm = (window._currentProduct && window._currentProduct.name) || ''; window.dispatchEvent(new CustomEvent('tgk:event', { detail:{ type:'product_sent', label: nm } })); }catch(e){} return sp.apply(this, arguments); };
+      wrappedSp._aigHooked = true; window.sendProductToERP = wrappedSp;
+    }
     Object.keys(lines).forEach(function(fn){
       var orig = window[fn]; if(typeof orig !== 'function' || orig._aigHooked) return;
       var wrapped = function(){ try{ if(!asleep && Math.random() < 0.6){ lookAt(window.innerWidth/2, 80, 1200); say(pick(lines[fn]), 2600); } }catch(e){} return orig.apply(this, arguments); };
@@ -19701,24 +19676,39 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
   var badDayOn = false;
   window.aiGuyBadDay = function(){
-    if(badDayOn) return; badDayOn = true; closePop(); window.aiGuyPutDownTool(); touch(); if(asleep) wakeUp(false);
+    if(badDayOn) return; badDayOn = true; closePop(); window.aiGuyPutDownTool(); touch(); if(asleep) wakeUp(false); aiHoldUntil = -1e9;
     var T = function(id){ return findTool(id); };
     var hitHim = function(id, force){ var t = T(id); if(!t) return; var r = guyRect(); applyToolHit(t, r.left + r.width/2 + (Math.random()<0.5?-30:30), r.top + 20, force||1); };
-    var steps = [
-      [0,    function(){ say(pick(['*whistling*','La la la. Nice day.','Just a normal Tuesday.']), 2200, true); pauseUntil = performance.now() + 2500; }],
-      [2600, function(){ hitHim('tomato'); }],
-      [3300, function(){ hitHim('tomato'); }],
-      [4000, function(){ hitHim('tomato'); say('...okay.', 1200, true); }],
-      [5400, function(){ var t = T('boulder'); if(t) dropBoulder(t, pos + 23); say('Is that a--', 900, true); }],
-      [7400, function(){ hitHim('freeze'); }],
-      [9800, function(){ hitHim('hammer', 1.3); }],
-      [11400, function(){ say(pick(['Why me.','I have a family. Of clones.','Was it the sync? Tell me it was the sync.']), 2400, true); }],
-      [13000, function(){ hitHim('glove'); }],
-      [13800, function(){ hitHim('glove'); }],
-      [14600, function(){ hitHim('zap'); }],
-      [16200, function(){ badStreak = 3; lastBadTool = 'bomb'; hitHim('bomb', 1.5); }],
-      [20500, function(){ badDayOn = false; say(pick(['Same time tomorrow?','Feel better? I do not.','That was a lot.']), 3000, true); }]
+    // Random script every time: 8-11 beats from a shuffled pool, no back-to-back repeats,
+    // spaced across ~19s, random commentary, and always a big finale.
+    var pool = [
+      function(){ hitHim('tomato'); }, function(){ hitHim('tomato'); hitHim('tomato'); },
+      function(){ hitHim('pie'); }, function(){ hitHim('hammer', 1.2); }, function(){ hitHim('glove'); },
+      function(){ hitHim('glove'); setTimeout(function(){ hitHim('glove'); }, 350); }, function(){ hitHim('zap'); },
+      function(){ hitHim('freeze'); setTimeout(function(){ hitHim('hammer', 1.3); }, 1400); },
+      function(){ var t = T('boulder'); if(t) dropBoulder(t, pos + 23); say('Is that a--', 900, true); },
+      function(){ var t = T('mine'); if(t){ placeTrap(t, pos + 23 + dir*70); say('Oh, a mine. Great.', 1200, true); } },
+      function(){ var t = T('dynamite'); if(t) placeTrap(t, pos + 23 + (Math.random()<0.5?-1:1)*40); },
+      function(){ var t = T('banana'); if(t){ placeTrap(t, pos + 23 + dir*55); } },
+      function(){ fireShirt(); },
+      function(){ var t = T('sling'); vx = (Math.random()<0.5?-1:1)*1.6; vy = -1.2; mode = 'fly'; bounce.classList.add('aig-fly'); say('WHY', 900, true); },
+      function(){ hitHim('shirt'); }
     ];
+    // shuffle, then pick 8-11 with no identical neighbours
+    for(var i=pool.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
+    var beats = pool.slice(0, 8 + Math.floor(Math.random()*4));
+    var lines = ['...okay.','Why me.','I have a family. Of clones.','Was it the sync? Tell me it was the sync.','Is this about the backorders?','I did the deploy correctly!','Ow. Ow. Ow.','This is a HR issue.','I will remember this.','Not the face. Okay, the face.'];
+    for(var i=lines.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=lines[i]; lines[i]=lines[j]; lines[j]=tmp; }
+    var steps = [[0, function(){ say(pick(['*whistling*','La la la. Nice day.','Just a normal Tuesday.','What a lovely, quiet--']), 2200, true); pauseUntil = performance.now() + 2500; }]];
+    var tcur = 2600, span = 16000 / beats.length, li = 0;
+    beats.forEach(function(fn, idx){
+      steps.push([Math.round(tcur), fn]);
+      if(idx % 3 === 2 && li < lines.length) steps.push([Math.round(tcur + span*0.5), (function(l){ return function(){ say(l, 1800, true); }; })(lines[li++])]);
+      tcur += span * (0.7 + Math.random()*0.6);
+    });
+    var finale = pick(['bomb','dynamite','bomb']);
+    steps.push([18600, function(){ badStreak = 3; lastBadTool = finale; if(finale==='dynamite'){ var t=T('dynamite'); if(t) placeTrap(t, pos+23); } else hitHim('bomb', 1.6); }]);
+    steps.push([20500, function(){ badDayOn = false; say(pick(['Same time tomorrow?','Feel better? I do not.','That was a lot.','New personal worst.']), 3000, true); }]);
     steps.forEach(function(s){ setTimeout(function(){ try{ s[1](); }catch(e){} }, s[0]); });
     aigToast('Bad day', '20 seconds. Just watch.');
   };
@@ -19728,7 +19718,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // (tgkAIFetch), so rate limits, model allowlist and auth are all handled server-side.
   // Strictly rate-limited here too (one thought per ~35s), only for notable moments, and every
   // call has a canned fallback -- if the proxy is down or slow he just says the scripted line.
-  var brainBusy = false, lastThinkAt = -1e9, brainFails = 0, recentLines = [];
+  var brainBusy = false, lastThinkAt = -1e9, brainFails = 0, recentLines = [], lastRenameAt = -1e9;
   function brainOn(){ return settings.brain !== false && typeof tgkAIFetch === 'function' && brainFails < 4 && !perf.on; }
   function remember(kind, detail){
     if(!aigState.memory) aigState.memory = [];
@@ -19758,9 +19748,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     'You are a little cartoon robot body with the boss\'s real face. The team clicks you with cartoon weapons to blow off steam, and praises you when the AI did good work. You are a sarcastic, quick, lovable coworker: dry humor, car-nerd jokes (boost leaks, P0299, N75, DSG, downpipes, "torque spec: gutentight"), light shop-ops jokes (Shopify sync, backorders, SKUs with hyphens, ShipStation firing twice, "did you run node --check", data accuracy).',
     'Reply with ONE line only, 4 to 14 words, max 90 characters. No quotes, no emojis, no hashtags, no preamble, no explanation. First person. Match the mood: playful when praised, dramatic when hurt, genuinely grumpy when mad, sulky when sulking, sleepy when asleep. Never insult real people cruelly; teasing is fine. Never mention being an AI model or a prompt.'
   ].join(' ');
-  function think(kind, detail, fallback, ms){
+  function think(kind, detail, fallback, ms, urgent, onText){
     var fb = function(){ if(fallback) say(fallback, ms||2600, true); };
-    if(!brainOn() || brainBusy || performance.now() - lastThinkAt < 35000){ fb(); return; }
+    if(!brainOn() || brainBusy || (!urgent && performance.now() - lastThinkAt < 35000)){ fb(); return; }
     brainBusy = true; lastThinkAt = performance.now();
     var ctx = brainContext();
     var user = 'Moment: '+kind+(detail ? ' - '+detail : '')+'\nContext: '+JSON.stringify(ctx)+'\nDo not repeat any of these recent lines: '+JSON.stringify(recentLines.slice(-6))+'\nYour one line:';
@@ -19776,6 +19766,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         recentLines.push(txt); if(recentLines.length > 12) recentLines.shift();
         say('\u2726 ' + txt, ms || Math.min(4200, 1800 + txt.length*28), true);
         brainFails = 0;
+        if(onText){ try{ onText(txt); }catch(e){} }
       })
       .catch(function(){ if(done) return; done = true; clearTimeout(timer); brainBusy = false; brainFails++; fb(); });
   }
@@ -19805,6 +19796,69 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     setTimeout(function(){ el.remove(); fxLive--; }, ttl);
     return el;
   }
+  // ---------------- Canvas FX layer: one <canvas>, all particles ----------------
+  // Replaces the per-particle DOM nodes (each was a layout + a timer). A few hundred
+  // particles now cost one draw call per frame instead of hundreds of style writes.
+  var fxCanvas = null, fxCtx = null, fxParts = [], fxDirty = false, fxDpr = 1, fxDead = false;
+  function fxInit(){
+    if(fxCanvas) return;
+    fxCanvas = document.createElement('canvas'); fxCanvas.id = 'aig-fx';
+    fxCanvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2062';
+    document.body.appendChild(fxCanvas);
+    try{ fxCtx = fxCanvas.getContext('2d'); }catch(e){ fxCtx = null; }
+    if(!fxCtx){ fxCanvas.remove(); fxCanvas = null; fxDead = true; return; }   // no 2D context: run without particles
+    fxResize();
+    window.addEventListener('resize', fxResize);
+  }
+  function fxResize(){
+    if(!fxCanvas) return;
+    fxDpr = Math.min(2, window.devicePixelRatio || 1);
+    fxCanvas.width = Math.floor(window.innerWidth * fxDpr); fxCanvas.height = Math.floor(window.innerHeight * fxDpr);
+    if(fxCtx) fxCtx.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
+  }
+  function fxEmit(p){
+    if(fxDead || fxParts.length > (perf.on ? 250 : 900)) return;
+    fxInit(); if(!fxCtx) return;
+    p.life = 0; p.ttl = p.ttl || 600; p.g = p.g || 0; p.drag = (p.drag == null) ? 1 : p.drag; p.alpha = (p.alpha == null) ? 1 : p.alpha;
+    p.rot = p.rot || 0; p.vr = p.vr || 0; p.shape = p.shape || 'dot'; p.size = p.size || 4;
+    fxParts.push(p);
+  }
+  function fxBurst(x, y, n, colors, o){
+    o = o || {};
+    var spd = o.speed || 0.09, gr = (o.g == null) ? 0.0006 : o.g, size = o.size || 5, ttl = o.ttl || 600;
+    var spread = o.spread == null ? Math.PI*2 : o.spread, base = o.angle == null ? 0 : o.angle;
+    for(var i=0;i<n;i++){
+      var a = base + (spread/n)*i + (Math.random()-0.5)*(spread/n)*1.6, s = spd*(0.55+Math.random()*0.9);
+      fxEmit({ x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, g:gr, drag:0.985, size:size*(0.6+Math.random()*0.8), color:colors[i%colors.length], shape:o.shape||'dot', ttl:ttl*(0.7+Math.random()*0.6), rot:Math.random()*6.28, vr:(Math.random()-0.5)*0.02, fade:true });
+    }
+  }
+  function fxTick(dt){
+    if(!fxCtx){ fxParts.length = 0; return; }
+    if(!fxParts.length){ if(fxDirty && fxCtx){ fxCtx.clearRect(0,0,fxCanvas.width,fxCanvas.height); fxDirty = false; } return; }
+    var c = fxCtx; c.clearRect(0, 0, fxCanvas.width, fxCanvas.height); fxDirty = true;
+    for(var i=fxParts.length-1;i>=0;i--){
+      var p = fxParts[i];
+      p.life += dt; if(p.life >= p.ttl){ fxParts.splice(i,1); continue; }
+      var k = p.life/p.ttl;
+      p.vy += p.g*dt; var dr = Math.pow(p.drag, dt/16); p.vx *= dr; p.vy *= dr;
+      if(p.sway){ p.vx += Math.sin(p.life/140 + (p.phase||0)) * 0.002 * dt; }
+      p.x += p.vx*dt; p.y += p.vy*dt; p.rot += p.vr*dt;
+      var a = p.alpha * (p.fade ? (1 - k) : (k < 0.15 ? k/0.15 : 1 - Math.max(0,(k-0.6)/0.4)));
+      c.globalAlpha = Math.max(0, Math.min(1, a));
+      c.fillStyle = p.color; c.strokeStyle = p.color;
+      switch(p.shape){
+        case 'rect': c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.fillRect(-p.size/2, -p.size*0.8, p.size, p.size*1.6); c.restore(); break;
+        case 'ring': c.lineWidth = Math.max(0.6, 3*(1-k)); c.beginPath(); c.arc(p.x, p.y, p.size*(0.15+0.85*k), 0, 6.283); c.stroke(); break;
+        case 'smoke': c.beginPath(); c.arc(p.x, p.y, p.size*(0.4+k*1.2), 0, 6.283); c.fill(); break;
+        case 'shard': c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.beginPath(); c.moveTo(0,-p.size); c.lineTo(p.size*0.6,p.size*0.5); c.lineTo(-p.size*0.6,p.size*0.4); c.closePath(); c.fill(); c.restore(); break;
+        case 'heart': c.font = (p.size*3)+'px sans-serif'; c.textAlign = 'center'; c.fillText('\u2764', p.x, p.y); break;
+        case 'line': c.lineWidth = 1.5; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - p.vx*60, p.y - p.vy*60); c.stroke(); break;
+        default: c.beginPath(); c.arc(p.x, p.y, p.size*(p.shrink ? (1-k*0.7) : 1), 0, 6.283); c.fill();
+      }
+    }
+    c.globalAlpha = 1;
+  }
+
   function spawnEffect(tool, rect){
     var r = rect || guyRect();
     var cx = r.left + r.width/2, cy = r.top + r.height*0.35;
@@ -19823,20 +19877,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     setTimeout(function(){ fly.remove(); }, 550);
 
     var colors = tool.type==='good' ? ['#4ADE9F','#2ABFAA','#FFD166'] : ['#FF6B6B','#F0812E','#FF8A5B'];
-    var n = perf.on ? 4 : 6 + tool.weight*2;
-    for(var i=0;i<n;i++){
-      (function(i){
-        var b = fxNode('aig-burst', 560); if(!b) return;
-        var ang = (Math.PI*2/n)*i + Math.random()*0.4;
-        var dist = (20+tool.weight*6)+Math.random()*18;
-        b.style.setProperty('--bx', Math.cos(ang)*dist+'px');
-        b.style.setProperty('--by', Math.sin(ang)*dist+'px');
-        b.style.left = cx+'px';
-        b.style.top = cy+'px';
-        b.style.background = colors[i%colors.length];
-        document.body.appendChild(b);
-      })(i);
-    }
+    fxBurst(cx, cy, perf.on ? 6 : 10 + tool.weight*5, colors, { speed: 0.07 + tool.weight*0.025, g: 0.0007, size: 4 + tool.weight, ttl: 620 });
   }
 
   function spawnFloatText(text, type, yOffset, rect){
