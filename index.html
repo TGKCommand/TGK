@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.49';
+var TGK_CC_VERSION='v2.52';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16818,6 +16818,30 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-stolen::before{content:'';position:absolute;inset:0;background:#fff;clip-path:polygon(0 0,0 78%,28% 60%,45% 100%,58% 94%,42% 56%,72% 56%);filter:drop-shadow(0 0 1px #000) drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 @keyframes aigWave{from{transform:rotate(-40deg)}to{transform:rotate(10deg)}}
 .aig-cursorhit{position:fixed;z-index:3250;pointer-events:none;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:radial-gradient(circle,rgba(255,80,80,.9),rgba(255,80,80,0) 70%);animation:aigFlash .35s ease-out forwards}
+.aig-eyes{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3}
+.aig-pupil{position:absolute;width:3px;height:3px;border-radius:50%;background:rgba(15,15,20,.85);mix-blend-mode:multiply;transition:opacity .2s}
+.aig-pupil.l{left:34%;top:43%} .aig-pupil.r{left:60%;top:42%}
+.aig-asleep .aig-pupil{opacity:0}
+.aig-shades{position:absolute;left:8px;top:14px;width:24px;height:7px;z-index:5;pointer-events:none;display:flex;gap:2px;justify-content:center}
+.aig-shades::before,.aig-shades::after{content:'';width:10px;height:7px;border-radius:2px 2px 4px 4px;background:linear-gradient(160deg,#333 40%,#111);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.aig-asleep{animation:aigSnore 2.4s ease-in-out infinite}
+@keyframes aigSnore{0%,100%{transform:scaleY(.86) translateY(5px)}50%{transform:scaleY(.9) translateY(4px)}}
+.aig-zz{position:fixed;z-index:2040;font-weight:800;color:#9fd3ff;font-family:var(--font,inherit);pointer-events:none;animation:aigZz 2.2s ease-out forwards}
+@keyframes aigZz{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(22px,-40px) scale(1.3)}}
+.aig-pebble{position:fixed;z-index:838;width:7px;height:5px;border-radius:50%;background:#7a7f86;pointer-events:none;box-shadow:0 1px 1px rgba(0,0,0,.5)}
+.aig-limp .aig-leg:first-child{opacity:.6}
+.aig-glass{position:fixed;z-index:2035;pointer-events:none}
+.aig-glass.splat{width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:48% 52% 46% 54%/55% 45% 55% 45%;background:radial-gradient(circle at 45% 40%,rgba(255,90,70,.95),rgba(190,30,20,.85) 60%,rgba(190,30,20,0) 72%);animation:aigSplatIn .18s ease-out}
+.aig-glass.splat.pie{background:radial-gradient(circle at 45% 40%,rgba(255,250,230,.97),rgba(235,220,180,.9) 60%,rgba(235,220,180,0) 72%)}
+.aig-glass.splat::after{content:'';position:absolute;left:46%;top:70%;width:6px;height:0;border-radius:0 0 4px 4px;background:inherit;animation:aigDrip 2.6s ease-in .3s forwards}
+@keyframes aigDrip{to{height:60px;opacity:.6}}
+@keyframes aigSplatIn{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.aig-glass.crack{width:120px;height:120px;margin:-60px 0 0 -60px;opacity:.85}
+.aig-glass.crack path{fill:none;stroke:rgba(255,255,255,.85);stroke-width:1.2;filter:drop-shadow(0 0 1px rgba(0,0,0,.9))}
+.aig-glass.fade{transition:opacity 1.2s;opacity:0}
+.aig-drama{animation:aigDrama 2.6s ease-in forwards}
+@keyframes aigDrama{0%{transform:rotate(0)}20%{transform:rotate(-8deg) translateY(-6px)}45%{transform:rotate(12deg) translateY(2px)}70%{transform:rotate(70deg) translateY(10px)}100%{transform:rotate(90deg) translateY(14px)}}
+.aig-clone-bub{position:fixed;left:0;top:0;z-index:2039;max-width:150px;background:#e8eaef;color:#111;font-size:10px;line-height:1.3;padding:4px 7px;border-radius:8px;font-family:var(--font,inherit);pointer-events:none;will-change:transform;box-shadow:0 3px 8px rgba(0,0,0,.3)}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -16848,6 +16872,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-bubble.show{opacity:1}
 .aig-bubble::after{content:'';position:absolute;left:14px;bottom:-6px;border:6px solid transparent;border-top-color:#f4f5f7;border-bottom:0}
 .aig-bubble.flip::after{left:auto;right:14px}
+.aig-bubble.ai{background:#eef7ff;border:1px solid #bcdcff}
+.aig-bubble.ai::after{border-top-color:#eef7ff}
 .aig-bubble.below::after{bottom:auto;top:-6px;border-top:0;border-bottom:6px solid #f4f5f7}
 .aig-bubble{transition:opacity .2s}
 #aig-rage{position:fixed;left:12px;bottom:52px;z-index:3050;width:150px;height:8px;background:#18191b;border:1px solid #2e2e2e;border-radius:6px;overflow:hidden;display:none}
@@ -16927,7 +16953,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   <div id="aig-flip">
     <div id="aig-bounce">
       <div class="aig-neck"></div>
-      <div class="aig-head"><img src="data:image/png;base64,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" alt="" aria-hidden="true"></div>
+      <div class="aig-head"><img src="data:image/png;base64,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" alt="" aria-hidden="true"><div class="aig-eyes"><div class="aig-pupil l"></div><div class="aig-pupil r"></div></div></div>
       <div class="aig-body"><div class="aig-logo"></div></div>
       <div class="aig-arm l"><div class="aig-seg"><div class="aig-hand"></div></div></div>
       <div class="aig-arm r"><div class="aig-seg"><div class="aig-hand"></div></div></div>
@@ -16968,10 +16994,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var raw = localStorage.getItem(STORE_KEY);
       if(raw){
         var parsed = JSON.parse(raw);
-        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null };
+        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[] };
       }
     }catch(e){}
-    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null };
+    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[] };
   }
   function stat(key, inc){ aigState.stats[key] = (aigState.stats[key]||0) + (inc==null?1:inc); return aigState.stats[key]; }
   var aigState = loadState();
@@ -16986,6 +17012,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var lastDir = 0, shakeUntil = 0, shakeAmp = 0, popOpen = false, hiddenPoll = null;
   var anger = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
   var cursorStolen = false, stolenUntil = 0, stolenEl = null, lastDodgeAt = 0, fleeDir = 1, fleeHopAt = 0;
+  var lastInteractAt = performance.now(), asleep = false, nextZzAt = 0, nextBoredAt = 0, skit = null, hiddenAt = 0, lookX = 0, lookY = 0, lookUntil = 0;
+  var pupilL = null, pupilR = null, shadesEl = null, limpUntil = 0, slideUntil = 0, dramaOn = false, nextRoomAt = 0, roomState = null, nextGossipAt = 0;
+  var squishX = 0, squishY = 0, squishV = 0, lastFridayMin = -1, nextCloneTalkAt = 0;
   var perf = { auto:true, on:false, ema:16, bad:0, good:0 };
   function setRootPos(){
     if(!root) return;
@@ -17000,7 +17029,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     return { left:left, top:top, right:left+w, bottom:top+h, width:w, height:h };
   }
   var SETTINGS_KEY = 'tgk_ai_guy_settings';
-  var settings = { size:1, speed:1, taunts:true, hide:true, rapid:true, fight:true, steal:true };
+  var settings = { size:1, speed:1, taunts:true, hide:true, rapid:true, fight:true, steal:true, eyes:true, brain:true };
   try{ var sv = JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null'); if(sv) settings = Object.assign(settings, sv); }catch(e){}
   var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var rage = 0, rageMode = false, rageUntil = 0, lastHitAt = 0, nextTauntAt = 0;
@@ -17042,6 +17071,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       restoreCond();
       restoreWorld();
       window.addEventListener('beforeunload', saveWorld);
+      pupilL = root.querySelector('.aig-pupil.l'); pupilR = root.querySelector('.aig-pupil.r');
+      if(settings.eyes === false) root.querySelectorAll('.aig-pupil').forEach(function(p){ p.style.display='none'; });
+      hookApp();
+      document.addEventListener('visibilitychange', function(){
+        if(document.hidden){ hiddenAt = Date.now(); }
+        else if(hiddenAt){
+          var away = (Date.now() - hiddenAt)/60000; hiddenAt = 0;
+          var hr = new Date().getHours();
+          if(away > 20){ setTimeout(function(){ if(hr >= 12 && hr <= 14) say(pick(['How was lunch. Mine was great. I do not eat.','Back from lunch? I counted backorders the whole time.']), 3200, true); else say(pick(['Oh, NOW you are back.','You were gone '+Math.round(away)+' minutes. I noticed.','Welcome back. Nothing broke. Probably.']), 3200, true); }, 800); }
+        }
+      });
       setTimeout(function(){
         if(heldTool) return;
         try{ if(JSON.parse(localStorage.getItem('tgk_cc_session')||'null')) return; }catch(e){}
@@ -17078,7 +17118,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001;
   }
   function tick(ts){
     loopArmed = false;
@@ -17101,7 +17141,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!isBusy()){ idleSkip = !idleSkip; if(idleSkip){ armLoop(); return; } }
     lastTs = ts;
     if(ts > slowUntil && timeScale !== 1) timeScale = 1;
-    var dt = rawDt * timeScale;
+    var dt = rawDt * timeScale; dt_last = dt;
     var frozen = ts < freezeUntil;
     if(rageMode && ts > rageUntil) endRage();
     if(rage > 0 || rageMode){ rage = Math.max(0, rage - rawDt*0.004); updateRageUI(); }
@@ -17183,13 +17223,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           }
         }
         var walkMul = (performance.now() < sulkUntil) ? 0.55 : 1;
-        pos += dir * 0.045 * settings.speed * walkMul * (fleeing ? 2.0 : 1) * dt;
-        if(pos > maxX){ pos = maxX; dir = -1; }
-        if(pos < 4){ pos = 4; dir = 1; }
-        if(Math.random() < 0.0025) dir *= -1;
-        if(Math.random() < 0.002) pauseUntil = ts + (700+Math.random()*1600);
+        if(performance.now() < limpUntil) walkMul *= 0.5 + 0.15*Math.sin(ts/90);
+        if(!skit){
+          pos += dir * 0.045 * settings.speed * walkMul * (fleeing ? 2.0 : 1) * dt;
+          if(Math.random() < 0.0025) dir *= -1;
+          if(Math.random() < 0.002) pauseUntil = ts + (700+Math.random()*1600);
+        }
+        if(pos > maxX){ pos = maxX; if(!skit) dir = -1; }
+        if(pos < 4){ pos = 4; if(!skit) dir = 1; }
         maybeHide(ts);
         maybeIdleAnim(ts);
+        maybeBored(ts);
         }
       }
       if(!fightOn && !cursorStolen) setRootPos();
@@ -17239,7 +17283,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
             squash();
           } else {
             // rolling / sliding to a stop
-            vy = 0; vx *= Math.pow(0.94, dt/16);
+            vy = 0; vx *= Math.pow(performance.now() < slideUntil ? 0.995 : 0.94, dt/16);
             rotVel = vx * 1.1;
             if(Math.abs(vx) < 0.012 || cursorStolen || fightOn){
               // when he is running from you / at you, do not wait around sliding to a stop
@@ -17263,6 +17307,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       }
     }
     updateAnger(ts, rawDt);
+    updateMind(ts, rawDt);
     updateHead(ts, dt);
     updateBubble();
     updateLimbs(ts, dt);
@@ -17377,7 +17422,18 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         turn = (dir < 0 ? -toward : toward);
       }
     }
-    headEl.style.transform = 'perspective(140px) rotateY(' + turn.toFixed(1) + 'deg) rotate(' + headAng.toFixed(2) + 'deg)';
+    // squish: quick deform toward the last blow, spring back
+    squishV += (0 - squishX) * 0.02 * dt; squishV *= Math.pow(0.82, dt/16); squishX += squishV;
+    var sq = Math.max(-0.35, Math.min(0.35, squishX));
+    headEl.style.transform = 'perspective(140px) rotateY(' + turn.toFixed(1) + 'deg) rotate(' + headAng.toFixed(2) + 'deg)' + (Math.abs(sq) > 0.002 ? ' skewX(' + (sq*40).toFixed(1) + 'deg) scale(' + (1+Math.abs(sq)*0.5).toFixed(3) + ',' + (1-Math.abs(sq)*0.45).toFixed(3) + ')' : '');
+    if(pupilL && settings.eyes !== false){
+      var tx = (performance.now() < lookUntil) ? lookX : curX, ty = (performance.now() < lookUntil) ? lookY : curY;
+      var ex = pos + 23, ey = posY + 14;
+      var ddx = tx - ex, ddy = ty - ey, dl = Math.hypot(ddx, ddy) || 1;
+      var px = (ddx/dl) * Math.min(2.2, dl/80) * (dir < 0 ? -1 : 1), py = (ddy/dl) * Math.min(1.6, dl/120);
+      var ptx = 'translate(' + px.toFixed(2) + 'px,' + py.toFixed(2) + 'px)';
+      if(pupilL._t !== ptx){ pupilL._t = ptx; pupilL.style.transform = ptx; pupilR.style.transform = ptx; }
+    }
   }
 
   // Every landing goes through here so no rotation / squash-stretch / stale facing survives into walking.
@@ -17401,6 +17457,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
 
   function onPointerDown(e){
+    touch();
     if(cursorStolen){ e.preventDefault(); returnCursor(true); return; }
     if(heldTool) return;
     e.preventDefault();
@@ -17476,10 +17533,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       sec('aig-tool-bad',  'Whack',  'click him \u00b7 hold to rapid-fire', whack) +
       sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
       '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad'+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'</div>'+
-      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button></div>'+
+      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
       settingsHtml();
     document.body.appendChild(pop);
     popOpen = true;
+    pop.addEventListener('pointerdown', bombHoldStart);
+    pop.addEventListener('pointerup', bombHoldEnd);
+    pop.addEventListener('pointerleave', bombHoldEnd);
     pop.style.left = '-9999px';
     pop.style.top = '-9999px';
     pop.addEventListener('mouseover', function(e){
@@ -17490,6 +17550,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     setTimeout(function(){ document.addEventListener('click', outsideClose); }, 0);
   }
   window.aiGuyCloseTray = function(){ closePop(); };
+  var allBombsUntil = 0;
+  function bombHoldStart(e){
+    var b = e.target.closest && e.target.closest('.aig-tool-btn[data-tool="bomb"]'); if(!b) return;
+    b._hold = setTimeout(function(){
+      allBombsUntil = performance.now() + 20000;
+      aigToast('RAGE QUIT', 'Everything is bombs for 20 seconds.');
+      say('Oh no. Oh no no no.', 2400, true); tone(90,.4,'sawtooth',.06); shakeScreen();
+      document.querySelectorAll('#aig-pop .aig-tool-btn').forEach(function(btn){ btn.textContent = ICN.bomb; btn.classList.add('aig-on'); });
+    }, 3000);
+  }
+  function bombHoldEnd(e){ var b = e.target.closest && e.target.closest('.aig-tool-btn[data-tool="bomb"]'); if(b && b._hold) clearTimeout(b._hold); }
   function toolBtnHtml(t){
     if(toolLocked(t)) return '<button class="aig-tool-btn aig-locked" data-tool="'+t.id+'" onclick="aiGuyLockedTap(\''+t.id+'\')" title="'+t.label+' \u2014 locked: '+t.unlock.label+'">'+t.icon+'</button>';
     var on = heldTool && heldTool.id === t.id ? ' aig-on' : '';
@@ -17583,6 +17654,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'audit': noiseBurst(.08, 2500, 0.05, 4); break;
       case 'tramp': case 'fan': case 'gravity': case 'sling': break;
       case 'clone': break;
+      case 'coffee': tone(520,.1,'sine',.04); tone(660,.12,'sine',.04,.1); tone(880,.2,'sine',.05,.2); break;
       default: tone(300,.1,'sine',.05);
     }
   }
@@ -17629,6 +17701,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     audit: String.fromCodePoint(0x1F4C4),
     clone: String.fromCodePoint(0x1F465),
     dynamite: String.fromCodePoint(0x1F9E8),
+    coffee: '\u2615',
     mine: '\u26A0',
     boulder: String.fromCodePoint(0x1FAA8),
     banana: String.fromCodePoint(0x1F34C)
@@ -17639,6 +17712,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'trophy',   type:'good', icon:ICN.trophy,   label:'Trophy',    weight:2, phrases:['Champion!','Top tier!','Flawless!','Nailed it!'] },
     { id:'confetti', type:'good', icon:ICN.confetti, label:'Confetti',  weight:2, phrases:['Party time!','Woo!','Celebrate!','Yes!'] },
     { id:'clone',    type:'good', kind:'spawn', icon:ICN.clone,  label:'Clone him',   weight:1, phrases:['Twinsies!'] },
+    { id:'coffee',   type:'good', icon:ICN.coffee,   label:'Coffee (truce)', weight:1, phrases:['Truce.','Okay. OKAY. Truce.','...fine. Thank you.','This buys you ten minutes.'] },
     { id:'freeze',   type:'bad',  icon:ICN.freeze,   label:'Freeze ray', weight:1, phrases:['Frozen solid!','Ice cold.','Chill out.','Brain freeze!'] },
     { id:'tomato',   type:'bad',  icon:ICN.tomato,   label:'Tomato',    weight:1, phrases:['Splat!','Direct hit!','Saucy!','Messy!'] },
     { id:'pie',      type:'bad',  icon:ICN.pie,      label:'Pie',       weight:1, phrases:['Creamed!','Splat!','Right in the face!','Messy!'] },
@@ -17684,12 +17758,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var cursorEl = null;
 
   window.aiGuyEquipTool = function(toolId){
+    if(performance.now() < allBombsUntil && toolId !== 'coffee') toolId = 'bomb';
     var tool = findTool(toolId);
     if(!tool) return;
     if(toolLocked(tool)){ window.aiGuyLockedTap(toolId); return; }
     heldTool = tool;
     closePop();
-    unhide();
+    unhide(); touch();
     if(!cursorEl){
       cursorEl = document.createElement('div');
       cursorEl.id = 'aig-cursor-tool';
@@ -17842,9 +17917,18 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     comboType = tool.type;
     comboAt = now;
 
-    lastHitAt = performance.now();
+    lastHitAt = performance.now(); touch();
     hideBubble();
     unhide();
+    lookAt(hitX, hitY, 900);
+    squish(hitX);
+    if(tool.id === 'coffee'){
+      aigState.good += 2; saveState();                // counts as 3 praises total
+      anger = 0; madOn = false; bounce.classList.remove('aig-mad','aig-sulk'); sulkUntil = 0;
+      if(fightOn) endFightBack(); if(cursorStolen) returnCursor(false); clearHat('hard');
+      fightCooldownUntil = performance.now() + 600000;   // a real truce: ten minutes
+      setTimeout(function(){ say(pick(['Truce. Ten minutes. Then we are back to normal.','Coffee accepted. I am watching you though.','Okay. We are good. For now.']), 3000, true); }, 900);
+    }
     if(tool.type === 'good') { if(aigState.good >= 100) achieve('pacifist'); }
     else { if(aigState.bad >= 100) achieve('century'); }
 
@@ -17863,7 +17947,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(mode === 'fly') { airHits++; if(airHits >= 5) achieve('juggler'); }
 
     queueShared(tool.type, tool.id);
-    if(tool.type === 'bad') lastBadTool = tool.id;
+    if(tool.type === 'bad'){ lastBadTool = tool.id; if(Math.random() < 0.15) remember('hit', 'with '+tool.label.toLowerCase()); }
     if(comboCount > (aigState.stats.bestCombo||0)){ aigState.stats.bestCombo = comboCount; }
     var dk = new Date().toISOString().slice(0,10);
     if(!aigState.stats.bestToday || aigState.stats.bestToday.date !== dk) aigState.stats.bestToday = { date: dk, combo: 0 };
@@ -17891,11 +17975,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     } else {
       addAnger(-18);
       badStreak = 0;
+      if(glassMarks.length && Math.random() < 0.6) wipeGlass();
       clearBandaids();
       clearSplats();
       clearHat('cone');
       playVoice('praise');
-      if(Math.random() < 0.55) say(pick(['Aw, thanks.','Finally, some recognition.','I did do that.','Put it in my review.','Was that so hard?','More of this, please.','Boost is a mindset.']), 1600);
+      if(Math.random() < 0.55){ var pr = pick(['Aw, thanks.','Finally, some recognition.','I did do that.','Put it in my review.','Was that so hard?','More of this, please.','Boost is a mindset.']); if(Math.random() < 0.3) think('you were just praised with '+tool.label, '', pr, 1800); else say(pr, 1600); }
       if(comboType==='good' && comboCount >= 3) setHat('party', 6000);
     }
 
@@ -17983,14 +18068,18 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     'Blinker fluid is on backorder too.', 'Dyno numbers or it did not happen.', 'Ship it Friday, fix it Monday.'
   ];
   var CAR_HIT_PHRASES = ['Blown turbo!','Boost leak!','Misfire on 3!','Check engine!','Limp mode!','Over-boost!','Rod knock!','Timing chain!','Coilpack down!','Wastegate stuck!'];
-  var lastSayAt = -1e9;
+  var lastSayAt = -1e9, aiHoldUntil = -1e9;
   function say(text, ms, force){
     if(!root) return;
     var now = performance.now();
+    var isAI = String(text).charAt(0) === '\u2726';
+    if(!isAI && now < aiHoldUntil) return;         // an AI line is on screen: minor chatter waits
     if(!force && now - lastSayAt < 700) return;   // do not machine-gun bubbles
+    if(isAI) aiHoldUntil = now + Math.min(3200, (ms||2600) - 300);
     lastSayAt = now;
     if(!bubbleEl){ bubbleEl = document.createElement('div'); bubbleEl.className = 'aig-bubble'; document.body.appendChild(bubbleEl); }
     bubbleEl.textContent = text;
+    bubbleEl.classList.toggle('ai', text.charAt(0) === '\u2726');
     bubbleEl.classList.add('show');
     bubbleShown = true;
     bubbleW = bubbleEl.offsetWidth || 150; bubbleH = bubbleEl.offsetHeight || 30;   // one layout read per line, not per frame
@@ -18015,14 +18104,32 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var below = top > r.top; if(below !== bubbleEl._below){ bubbleEl._below = below; bubbleEl.classList.toggle('below', below); }
   }
   function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  var gossipRows = null;
+  function loadGossip(){ if(!sharedOk || typeof sbFetch !== 'function') return; sbFetch('/rest/v1/ai_guy_leaderboard?select=*&order=hits.desc&limit=6').then(function(rows){ gossipRows = rows||[]; }).catch(function(){}); }
+  function gossipLine(){
+    if(!gossipRows || gossipRows.length < 1) return null;
+    var me = sharedEmail(); var nm = function(e){ return String(e||'').split('@')[0]; };
+    var top = gossipRows[0]; var others = gossipRows.filter(function(r){ return r.user_email !== me; });
+    var pool = [];
+    if(top && top.hits > 20) pool.push(nm(top.user_email)+' hit me '+top.hits+' times. '+nm(top.user_email)+' has issues.');
+    var pac = gossipRows.filter(function(r){ return (r.hits||0) === 0 && (r.praises||0) > 0; })[0];
+    if(pac) pool.push(nm(pac.user_email)+'? Never touched me. Good person.');
+    var mine = gossipRows.filter(function(r){ return r.user_email === me; })[0];
+    if(mine && others[0]) pool.push('You are at '+(mine.hits||0)+'. '+nm(others[0].user_email)+' is at '+(others[0].hits||0)+'. Just saying.');
+    var koer = gossipRows.slice().sort(function(a,b){ return (b.kos||0)-(a.kos||0); })[0];
+    if(koer && koer.kos > 0) pool.push(nm(koer.user_email)+' has '+koer.kos+' KOs on me. We are not close.');
+    return pool.length ? pick(pool) : null;
+  }
   function maybeTaunt(ts){
     if(!settings.taunts) return;
     if(ts < nextTauntAt) return;
+    if(ts > nextGossipAt){ nextGossipAt = ts + 120000; loadGossip(); var gl = gossipLine(); if(gl && Math.random() < 0.5){ nextTauntAt = ts + 14000 + Math.random()*16000; say(gl, 3400); return; } }
     nextTauntAt = ts + 14000 + Math.random()*16000;
     if(performance.now() - lastHitAt < 6000) return;
     if(heldTool) return;
     if(performance.now() < sulkUntil) say(pick(['...','I am fine.','Whatever you say.','Cool. Great. Love that for me.','Do not.']));
     else if(madOn) say(pick(['I remember every hit.','Keep swinging. I dare you.','My patience has a torque spec too.','Say sync one more time.']));
+    else if(Math.random() < 0.35) think('idle - you are just walking around the office with nothing happening; say something in character', '', TAUNTS[Math.floor(Math.random()*TAUNTS.length)], 2800);
     else say(TAUNTS[Math.floor(Math.random()*TAUNTS.length)]);
     playVoice('taunt');
   }
@@ -18120,6 +18227,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     bounce.appendChild(dizzy);
     spawnFloatText('KO!', 'bad', 15);
     stat('ko'); achieve('first_ko');
+    remember('KO', 'by '+(lastBadTool||'?'));
     addAnger(22);
     aigState.stats.lastKoBy = { who: sharedEmail(), tool: lastBadTool||'', at: Date.now() }; saveState();
     if(lastBadTool){ fearTool = lastBadTool; }
@@ -18131,11 +18239,47 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     addRage(25);
     playVoice('ko');
     if(!rageMode) setHat('cone', 7000);
+    var byBomb = (lastBadTool === 'bomb' || lastBadTool === 'dynamite');
+    var fakeOut = !byBomb && Math.random() < 0.18;
+    if(byBomb){
+      // Shakespeare
+      dramaOn = true; bounce.classList.add('aig-drama');
+      var dl = ['Tell the dealers... I loved them.','Is this... the sync... finally... running?','Rosebud. It was a boost leak.','Avenge me. With a downpipe.','Goodnight, sweet backorders.'];
+      setTimeout(function(){ say(pick(dl), 2600, true); }, 500);
+      setTimeout(function(){ say('...', 1200, true); }, 2400);
+      setTimeout(function(){ bounce.classList.remove('aig-drama'); dramaOn = false; }, 3600);
+    }
     setTimeout(function(){
       bounce.classList.remove('aig-ko');
       dizzy.remove();
-      say(pick(['What year is it?','Did the deploy go out?','Who won?','I saw the backorder report in the light.','Is my downpipe okay?']), 1800, true);
-    }, 1300);
+      if(fakeOut){
+        // plays dead, then pops up when you come close
+        bounce.classList.add('aig-drama'); dramaOn = true; pauseUntil = 1e15;
+        var armed = performance.now() + 900, done = false;
+        var watcher = setInterval(function(){
+          var near = Math.hypot(curX - (pos+23), curY - (posY+30)) < 90;
+          if(performance.now() > armed && (near || performance.now() > armed + 6000)){
+            clearInterval(watcher); if(done) return; done = true;
+            bounce.classList.remove('aig-drama'); dramaOn = false; pauseUntil = 0;
+            vy = -0.5; mode = 'fly'; bounce.classList.add('aig-fly');
+            say(pick(['Kidding.','Gotcha.','Boo.','Did you think that was it?']), 1600, true);
+            tone(660,.06,'triangle',.05); tone(990,.1,'triangle',.05,.06);
+          }
+        }, 120);
+      } else if(!byBomb){
+        think('you are waking up after being knocked out', 'weapon: '+(lastBadTool||'?'), pick(['What year is it?','Did the deploy go out?','Who won?','I saw the backorder report in the light.','Is my downpipe okay?']), 1800);
+      }
+      keepScoreOutLoud();
+    }, byBomb ? 3800 : 1300);
+  }
+  function keepScoreOutLoud(){
+    if(Math.random() > 0.35) return;
+    var wk = Date.now() - 7*86400000, byTool = {}, total = 0;
+    (aigState.log||[]).forEach(function(e){ if(e.type === 'bad' && e.tool && new Date(e.ts).getTime() > wk){ byTool[e.tool] = (byTool[e.tool]||0)+1; total++; } });
+    var top = Object.keys(byTool).sort(function(a,b){ return byTool[b]-byTool[a]; })[0];
+    if(!top || total < 10) return;
+    var t = findTool(top);
+    setTimeout(function(){ say(pick(['That is '+byTool[top]+' '+(t?t.label.toLowerCase()+'s':'hits')+' this week. I am counting.', total+' hits this week. HR has been notified. By me.', 'Week total: '+total+'. Personal worst.']), 3400); }, 2200);
   }
 
   function playReaction(tool, phrase, hitX, hitY, force){
@@ -18296,6 +18440,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           squash();
           if(mode === 'frozen') shatterIce();
           applyToolHit(t.tool, t.x + (Math.random()<0.5?-1:1)*4, g.r.top - 10, 1.25);
+          limpUntil = performance.now() + 8000; bounce.classList.add('aig-limp'); setTimeout(function(){ bounce.classList.remove('aig-limp'); }, 8000);
           vy = Math.max(vy, 0.3);
           removeTrap(t); continue;
         }
@@ -18307,6 +18452,18 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         }
         if(ts >= t.fuseAt){ detonate(t, 130, 1.45, false); continue; }
       } else if(t.kind === 'mine'){
+        // mad: kicks a mine toward your cursor instead of stepping on it
+        if(madOn && mode === 'walk' && !t.kicked && Math.abs(t.x - g.x) < 34 && ts - t.born > 500){
+          t.kicked = true; t.kx0 = t.x; t.kx1 = curX; t.ky0 = floorY()-9; t.ky1 = curY; t.kt0 = ts;
+          say(pick(['Catch!','Return to sender.','Have it back.']), 900, true); tone(300,.05,'sine',.03);
+        }
+        if(t.kicked){
+          var kk = Math.min(1, (ts - t.kt0)/520);
+          var kx = t.kx0 + (t.kx1-t.kx0)*kk, ky = t.ky0 + (t.ky1-t.ky0)*kk - Math.sin(Math.PI*kk)*90;
+          t.el.style.left = (kx-10)+'px'; t.el.style.top = ky+'px';
+          if(kk >= 1){ var near = Math.hypot(curX-t.kx1, curY-t.ky1) < 70; removeTrap(t); explodeAt(t.kx1, t.ky1, 70); if(near){ powBurst(t.kx1, t.ky1-10, ['BOOM','HA']); if(heldTool) window.aiGuyPutDownTool(); } }
+          continue;
+        }
         if((onGround && Math.abs(t.x - g.x) < 22 && ts - t.born > 500) || cloneOnTrap(t, ts)){ detonate(t, 105, 1.6, true); continue; }
       } else if(t.kind === 'tramp'){
         var onPad = Math.abs(t.x - g.x) < 24 && posY >= groundY()-4 && (mode==='fly' || mode==='walk');
@@ -18342,7 +18499,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       } else if(t.kind === 'banana'){
         var cb = cloneOnTrap(t, ts);
         if(cb){ cloneHit(cb, t.tool, cb.pos + 23 - cb.dir*30, 0, 0.9); cb.rotVel += cb.dir*1.1; removeTrap(t); continue; }
-        if(onGround && Math.abs(t.x - g.x) < 20 && ts - t.born > 400){
+        // sees it coming: careful hop over it when calm, stomps it flat when mad
+        var ahead = (dir > 0 ? t.x - g.x : g.x - t.x);
+        if(mode === 'walk' && !skit && ahead > 28 && ahead < 42 && ts - (t.seenAt||0) > 3000){
+          t.seenAt = ts;
+          if(madOn){ t.stompAt = ts + 500; say(pick(['Not today, banana.','I SEE you.']), 900); }
+          else { vy = -0.62; vx = dir*0.28; mode = 'fly'; bounce.classList.add('aig-fly'); squash(); say(pick(['Nice try.','Hup.','Seen it.']), 900); continue; }
+        }
+        if(t.stompAt && ts > t.stompAt && Math.abs(t.x - g.x) < 30){
+          spawnDust(t.x, floorY()-4); playImpact(0.6); powBurst(t.x, floorY()-30, ['SQUISH']); removeTrap(t); say('Squish.', 900, true); continue;
+        }
+        if(onGround && Math.abs(t.x - g.x) < 20 && ts - t.born > 400 && !(t.stompAt)){
           var fwd = (mode==='walk') ? dir : (vx>=0 ? 1 : -1);
           applyToolHit(t.tool, g.x - fwd*30, g.y + 40, 0.9);
           rotVel += fwd * 1.1;
@@ -18419,7 +18586,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var cx = r.left + r.width/2, cy = r.top + r.height*0.4, fy = r.bottom;
     switch(tool.id){
       case 'zap': lightningStrike(cx, cy); break;
-      case 'hammer': shockwave(cx, fy - 4, 110); floorCracks(cx, fy - 2, 5); break;
+      case 'hammer': shockwave(cx, fy - 4, 110); floorCracks(cx, fy - 2, 5); glassCrack(typeof x==='number'?x:cx, typeof y==='number'?y:cy); break;
+      case 'tomato': glassSplat(typeof x==='number'?x:cx, typeof y==='number'?y:cy, false); break;
+      case 'pie': glassSplat(typeof x==='number'?x:cx, typeof y==='number'?y:cy, true); break;
       case 'glove': powBurst(cx + (Math.random()-0.5)*20, cy - 10, ['POW!','BAM!','WHAM!','OOF!']); break;
       case 'bomb': mushroomCloud(cx, cy); break;
       case 'boulder': shockwave(cx, fy - 4, 90); floorCracks(cx, fy - 2, 4); break;
@@ -18546,6 +18715,34 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
   }
 
+  var glassMarks = [];
+  function glassSplat(x, y, pie){
+    if(perf.on && glassMarks.length > 3) return;
+    var g = document.createElement('div'); g.className = 'aig-glass splat' + (pie ? ' pie' : '');
+    g.style.left = x+'px'; g.style.top = y+'px'; g.style.transform = 'rotate('+(Math.random()*360)+'deg)';
+    document.body.appendChild(g); glassMarks.push(g);
+    if(glassMarks.length > 8){ var old = glassMarks.shift(); old.classList.add('fade'); setTimeout(function(){ old.remove(); }, 1300); }
+    setTimeout(function(){ if(glassMarks.indexOf(g) >= 0){ g.classList.add('fade'); setTimeout(function(){ g.remove(); var i = glassMarks.indexOf(g); if(i>=0) glassMarks.splice(i,1); }, 1300); } }, 20000);
+  }
+  function glassCrack(x, y){
+    if(perf.on) return;
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'aig-glass crack'); svg.setAttribute('viewBox', '0 0 120 120');
+    svg.style.left = x+'px'; svg.style.top = y+'px';
+    var n = 6 + Math.floor(Math.random()*3);
+    for(var i=0;i<n;i++){
+      var ang = (Math.PI*2/n)*i + (Math.random()-0.5)*0.6, len = 25 + Math.random()*32;
+      var d = 'M60 60', px = 60, py = 60, segs = 3;
+      for(var s=1;s<=segs;s++){ px = 60 + Math.cos(ang)*len*(s/segs) + (Math.random()-0.5)*6; py = 60 + Math.sin(ang)*len*(s/segs) + (Math.random()-0.5)*6; d += ' L'+px.toFixed(1)+' '+py.toFixed(1); }
+      var p = document.createElementNS(ns, 'path'); p.setAttribute('d', d); svg.appendChild(p);
+    }
+    var ring = document.createElementNS(ns, 'circle'); ring.setAttribute('cx', 60); ring.setAttribute('cy', 60); ring.setAttribute('r', 8 + Math.random()*6); ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', 'rgba(255,255,255,.7)'); ring.setAttribute('stroke-width', '1'); svg.appendChild(ring);
+    document.body.appendChild(svg); glassMarks.push(svg);
+    noiseBurst(.08, 5000, 0.08, 4);
+    setTimeout(function(){ if(glassMarks.indexOf(svg) >= 0){ svg.classList.add('fade'); setTimeout(function(){ svg.remove(); var i = glassMarks.indexOf(svg); if(i>=0) glassMarks.splice(i,1); }, 1300); } }, 25000);
+  }
+  function wipeGlass(){ glassMarks.forEach(function(g){ g.classList.add('fade'); setTimeout(function(){ g.remove(); }, 1300); }); glassMarks = []; }
+
   function spawnDust(x, y){
     for(var j=0;j<10;j++){
       (function(){
@@ -18642,6 +18839,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     tone(900,.08,'sine',.03); tone(600,.1,'sine',.03,.08);
     mode = (posY < groundY()-2 || frozenWasAir) ? 'fly' : 'walk';
     if(mode === 'fly') bounce.classList.add('aig-fly');
+    slideUntil = performance.now() + 3000;
   }
   function shatterIce(){
     if(mode !== 'frozen') return;
@@ -18769,13 +18967,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var t = ko && ko.tool ? findTool(ko.tool) : null;
       var nm = name || (me ? me.split('@')[0] : '');
       nm = nm ? nm.charAt(0).toUpperCase() + nm.slice(1) : '';
-      if(koName && ko.who === me){
-        say(pick([nm+'. We meet again.', 'Oh good, it is '+nm+'. Owner of the '+(t?t.label.toLowerCase():'weapon')+'.', nm+'. My spine remembers you.', 'Back for more, '+nm+'?']), 3600, true);
-      } else if(koName){
-        say(pick([koName+' knocked me out last. Watch yourself, '+nm+'.', 'Hey '+nm+'. Tell '+koName+' I know what they did.', nm+'! Finally, a reasonable person. Unlike '+koName+'.']), 3800, true);
-      } else if(nm){
-        say(pick(['Hey '+nm+'.', nm+'! Backorders are that way.', 'Morning '+nm+'. Or whenever it is.', nm+'. The sync is fine. For now.']), 3000, true);
-      }
+      var canned;
+      if(koName && ko.who === me) canned = pick([nm+'. We meet again.', 'Oh good, it is '+nm+'. Owner of the '+(t?t.label.toLowerCase():'weapon')+'.', nm+'. My spine remembers you.', 'Back for more, '+nm+'?']);
+      else if(koName) canned = pick([koName+' knocked me out last. Watch yourself, '+nm+'.', 'Hey '+nm+'. Tell '+koName+' I know what they did.', nm+'! Finally, a reasonable person. Unlike '+koName+'.']);
+      else if(nm) canned = pick(['Hey '+nm+'.', nm+'! Backorders are that way.', 'Morning '+nm+'. Or whenever it is.', nm+'. The sync is fine. For now.']);
+      if(canned) think('greeting '+nm+' who just logged in', koName ? ('last KO was by '+koName+(t?' with a '+t.label.toLowerCase():'')) : 'nobody has KO\'d you yet', canned, 3600);
     };
     if(sharedOk && typeof sbFetch === 'function'){
       sbFetch('/rest/v1/ai_guy_events?select=user_email,tool,created_at&kind=eq.ko&order=created_at.desc&limit=1')
@@ -18798,7 +18994,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         case 'notif_orders':
           hop(0.45); bounce.classList.add('aig-happy'); setTimeout(function(){ bounce.classList.remove('aig-happy'); }, 850);
           spawnEffect(findTool('confetti')); confettiRain(root.getBoundingClientRect().left+23, root.getBoundingClientRect().top-30, 20);
-          say(pick(['New order! ','Cha-ching. ','Money in the door. ','Someone bought a downpipe. ','Order up! '])+(label?label:''), 3200, true);
+          remember('new order', label);
+          think('a real new order just came in', label, pick(['New order! ','Cha-ching. ','Money in the door. ','Someone bought a downpipe. ','Order up! '])+(label?label:''), 3200);
           tone(660,.08,'triangle',.05); tone(990,.14,'triangle',.05,.08); return;
         case 'notif_tickets':
           hop(0.25); say(pick(['New ticket. ','Support needs you. ','Ticket incoming: ','Customer has thoughts: '])+(label?label:''), 3200, true);
@@ -18810,7 +19007,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           say(pick(['Warranty claim. Deep breaths. ','Another warranty. It is always the PCV valve. ','Claim filed: '])+(label?label:''), 3400, true);
           sweatDrops(3); tone(440,.1,'sine',.04); return;
         case 'notif_shiperrors':
-          say(pick(['Shipment error. ShipStation strikes again. ','Wrong box, wrong label, wrong day. ','Ship error: '])+(label?label:''), 3400, true);
+          remember('shipment error', label);
+          think('a real shipment error just got logged', label, pick(['Shipment error. ShipStation strikes again. ','Wrong box, wrong label, wrong day. ','Ship error: '])+(label?label:''), 3400);
           bounce.classList.add('aig-ko'); var dz2 = document.createElement('div'); dz2.className='aig-dizzy'; dz2.innerHTML='<span>'+ICN.star+'</span><span>'+ICN.star+'</span><span>'+ICN.star+'</span>'; bounce.appendChild(dz2);
           setTimeout(function(){ bounce.classList.remove('aig-ko'); dz2.remove(); }, 1200);
           tone(220,.2,'sawtooth',.04); return;
@@ -18891,7 +19089,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     say(pick(['There are two of me now?','He does not speak for me.','Great, more of me to hit.','Twins!','Split shift.']), 1600);
     if(clones.length >= 5) achieve('clone_wars');
   }
-  function removeClone(b){ if(b.el) b.el.remove(); var i = clones.indexOf(b); if(i>=0) clones.splice(i,1); saveWorld(); }
+  function removeClone(b){ if(b.el) b.el.remove(); if(b.bub) b.bub.remove(); var i = clones.indexOf(b); if(i>=0) clones.splice(i,1); saveWorld(); }
   window.aiGuyClearClones = function(){
     if(!clones.length){ tone(200,.06,'square',.03); return; }
     var n = clones.length;
@@ -18951,8 +19149,25 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       if(d < radius){ var prox = 1 - d/radius; cloneHit(b, tool, x, y, force*(0.6+prox*0.9)); b.vy -= 0.3*prox; }
     }
   }
+  var CLONE_LINES = ['That was YOUR fault.','I am the original.','No, I am.','Stop copying me.','Who hit who?','He started it.','We look great.','Do you also hear the sync?','I call the hammer.','Why are there so many of us.'];
+  function cloneSay(b, text){
+    if(!b || !b.el) return;
+    if(!b.bub){ b.bub = document.createElement('div'); b.bub.className = 'aig-clone-bub'; document.body.appendChild(b.bub); }
+    b.bub.textContent = text; b.bub.style.display = ''; b.bubUntil = performance.now() + 1800;
+  }
   function updateClones(ts, dt){
     if(!clones.length) return;
+    if(ts > nextCloneTalkAt && clones.length >= 2 && !perf.on){
+      nextCloneTalkAt = ts + 5000 + Math.random()*9000;
+      var a = clones[Math.floor(Math.random()*clones.length)], c = clones[Math.floor(Math.random()*clones.length)];
+      cloneSay(a, pick(CLONE_LINES));
+      if(c !== a) setTimeout(function(){ if(clones.indexOf(c) >= 0) cloneSay(c, pick(CLONE_LINES)); }, 900);
+      // shove: if two are overlapping, one pushes the other
+      for(var s1=0; s1<clones.length; s1++) for(var s2=s1+1; s2<clones.length; s2++){
+        var p = clones[s1], q = clones[s2];
+        if(p.mode==='walk' && q.mode==='walk' && Math.abs(p.pos - q.pos) < 30){ q.vx = 0.4*(q.pos >= p.pos ? 1 : -1); q.vy = -0.25; q.mode = 'fly'; q.bounce.classList.add('aig-fly'); cloneSay(p, pick(['Move.','Personal space.','Mine.'])); break; }
+      }
+    }
     var gy = groundY(), wallMax = window.innerWidth - 46;
     for(var i=clones.length-1; i>=0; i--){
       var b = clones[i];
@@ -18995,6 +19210,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           b.flip.style.transform = 'scale('+(fx*(1-st*0.7)).toFixed(3)+','+(1+st).toFixed(3)+')';
         }
       }
+      if(b.bub){ if(ts > (b.bubUntil||0)){ b.bub.style.display = 'none'; } else { b.bub.style.transform = 'translate3d('+(b.pos-10).toFixed(0)+'px,'+(b.posY-34).toFixed(0)+'px,0)'; } }
       // head + limbs (same springs as the primary)
       var dx = b.pos - b.lastPos; b.lastPos = b.pos;
       var target = (b.mode==='walk') ? Math.sin(ts/170)*2.2 - dx*1.8 : (-b.rotVel*28 - b.vx*12);
@@ -19117,6 +19333,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function saveSettings(){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){} }
   function applySettings(){
     if(settings.lite){ perf.on = true; perf.auto = false; } else { perf.auto = true; }
+    if(root) root.querySelectorAll('.aig-pupil').forEach(function(p){ p.style.display = settings.eyes === false ? 'none' : ''; });
     var s = 'scale('+settings.size+')';
     var sc = document.getElementById('aig-scale'); if(sc) sc.style.transform = s;
     clones.forEach(function(b){ var c = b.el.querySelector('.aig-scale-c'); if(c) c.style.transform = s; });
@@ -19143,6 +19360,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       tog('lite', 'Lite mode (fewer effects)', !!settings.lite) +
       tog('fight', 'He fights back when mad', settings.fight !== false) +
       tog('steal', 'He can steal the cursor', settings.steal !== false) +
+      tog('eyes', 'Eyes follow the cursor', settings.eyes !== false) +
+      tog('brain', 'AI brain (Claude writes his lines)', settings.brain !== false) +
       '<div style="font-size:10px;color:#4a4f55">Lite mode also switches itself on if the page drops below ~35 fps.</div>'+
     '</div>';
   }
@@ -19211,7 +19430,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(madOn !== wasMad){
       bounce.classList.toggle('aig-mad', madOn);
       if(madOn){
-        say(pick(['Okay. Now I am mad.','That is IT.','You want a problem? You got a problem.','Keep going. See what happens.','I have HAD it with this sync AND with you.']), 2400, true);
+        remember('got mad', '');
+        think('you just crossed the line into MAD after repeated hits', '', pick(['Okay. Now I am mad.','That is IT.','You want a problem? You got a problem.','Keep going. See what happens.','I have HAD it with this sync AND with you.']), 2400);
         tone(110,.25,'sawtooth',.06); tone(90,.35,'sawtooth',.05,.1); shakeScreen();
         playVoice('hit');
       }
@@ -19234,7 +19454,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function startFightBack(){
     fightOn = true; fightUntil = performance.now() + 10000; fightHits = 0;
     unhide(); if(mode === 'frozen') thawHim();
-    say(pick(['Your turn.','Come here.','I am done being the punching bag.','Hold still.']), 1800, true);
+    remember('fought back', '');
+    think('you are about to fight back and charge the user\'s cursor', '', pick(['Your turn.','Come here.','I am done being the punching bag.','Hold still.']), 1800);
     setHat('hard');
     // opening salvo: two tomatoes at the cursor, then a boulder over it
     setTimeout(function(){ if(fightOn) throwAtCursor(); }, 300);
@@ -19297,7 +19518,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(mode === 'walk'){ landToWalk(); }
     fleeDir = (curX > pos + 23) ? -1 : 1; fleeHopAt = 0; pauseUntil = 0;
     fightOn = false;
-    say(pick(['Got your cursor. Come get it.','Mine now. Catch me.','No cursor for you.','You can have this back when you are nicer.']), 2600, true);
+    remember('stole the cursor', '');
+    think('you just stole the user\'s mouse cursor and are running away with it', '', pick(['Got your cursor. Come get it.','Mine now. Catch me.','No cursor for you.','You can have this back when you are nicer.']), 2600);
+    setTimeout(function(){
+      if(!cursorStolen) return;
+      window.aiGuyShowHistory();
+      say(pick(['Reading your stats. '+aigState.bad+' bad? Wow.','Let me see... '+aigState.good+' good, '+aigState.bad+' bad. Yikes.','Ooh, history. Oh. Oh no.']), 2400, true);
+      setTimeout(function(){ window.aiGuyCloseHistory(); }, 2200);
+    }, 2200);
     tone(1200,.06,'square',.04); tone(1600,.08,'square',.04,.07);
     aigToast('He took your cursor', 'Find him and click him to grab it back, or press Esc.');
   }
@@ -19326,6 +19554,208 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     endFightBack();
   }
   document.addEventListener('visibilitychange', function(){ if(document.hidden && cursorStolen) returnCursor(false); });
+
+  // ---------------- Awareness: touch / gaze / squish / sleep / boredom / room ----------------
+  function updateMind(ts, rawDt){
+    if(asleep && ts > nextZzAt){
+      nextZzAt = ts + 1900;
+      var z = document.createElement('div'); z.className = 'aig-zz'; z.textContent = 'z'; z.style.fontSize = (11+Math.random()*7)+'px';
+      var r = guyRect(); z.style.left = (r.right - 8)+'px'; z.style.top = (r.top + 4)+'px';
+      document.body.appendChild(z); setTimeout(function(){ z.remove(); }, 2300);
+      if(!muted && Math.random() < 0.5) tone(90 + Math.random()*20, .35, 'sine', .015);
+    }
+    // things that should tick even when he is not in the walk branch
+    if(mode !== 'walk'){ readTheRoom(ts); fridayCountdown(); if(skit && skit.kind !== 'trap') endSkit(); }
+    if(skit && performance.now() - skit.t0 > 10000) endSkit();   // hard stop: a skit can never wedge him in place
+  }
+  function touch(){ lastInteractAt = performance.now(); if(asleep) wakeUp(true); }
+  function lookAt(x, y, ms){ if(typeof x !== 'number') return; lookX = x; lookY = y; lookUntil = performance.now() + (ms||800); }
+  function squish(hitX){ var side = (typeof hitX === 'number') ? (hitX < pos+23 ? 1 : -1) : (Math.random()<0.5?-1:1); squishX = 0.30*side; squishV = 0; }
+
+  function fallAsleep(){
+    if(asleep || mode !== 'walk' || heldTool || fightOn || cursorStolen) return;
+    asleep = true; pauseUntil = 1e15;
+    bounce.classList.add('aig-asleep');
+    say(pick(['*yawn*','Just resting my eyes.','Wake me when the sync breaks.']), 2200, true);
+    nextZzAt = performance.now() + 1200;
+  }
+  function wakeUp(startled){
+    if(!asleep) return;
+    asleep = false; pauseUntil = 0;
+    bounce.classList.remove('aig-asleep');
+    if(startled){ vy = -0.45; vx = (Math.random()<0.5?-1:1)*0.15; mode = 'fly'; bounce.classList.add('aig-fly'); say(pick(['I WAS AWAKE.','Resting my eyes!','Who? What? Backorders?','I was thinking. With my eyes shut.']), 2000, true); tone(880,.06,'triangle',.05); tone(1320,.1,'triangle',.05,.06); }
+    else say(pick(['Morning.','Where was I. Right. Judging.']), 1600, true);
+  }
+  var SKITS = ['lap','pebble','watch','trap','stretch'];
+  function maybeBored(ts){
+    var idle = performance.now() - lastInteractAt;
+    if(!asleep && idle > 180000){ fallAsleep(); return; }
+    if(asleep) return;
+    if(ts > nextBoredAt && idle > 45000 && !skit && !heldTool && !cursorStolen && !fightOn && !hiding && !bubbleShown){
+      nextBoredAt = ts + 40000 + Math.random()*50000;
+      startSkit(pick(SKITS));
+    }
+    if(skit) runSkit(ts);
+    readTheRoom(ts);
+    fridayCountdown();
+  }
+  function startSkit(kind){
+    skit = { kind: kind, t0: performance.now(), step: 0 };
+    if(kind === 'lap'){ say(pick(['Stretching the legs.','Doing a lap. Do not wait up.']), 1600); skit.target = pos < window.innerWidth/2 ? window.innerWidth - 70 : 10; }
+    else if(kind === 'pebble'){ var p = document.createElement('div'); p.className = 'aig-pebble'; skit.px = pos + 23 + dir*60; p.style.left = skit.px+'px'; p.style.top = (floorY()-5)+'px'; document.body.appendChild(p); skit.el = p; skit.pdir = dir; }
+    else if(kind === 'watch'){ say(pick(['*checks watch*','Is it deployed yet?','Any minute now. The sync. Any minute.']), 2200); pauseUntil = performance.now() + 2600; }
+    else if(kind === 'trap'){ var live = traps.filter(function(t){ return t.kind==='banana' || t.kind==='mine'; }); if(!live.length){ skit = null; return; } skit.trap = live[0]; say(pick(['What is this doing here.','Tidying up. Someone has to.']), 1600); }
+    else { bounce.classList.remove('aig-stretch'); void bounce.offsetWidth; bounce.classList.add('aig-stretch'); setTimeout(function(){ bounce.classList.remove('aig-stretch'); }, 950); skit = null; }
+  }
+  function runSkit(ts){
+    var age = performance.now() - skit.t0;
+    if(age > 9000){ endSkit(); return; }
+    if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
+    if(skit.kind === 'lap'){
+      dir = skit.target > pos ? 1 : -1; pos += dir * 0.09 * dt_last;
+      if(Math.abs(skit.target - pos) < 12){ endSkit(); }
+    } else if(skit.kind === 'pebble'){
+      var d = skit.px - (pos+23);
+      if(Math.abs(d) > 14){ dir = d > 0 ? 1 : -1; pos += dir * 0.05 * dt_last; }
+      else if(skit.step === 0){ skit.step = 1; skit.kick0 = performance.now(); say(pick(['Hup.','Goal.','Take that, rock.']), 1200); tone(300,.05,'sine',.03); }
+      if(skit.step === 1 && skit.el){ var k = (performance.now()-skit.kick0)/700; if(k > 1){ skit.el.remove(); endSkit(); return; } skit.el.style.left = (skit.px + skit.pdir*k*140)+'px'; skit.el.style.top = (floorY()-5 - Math.sin(Math.PI*k)*40)+'px'; }
+    } else if(skit.kind === 'trap'){
+      var t = skit.trap; if(traps.indexOf(t) < 0){ endSkit(); return; }
+      var dd = t.x - (pos+23);
+      if(Math.abs(dd) > 26){ dir = dd > 0 ? 1 : -1; pos += dir * 0.05 * dt_last; }
+      else if(skit.step === 0){
+        skit.step = 1;
+        if(t.kind === 'banana'){ say('Whoa--', 800, true); applyToolHit(t.tool, t.x - dir*20, posY+40, 0.8); rotVel += dir*1.1; removeTrap(t); say(pick(['I did that to myself.','Nobody saw that.']), 1800); }
+        else { say('Wait--', 700, true); setTimeout(function(){ if(traps.indexOf(t) >= 0) detonate(t, 105, 1.4, true); }, 400); }
+        endSkit();
+      }
+    } else if(skit.kind === 'watch'){ if(age > 2800) endSkit(); }
+  }
+  function endSkit(){ if(skit && skit.el) skit.el.remove(); skit = null; }
+  var dt_last = 16;
+
+  // Reads the room from your own notification badge: pacing when it piles up, sunglasses when it is clear.
+  function readTheRoom(ts){
+    if(ts < nextRoomAt) return; nextRoomAt = ts + 5000;
+    var cnt = document.getElementById('cc-notif-count'); var n = cnt ? parseInt(String(cnt.textContent).replace('+',''), 10) || 0 : 0;
+    var st = n >= 5 ? 'pile' : (n === 0 ? 'clear' : 'some');
+    if(st === roomState) return; roomState = st;
+    if(st === 'pile'){ clearShades(); say(pick(['Not my department. Not my department.','Five open items. Five.','The bell is red. I can feel it.','Someone answer the customer.']), 3200); setHat('hard'); }
+    else if(st === 'clear'){ clearHat('hard'); setShades(); if(Math.random() < 0.7) say(pick(['Inbox zero. Look at us.','Nothing on fire. Suspicious.','Quiet. Too quiet.']), 2600); }
+    else { clearShades(); if(hatKind === 'hard' && !rageMode) clearHat('hard'); }
+  }
+  function setShades(){ if(shadesEl || !headEl) return; shadesEl = document.createElement('div'); shadesEl.className = 'aig-shades'; headEl.appendChild(shadesEl); }
+  function clearShades(){ if(shadesEl){ shadesEl.remove(); shadesEl = null; } }
+  function fridayCountdown(){
+    var dnow = new Date(); if(dnow.getDay() !== 5) return;
+    var mins = dnow.getHours()*60 + dnow.getMinutes();
+    if(mins === lastFridayMin) return; lastFridayMin = mins;
+    var left = 17*60 - mins;
+    if(left === 60) say('One hour to freedom. Do not deploy.', 3000, true);
+    else if(left === 15) say('Fifteen minutes. Hands off the keyboard.', 3000, true);
+    else if(left === 1) say('Sixty seconds. Nobody. Touch. Anything.', 3000, true);
+    else if(left === 0){ say('WEEKEND.', 2600, true); confettiRain(pos+23, posY-30, 40); tone(660,.1,'triangle',.05); tone(990,.2,'triangle',.06,.1); }
+  }
+
+  // ---------------- Fourth wall: reacts to what you open ----------------
+  function hookApp(){
+    var lines = {
+      openERP: ['Ooh, the ERP. Say hi to the backorders for me.','ERP time. Check the BOM first.','Going in. Watch the SKU hyphens.'],
+      openNotes: ['Writing about me?','Notes. Put "AI Guy was right" in there.','Documenting my abuse, I hope.'],
+      openSupportCenter: ['Support. Be nice, they have been through it.','Tickets. The customer is typing.','Warranty claim incoming, I can smell it.'],
+      openSKU: ['New SKU? No. Hyphen. Drama.','Say "TGK-0102-02" three times fast.'],
+      openCalendar: ['Meetings. My favorite. I am not invited.'],
+      openTA: ['Time attack. Send it.']
+    };
+    Object.keys(lines).forEach(function(fn){
+      var orig = window[fn]; if(typeof orig !== 'function' || orig._aigHooked) return;
+      var wrapped = function(){ try{ if(!asleep && Math.random() < 0.6){ lookAt(window.innerWidth/2, 80, 1200); say(pick(lines[fn]), 2600); } }catch(e){} return orig.apply(this, arguments); };
+      wrapped._aigHooked = true; window[fn] = wrapped;
+    });
+  }
+
+  var badDayOn = false;
+  window.aiGuyBadDay = function(){
+    if(badDayOn) return; badDayOn = true; closePop(); window.aiGuyPutDownTool(); touch(); if(asleep) wakeUp(false);
+    var T = function(id){ return findTool(id); };
+    var hitHim = function(id, force){ var t = T(id); if(!t) return; var r = guyRect(); applyToolHit(t, r.left + r.width/2 + (Math.random()<0.5?-30:30), r.top + 20, force||1); };
+    var steps = [
+      [0,    function(){ say(pick(['*whistling*','La la la. Nice day.','Just a normal Tuesday.']), 2200, true); pauseUntil = performance.now() + 2500; }],
+      [2600, function(){ hitHim('tomato'); }],
+      [3300, function(){ hitHim('tomato'); }],
+      [4000, function(){ hitHim('tomato'); say('...okay.', 1200, true); }],
+      [5400, function(){ var t = T('boulder'); if(t) dropBoulder(t, pos + 23); say('Is that a--', 900, true); }],
+      [7400, function(){ hitHim('freeze'); }],
+      [9800, function(){ hitHim('hammer', 1.3); }],
+      [11400, function(){ say(pick(['Why me.','I have a family. Of clones.','Was it the sync? Tell me it was the sync.']), 2400, true); }],
+      [13000, function(){ hitHim('glove'); }],
+      [13800, function(){ hitHim('glove'); }],
+      [14600, function(){ hitHim('zap'); }],
+      [16200, function(){ badStreak = 3; lastBadTool = 'bomb'; hitHim('bomb', 1.5); }],
+      [20500, function(){ badDayOn = false; say(pick(['Same time tomorrow?','Feel better? I do not.','That was a lot.']), 3000, true); }]
+    ];
+    steps.forEach(function(s){ setTimeout(function(){ try{ s[1](); }catch(e){} }, s[0]); });
+    aigToast('Bad day', '20 seconds. Just watch.');
+  };
+
+  // ---------------- AI brain: Claude writes his line for notable moments ----------------
+  // Goes through the same anthropic-proxy edge function the rest of the Command Center uses
+  // (tgkAIFetch), so rate limits, model allowlist and auth are all handled server-side.
+  // Strictly rate-limited here too (one thought per ~35s), only for notable moments, and every
+  // call has a canned fallback -- if the proxy is down or slow he just says the scripted line.
+  var brainBusy = false, lastThinkAt = -1e9, brainFails = 0, recentLines = [];
+  function brainOn(){ return settings.brain !== false && typeof tgkAIFetch === 'function' && brainFails < 4 && !perf.on; }
+  function remember(kind, detail){
+    if(!aigState.memory) aigState.memory = [];
+    aigState.memory.unshift({ t: Date.now(), k: kind, d: String(detail||'').slice(0,60), who: sharedEmail().split('@')[0] });
+    if(aigState.memory.length > 30) aigState.memory.length = 30;
+    saveState();
+  }
+  function brainContext(){
+    var now = new Date();
+    var wk = Date.now() - 7*86400000, hitsWk = 0, byTool = {};
+    (aigState.log||[]).forEach(function(e){ if(e.type==='bad' && new Date(e.ts).getTime() > wk){ hitsWk++; if(e.tool) byTool[e.tool] = (byTool[e.tool]||0)+1; } });
+    var fav = Object.keys(byTool).sort(function(a,b){ return byTool[b]-byTool[a]; })[0];
+    var cnt = document.getElementById('cc-notif-count'); var openItems = cnt ? parseInt(String(cnt.textContent).replace('+',''),10) || 0 : 0;
+    return {
+      time: now.toLocaleString('en-US', { weekday:'long', hour:'numeric', minute:'2-digit' }),
+      user: sharedEmail().split('@')[0],
+      anger: Math.round(anger), mad: madOn, sulking: performance.now() < sulkUntil, asleep: asleep,
+      score: { praises: aigState.good, hits: aigState.bad, hits_this_week: hitsWk, favorite_weapon_used_on_me: fav || null },
+      last_ko_by: aigState.stats.lastKoBy ? { who: String(aigState.stats.lastKoBy.who||'').split('@')[0], tool: aigState.stats.lastKoBy.tool } : null,
+      open_notifications: openItems, clones_on_screen: clones.length, traps_on_floor: traps.length,
+      recent_events: (aigState.memory||[]).slice(0,8).map(function(m){ return Math.round((Date.now()-m.t)/60000)+'m ago: '+m.k+(m.d?' '+m.d:'')+(m.who?' (by '+m.who+')':''); }),
+      achievements: (aigState.ach||[]).length
+    };
+  }
+  var BRAIN_SYSTEM = [
+    'You are "AI Guy", the office mascot of TGK Motorsport, a small performance auto-parts shop (Audi / VW enthusiasts, turbo cars, Shopify store, an ERP, dealer portal, backorders, ShipStation).',
+    'You are a little cartoon robot body with the boss\'s real face. The team clicks you with cartoon weapons to blow off steam, and praises you when the AI did good work. You are a sarcastic, quick, lovable coworker: dry humor, car-nerd jokes (boost leaks, P0299, N75, DSG, downpipes, "torque spec: gutentight"), light shop-ops jokes (Shopify sync, backorders, SKUs with hyphens, ShipStation firing twice, "did you run node --check", data accuracy).',
+    'Reply with ONE line only, 4 to 14 words, max 90 characters. No quotes, no emojis, no hashtags, no preamble, no explanation. First person. Match the mood: playful when praised, dramatic when hurt, genuinely grumpy when mad, sulky when sulking, sleepy when asleep. Never insult real people cruelly; teasing is fine. Never mention being an AI model or a prompt.'
+  ].join(' ');
+  function think(kind, detail, fallback, ms){
+    var fb = function(){ if(fallback) say(fallback, ms||2600, true); };
+    if(!brainOn() || brainBusy || performance.now() - lastThinkAt < 35000){ fb(); return; }
+    brainBusy = true; lastThinkAt = performance.now();
+    var ctx = brainContext();
+    var user = 'Moment: '+kind+(detail ? ' - '+detail : '')+'\nContext: '+JSON.stringify(ctx)+'\nDo not repeat any of these recent lines: '+JSON.stringify(recentLines.slice(-6))+'\nYour one line:';
+    var timer = setTimeout(function(){ if(brainBusy){ brainBusy = false; fb(); } }, 4500);
+    var done = false;
+    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 60, system: BRAIN_SYSTEM, messages:[{ role:'user', content:user }] })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(done) return; done = true; clearTimeout(timer); brainBusy = false;
+        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
+        txt = txt.replace(/^["'\s]+|["'\s]+$/g,'').replace(/\s+/g,' ').split('\n')[0];
+        if(!txt || txt.length > 110 || /https?:/i.test(txt) || /as an ai|language model|prompt/i.test(txt)){ fb(); return; }
+        recentLines.push(txt); if(recentLines.length > 12) recentLines.shift();
+        say('\u2726 ' + txt, ms || Math.min(4200, 1800 + txt.length*28), true);
+        brainFails = 0;
+      })
+      .catch(function(){ if(done) return; done = true; clearTimeout(timer); brainBusy = false; brainFails++; fb(); });
+  }
+  window.aiGuyThink = think;
+  window.aiGuyDebug = { sleep: fallAsleep, wake: wakeUp, skit: startSkit, state: function(){ return { mode:mode, asleep:asleep, skit:skit?skit.kind:null, anger:Math.round(anger), mad:madOn, fight:fightOn, stolen:cursorStolen }; } };
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
@@ -19456,7 +19886,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   };
   window.aiGuyClearHistory = function(){
     if(!confirm('Clear all AI Guy history and reset the score? This cannot be undone.')) return;
-    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null };
+    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[] };
     saveState();
     updateBadge();
     renderHistoryList();
