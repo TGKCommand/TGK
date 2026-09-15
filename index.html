@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.54';
+var TGK_CC_VERSION='v2.55';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16819,8 +16819,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 @keyframes aigWave{from{transform:rotate(-40deg)}to{transform:rotate(10deg)}}
 .aig-cursorhit{position:fixed;z-index:3250;pointer-events:none;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:radial-gradient(circle,rgba(255,80,80,.9),rgba(255,80,80,0) 70%);animation:aigFlash .35s ease-out forwards}
 .aig-head img{will-change:transform}
-.aig-shades{position:absolute;left:8px;top:14px;width:24px;height:7px;z-index:5;pointer-events:none;display:flex;gap:2px;justify-content:center}
-.aig-shades::before,.aig-shades::after{content:'';width:10px;height:7px;border-radius:2px 2px 4px 4px;background:linear-gradient(160deg,#333 40%,#111);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.aig-mood-chill .aig-body{transform:translateY(1px) rotate(-3deg)}
 .aig-asleep{animation:aigSnore 2.4s ease-in-out infinite}
 @keyframes aigSnore{0%,100%{transform:scaleY(.86) translateY(5px)}50%{transform:scaleY(.9) translateY(4px)}}
 .aig-zz{position:fixed;z-index:2040;font-weight:800;color:#9fd3ff;font-family:var(--font,inherit);pointer-events:none;animation:aigZz 2.2s ease-out forwards}
@@ -17223,7 +17222,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
             if(Math.random() < 0.02){ var sw = document.createElement('div'); sw.className='aig-sweat'; sw.style.left=(4+Math.random()*30)+'px'; sw.style.top='-2px'; bounce.appendChild(sw); setTimeout(function(){ sw.remove(); }, 950); }
           }
         }
-        var walkMul = (performance.now() < sulkUntil) ? 0.55 : 1;
+        var walkMul = (performance.now() < sulkUntil) ? 0.55 : (performance.now() < chillUntil ? 0.6 : 1);
         if(performance.now() < limpUntil) walkMul *= 0.5 + 0.15*Math.sin(ts/90);
         if(!skit){
           pos += dir * 0.045 * settings.speed * walkMul * (fleeing ? 2.0 : 1) * dt;
@@ -17357,6 +17356,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       else if(md === 'sulk' || md === 'asleep'){ tgt.al = 4 + s*3; tgt.ar = -4 - s*3; }   // arms hang limp
       else if(md === 'happy'){ tgt.al = -20 + s*10; tgt.ar = 20 - s*10; } // arms swing high
       else if(md === 'scared'){ tgt.al = -60; tgt.ar = 60; }             // hands up
+      else if(md === 'chill'){ tgt.al = -150 + s*4; tgt.ar = 150 - s*4; }  // arms folded behind the head, lounging
       if(bounce.classList.contains('aig-happy')){ tgt.al = -75; tgt.ar = 75; }
     } else {
       var hang = -rotAngle;                 // point toward world-down
@@ -17421,7 +17421,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var turn = (mode === 'walk') ? 10 : 0;
     // posture: mood shows in how he carries his head
     var mood = currentMood();
-    var tiltBias = mood === 'mad' ? 9 : mood === 'sulk' ? 14 : mood === 'happy' ? -7 : mood === 'scared' ? -10 : mood === 'asleep' ? 18 : 0;
+    var tiltBias = mood === 'mad' ? 9 : mood === 'sulk' ? 14 : mood === 'happy' ? -7 : mood === 'scared' ? -10 : mood === 'asleep' ? 18 : mood === 'chill' ? -12 : 0;
     headAng += (tiltBias * (dir < 0 ? -1 : 1) - headAng) * 0.03;
     if(heldTool && mode === 'walk'){
       var hcx = pos + 23;
@@ -19586,7 +19586,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function currentMood(){
     var m = asleep ? 'asleep' : (performance.now() < sulkUntil) ? 'sulk' : madOn ? 'mad' :
             (heldTool && fearTool && heldTool.id === fearTool && Math.abs(curX - (pos+23)) < 220) ? 'scared' :
-            (performance.now() - lastPraiseAt < 6000) ? 'happy' : '';
+            (performance.now() - lastPraiseAt < 6000) ? 'happy' :
+            (performance.now() < chillUntil && mode === 'walk') ? 'chill' : '';
     if(m !== moodCls){ if(moodCls) bounce.classList.remove('aig-mood-'+moodCls); if(m) bounce.classList.add('aig-mood-'+m); moodCls = m; }
     return m;
   }
@@ -19667,8 +19668,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     else if(st === 'clear'){ clearHat('hard'); setShades(); if(Math.random() < 0.7) say(pick(['Inbox zero. Look at us.','Nothing on fire. Suspicious.','Quiet. Too quiet.']), 2600); }
     else { clearShades(); if(hatKind === 'hard' && !rageMode) clearHat('hard'); }
   }
-  function setShades(){ if(shadesEl || !headEl) return; shadesEl = document.createElement('div'); shadesEl.className = 'aig-shades'; headEl.appendChild(shadesEl); }
-  function clearShades(){ if(shadesEl){ shadesEl.remove(); shadesEl = null; } }
+  var chillUntil = 0;
+  function setShades(){ chillUntil = performance.now() + 90000; }      // lounging pose instead of face props
+  function clearShades(){ chillUntil = 0; }
   function fridayCountdown(){
     var dnow = new Date(); if(dnow.getDay() !== 5) return;
     var mins = dnow.getHours()*60 + dnow.getMinutes();
