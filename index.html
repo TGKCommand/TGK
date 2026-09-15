@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.44';
+var TGK_CC_VERSION='v2.45';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16853,7 +16853,8 @@ var TGK_CC_VERSION='v2.44';
 .aig-hover-name{min-height:16px;font-size:11px;color:#9CA3AF;text-align:center;padding:2px 0 0;border-top:1px solid #232527}
 .aig-hover-name b{color:#f0f0f0;font-weight:600}
 .aig-foot{display:flex;gap:6px}
-.aig-foot button{flex:1;background:rgba(255,255,255,.03);border:1px solid #2e2e2e;color:#9CA3AF;border-radius:8px;padding:6px 4px;font-size:11px;cursor:pointer;font-family:inherit}
+.aig-foot{flex-wrap:wrap}
+.aig-foot button{flex:1 1 45%;background:rgba(255,255,255,.03);border:1px solid #2e2e2e;color:#9CA3AF;border-radius:8px;padding:6px 4px;font-size:11px;cursor:pointer;font-family:inherit}
 .aig-foot button:hover{color:#f0f0f0;border-color:#3a3a3a}
 .aig-pop-score{font-size:10px;color:#6b7076;text-align:center;cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;font-family:inherit;padding:2px}
 .aig-pop-score:hover{color:#9CA3AF}
@@ -17355,7 +17356,7 @@ var TGK_CC_VERSION='v2.44';
       sec('aig-tool-bad',  'Whack',  'click him \u00b7 hold to rapid-fire', whack) +
       sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
       '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad'+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'</div>'+
-      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button></div>'+
+      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button></div>'+
       settingsHtml();
     document.body.appendChild(pop);
     pop.style.left = '-9999px';
@@ -18741,6 +18742,11 @@ var TGK_CC_VERSION='v2.44';
     if(clones.length >= 5) achieve('clone_wars');
   }
   function removeClone(b){ if(b.el) b.el.remove(); var i = clones.indexOf(b); if(i>=0) clones.splice(i,1); saveWorld(); }
+  window.aiGuyClearClones = function(){
+    if(!clones.length){ tone(200,.06,'square',.03); return; }
+    clones.slice().forEach(function(b, i){ setTimeout(function(){ if(clones.indexOf(b) >= 0) popClone(b); }, i*90); });
+    setTimeout(function(){ say(pick(['And then there was one.','Finally, some peace.','They were not even good clones.']), 1800, true); }, clones.length*90 + 200);
+  };
   function popClone(b){
     var r = b.el.getBoundingClientRect(), cx = r.left+r.width/2, cy = r.top+r.height/2;
     for(var i=0;i<2;i++){
