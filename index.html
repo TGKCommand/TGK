@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.73';
+var TGK_CC_VERSION='v2.74';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16861,6 +16861,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-talk{display:flex;gap:6px;border-top:1px solid #232527;padding-top:8px}
 .aig-talk input{flex:1;font-size:11px!important;padding:6px 9px!important;background:#101214!important;border:1px solid #2e2e2e!important;color:#f0f0f0!important;border-radius:8px!important;width:auto!important;-webkit-appearance:none!important}
 .aig-talk button{background:rgba(42,191,170,.15);border:1px solid rgba(42,191,170,.5);color:#2ABFAA;border-radius:8px;padding:0 10px;font-size:11px;cursor:pointer;font-family:inherit}
+.aig-body{background:linear-gradient(180deg,var(--shirt-hi,#34383e),var(--shirt,#22262a))}
+.aig-remote .aig-body{background:linear-gradient(180deg,var(--shirt-hi,#3d3a2e),var(--shirt,#26231a))}
+.aig-clone .aig-body{background:linear-gradient(180deg,var(--shirt-hi,#2f3d4c),var(--shirt,#1c2530))}
+.aig-mad .aig-body{background:linear-gradient(180deg,#4a2a2e,#2a1618)!important}
+.aig-tag{border-color:var(--shirt-hi,rgba(255,209,102,.5));color:var(--shirt-hi,#FFD166)}
+.aig-swatches{display:flex;gap:6px;flex-wrap:wrap}
+.aig-swatch{width:20px;height:20px;border-radius:6px;border:2px solid transparent;cursor:pointer;padding:0}
+.aig-swatch.on{border-color:#fff;box-shadow:0 0 0 1px #000}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17567,7 +17575,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       sec('aig-tool-good', 'Praise', 'click him', praise) +
       sec('aig-tool-bad',  'Whack',  'click him \u00b7 hold to rapid-fire', whack) +
       sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
-      '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.join(', ') : '')+'</span></div>'+
+      '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.map(function(n){ var rr = mpRemotes.filter(function(q){ return q.name === n; })[0]; var s = rr ? shirtFor(rr.who, rr.sh) : myShirt(); return '<b style="color:'+s.hi+'">'+n+'</b>'; }).join(', ') : '')+'</span></div>'+
       '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something to him..." onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div>'+
       '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
       settingsHtml();
@@ -19366,6 +19374,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function saveSettings(){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){} }
   function applySettings(){
     if(settings.lite){ perf.on = true; perf.auto = false; } else { perf.auto = true; }
+    if(root){ applyShirt(root, myShirt()); clones.forEach(function(b){ applyShirt(b.el, myShirt()); }); }
     if(headImg && settings.eyes === false){ headImg.style.transform = ''; headImg._t = ''; }
     var s = 'scale('+settings.size+')';
     var sc = document.getElementById('aig-scale'); if(sc) sc.style.transform = s;
@@ -19397,6 +19406,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       tog('brain', 'AI brain (Claude writes his lines)', settings.brain !== false) +
       tog('swear', 'Swears (adults only, no slurs)', settings.swear !== false) +
       tog('mp', 'Teammates\' guys on my screen (realtime)', settings.mp !== false) +
+      shirtSwatches() +
       tog('carFacesLeft', 'Custom car image faces left', !!settings.carFacesLeft) +
       '<label style="flex-direction:column;align-items:stretch;gap:4px"><span>Custom car image (URL or data:, side view)</span><input type="text" placeholder="paste image URL - blank = built-in" value="'+String(settings.carImg||'').replace(/"/g,'&quot;')+'" onchange="aiGuySetting(\'carImg\',this.value)" style="width:100%!important;font-size:11px!important;padding:5px 8px!important;background:#101214!important;border:1px solid #2e2e2e!important;color:#f0f0f0!important;border-radius:6px!important"></label>'+
       '<div style="font-size:10px;color:#4a4f55">Lite mode also switches itself on if the page drops below ~35 fps.</div>'+
@@ -19404,7 +19414,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   window.aiGuyToggleSettings = function(){ var p = document.getElementById('aig-settings'); if(p){ p.classList.toggle('open'); requestAnimationFrame(function(){ repositionPop(); }); } };
   window.aiGuySetting = function(k, v){
-    if(k==='size' || k==='speed') settings[k] = parseFloat(v); else if(k==='carImg') settings[k] = String(v||'').trim(); else settings[k] = !!v;
+    if(k==='size' || k==='speed') settings[k] = parseFloat(v); else if(k==='carImg' || k==='shirt') settings[k] = String(v||'').trim(); else settings[k] = !!v;
     if(k === 'mp'){ if(settings.mp) mpStart(); else mpStop(); }
     saveSettings(); applySettings();
   };
@@ -19877,7 +19887,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function mpSnapshot(){
     var W = window.innerWidth || 1, H = window.innerHeight || 1;
     return { who: sharedEmail(), name: mpName, fx: +(pos/W).toFixed(4), fy: +((posY - groundY())/H).toFixed(4), d: dir, m: mode, mad: madOn?1:0, z: asleep?1:0, st: cursorStolen?1:0,
-             hat: hatKind||'', b: bubbleShown && bubbleEl ? String(bubbleEl.textContent).slice(0,80) : '', rot: Math.round(rotAngle), sz: settings.size };
+             hat: hatKind||'', b: bubbleShown && bubbleEl ? String(bubbleEl.textContent).slice(0,80) : '', rot: Math.round(rotAngle), sz: settings.size, sh: myShirt().id };
   }
   function mpTick(ts, rawDt){
     if(mpOn && mpChan && ts - mpLastSend > 100){
@@ -19905,6 +19915,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var tag = document.createElement('div'); tag.className = 'aig-tag'; tag.textContent = (p.name||p.who.split('@')[0]).toUpperCase(); el.querySelector('.aig-bounce-c').appendChild(tag);
       var bub = document.createElement('div'); bub.className = 'aig-remote-bub'; bub.style.display = 'none'; document.body.appendChild(bub);
       document.body.appendChild(el);
+      applyShirt(el, shirtFor(p.who, p.sh));
       r = { who: p.who, el: el, phys: el.querySelector('.aig-phys-c'), flip: el.querySelector('.aig-flip-c'), bounce: el.querySelector('.aig-bounce-c'), bub: bub, x: p.fx*W, y: groundY() + p.fy*H, tx: 0, ty: 0, rot: 0, seen: 0, name: p.name };
       mpRemotes.push(r);
       say((p.name||'Someone')+' is here too. Their guy is on your screen.', 2600);
@@ -19914,6 +19925,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(r.flip) r.flip.style.transform = p.d < 0 ? 'scaleX(-1)' : 'scaleX(1)';
     r.bounce.classList.toggle('aig-mad', !!p.mad); r.bounce.classList.toggle('aig-asleep', !!p.z); r.bounce.classList.toggle('aig-fly', p.m === 'fly');
     var sc = r.el.querySelector('.aig-scale-c'); if(sc) sc.style.transform = 'scale('+(p.sz||1)+')';
+    if(p.sh !== r.sh){ r.sh = p.sh; applyShirt(r.el, shirtFor(p.who, p.sh)); }
     r.btxt = p.b || ''; if(r.bub) r.bub.textContent = r.btxt;
   }
   function mpRemove(who){
@@ -20227,6 +20239,26 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'wave':  blockUntil = performance.now() + 700; vy = -0.25; if(mode==='walk'){ mode='fly'; bounce.classList.add('aig-fly'); } break;
     }
   }
+  // ---------------- Shirt colors: one per person, same on every screen ----------------
+  var SHIRTS = [
+    { id:'teal',   hi:'#2ABFAA', lo:'#137a6c' }, { id:'orange', hi:'#E07B28', lo:'#8a4712' }, { id:'purple', hi:'#8b5cf6', lo:'#4c2a9e' },
+    { id:'blue',   hi:'#3b82f6', lo:'#1e4aa8' }, { id:'green',  hi:'#4ADE9F', lo:'#1f7a55' }, { id:'red',    hi:'#ef4444', lo:'#8f1f1f' },
+    { id:'yellow', hi:'#FFD166', lo:'#a8811f' }, { id:'pink',   hi:'#ff6b9d', lo:'#9c2f55' }, { id:'grey',   hi:'#6b7280', lo:'#2c3138' }
+  ];
+  function shirtFor(email, override){
+    if(override){ var o = SHIRTS.filter(function(s){ return s.id === override; })[0]; if(o) return o; }
+    var h = 0, e = String(email||'').toLowerCase(); for(var i=0;i<e.length;i++) h = (h*31 + e.charCodeAt(i)) >>> 0;
+    return SHIRTS[h % (SHIRTS.length - 1)];   // grey is override-only
+  }
+  function applyShirt(el, s){ if(!el || !s) return; el.style.setProperty('--shirt', s.lo); el.style.setProperty('--shirt-hi', s.hi); }
+  function myShirt(){ return shirtFor(sharedEmail(), settings.shirt); }
+  function shirtSwatches(){
+    var cur = myShirt().id;
+    return '<div class="aig-sec-label">Shirt color <span>everyone sees this</span></div><div class="aig-swatches">' + SHIRTS.map(function(s){
+      return '<button type="button" class="aig-swatch'+(s.id===cur?' on':'')+'" title="'+s.id+'" style="background:linear-gradient(180deg,'+s.hi+','+s.lo+')" onclick="aiGuySetting(\'shirt\',\''+s.id+'\');this.parentNode.querySelectorAll(\'.aig-swatch\').forEach(function(b){b.classList.remove(\'on\')});this.classList.add(\'on\')"></button>';
+    }).join('') + '</div>';
+  }
+
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
     if(!pop || !root) return;
