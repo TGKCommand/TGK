@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.74';
+var TGK_CC_VERSION='v2.75';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16869,6 +16869,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-swatches{display:flex;gap:6px;flex-wrap:wrap}
 .aig-swatch{width:20px;height:20px;border-radius:6px;border:2px solid transparent;cursor:pointer;padding:0}
 .aig-swatch.on{border-color:#fff;box-shadow:0 0 0 1px #000}
+.aig-sticker{position:absolute;left:24px;top:38px;z-index:6;background:#f97316;color:#111;font-size:6px;font-weight:900;letter-spacing:.06em;padding:1px 3px;border-radius:2px;border:1px solid #7c2d12;pointer-events:none;animation:aigCelBlink 1s steps(2) infinite;font-family:var(--font,inherit)}
+@keyframes aigCelBlink{to{opacity:.35}}
+.aig-oil{position:fixed;z-index:838;pointer-events:none;width:48px;height:10px;border-radius:50%;background:radial-gradient(ellipse at 40% 50%,rgba(60,50,70,.95),rgba(20,15,25,.85) 70%,rgba(20,15,25,0));box-shadow:inset 0 -1px 2px rgba(255,255,255,.15)}
+.aig-boxon{position:absolute;left:-10px;top:-12px;width:66px;height:84px;z-index:9;pointer-events:none;background:linear-gradient(180deg,#c9a26a,#a67c45);border:2px solid #6b4a24;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.1),0 4px 8px rgba(0,0,0,.45)}
+.aig-boxon::before{content:'';position:absolute;left:0;right:0;top:50%;height:6px;background:rgba(120,80,30,.45)}
+.aig-boxon span{font-size:7px;font-weight:900;letter-spacing:.08em;color:#3b2410;font-family:var(--font,inherit)}
+.aig-boxon small{font-size:5px;color:#5a3a1a;font-family:var(--font,inherit)}
+.aig-boxdrop{font-size:36px}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17037,6 +17045,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var gravSign = 1, gravTimer = null, fearTool = null, fearSaidAt = 0, lastBadTool = null;
   var slingOn = false, slingAnchor = null, bandEl = null, hitPad = 14;
   var lastDir = 0, shakeUntil = 0, shakeAmp = 0, popOpen = false, hiddenPoll = null;
+  var walkVel = 0, landBendUntil = 0, lastStepPhase = 0, turnUntil = 0, breath = 0;
   var hitFrom = null;
   var blockUntil = 0, shieldEl = null, shieldUntil = 0, recentHits = [], lastDefendAt = -1e9, lastShieldAt = -1e9, defenseStats = { blocks:0, catches:0, parries:0 };
   var anger = 0, madHits = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
@@ -17190,6 +17199,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         vx = stuckSide * 0.08; vy = 0.05; rotVel = stuckSide * 0.15;
         flip.style.transform = 'scaleX('+(dir<0?-1:1)+')';
       }
+    } else if(mode==='walk' && !popOpen && ts <= pauseUntil && ts < 1e14){
+      walkVel = 0; breath += rawDt;
+      bounce.style.transform = 'translateY(' + (Math.sin(breath/900)*0.6).toFixed(2) + 'px) scaleY(' + (1 + Math.sin(breath/900)*0.008).toFixed(4) + ')';
     } else if(mode==='walk' && !popOpen && ts > pauseUntil){
       var maxX = Math.max(20, window.innerWidth - 60);
       if(hiding){
@@ -17255,10 +17267,16 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         var walkMul = (performance.now() < sulkUntil) ? 0.55 : (performance.now() < chillUntil ? 0.6 : 1);
         if(performance.now() < limpUntil) walkMul *= 0.5 + 0.15*Math.sin(ts/90);
         if(!skit){
-          pos += dir * 0.045 * settings.speed * walkMul * (fleeing ? 2.0 : 1) * dt;
-          if(Math.random() < 0.0025) dir *= -1;
+          var targetV = 0.045 * settings.speed * walkMul * (fleeing ? 2.0 : 1);
+          walkVel += (targetV - walkVel) * Math.min(1, dt/260);          // eases in and out of a stride
+          pos += dir * walkVel * dt;
+          if(Math.random() < 0.0025 && ts > turnUntil){ dir *= -1; turnUntil = ts + 1200; walkVel *= 0.35; }
           if(Math.random() < 0.002) pauseUntil = ts + (700+Math.random()*1600);
-        }
+          // footfall: bob the body and click a step
+          var ph = Math.sin(ts/150) > 0 ? 1 : 0;
+          if(ph !== lastStepPhase){ lastStepPhase = ph; if(!muted && walkVel > 0.02 && !perf.on) tone(90 + Math.random()*30, .018, 'triangle', .012); }
+          bounce.style.transform = 'translateY(' + (-Math.abs(Math.sin(ts/150))*2.2*Math.min(1, walkVel/0.045)).toFixed(2) + 'px)';
+        } else { walkVel = 0; }
         if(pos > maxX){ pos = maxX; if(!skit) dir = -1; }
         if(pos < 4){ pos = 4; if(!skit) dir = 1; }
         maybeHide(ts);
@@ -17376,9 +17394,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!limbs || !limbs.al || mode === 'frozen') return;
     var tgt = {};
     if(mode === 'walk'){
-      var s = Math.sin(ts/150);
-      tgt.al = 16 + s*22; tgt.ar = -16 + s*22;
-      tgt.ll = -s*18;     tgt.lr = s*18;
+      var s = Math.sin(ts/150), sp = Math.min(1.6, walkVel/0.045);
+      tgt.al = 16 + s*22*sp; tgt.ar = -16 - s*22*sp;          // arms counter-swing the legs
+      tgt.ll = -s*18*sp;      tgt.lr = s*18*sp;
+      if(performance.now() < landBendUntil){ tgt.ll += 14; tgt.lr -= 14; }   // knees take the landing
       var md = currentMood();
       if(performance.now() < blockUntil){ tgt.al = -95; tgt.ar = 95; }   // guard: both arms up in front of the face
       else if(md === 'mad'){ tgt.al = 70 + s*6; tgt.ar = -70 - s*6; }    // fists up, arms forward
@@ -17435,7 +17454,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var dx = pos - lastPos; lastPos = pos;
     var target = 0;
     if(mode === 'walk'){
-      target = Math.sin(ts/170) * 2.2 - dx * 1.8;
+      target = Math.sin(ts/170) * 2.2 - dx * 1.8 - (walkVel/0.045) * 2.5 * (dir < 0 ? -1 : 1);
     } else if(mode === 'fly'){
       target = -rotVel * 28 - vx * 12;
     } else if(mode === 'drag'){
@@ -17481,7 +17500,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
   // Every landing goes through here so no rotation / squash-stretch / stale facing survives into walking.
   function landToWalk(){
-    mode = 'walk'; airHits = 0;
+    mode = 'walk'; airHits = 0; landBendUntil = performance.now() + 240; walkVel = 0;
+    bounce.style.transform = '';
     bounce.classList.remove('aig-fly','aig-drag');
     if(Math.abs(rotAngle) > 0.5){
       phys.style.transition = 'transform .38s cubic-bezier(.3,1.4,.5,1)';
@@ -17563,9 +17583,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     pop.id = 'aig-pop';
     pop.className = 'aig-pop';
     var isTrap = function(t){ return t.kind && t.kind !== 'swing'; };
-    var praise = TOOLS.filter(function(t){ return t.type==='good' && !isTrap(t); });
-    var whack  = TOOLS.filter(function(t){ return t.type==='bad'  && !isTrap(t); });
-    var traps  = TOOLS.filter(isTrap);
+    var praise = TOOLS.filter(function(t){ return t.type==='good' && !isTrap(t) && !t.unlock; });
+    var whack  = TOOLS.filter(function(t){ return t.type==='bad'  && !isTrap(t) && !t.unlock; });
+    var traps  = TOOLS.filter(function(t){ return isTrap(t) && !t.unlock; });
+    var secret = TOOLS.filter(function(t){ return t.unlock; });
     var sec = function(cls, label, hint, list){ return '<div><div class="aig-sec-label">'+label+'<span>'+hint+'</span></div><div class="aig-tool-row '+cls+'">'+list.map(toolBtnHtml).join('')+'</div></div>'; };
     pop.innerHTML =
       '<div class="aig-tray-head"><div class="aig-tray-title">AI Guy</div>'+
@@ -17575,6 +17596,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       sec('aig-tool-good', 'Praise', 'click him', praise) +
       sec('aig-tool-bad',  'Whack',  'click him \u00b7 hold to rapid-fire', whack) +
       sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
+      sec('aig-tool-bad', 'Secret TGK tools', secret.filter(function(t){ return !toolLocked(t); }).length + '/' + secret.length + ' unlocked \u00b7 hover for how', secret) +
       '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.map(function(n){ var rr = mpRemotes.filter(function(q){ return q.name === n; })[0]; var s = rr ? shirtFor(rr.who, rr.sh) : myShirt(); return '<b style="color:'+s.hi+'">'+n+'</b>'; }).join(', ') : '')+'</span></div>'+
       '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something to him..." onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div>'+
       '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
@@ -17698,6 +17720,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'car': noiseBurst(.25, 500, 0.24, 2); tone(70,.35,'sawtooth',.07); tone(420,.12,'square',.05,.04); tone(350,.16,'square',.05,.12); break;
       case 'audit': noiseBurst(.08, 2500, 0.05, 4); break;
       case 'tramp': case 'fan': case 'gravity': case 'sling': break;
+      case 'wrench': noiseBurst(.05, 5000, 0.18, 6); tone(1400,.06,'triangle',.05); tone(2100,.05,'triangle',.04,.02); break;
+      case 'boost': noiseBurst(.35, 1200, 0.22, 1.8); tone(180,.3,'sawtooth',.05); break;
+      case 'cel': tone(880,.08,'square',.05); tone(880,.08,'square',.05,.16); tone(880,.08,'square',.05,.32); break;
+      case 'dyno': tone(220,.4,'sawtooth',.05); tone(330,.35,'sawtooth',.04,.1); tone(440,.3,'sawtooth',.04,.2); break;
+      case 'oil': noiseBurst(.15, 400, 0.08, 2); break;
+      case 'tire': noiseBurst(.4, 300, 0.14, 1.2); break;
+      case 'rs': tone(70,.5,'sawtooth',.08); tone(140,.4,'sawtooth',.06,.1); noiseBurst(.5, 900, 0.2, 1.6); break;
+      case 'dsg': tone(500,.04,'square',.05); tone(700,.04,'square',.05,.12); break;
+      case 'k04': noiseBurst(.7, 2500, 0.18, 1.1); tone(600,.6,'sawtooth',.03); break;
+      case 'box': noiseBurst(.12, 700, 0.14, 3); tone(150,.12,'square',.05); break;
+      case 'quattro': tone(523,.1,'triangle',.05); tone(659,.1,'triangle',.05,.1); tone(784,.1,'triangle',.05,.2); tone(1046,.25,'triangle',.06,.3); break;
       case 'clone': break;
       case 'coffee': tone(520,.1,'sine',.04); tone(660,.12,'sine',.04,.1); tone(880,.2,'sine',.05,.2); break;
       default: tone(300,.1,'sine',.05);
@@ -17748,6 +17781,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     dynamite: String.fromCodePoint(0x1F9E8),
     coffee: '\u2615',
     car: String.fromCodePoint(0x1F3CE),
+    wrench: String.fromCodePoint(0x1F527), boost: String.fromCodePoint(0x1F4A8), cel: String.fromCodePoint(0x1F7E0), oil: String.fromCodePoint(0x1F6E2),
+    tire: String.fromCodePoint(0x1F6DE), dyno: String.fromCodePoint(0x1F4C8), rs: String.fromCodePoint(0x1F3C1), dsg: String.fromCodePoint(0x1F3AE),
+    k04: String.fromCodePoint(0x1F32A), box: String.fromCodePoint(0x1F4E6), quattro: String.fromCodePoint(0x1F3D4),
     mine: '\u26A0',
     boulder: String.fromCodePoint(0x1FAA8),
     banana: String.fromCodePoint(0x1F34C)
@@ -17771,6 +17807,18 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'dynamite', type:'bad',  kind:'place', icon:ICN.dynamite, label:'Dynamite',    weight:3, phrases:['Kaboom!','Blown away!','Boom!','Sky high!'] },
     { id:'boulder',  type:'bad',  kind:'drop',  icon:ICN.boulder,  label:'Boulder',     weight:3, phrases:['Squashed!','Flattened!','Crunch!','Timber!'] },
     { id:'car',      type:'bad',  kind:'cannon',icon:ICN.car,      label:'The S6',      weight:3, phrases:['Run over!','Quattro!','Speed bump.','Hit and run.','Launch control.'] },
+    { id:'wrench',   type:'bad',  icon:ICN.wrench,   label:'Wrench',      weight:2, phrases:['Torque spec: gutentight.','Clank!','10mm found.','Righty tighty.'] },
+    { id:'boost',    type:'bad',  icon:ICN.boost,    label:'Boost',       weight:2, phrases:['Over-boost!','Boost leak!','Full send.','P0299!'] },
+    { id:'cel',      type:'bad',  icon:ICN.cel,      label:'Check engine',weight:1, phrases:['P0299.','P0171.','P0300. Random misfire.','Limp mode.'] },
+    { id:'dyno',     type:'good', icon:ICN.dyno,     label:'Dyno day',    weight:2, phrases:['Dyno numbers!','+40 whp!','Peak torque!','Chart goes up!'] },
+    { id:'oil',      type:'bad',  kind:'place', icon:ICN.oil,      label:'Oil slick',   weight:1, phrases:['Slippery!','Oil in the intercooler!','Lifetime fluid, they said.'] },
+    { id:'tire',     type:'bad',  kind:'cannon',icon:ICN.tire,     label:'Rolling tire', weight:2, phrases:['Wheel off!','Runaway tire!','Nitto strikes!'] },
+    // ---- secret TGK / Audi tools: earned, not given ----
+    { id:'rs',       type:'bad',  icon:ICN.rs,       label:'Launch control (RS mode)', weight:3, phrases:['LAUNCH CONTROL.','0-60 in a spine.','Quattro, engage.'], unlock:{ hits:250, label:'Land 250 hits' } },
+    { id:'dsg',      type:'bad',  icon:ICN.dsg,      label:'DSG flappy paddles', weight:2, phrases:['Up-shift!','Downshift!','Double clutch!'], unlock:{ ach:'juggler', label:'Earn Juggler (5 hits in one flight)' } },
+    { id:'k04',      type:'bad',  icon:ICN.k04,      label:'K04 turbo',   weight:3, phrases:['Spooling!','Compressor surge!','Turbo lag. Then not.'], unlock:{ kos:5, label:'Knock him out 5 times' } },
+    { id:'box',      type:'bad',  kind:'drop',  icon:ICN.box,      label:'Backorder box', weight:2, phrases:['Backordered.','ETA: unknown.','Boxed.'], unlock:{ praises:50, label:'Praise him 50 times' } },
+    { id:'quattro',  type:'good', icon:ICN.quattro,  label:'Quattro (all-wheel praise)', weight:3, phrases:['All four corners.','Grip for days.','Vorsprung.'], unlock:{ ach:'quattro', label:'Earn Quattro (4 different tools in 10s)' } },
     { id:'sling',    type:'bad',  kind:'sling', icon:ICN.sling,    label:'Slingshot',   weight:2, phrases:['Wheee!'] },
     { id:'tramp',    type:'good', kind:'place', icon:ICN.tramp,    label:'Trampoline',  weight:1, phrases:['Boing!'] },
     { id:'fan',      type:'good', kind:'place', icon:ICN.fan,      label:'Fan',         weight:1, phrases:['Whoosh!'] },
@@ -17781,6 +17829,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function toolLocked(t){
     if(!t.unlock) return false;
     if(t.unlock.hits && aigState.bad >= t.unlock.hits) return false;
+    if(t.unlock.praises && aigState.good >= t.unlock.praises) return false;
+    if(t.unlock.kos && (aigState.stats.ko||0) >= t.unlock.kos) return false;
     if(t.unlock.ach && (aigState.ach||[]).indexOf(t.unlock.ach) >= 0) return false;
     return true;
   }
@@ -17882,7 +17932,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(kind === 'drop'){ dropBoulder(heldTool, x); return; }
     if(kind === 'spawn'){ spawnClone(x); return; }
     if(kind === 'toggle'){ flipGravity(); return; }
-    if(kind === 'cannon'){ if(heldTool.id === 'car') sendCar(); else fireShirt(); return; }
+    if(kind === 'cannon'){ if(heldTool.id === 'car') sendCar(); else if(heldTool.id === 'tire') rollTire(); else fireShirt(); return; }
+    if(heldTool.id === 'box'){ dropBox(x); return; }
     if(kind === 'sling'){ return; }
     var pad = hitPad;
     for(var ri=mpRemotes.length-1; ri>=0; ri--){
@@ -17982,7 +18033,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       fightCooldownUntil = performance.now() + 180000;   // truce: three minutes
       setTimeout(function(){ say(pick(['Truce. Three minutes. Then we are back to normal.','Coffee accepted. Three minutes of peace.','Okay. We are good. For three minutes.']), 3000, true); }, 900);
     }
-    if(tool.type === 'good') { if(aigState.good >= 100) achieve('pacifist'); }
+    if(tool.type === 'good') { if(aigState.good >= 100) achieve('pacifist'); var dk0 = new Date().toISOString().slice(0,10); var pt = (aigState.log||[]).filter(function(e){ return e.type==='good' && String(e.ts).slice(0,10)===dk0; }).length; if(pt >= 20) achieve('dyno_day'); }
+    if(TOOLS.filter(function(t){ return t.unlock; }).every(function(t){ return !toolLocked(t); })) achieve('vorsprung');
     else { if(aigState.bad >= 100) achieve('century'); }
 
     // Freeze ray: encase him. Light tools clink off the ice; weight 2+ shatters it.
@@ -18007,8 +18059,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!aigState.stats.bestToday || aigState.stats.bestToday.date !== dk) aigState.stats.bestToday = { date: dk, combo: 0 };
     if(comboCount > aigState.stats.bestToday.combo) aigState.stats.bestToday.combo = comboCount;
     checkUnlocks();
+    if(tool.id === 'dsg' && !force){ setTimeout(function(){ applyToolHit(tool, hitX, hitY, 0.7); }, 180); }   // paddles: two quick shifts
     if(tool.type === 'bad'){
       addAnger(7 + tool.weight*3);
+      trackQuattro(tool);
       if(madOn){ madHits++; if(madHits >= 3 && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen'){ madHits = 0; startFightBack(); } }
       badStreak++;
       hitsSinceRetaliate++;
@@ -18283,7 +18337,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     dizzy.innerHTML = '<span>'+ICN.star+'</span><span>'+ICN.star+'</span><span>'+ICN.star+'</span>';
     bounce.appendChild(dizzy);
     spawnFloatText('KO!', 'bad', 15);
-    stat('ko'); achieve('first_ko');
+    stat('ko'); achieve('first_ko'); hitsSinceKO = 0;
+    if(lastBadTool === 'boost') achieve('boost_leak');
+    if((aigState.stats.ko||0) >= 25) achieve('rod_knock');
     remember('KO', 'by '+(lastBadTool||'?'));
     addAnger(22);
     aigState.stats.lastKoBy = { who: sharedEmail(), tool: lastBadTool||'', at: Date.now() }; saveState();
@@ -18373,6 +18429,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     vx = Math.max(-1.6, Math.min(1.6, vx));
     vy = Math.max(-1.9, Math.min(1.9, vy));
     rotVel += dirSign * (0.12 + tool.weight*0.08);
+    if(tool.id === 'boost'){ vx = dirSign * 1.6; vy = -0.25; rotVel = dirSign * 0.25; }
+    if(tool.id === 'rs'){ vx = dirSign * 2.4; vy = -0.6; rotVel = dirSign * 1.4; hitStop(120); slowMo(0.35, 700); }
+    if(tool.id === 'k04'){ vy = -1.6; vx = dirSign * 0.2; rotVel = dirSign * 2.6; }
     if(mode !== 'fly'){
       mode = 'fly';
       bounce.classList.add('aig-fly');
@@ -18408,6 +18467,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       el.className = 'aig-tramp';
       el.style.left = (x-19)+'px'; el.style.top = (fy-15)+'px';
       tone(330,.08,'sine',.03); tone(495,.1,'sine',.03,.08);
+    } else if(tool.id === 'oil'){
+      el.className = 'aig-oil';
+      el.style.left = (x-24)+'px'; el.style.top = (fy-6)+'px';
+      noiseBurst(.15, 400, 0.08, 2);
     } else if(tool.id === 'fan'){
       el.className = 'aig-fan';
       el.style.left = (x-13)+'px'; el.style.top = (fy-26)+'px';
@@ -18501,6 +18564,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
             continue;
           }
         }
+        if(t.isBox && Math.abs(t.x - g.x) < 30 && by >= g.r.top + 10 && t.y < g.r.bottom){ removeTrap(t); playToolSound(t.tool); applyToolHit(t.tool, t.x, g.r.top, 0.01); boxHim(); continue; }
         if(Math.abs(t.x - g.x) < 24 && by >= g.r.top && t.y < g.r.bottom){
           spawnDust(t.x, by);
           squash();
@@ -18531,6 +18595,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           continue;
         }
         if((onGround && Math.abs(t.x - g.x) < 22 && ts - t.born > 500) || cloneOnTrap(t, ts)){ detonate(t, 105, 1.6, true); continue; }
+      } else if(t.kind === 'oil'){
+        if(mode === 'walk' && Math.abs(t.x - g.x) < 24 && ts - (t.slidAt||0) > 2500){
+          t.slidAt = ts; slideUntil = performance.now() + 2500;
+          vx = dir * 0.55; vy = -0.15; rotVel = dir * 0.9; mode = 'fly'; bounce.classList.add('aig-fly');
+          say(pick(spicy(['Whoa whoa whoa--','Oil! Who left-- AAH','Lifetime fluid my ass.'],['Oh shit oil'])), 1200, true);
+          applyToolHit(t.tool, g.x - dir*20, g.y + 30, 0.5);
+        }
       } else if(t.kind === 'tramp'){
         var onPad = Math.abs(t.x - g.x) < 24 && posY >= groundY()-4 && (mode==='fly' || mode==='walk');
         if(onPad && ts - (t.lastBoing||0) > 350){
@@ -18641,9 +18712,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'thumbs': shockwave(cx, cy, 60); break;
       case 'shirt': powBurst(cx, cy - 10, ['MERCH!','FREE!']); break;
       case 'sling': break;
+      case 'wrench': fxBurst(x||cx, y||cy, 10, ['#FFD166','#fff','#c8c8c8'], { speed: 0.14, g: 0.0008, size: 3, ttl: 400 }); break;
+      case 'boost': for(var bi=0;bi<14;bi++) fxEmit({ x: cx - dirOf(x)*30, y: cy + (Math.random()-0.5)*40, vx: dirOf(x)*0.5, vy:(Math.random()-0.5)*0.05, size:2, color:'rgba(200,220,255,.7)', ttl: 400, shape:'line', drag:1 }); break;
+      case 'cel': addSticker('CEL'); break;
+      case 'dyno': confettiRain(cx, cy - 40, 20); for(var di=0;di<6;di++) fxEmit({ x: cx - 30 + di*12, y: cy + 10 - di*7, vx:0, vy:-0.04, size:3, color:'#4ADE9F', ttl: 900, shape:'rect' }); break;
+      case 'rs': shockwave(cx, fy - 4, 160); for(var ri=0;ri<20;ri++) fxEmit({ x: cx - dirOf(x)*20, y: fy - 4, vx: -dirOf(x)*0.2*Math.random(), vy: -0.05 - Math.random()*0.1, size: 5 + Math.random()*6, color:'rgba(200,200,205,.6)', ttl: 900, shape:'smoke', drag:0.98 }); break;
+      case 'k04': tornado(cx, cy); break;
+      case 'quattro': confettiRain(cx, cy - 40, 30); shockwave(cx, cy, 90); heartsUp(cx, cy - 10, 4); break;
       default: break;
     }
   }
+  function dirOf(hx){ return (typeof hx === 'number' && hx > pos + 23) ? -1 : 1; }
   function lightningStrike(x, y){
     if(!LIGHTNING_ON) return;
     var w = window.innerWidth, h = window.innerHeight;
@@ -18772,7 +18851,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'wall_splat', name:'Wall Splat',  desc:'Stuck him to a wall.' },
     { id:'century',    name:'Century',     desc:'100 hits landed.' },
     { id:'boomerang',  name:'Boomerang',   desc:'He threw something back.' },
-    { id:'iron_guard', name:'Iron Guard',  desc:'He blocked, parried or caught 25 of your shots.' }
+    { id:'iron_guard', name:'Iron Guard',  desc:'He blocked, parried or caught 25 of your shots.' },
+    { id:'quattro',    name:'Quattro',     desc:'Four different tools on him inside 10 seconds.' },
+    { id:'torque_spec',name:'Torque Spec', desc:'Ten wrench hits. Gutentight.' },
+    { id:'stage3',     name:'Stage 3',     desc:'Three heavy hits in a row. Warranty void.' },
+    { id:'boost_leak', name:'Boost Leak',  desc:'KO\'d him with Boost.' },
+    { id:'lifetime_fluid', name:'Lifetime Fluid', desc:'He took 30 hits without a KO.' },
+    { id:'backordered',name:'Backordered', desc:'Boxed him up. ETA unknown.' },
+    { id:'dyno_day',   name:'Dyno Day',    desc:'20 praises in a single day.' },
+    { id:'recall',     name:'Recall',      desc:'Healed him 5 times. Responsible.' },
+    { id:'rod_knock',  name:'Rod Knock',   desc:'25 KOs. Rebuild time.' },
+    { id:'vorsprung',  name:'Vorsprung',   desc:'Unlocked every secret tool.' }
   ];
   function achieve(id){
     if(!aigState.ach) aigState.ach = [];
@@ -18848,6 +18937,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function thawHim(){
     if(mode !== 'frozen') return;
     if(iceEl) iceEl.remove();
+    if(boxEl && boxEl.parentNode){ boxEl.remove(); spawnDust(pos+23, posY+60); say(pick(['Delivered.','Finally. Signed for.','Never again.']), 1200, true); playToolSound(findTool('box')); }
     say(pick(['Br-r-rrr.','Cold start.','I could not feel my SKUs.','Heated seats, please.']), 1500, true);
     tone(900,.08,'sine',.03); tone(600,.1,'sine',.03,.08);
     mode = (posY < groundY()-2 || frozenWasAir) ? 'fly' : 'walk';
@@ -18908,6 +18998,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         p.el.style.transform = 'rotate('+(p.x*2)+'deg)';
         if(!p.hit && mode !== 'frozen' && projHitsGuy(p, 22, 22)){ p.hit = true; applyToolHit(p.tool, p.x + (p.vx>0?-20:20), p.y, 1.1); }
         if(p.x < -60 || p.x > window.innerWidth + 60){ p.el.remove(); projectiles.splice(i,1); }
+        continue;
+      }
+      if(p.kind === 'tire'){
+        p.x += p.vx*dt; p.rot += p.vx*dt*4;
+        p.el.style.left = p.x+'px'; p.el.style.top = p.y+'px'; p.el.style.transform = 'rotate('+p.rot+'deg)';
+        if(!p.hit && mode !== 'frozen' && Math.abs(p.x + 17 - (pos+23)) < 26 && posY + 66 > p.y){ p.hit = true; applyToolHit(p.tool, p.x + (p.vx>0?-20:54), p.y + 20, 1.2); powBurst(pos+23, posY, ['THUNK','WHEEL']); }
+        if(p.x < -80 || p.x > window.innerWidth + 80){ p.el.remove(); projectiles.splice(i,1); }
         continue;
       }
       if(p.kind === 'paper'){
@@ -19419,6 +19516,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     saveSettings(); applySettings();
   };
   window.aiGuyHeal = function(){
+    if(stat('heals') >= 5) achieve('recall');
     clearBandaids(); clearSplats(); clearHat(); bounce.classList.remove('aig-sooty','aig-mad','aig-sulk'); badStreak = 0; fearTool = null;
     anger = 0; madOn = false; fightOn = false; sulkUntil = 0; if(cursorStolen) returnCursor(false);
     if(mode === 'frozen') thawHim();
@@ -19764,7 +19862,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       function(){ fireShirt(); },
       function(){ var t = T('sling'); vx = (Math.random()<0.5?-1:1)*1.6; vy = -1.2; mode = 'fly'; bounce.classList.add('aig-fly'); say('WHY', 900, true); },
       function(){ hitHim('shirt'); },
-      function(){ sendCar(); }
+      function(){ sendCar(); },
+      function(){ hitHim('wrench'); }, function(){ hitHim('boost'); }, function(){ hitHim('cel'); }, function(){ rollTire(); },
+      function(){ var t = T('oil'); if(t) placeTrap(t, pos + 23 + dir*60); }
     ];
     // shuffle, then pick 8-11 with no identical neighbours
     for(var i=pool.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
@@ -20258,6 +20358,57 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       return '<button type="button" class="aig-swatch'+(s.id===cur?' on':'')+'" title="'+s.id+'" style="background:linear-gradient(180deg,'+s.hi+','+s.lo+')" onclick="aiGuySetting(\'shirt\',\''+s.id+'\');this.parentNode.querySelectorAll(\'.aig-swatch\').forEach(function(b){b.classList.remove(\'on\')});this.classList.add(\'on\')"></button>';
     }).join('') + '</div>';
   }
+
+  // ---------------- New tool systems ----------------
+  var stickerEl = null;
+  function addSticker(txt){
+    if(stickerEl) stickerEl.remove();
+    stickerEl = document.createElement('div'); stickerEl.className = 'aig-sticker'; stickerEl.textContent = txt; bounce.appendChild(stickerEl);
+    setTimeout(function(){ if(stickerEl){ stickerEl.remove(); stickerEl = null; } }, 9000);
+    setTimeout(function(){ say(pick(spicy(['P0299. Again.','Not the light. Not the LIGHT.','It is just a sensor. Probably.','Limp mode. Great.'],['Fucking P0299.'])), 1800); }, 500);
+  }
+  function tornado(cx, cy){
+    for(var i=0;i<40;i++) fxEmit({ x: cx + (Math.random()-0.5)*20, y: cy + 40 - Math.random()*100, vx:(Math.random()-0.5)*0.3, vy:-0.1-Math.random()*0.2, size: 3 + Math.random()*4, color: i%3 ? 'rgba(200,205,215,.55)' : 'rgba(150,160,175,.6)', ttl: 900 + Math.random()*500, shape:'smoke', drag:0.99, sway:true, phase:i });
+    shakeScreen();
+  }
+  function rollTire(){
+    var t = findTool('tire'); if(!t) return;
+    var W = window.innerWidth, fy = floorY();
+    var fromLeft = (pos + 23) > W/2;
+    var el = document.createElement('div'); el.className = 'aig-proj'; el.textContent = t.icon; el.style.fontSize = '34px';
+    document.body.appendChild(el);
+    projectiles.push({ el:el, kind:'tire', x: fromLeft ? -40 : W + 40, y: fy - 34, vx: (fromLeft ? 1 : -1) * 0.6, tool:t, hit:false, rot:0 });
+    say(pick(['Is that a wheel?','Wheel off. WHEEL OFF.','Who lost a tire?']), 1400, true);
+  }
+  function dropBox(x){
+    var t = findTool('box'); if(!t) return;
+    var el = document.createElement('div'); el.className = 'aig-boulder aig-boxdrop'; el.textContent = t.icon;
+    el.style.left = (x-18)+'px'; el.style.top = '-50px';
+    document.body.appendChild(el);
+    traps.push({ kind:'boulder', el:el, x:x, y:-50, vy:0, tool:t, born:performance.now(), isBox:true });
+  }
+  var boxedUntil = 0, boxEl = null;
+  function boxHim(){
+    if(mode === 'frozen' || cursorStolen) return;
+    frozenWasAir = false; mode = 'frozen'; vx = 0; vy = 0; rotVel = 0; posY = groundY(); setRootPos(); phys.style.transform = '';
+    frozenUntil = performance.now() + 3200;
+    bounce.classList.remove('aig-happy','aig-sad','aig-fly');
+    if(!boxEl){ boxEl = document.createElement('div'); boxEl.className = 'aig-boxon'; boxEl.innerHTML = '<span>BACKORDER</span><small>ETA: unknown</small>'; }
+    bounce.appendChild(boxEl);
+    say(pick(['Where am I? Is this ShipStation?','Backordered. Me. Backordered.','It is dark in here.','ETA unknown. Story of my life.']), 2400, true);
+    setTimeout(function(){ if(boxEl && boxEl.parentNode) boxEl.remove(); }, 3300);
+    achieve('backordered');
+  }
+  var qTools = [];
+  function trackQuattro(tool){
+    var now = performance.now(); qTools = qTools.filter(function(q){ return now - q.t < 10000; });
+    if(!qTools.some(function(q){ return q.id === tool.id; })) qTools.push({ id: tool.id, t: now });
+    if(qTools.filter(function(q){ return q.id !== 'dsg'; }).length >= 4) achieve('quattro');
+    if(tool.id === 'wrench') { if(stat('wrench') >= 10) achieve('torque_spec'); }
+    if(tool.weight >= 3){ heavyRun++; if(heavyRun >= 3) achieve('stage3'); } else heavyRun = 0;
+    hitsSinceKO++; if(hitsSinceKO >= 30) achieve('lifetime_fluid');
+  }
+  var heavyRun = 0, hitsSinceKO = 0;
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
