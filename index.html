@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.53';
+var TGK_CC_VERSION='v2.54';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16839,6 +16839,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-drama{animation:aigDrama 2.6s ease-in forwards}
 @keyframes aigDrama{0%{transform:rotate(0)}20%{transform:rotate(-8deg) translateY(-6px)}45%{transform:rotate(12deg) translateY(2px)}70%{transform:rotate(70deg) translateY(10px)}100%{transform:rotate(90deg) translateY(14px)}}
 .aig-clone-bub{position:fixed;left:0;top:0;z-index:2039;max-width:150px;background:#e8eaef;color:#111;font-size:10px;line-height:1.3;padding:4px 7px;border-radius:8px;font-family:var(--font,inherit);pointer-events:none;will-change:transform;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+.aig-body{transition:transform .5s ease}
+.aig-mood-mad .aig-body{transform:translateY(-1px) scaleX(1.06)}
+.aig-mood-sulk .aig-body,.aig-mood-asleep .aig-body{transform:translateY(2px) scaleY(.92)}
+.aig-mood-happy .aig-body{transform:translateY(-2px)}
+.aig-mood-scared .aig-body{transform:translateY(1px) scaleX(.94)}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17347,6 +17352,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var s = Math.sin(ts/150);
       tgt.al = 16 + s*22; tgt.ar = -16 + s*22;
       tgt.ll = -s*18;     tgt.lr = s*18;
+      var md = currentMood();
+      if(md === 'mad'){ tgt.al = 70 + s*6; tgt.ar = -70 - s*6; }          // fists up, arms forward
+      else if(md === 'sulk' || md === 'asleep'){ tgt.al = 4 + s*3; tgt.ar = -4 - s*3; }   // arms hang limp
+      else if(md === 'happy'){ tgt.al = -20 + s*10; tgt.ar = 20 - s*10; } // arms swing high
+      else if(md === 'scared'){ tgt.al = -60; tgt.ar = 60; }             // hands up
       if(bounce.classList.contains('aig-happy')){ tgt.al = -75; tgt.ar = 75; }
     } else {
       var hang = -rotAngle;                 // point toward world-down
@@ -17409,6 +17419,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     headVel = (headVel + (target - headAng) * k) * damp;
     headAng += headVel;
     var turn = (mode === 'walk') ? 10 : 0;
+    // posture: mood shows in how he carries his head
+    var mood = currentMood();
+    var tiltBias = mood === 'mad' ? 9 : mood === 'sulk' ? 14 : mood === 'happy' ? -7 : mood === 'scared' ? -10 : mood === 'asleep' ? 18 : 0;
+    headAng += (tiltBias * (dir < 0 ? -1 : 1) - headAng) * 0.03;
     if(heldTool && mode === 'walk'){
       var hcx = pos + 23;
       var dxc = curX - hcx;
@@ -17973,7 +17987,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       }
       saveCond();
     } else {
-      addAnger(-18);
+      addAnger(-18); lastPraiseAt = performance.now();
       badStreak = 0;
       if(glassMarks.length && Math.random() < 0.6) wipeGlass();
       clearBandaids();
@@ -19568,6 +19582,15 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(mode !== 'walk'){ readTheRoom(ts); fridayCountdown(); if(skit && skit.kind !== 'trap') endSkit(); }
     if(skit && performance.now() - skit.t0 > 10000) endSkit();   // hard stop: a skit can never wedge him in place
   }
+  var moodCls = '';
+  function currentMood(){
+    var m = asleep ? 'asleep' : (performance.now() < sulkUntil) ? 'sulk' : madOn ? 'mad' :
+            (heldTool && fearTool && heldTool.id === fearTool && Math.abs(curX - (pos+23)) < 220) ? 'scared' :
+            (performance.now() - lastPraiseAt < 6000) ? 'happy' : '';
+    if(m !== moodCls){ if(moodCls) bounce.classList.remove('aig-mood-'+moodCls); if(m) bounce.classList.add('aig-mood-'+m); moodCls = m; }
+    return m;
+  }
+  var lastPraiseAt = -1e9;
   function touch(){ lastInteractAt = performance.now(); if(asleep) wakeUp(true); }
   function lookAt(x, y, ms){ if(typeof x !== 'number') return; lookX = x; lookY = y; lookUntil = performance.now() + (ms||800); }
   function squish(hitX){ var side = (typeof hitX === 'number') ? (hitX < pos+23 ? 1 : -1) : (Math.random()<0.5?-1:1); squishX = 0.30*side; squishV = 0; }
