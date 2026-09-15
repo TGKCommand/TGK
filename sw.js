@@ -8,7 +8,7 @@
    Deploy step: change CACHE_NAME on every release (e.g. v2 -> v3) so installed
    PWA clients drop the old cache and pull the new files.
    ============================================================ */
-const CACHE_NAME = 'tgk-command-v3';          // <-- BUMP THIS ON EVERY DEPLOY
+const CACHE_NAME = 'tgk-command-v4';          // <-- BUMP THIS ON EVERY DEPLOY
 const SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', function (e) {
