@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.57';
+var TGK_CC_VERSION='v2.58';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -18810,7 +18810,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // ---------------- He fights back ----------------
   var projectiles = [];
   function retaliate(){
-    if(mode === 'frozen' || !root) return;
+    if(mode === 'frozen' || !root || badDayOn) return;
     hitsSinceRetaliate = 0; retaliateAt = 5 + Math.floor(Math.random()*5);
     achieve('boomerang');
     if(heldTool && Math.random() < 0.35){
@@ -19419,7 +19419,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         playVoice('hit');
       }
     }
-    if(anger >= 90 && !fightOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen') startFightBack();
+    if(anger >= 90 && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen') startFightBack();
   }
   function updateAnger(ts, rawDt){
     if(anger > 0 && !fightOn){ anger = Math.max(0, anger - rawDt*0.0015); if(madOn && anger < 55){ madOn = false; bounce.classList.remove('aig-mad'); } }
@@ -19505,9 +19505,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     think('you just stole the user\'s mouse cursor and are running away with it', '', pick(['Got your cursor. Come get it.','Mine now. Catch me.','No cursor for you.','You can have this back when you are nicer.']), 2600);
     setTimeout(function(){
       if(!cursorStolen) return;
-      window.aiGuyShowHistory();
-      say(pick(['Reading your stats. '+aigState.bad+' bad? Wow.','Let me see... '+aigState.good+' good, '+aigState.bad+' bad. Yikes.','Ooh, history. Oh. Oh no.']), 2400, true);
-      setTimeout(function(){ window.aiGuyCloseHistory(); }, 2200);
+      say(pick(['Reading your stats. '+aigState.bad+' bad? Wow.','Let me see... '+aigState.good+' good, '+aigState.bad+' bad. Yikes.','Checked your history. Oh. Oh no.']), 2400, true);
     }, 2200);
     tone(1200,.06,'square',.04); tone(1600,.08,'square',.04,.07);
     aigToast('He took your cursor', 'Find him and click him to grab it back, or press Esc.');
@@ -19674,7 +19672,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     });
   }
 
-  var badDayOn = false;
+  var badDayOn = false;   // declared before use in addAnger/retaliate (hoisted var, assigned here)
   window.aiGuyBadDay = function(){
     if(badDayOn) return; badDayOn = true; closePop(); window.aiGuyPutDownTool(); touch(); if(asleep) wakeUp(false); aiHoldUntil = -1e9;
     var T = function(id){ return findTool(id); };
