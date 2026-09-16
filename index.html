@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.04';
+var TGK_CC_VERSION='v3.07';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16763,8 +16763,8 @@ var TGK_CC_VERSION='v3.04';
 .aig-air{position:fixed;z-index:839;pointer-events:none;width:2px;height:16px;background:rgba(160,200,255,.55);border-radius:1px;animation:aigAir .8s linear forwards}
 @keyframes aigAir{0%{opacity:.8;transform:translateY(0)}100%{opacity:0;transform:translateY(-120px)}}
 .aig-band{position:fixed;inset:0;z-index:2045;pointer-events:none}
-.aig-tool-btn.aig-locked{opacity:.35;cursor:not-allowed;position:relative}
-.aig-tool-btn.aig-locked::after{content:'\1F512';position:absolute;right:-3px;bottom:-4px;font-size:10px;opacity:1}
+.aig-tool-btn.aig-locked{filter:grayscale(1) brightness(.72);cursor:not-allowed;position:relative}
+.aig-tool-btn.aig-locked::after{content:'\1F512';position:absolute;right:-2px;bottom:-3px;font-size:11px;opacity:1;filter:none;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .aig-settings{display:none;flex-direction:column;gap:8px;border-top:1px solid #232527;padding-top:8px;font-size:11px;color:#9CA3AF;font-family:var(--font,inherit)}
 .aig-settings.open{display:flex}
 .aig-settings label{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -16953,13 +16953,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-sec-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b7076;margin:0 0 4px 2px;display:flex;justify-content:space-between}
 .aig-sec-label span{color:#4a4f55;letter-spacing:0;text-transform:none}
 .aig-tool-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-.aig-tool-btn{height:36px;border-radius:9px;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid #2e2e2e;transition:transform .1s,background .15s,border-color .15s;padding:0;position:relative}
+.aig-tool-btn{height:38px;border-radius:9px;font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#f2f4f7,#dfe3e9);border:1px solid #0c0d0f;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.5);transition:transform .1s,filter .15s,box-shadow .15s;padding:0;position:relative}
+.aig-tool-btn:hover{filter:brightness(1.08)}
 .aig-tool-btn:hover{transform:translateY(-1px) scale(1.06)}
 .aig-tool-btn:active{transform:scale(.92)}
-.aig-tool-btn.aig-on{border-color:#FFD166;background:rgba(255,209,102,.14);box-shadow:0 0 0 1px rgba(255,209,102,.35)}
-.aig-tool-row.aig-tool-good .aig-tool-btn:hover{background:rgba(74,222,159,.18);border-color:rgba(74,222,159,.45)}
-.aig-tool-row.aig-tool-bad .aig-tool-btn:hover{background:rgba(255,107,107,.18);border-color:rgba(255,107,107,.45)}
-.aig-tool-row.aig-tool-trap .aig-tool-btn:hover{background:rgba(255,209,102,.16);border-color:rgba(255,209,102,.45)}
+.aig-tool-btn.aig-on{border-color:#FFD166;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 3px rgba(255,209,102,.85)}
+.aig-tool-row.aig-tool-good .aig-tool-btn{background:linear-gradient(180deg,#e8f8f0,#c9ece0)}
+.aig-tool-row.aig-tool-bad .aig-tool-btn{background:linear-gradient(180deg,#fdeeee,#f5d7d7)}
+.aig-tool-row.aig-tool-trap .aig-tool-btn{background:linear-gradient(180deg,#fdf6e3,#f3e5c2)}
+.aig-tool-row.aig-tool-good .aig-tool-btn:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 2px rgba(74,222,159,.8)}
+.aig-tool-row.aig-tool-bad .aig-tool-btn:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 2px rgba(255,107,107,.8)}
+.aig-tool-row.aig-tool-trap .aig-tool-btn:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 2px rgba(255,209,102,.85)}
 .aig-hover-name{min-height:16px;font-size:11px;color:#9CA3AF;text-align:center;padding:2px 0 0;border-top:1px solid #232527}
 .aig-hover-name b{color:#f0f0f0;font-weight:600}
 .aig-foot{display:flex;gap:6px}
@@ -17004,7 +17008,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 #aig-held-chip button{width:20px;height:20px;border-radius:50%;border:none;background:rgba(255,255,255,.06);color:#9CA3AF;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0}
 #aig-held-chip button:hover{background:rgba(255,107,107,.2);color:#FF6B6B}
 #ai-guy-toggle-btn.aig-toggle-off{opacity:.45}
+#aig-modal-overlay .tbx-modal{display:flex;flex-direction:column;max-height:86vh}
+#aig-history-body{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;min-height:0;padding-right:4px}
+#aig-modal-overlay .tbx-modal-title{flex:0 0 auto}
+#aig-modal-overlay .tbx-modal-row{flex:0 0 auto;position:sticky;bottom:0;background:inherit;padding-top:10px}
 #aig-history-body::-webkit-scrollbar{width:8px}
+#aig-history-body::-webkit-scrollbar-thumb{background:#2e2e2e;border-radius:4px}
 .aig-hist-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #232527}
 </style>
 
@@ -17771,6 +17780,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'boulder': noiseBurst(.2, 240, 0.22, 2.5); tone(70,.22,'sine',.07); break;
       case 'mine': case 'dynamite': break;
       case 'fire': noiseBurst(1.0, 1400, 0.2, 1.1); tone(150,.5,'sawtooth',.05); break;
+      case 'anvil': tone(1200,.1,'triangle',.06); tone(700,.25,'triangle',.05,.05); noiseBurst(.2, 900, 0.16, 2); break;
+      case 'magnet': tone(90,.4,'sine',.05); tone(140,.4,'sine',.04,.08); break;
+      case 'stapler': noiseBurst(.04, 6000, 0.14, 8); tone(1800,.04,'square',.05); break;
+      case 'cake': tone(523,.1,'sine',.04); tone(659,.12,'sine',.04,.1); break;
+      case 'sax': tone(311,.35,'sawtooth',.035); tone(415,.3,'sawtooth',.03,.2); tone(466,.45,'sawtooth',.035,.42); break;
+      case 'spring': tone(200,.1,'sine',.05); tone(700,.16,'sine',.05,.05); break;
+      case 'bucket': noiseBurst(.5, 700, 0.2, 1.4); tone(240,.2,'sine',.04); break;
       case 'freeze': tone(1800,.12,'sine',.04); tone(2400,.18,'sine',.03,.08); noiseBurst(.2, 3500, 0.05, 3); break;
       case 'shirt': noiseBurst(.12, 900, 0.14, 3); tone(240,.1,'sine',.04); break;
       case 'car': noiseBurst(.25, 500, 0.24, 2); tone(70,.35,'sawtooth',.07); tone(420,.12,'square',.05,.04); tone(350,.16,'square',.05,.12); break;
@@ -17838,6 +17854,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     coffee: '\u2615',
     car: String.fromCodePoint(0x1F3CE),
     fire: String.fromCodePoint(0x1F525), cigar: String.fromCodePoint(0x1F6AC),
+    anvil: String.fromCodePoint(0x1F3F7), magnet: String.fromCodePoint(0x1F9F2), bucket: String.fromCodePoint(0x1F9FA),
+    ufo: String.fromCodePoint(0x1F6F8), spring: String.fromCodePoint(0x1F300), cake: String.fromCodePoint(0x1F382),
+    coffee2: String.fromCodePoint(0x1F375), sax: String.fromCodePoint(0x1F3B7), stapler: String.fromCodePoint(0x1F4CE),
     wrench: String.fromCodePoint(0x1F527), boost: String.fromCodePoint(0x1F4A8), cel: String.fromCodePoint(0x1F7E0), oil: String.fromCodePoint(0x1F6E2),
     tire: String.fromCodePoint(0x1F6DE), dyno: String.fromCodePoint(0x1F4C8), rs: String.fromCodePoint(0x1F3C1), dsg: String.fromCodePoint(0x1F3AE),
     k04: String.fromCodePoint(0x1F32A), box: String.fromCodePoint(0x1F4E6), quattro: String.fromCodePoint(0x1F3D4),
@@ -17865,6 +17884,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'dynamite', type:'bad',  kind:'place', icon:ICN.dynamite, label:'Dynamite',    weight:3, phrases:['Kaboom!','Blown away!','Boom!','Sky high!'] },
     { id:'boulder',  type:'bad',  kind:'drop',  icon:ICN.boulder,  label:'Boulder',     weight:3, phrases:['Squashed!','Flattened!','Crunch!','Timber!'] },
     { id:'car',      type:'bad',  kind:'cannon',icon:ICN.car,      label:'The S6',      weight:3, phrases:['Run over!','Quattro!','Speed bump.','Hit and run.','Launch control.'] },
+    { id:'magnet',   type:'bad',  kind:'cannon', icon:ICN.magnet, label:'Magnet',      weight:2, phrases:['Dragged!','Metal!','I am being PULLED!'] },
+    { id:'anvil',    type:'bad',  kind:'drop',   icon:ICN.anvil,  label:'Anvil',       weight:3, phrases:['ACME!','Flat.','Cartoon physics!','Clang.'] },
+    { id:'stapler',  type:'bad',  icon:ICN.stapler, label:'Stapler',  weight:1, phrases:['Ka-chunk!','Office supplies!','That is a staple. In me.'] },
+    { id:'cake',     type:'good', icon:ICN.cake,   label:'Cake',        weight:2, phrases:['Cake!','Is it my birthday?','Break room cake!'] },
+    { id:'sax',      type:'good', icon:ICN.sax,    label:'Sax solo',    weight:1, phrases:['Smooth.','Jazz.','Oh this is nice.'] },
     { id:'wrench',   type:'bad',  icon:ICN.wrench,   label:'Wrench',      weight:2, phrases:['Torque spec: gutentight.','Clank!','10mm found.','Righty tighty.'] },
     { id:'boost',    type:'bad',  icon:ICN.boost,    label:'Boost',       weight:2, phrases:['Over-boost!','Boost leak!','Full send.','P0299!'] },
     { id:'cel',      type:'bad',  icon:ICN.cel,      label:'Check engine',weight:1, phrases:['P0299.','P0171.','P0300. Random misfire.','Limp mode.'] },
@@ -17878,6 +17902,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'box',      type:'bad',  kind:'drop',  icon:ICN.box,      label:'Backorder box', weight:2, phrases:['Backordered.','ETA: unknown.','Boxed.'], unlock:{ praises:50, label:'Praise him 50 times' } },
     { id:'quattro',  type:'good', icon:ICN.quattro,  label:'Quattro (all-wheel praise)', weight:3, phrases:['All four corners.','Grip for days.','Vorsprung.'], unlock:{ ach:'quattro', label:'Earn Quattro (4 different tools in 10s)' } },
     { id:'sling',    type:'bad',  kind:'sling', icon:ICN.sling,    label:'Slingshot',   weight:2, phrases:['Wheee!'] },
+    { id:'spring',   type:'bad',  kind:'place', icon:ICN.spring, label:'Spring trap', weight:2, phrases:['BOING!','Launched!','Up I go!'] },
+    { id:'bucket',   type:'bad',  kind:'drop',  icon:ICN.bucket, label:'Bucket of water', weight:1, phrases:['Soaked!','Cold water!','I am drenched.'] },
     { id:'tramp',    type:'good', kind:'place', icon:ICN.tramp,    label:'Trampoline',  weight:1, phrases:['Boing!'] },
     { id:'fan',      type:'good', kind:'place', icon:ICN.fan,      label:'Fan',         weight:1, phrases:['Whoosh!'] },
     { id:'gravity',  type:'good', kind:'toggle',icon:ICN.gravity,  label:'Flip gravity',weight:1, phrases:['Up we go!'] },
@@ -17986,13 +18012,15 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     var kind = heldTool.kind || 'swing';
     if(heldTool.id === 'audit'){ dropAudit(x); return; }
+    if(heldTool.id === 'box'){ dropBox(x); return; }
+    if(heldTool.id === 'anvil' || heldTool.id === 'bucket'){ dropHeavy(heldTool, x); return; }
     if(kind === 'place'){ placeTrap(heldTool, x); return; }
     if(kind === 'drop'){ dropBoulder(heldTool, x); return; }
     if(kind === 'spawn'){ spawnClone(x); return; }
     if(kind === 'toggle'){ flipGravity(); return; }
     if(heldTool.id === 'dyno'){ openDyno(); return; }
-    if(kind === 'cannon'){ if(heldTool.id === 'car') sendCar(); else if(heldTool.id === 'tire') rollTire(); else fireShirt(); return; }
-    if(heldTool.id === 'box'){ dropBox(x); return; }
+    if(kind === 'cannon'){ if(heldTool.id === 'car') sendCar(); else if(heldTool.id === 'tire') rollTire(); else if(heldTool.id === 'magnet') magnetPull(x, y); else fireShirt(); return; }
+
     if(kind === 'sling'){ return; }
     var pad = hitPad;
     for(var ri=mpRemotes.length-1; ri>=0; ri--){
@@ -18559,6 +18587,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       el.className = 'aig-tramp';
       el.style.left = (x-19)+'px'; el.style.top = (fy-15)+'px';
       tone(330,.08,'sine',.03); tone(495,.1,'sine',.03,.08);
+    } else if(tool.id === 'spring'){
+      el.className = 'aig-trap'; el.textContent = tool.icon; el.style.left = (x-11)+'px'; el.style.top = (fy-22)+'px';
+      tone(300,.06,'sine',.03);
     } else if(tool.id === 'oil'){
       el.className = 'aig-oil';
       el.style.left = (x-24)+'px'; el.style.top = (fy-6)+'px';
@@ -18648,13 +18679,29 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         }
         if(hitClone){ spawnDust(t.x, by); cloneHit(hitClone, t.tool, t.x, crr.top-10, 1.2); hitClone.vy = Math.max(hitClone.vy, 0.3); removeTrap(t); continue; }
         // sees the shadow: sidestep (more likely when alert)
-        if(!t.dodged && mode === 'walk' && Math.abs(t.x - g.x) < 40 && by > g.r.top - 140 && by < g.r.top){
+        if(!t.dodged && t.heavy !== 'bucket' && mode === 'walk' && Math.abs(t.x - g.x) < 40 && by > g.r.top - 140 && by < g.r.top){
           t.dodged = true;
           if(Math.random() < ((performance.now() - lastHitAt < 6000) ? 0.55 : 0.3)){
             var side = (t.x >= g.x) ? -1 : 1; vx = side*0.5; vy = -0.35; mode = 'fly'; bounce.classList.add('aig-fly'); squash(); dir = side;
             say(pick(spicy(['Nope!','Seen it.','Not today, rock.'],['Oh HELL no.'])), 900, true); lookAt(t.x, t.y, 900);
             continue;
           }
+        }
+        if(t.heavy && Math.abs(t.x - g.x) < (t.heavy === 'bucket' ? 46 : 28) && by >= g.r.top && t.y < g.r.bottom){
+          removeTrap(t); playToolSound(t.tool); spawnDust(t.x, by); shakeScreen();
+          if(t.heavy === 'bucket'){
+            if(onFire){ extinguish('soaked'); }
+            for(var wi=0; wi<26; wi++) fxEmit({ x: g.x + (Math.random()-0.5)*36, y: g.r.top + Math.random()*20, vx:(Math.random()-0.5)*0.18, vy:0.05+Math.random()*0.15, size:2+Math.random()*3, color:'rgba(120,190,255,.85)', ttl:700, shape:'dot', g:0.0016 });
+            slideUntil = performance.now() + 2500;
+            applyToolHit(t.tool, t.x, g.r.top+10, 0.7);
+            say(pick(spicy(['COLD. COLD.','Who threw-- it is water. It is cold water.','I am soaked.'],['Cold as hell!'])), 2000, true);
+          } else {
+            applyToolHit(t.tool, t.x, g.r.top, 1.6); squash(); hitStop(110); slowMo(0.4, 500);
+            powBurst(t.x, g.r.top, ['CLANG','FLAT','ACME']);
+            say(pick(['Cartoon physics.','An ANVIL. Really.','Flat. I am flat.']), 2000, true);
+            achieve('acme');
+          }
+          continue;
         }
         if(t.isBox && Math.abs(t.x - g.x) < 30 && by >= g.r.top + 10 && t.y < g.r.bottom){ removeTrap(t); playToolSound(t.tool); applyToolHit(t.tool, t.x, g.r.top, 0.01); boxHim(); continue; }
         if(Math.abs(t.x - g.x) < 24 && by >= g.r.top && t.y < g.r.bottom){
@@ -18687,6 +18734,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           continue;
         }
         if((onGround && Math.abs(t.x - g.x) < 22 && ts - t.born > 500) || cloneOnTrap(t, ts)){ detonate(t, 105, 1.6, true); continue; }
+      } else if(t.kind === 'spring'){
+        if(onGround && Math.abs(t.x - g.x) < 22 && ts - t.born > 400){
+          playToolSound(t.tool); removeTrap(t);
+          vy = -1.9; vx = (Math.random()-0.5)*0.3; rotVel = (Math.random()-0.5)*1.4; mode='fly'; bounce.classList.add('aig-fly'); squash();
+          spawnFloatText('BOING', 'bad', 8); applyToolHit(t.tool, g.x, g.y, 0.8);
+          continue;
+        }
       } else if(t.kind === 'oil'){
         if(mode === 'walk' && Math.abs(t.x - g.x) < 24 && ts - (t.slidAt||0) > 2500){
           t.slidAt = ts; slideUntil = performance.now() + 2500;
@@ -18811,6 +18865,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'rs': shockwave(cx, fy - 4, 160); for(var ri=0;ri<20;ri++) fxEmit({ x: cx - dirOf(x)*20, y: fy - 4, vx: -dirOf(x)*0.2*Math.random(), vy: -0.05 - Math.random()*0.1, size: 5 + Math.random()*6, color:'rgba(200,200,205,.6)', ttl: 900, shape:'smoke', drag:0.98 }); break;
       case 'k04': tornado(cx, cy); break;
       case 'quattro': confettiRain(cx, cy - 40, 30); shockwave(cx, cy, 90); heartsUp(cx, cy - 10, 4); break;
+      case 'cake': confettiRain(cx, cy - 30, 18); heartsUp(cx, cy - 10, 3); break;
+      case 'sax': for(var ni=0;ni<8;ni++) fxEmit({ x: cx + (Math.random()-0.5)*30, y: cy, vx:(Math.random()-0.5)*0.03, vy:-0.05, size:4, color:'#FFD166', ttl:1400, shape:'rect', sway:true, phase:ni }); break;
       default: break;
     }
   }
@@ -18955,6 +19011,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'rod_knock',  name:'Rod Knock',   desc:'25 KOs. Rebuild time.' },
     { id:'vorsprung',  name:'Vorsprung',   desc:'Unlocked every secret tool.' },
     { id:'arsonist',   name:'Arsonist',    desc:'Set him on fire. You monster.' },
+    { id:'acme',       name:'ACME',        desc:'Dropped an anvil on him.' },
     { id:'accelerant', name:'Accelerant',  desc:'Poured oil on the fire.' },
     { id:'hydroplane',  name:'Hydroplane',  desc:'Oil slick into a boost. No traction at all.' },
     { id:'limp_mode',   name:'Limp Mode',   desc:'Check engine, then boost. He crawled.' },
@@ -21351,6 +21408,28 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     bossPlayHits = 0; bossWindowStart = performance.now();
   }
   window.aiGuyBoss = function(){ summonBoss('play'); };                  // for testing / for fun
+
+  // ---------------- New tool behaviours ----------------
+  function magnetPull(x, y){
+    var t = findTool('magnet'); if(!t) return;
+    playToolSound(t);
+    var r = guyRect(), cx = r.left + r.width/2, cy = r.top + 30;
+    // yank him toward the cursor
+    var dx = x - cx, dy = y - cy, d = Math.max(1, Math.hypot(dx, dy));
+    vx = (dx/d) * 1.5; vy = (dy/d) * 1.2 - 0.25; rotVel = (dx > 0 ? 1 : -1) * 0.8;
+    if(mode !== 'fly'){ mode = 'fly'; bounce.classList.add('aig-fly'); }
+    for(var i=0;i<16;i++){
+      var a = Math.random()*Math.PI*2, dist = 40 + Math.random()*50;
+      fxEmit({ x: x + Math.cos(a)*dist, y: y + Math.sin(a)*dist, vx: -Math.cos(a)*0.22, vy: -Math.sin(a)*0.22, size: 2, color:'rgba(150,200,255,.8)', ttl: 380, shape:'line', drag:1 });
+    }
+    applyToolHit(t, cx, cy, 0.9);
+  }
+  function dropHeavy(tool, x){
+    var el = document.createElement('div'); el.className = 'aig-boulder'; el.textContent = tool.icon;
+    el.style.left = (x-18)+'px'; el.style.top = '-50px'; el.style.fontSize = tool.id === 'anvil' ? '34px' : '30px';
+    document.body.appendChild(el);
+    traps.push({ kind:'boulder', el:el, x:x, y:-50, vy:0, tool:tool, born:performance.now(), heavy: tool.id });
+  }
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
