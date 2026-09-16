@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.91';
+var TGK_CC_VERSION='v2.92';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16884,6 +16884,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-dyno-needle{position:absolute;top:-3px;width:3px;height:22px;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.9);border-radius:2px}
 .aig-dyno-zone{position:absolute;top:0;bottom:0;left:78%;width:12%;background:rgba(255,255,255,.22);border-left:1px solid rgba(255,255,255,.6);border-right:1px solid rgba(255,255,255,.6)}
 .aig-dyno small{display:block;margin-top:8px;color:#6b7076;font-size:10px}
+.aig-peek{position:fixed;z-index:2044;pointer-events:none;font-size:11px;color:#9CA3AF;font-family:var(--font,inherit)}
+.aig-hidespot{position:fixed;z-index:847;pointer-events:none;border:2px dashed rgba(255,209,102,.5);border-radius:8px;opacity:0;transition:opacity .2s}
+.aig-hidespot.on{opacity:1}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17167,7 +17170,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit || hideSpot;
   }
   function tick(ts){
     loopArmed = false;
@@ -17217,9 +17220,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     } else if(mode==='walk' && !popOpen && ts > pauseUntil){
       var maxX = Math.max(20, window.innerWidth - 60);
       if(hiding){
-        // sneak to the nearest edge, hang there half off-screen, then wander back
-        if(hideHold){
-          if(ts > hideHold){ hiding = false; hideHold = 0; dir = pos < 0 ? 1 : -1; }
+        if(hideSpot){
+          hideTick(ts);
+        } else if(hideHold){
+          if(ts > hideHold){ stopHiding(); dir = pos < 0 ? 1 : -1; }
         } else {
           var hd = hideTarget > pos ? 1 : -1;
           pos += hd * 0.06 * dt; dir = hd;
@@ -19094,12 +19098,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!settings.hide || hiding || heldTool || clones.length) return;
     if(performance.now() - lastHitAt < 25000) return;
     if(Math.random() > 0.0006) return;
-    hiding = true; hideHold = 0;
-    hideTarget = (pos < window.innerWidth/2) ? -30 : window.innerWidth - 16;
+    startHiding();
   }
   function unhide(){
     if(!hiding) return;
-    hiding = false; hideHold = 0;
+    stopHiding();
     if(pos < 4){ pos = 6; dir = 1; } else if(pos > window.innerWidth - 60){ pos = window.innerWidth - 62; dir = -1; }
   }
   function maybeIdleAnim(ts){
@@ -20055,7 +20058,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       .catch(function(){ if(done) return; done = true; clearTimeout(timer); brainBusy = false; brainFails++; fb(); });
   }
   window.aiGuyThink = think;
-  window.aiGuyDebug = { sleep: fallAsleep, wake: wakeUp, skit: startSkit, state: function(){ return { mode:mode, asleep:asleep, skit:skit?skit.kind:null, anger:Math.round(anger), mad:madOn, fight:fightOn, stolen:cursorStolen, truce_s: Math.max(0, Math.ceil((fightCooldownUntil-performance.now())/1000)), steal_on: settings.steal !== false, fight_on: settings.fight !== false }; } };
+  window.aiGuyDebug = { sleep: fallAsleep, wake: wakeUp, skit: startSkit, hide: startHiding, unhide: unhide, cover: function(){ return hideSpot ? (hideSpot.el.id || hideSpot.el.className) : null; }, state: function(){ return { mode:mode, asleep:asleep, skit:skit?skit.kind:null, anger:Math.round(anger), mad:madOn, fight:fightOn, stolen:cursorStolen, truce_s: Math.max(0, Math.ceil((fightCooldownUntil-performance.now())/1000)), steal_on: settings.steal !== false, fight_on: settings.fight !== false }; } };
 
   // ---------------- Two players: teammates' guys on your screen (Supabase Realtime broadcast) ----------------
   // Positions are broadcast as fractions of the viewport so a 1440px screen and a 1920px screen agree on
@@ -20473,7 +20476,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         else { driveWalkTo(curX - 23, function(){ say(pick(['Brought you something.','Gift. For you.','Catch.']), 1200); throwAtCursor(); }); }
         drives.mischief = 0; break;
       case 'pride':     bounce.classList.add('aig-happy'); setTimeout(function(){ bounce.classList.remove('aig-happy'); }, 1800); confettiRain(pos+23, posY-30, 14); say(pick(['Look at me. LOOK at me.','Employee of the month. Unofficially.','Strut.']), 1600); drives.pride = 0; break;
-      case 'safety':    if(!hiding && settings.hide !== false){ hiding = true; hideHold = 0; hideTarget = (pos < window.innerWidth/2) ? -30 : window.innerWidth - 16; say(pick(['I am going over here now.','Nope. Corner.']), 1400); } drives.safety *= 0.5; break;
+      case 'safety':    if(!hiding && settings.hide !== false){ startHiding(); say(pick(['I am going over here now.','Nope. Behind this.']), 1400); } drives.safety *= 0.5; break;
     }
   }
   function driveWalkTo(x, done){
@@ -20498,6 +20501,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       else if(/dance|celebrate|party/.test(lower)){ act = 'dance'; line = pick(['Watch this.','Strut mode.']); }
       else if(/who hit|most|leader|score/.test(lower)){ var P = playerOf(); line = 'You: '+P.hits+' hits, '+P.praises+' praises. Favorite: '+(favTool(P)||'undecided')+'.'; }
       else if(/how are|you ok|feel/.test(lower)){ line = anger > 60 ? pick(spicy(['Mad. Obviously.','Been better. Been hit less.'],['Pissed, since you ask.'])) : pick(['Alive. Employed. Walking.','Fine until you reach for the tray.']); }
+      else if(/hide|duck|disappear/.test(lower)){ act = 'hide'; line = pick(['Say no more.','Hiding. You saw nothing.','Stealth mode.']); }
       else if(/hello|hi\b|hey|yo\b/.test(lower)){ act = 'wave'; line = pick(['Hey.','Yo.','Present.']); }
       else line = pick(['Noted.','Write that in Notes.','Is that a request or a threat?','Cool. Anyway.','I heard you. I am choosing not to respond.']);
       talkDo(act); sayTalk(line);
@@ -20531,7 +20535,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'dance': bounce.classList.add('aig-happy'); setTimeout(function(){ bounce.classList.remove('aig-happy'); }, 1800); confettiRain(pos+23, posY-30, 18); break;
       case 'sulk':  sulkUntil = performance.now() + 20000; bounce.classList.add('aig-sulk'); break;
       case 'attack': addAnger(30); if(anger >= 85) startFightBack(); else throwAtCursor(); break;
-      case 'hide':  if(settings.hide !== false){ hiding = true; hideHold = 0; hideTarget = (pos < window.innerWidth/2) ? -30 : window.innerWidth - 16; } break;
+      case 'hide':  if(settings.hide !== false) startHiding(); break;
       case 'wave':  blockUntil = performance.now() + 700; vy = -0.25; if(mode==='walk'){ mode='fly'; bounce.classList.add('aig-fly'); } break;
     }
   }
@@ -20946,6 +20950,83 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     badStreak = Math.max(0, badStreak - 1);
   }
 
+  // ---------------- Hiding behind real page furniture ----------------
+  // He picks an actual element on screen (a card, a banner, the sidebar), ducks behind it by
+  // dropping his z-index below the page, and peeks around the edge. Scroll the page and his
+  // cover slides away -- he notices, panics, and scrambles to a new one.
+  var HIDE_SEL = '.mod-card, .hero-card, .sec-head, #cc-topbar, .tbx-card, .card, .panel, .cc-hero';
+  var hideSpot = null, peekPhase = 0, nextPeekAt = 0, lastCoverCheck = 0, scrambleUntil = 0, peekSide = 1;
+  function findCover(){
+    var best = null, W = window.innerWidth, gy = groundY();
+    var els = document.querySelectorAll(HIDE_SEL);
+    for(var i=0;i<els.length;i++){
+      var el = els[i]; if(el.closest && el.closest('#aig-pop, #aig-modal-overlay')) continue;
+      var r = el.getBoundingClientRect();
+      if(r.width < 90 || r.height < 50) continue;
+      if(r.bottom < gy - 30 || r.top > gy + 80) continue;          // must reach his floor level
+      if(r.right < 0 || r.left > W) continue;
+      var d = Math.abs((r.left + r.width/2) - (pos + 23));
+      if(!best || d < best.d) best = { el: el, d: d, r: r };
+    }
+    return best;
+  }
+  function startHiding(){
+    var c = findCover();
+    if(!c){ hiding = true; hideHold = 0; hideTarget = (pos < window.innerWidth/2) ? -30 : window.innerWidth - 16; return; }   // fall back to the screen edge
+    hideSpot = { el: c.el, side: (pos + 23) < (c.r.left + c.r.width/2) ? -1 : 1 };
+    hiding = true; hideHold = 0;
+    var r = c.el.getBoundingClientRect();
+    hideTarget = hideSpot.side < 0 ? (r.left - 18) : (r.right - 28);
+    root.style.zIndex = '1';                                        // behind the page furniture
+    peekSide = hideSpot.side; nextPeekAt = performance.now() + 1800;
+    say(pick(['Nothing to see here.','I was never here.','You did not see me.','Stealth mode.']), 1600);
+  }
+  function stopHiding(){
+    hiding = false; hideHold = 0; hideSpot = null;
+    if(root) root.style.zIndex = '';
+    bounce.style.clipPath = ''; 
+  }
+  function hideTick(ts){
+    if(!hiding || !hideSpot) return;
+    var el = hideSpot.el;
+    if(!el.isConnected){ loseCover('gone'); return; }
+    var r = el.getBoundingClientRect(), gy = groundY();
+    // cover moved out from under him (scroll, layout change, tab switch)
+    if(r.bottom < gy - 40 || r.top > gy + 90 || r.right < 10 || r.left > window.innerWidth - 10){ loseCover('scrolled'); return; }
+    var edge = hideSpot.side < 0 ? (r.left - 18) : (r.right - 28);
+    if(Math.abs(edge - pos) > 6){ pos += Math.sign(edge - pos) * Math.min(Math.abs(edge - pos), 0.12*dt_last); setRootPos(); }
+    // peek: lean out past the edge, look at the cursor, duck back
+    if(ts > nextPeekAt){
+      nextPeekAt = ts + 2600 + Math.random()*3400;
+      peekPhase = 1;
+      var out = hideSpot.side < 0 ? -14 : 14;
+      dir = hideSpot.side < 0 ? -1 : 1;
+      if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
+      bounce.style.transition = 'transform .35s cubic-bezier(.3,1.4,.5,1)';
+      bounce.style.transform = 'translateX('+out+'px)';
+      lookAt(curX, curY, 2200);
+      if(Math.random() < 0.5) say(pick(['...','Are they gone?','Still there. Great.','Psst.','I can see you.']), 1500);
+      setTimeout(function(){
+        if(!hiding) return;
+        bounce.style.transform = 'translateX(0)';
+        setTimeout(function(){ if(bounce) bounce.style.transition = ''; }, 380);
+      }, 1500 + Math.random()*900);
+    }
+  }
+  function loseCover(why){
+    var was = hideSpot; hideSpot = null;
+    if(root) root.style.zIndex = '';
+    bounce.style.transition = ''; bounce.style.transform = '';
+    if(why === 'scrolled'){
+      say(pick(spicy(['HEY. My cover!','Who moved the-- the page MOVED.','That was my spot!','Do not scroll! DO NOT SCROLL.'],['Oh come ON, my goddamn cover.'])), 2000, true);
+      // startled scramble: hop, then sprint for new cover
+      vy = -0.55; vx = (Math.random()<0.5?-1:1)*0.25; mode = 'fly'; bounce.classList.add('aig-fly'); squash();
+      scrambleUntil = performance.now() + 4000;
+      setTimeout(function(){ if(hiding) { var c = findCover(); if(c){ hideSpot = { el: c.el, side: (pos+23) < (c.r.left + c.r.width/2) ? -1 : 1 }; root.style.zIndex = '1'; nextPeekAt = performance.now() + 1200; say(pick(['Better.','This one will do.','Regrouping.']), 1400); } else stopHiding(); } }, 900);
+    } else { stopHiding(); }
+  }
+  window.addEventListener('scroll', function(){ if(hiding && hideSpot) { lastCoverCheck = 0; } }, { passive:true, capture:true });
+
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
     if(!pop || !root) return;
@@ -21156,7 +21237,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     closeDyno(); hideBubble(); clearTimeout(bubbleTimer);
     mpRemotes.slice().forEach(function(r){ mpRemove(r.who); });
     // stop all his states and timers
-    fightOn = false; madOn = false; asleep = false; hiding = false; skit = null; bit = null; badDayOn = false;
+    fightOn = false; madOn = false; asleep = false; skit = null; bit = null; badDayOn = false;
+    try{ stopHiding(); }catch(e){}
     dramaOn = false; carriedBy = null; anger = 0; rageMode = false; rage = 0; plan = null; driveGoal = null;
     clearTimeout(gravTimer); clearTimeout(carryTimer); clearTimeout(hatTimer); clearTimeout(sootTimer);
     gravSign = 1; timeScale = 1; slowUntil = 0; freezeUntil = 0; shakeUntil = 0;
