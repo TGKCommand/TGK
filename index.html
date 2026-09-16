@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.89';
+var TGK_CC_VERSION='v2.91';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -17054,6 +17054,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var lastDir = 0, shakeUntil = 0, shakeAmp = 0, popOpen = false, hiddenPoll = null;
   var walkVel = 0, landBendUntil = 0, lastStepPhase = 0, turnUntil = 0, breath = 0;
   var hitFrom = null;
+  var lastPraiseHopAt = -1e9;
   var blockUntil = 0, shieldEl = null, shieldUntil = 0, recentHits = [], lastDefendAt = -1e9, lastShieldAt = -1e9, defenseStats = { blocks:0, catches:0, parries:0 };
   var anger = 0, madHits = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
   var cursorStolen = false, stolenUntil = 0, stolenEl = null, lastDodgeAt = 0, fleeDir = 1, fleeHopAt = 0;
@@ -17370,6 +17371,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     updateAnger(ts, rawDt);
     updateMind(ts, rawDt);
     updateDrives(ts, rawDt);
+    updateAggro(ts);
+    updateHealing(ts);
+    if(ts - lastDayCheck > 60000){ lastDayCheck = ts; checkNewDay(); }
     if(bit) runBit(ts);
     maybeHeckle(ts);
     directorTick(ts);
@@ -17964,7 +17968,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var hit = x >= r.left-pad && x <= r.right+pad && y >= r.top-pad && y <= r.bottom+pad;
     if(hit && cursorStolen){ returnCursor(true); return; }
     if(hit && heldTool.type === 'bad' && defend(heldTool, x, y)) return;
-    if(hit && madOn && mode === 'walk' && performance.now() - lastDodgeAt > 1200 && Math.random() < 0.35){
+    if(hit && mode === 'walk' && performance.now() - lastDodgeAt > (1500 - badness()*900) && Math.random() < badness()*0.5){
       lastDodgeAt = performance.now();
       vx = (x <= pos+23 ? 1 : -1) * 0.5; vy = -0.3; mode = 'fly'; bounce.classList.add('aig-fly');
       say(pick(spicy(['Nope.','Missed me.','Too slow.','Not today.'],['Nope. Dumbass.','Missed me, jackass.','Too slow. Pathetic.'])), 1000, true);
@@ -18078,12 +18082,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(comboCheck(tool)) return;
     if(tool.id === 'dsg' && !force){ setTimeout(function(){ applyToolHit(tool, hitX, hitY, 0.7); }, 180); }   // paddles: two quick shifts
     if(tool.type === 'bad'){
-      addAnger(7 + tool.weight*3);
+      addAnger((7 + tool.weight*3) * (1 + badness()*0.9));
       trackQuattro(tool);
-      if(madOn){ madHits++; if(madHits >= 3 && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen'){ madHits = 0; startFightBack(); } }
+      if(madOn){ madHits++; if(madHits >= (aggroTier() >= 3 ? 2 : 3) && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen'){ madHits = 0; startFightBack(); } }
       badStreak++;
       hitsSinceRetaliate++;
-      if(hitsSinceRetaliate >= retaliateAt){ setTimeout(retaliate, 350); }
+      if(hitsSinceRetaliate >= Math.max(2, Math.round(retaliateAt - badness()*3))){ setTimeout(retaliate, 350); }
       hitStop(45 + tool.weight*25);
       addRage(10 + tool.weight*4);
       playVoice('hit');
@@ -18119,6 +18123,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // ---- props that stick to him ----
   var splats = [];
   function addSplat(kind){
+    // (splats[] is the list healing walks back through)
     if(!headEl) return;
     var s = document.createElement('div');
     s.className = 'aig-splat';
@@ -18439,6 +18444,21 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
 
   function applyImpulse(tool, hitX, hitY, force){
+    // Praise should never launch him. He reacts in place: a happy hop, a little lean, nothing more.
+    if(tool && tool.type === 'good'){
+      if(mode === 'walk'){
+        var nowP = performance.now();
+        if(nowP - lastPraiseHopAt > 900){
+          lastPraiseHopAt = nowP;
+          vy = -(0.22 + (tool.weight||1)*0.05); vx = 0; rotVel = 0;
+          mode = 'fly'; bounce.classList.add('aig-fly');
+        }
+      } else {
+        vy -= 0.06; vx *= 0.92;                       // mid-air praise: a gentle nudge, no spin
+      }
+      squash();
+      return;
+    }
     var F = force || 1;
     if(mode === 'drag' || mode === 'frozen') return;
     var r = root.getBoundingClientRect();
@@ -19577,14 +19597,57 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     sbFetch('/rest/v1/ai_guy_events', { method:'POST', headers:{ 'apikey': TGK_SB_KEY, 'Authorization':'Bearer '+TGK_SB_KEY, 'Content-Type':'application/json', 'Prefer':'return=minimal' }, body: JSON.stringify(rows) })
       .catch(function(){ sharedOk = false; sharedQueue = []; });
   }
+  // Daily board resets at local midnight; all-time is kept underneath.
+  // Queries ai_guy_events directly for today's window, so no schema change is needed.
+  var lbCache = { at: 0, today: null, all: null };
+  function dayStartISO(){ var d = new Date(); d.setHours(0,0,0,0); return d.toISOString(); }
+  function msToMidnight(){ var d = new Date(); d.setHours(24,0,0,0); return d - Date.now(); }
+  function tallyRows(rows){
+    var by = {};
+    (rows||[]).forEach(function(r){
+      var k = r.user_email || 'anonymous';
+      var e = by[k] || (by[k] = { user_email:k, hits:0, praises:0, kos:0 });
+      if(r.kind === 'bad') e.hits++; else if(r.kind === 'good') e.praises++; else if(r.kind === 'ko') e.kos++;
+    });
+    return Object.keys(by).map(function(k){ return by[k]; }).sort(function(a,b){ return (b.hits+b.kos*3) - (a.hits+a.kos*3); });
+  }
+  function lbTable(rows, title, note){
+    if(!rows || !rows.length) return '<div style="font-size:10px;color:#6b7076;letter-spacing:.06em;text-transform:uppercase;margin:6px 0 4px">'+title+'</div><div style="font-size:11px;color:#6b7076">Nothing yet'+(note?' \u00b7 '+note:'')+'.</div>';
+    var me = sharedEmail();
+    var medal = ['\u{1F947}','\u{1F948}','\u{1F949}'];
+    return '<div style="font-size:10px;color:#6b7076;letter-spacing:.06em;text-transform:uppercase;margin:6px 0 4px;display:flex;justify-content:space-between"><span>'+title+'</span>'+(note?'<span style="color:#4a4f55;text-transform:none;letter-spacing:0">'+note+'</span>':'')+'</div>' +
+      rows.slice(0,6).map(function(r, i){
+        var nm = String(r.user_email||'').replace(/@.*/,'').replace(/[<>&]/g,'');
+        var s = (typeof shirtFor === 'function') ? shirtFor(r.user_email) : { hi:'#f0f0f0' };
+        var mine = r.user_email === me;
+        return '<div class="aig-lb-row"'+(mine?' style="background:rgba(255,255,255,.04);border-radius:4px"':'')+'><span>'+(medal[i]||(i+1)+'.')+' <b style="color:'+s.hi+'">'+nm+'</b>'+(mine?' <span style="color:#6b7076">(you)</span>':'')+'</span><span>'+(r.hits||0)+' hits \u00b7 '+(r.praises||0)+' praises \u00b7 '+(r.kos||0)+' KOs</span></div>';
+      }).join('');
+  }
+  function renderLb(into){
+    var hrs = Math.floor(msToMidnight()/3600000), mins = Math.round((msToMidnight()%3600000)/60000);
+    var resetIn = hrs > 0 ? ('resets in '+hrs+'h '+mins+'m') : ('resets in '+mins+'m');
+    into.innerHTML = lbTable(lbCache.today, 'Today', resetIn) + lbTable(lbCache.all, 'All time', '');
+  }
   function loadLeaderboard(into){
     if(!sharedOk){ into.innerHTML = ''; return; }
-    sbFetch('/rest/v1/ai_guy_leaderboard?select=*&order=hits.desc&limit=6').then(function(rows){
-      if(!rows || !rows.length){ into.innerHTML = '<div style="font-size:11px;color:#6b7076">No shared scores yet.</div>'; return; }
-      into.innerHTML = '<div style="font-size:10px;color:#6b7076;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Team leaderboard</div>' + rows.map(function(r, i){
-        return '<div class="aig-lb-row"><span>'+(i+1)+'. <b>'+String(r.user_email||'').replace(/@.*/,'').replace(/[<>&]/g,'')+'</b></span><span>'+(r.hits||0)+' hits \u00b7 '+(r.praises||0)+' praises \u00b7 '+(r.kos||0)+' KOs</span></div>';
-      }).join('');
+    if(lbCache.today && Date.now() - lbCache.at < 30000){ renderLb(into); return; }
+    into.innerHTML = '<div style="font-size:11px;color:#6b7076">Loading scores...</div>';
+    Promise.all([
+      sbFetch('/rest/v1/ai_guy_events?select=user_email,kind&created_at=gte.'+encodeURIComponent(dayStartISO())+'&limit=5000').catch(function(){ return null; }),
+      sbFetch('/rest/v1/ai_guy_leaderboard?select=*&order=hits.desc&limit=6').catch(function(){ return null; })
+    ]).then(function(res){
+      if(res[0] === null && res[1] === null){ sharedOk = false; into.innerHTML = ''; return; }
+      lbCache = { at: Date.now(), today: tallyRows(res[0]), all: res[1] || [] };
+      renderLb(into);
     }).catch(function(){ sharedOk = false; into.innerHTML = ''; });
+  }
+  // Fresh day, fresh race: he calls it at midnight and when the first hit of a new day lands.
+  var lbDay = new Date().toDateString();
+  function checkNewDay(){
+    var d = new Date().toDateString();
+    if(d === lbDay) return;
+    lbDay = d; lbCache = { at: 0, today: null, all: null };
+    if(window.aiGuyIsOn && window.aiGuyIsOn()) say(pick(['New day. Scores are back to zero.','Leaderboard reset. Everyone is innocent again.','Clean slate. For about ten minutes.']), 3000, true);
   }
   function todayHtml(){
     var dk = new Date().toISOString().slice(0,10);
@@ -19623,7 +19686,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(anger >= 85 && !fightOn && !badDayOn && settings.fight !== false && performance.now() > fightCooldownUntil && mode !== 'frozen') startFightBack();
   }
   function updateAnger(ts, rawDt){
-    if(anger > 0 && !fightOn){ anger = Math.max(0, anger - rawDt*0.0015); if(madOn && anger < 55){ madOn = false; bounce.classList.remove('aig-mad'); } }
+    if(anger > 0 && !fightOn){ anger = Math.max(0, anger - rawDt*(performance.now() - lastHitAt > 45000 ? 0.0055 : 0.0015)); if(madOn && anger < 55){ madOn = false; bounce.classList.remove('aig-mad'); } }
     if(madOn && ts > nextSteamAt){
       nextSteamAt = ts + (perf.on ? 700 : 380);
       var s = document.createElement('div'); s.className = 'aig-steam';
@@ -19636,7 +19699,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   var fightHits = 0;
   function startFightBack(){
-    fightOn = true; fightUntil = performance.now() + 10000; fightHits = 0;
+    fightOn = true; fightUntil = performance.now() + 10000 + badness()*8000; fightHits = 0;
     unhide(); if(mode === 'frozen') thawHim();
     remember('fought back', '');
     think('you are about to fight back and charge the user\'s cursor', '', pick(spicy(['Your turn.','Come here.','I am done being the punching bag.','Hold still.'],['Your turn, asshole.','Get the hell over here.','I am done being your goddamn punching bag.','Hold STILL, damn it.'])), 1800);
@@ -19655,7 +19718,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     say(pick(spicy(['...whatever.','I feel better. You look worse.','We are not friends right now.','Do not talk to me.'],['...whatever, man.','Screw this. Screw all of it.','We are not friends right now. Ass.','Do not talk to me. I mean it, damn it.'])), 2600, true);
   }
   function fightStrike(){
-    if(!fightOn || performance.now() - lastStrikeAt < 900) return;
+    if(!fightOn || performance.now() - lastStrikeAt < (1100 - badness()*500)) return;
     lastStrikeAt = performance.now(); fightHits++;
     if(mode === 'fly'){ vx = (pos+23 < curX ? -1 : 1) * 0.35; vy = Math.min(vy, -0.2); }
     var hit = document.createElement('div'); hit.className = 'aig-cursorhit'; hit.style.left = curX+'px'; hit.style.top = curY+'px';
@@ -20284,7 +20347,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(recentHits.length >= 4 && !shieldEl && now - lastShieldAt > 14000){ lastShieldAt = now; raiseShield(); }
     var alert = now - lastHitAt < 6000;
     var P = playerOf();
-    var pBlock = (madOn ? 0.32 : (alert ? 0.2 : 0.07)) * defW(tool.id);
+    var pBlock = (0.05 + badness()*0.34) * (alert ? 1.25 : 1) * defW(tool.id);
     if(now < preGuardUntil) pBlock += 0.2;              // he saw you pick your favorite
     if(isRapid(P) && (alert || madOn)) pBlock += 0.1;   // learned your rhythm
     if(trusts(P)) pBlock *= 0.4;                        // he does not brace against friends
@@ -20823,6 +20886,65 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // big moments re-plan immediately
   function replanSoon(reason){ nextPlanAt = 0; setTimeout(function(){ askDirector(reason); }, 1200); }
   window.aiGuyPlan = function(){ return { plan: plan, opinions: aigState.opinions||{}, drives: drivesSnapshot() }; };
+
+  // ---------------- Aggression curve ----------------
+  // "How bad a day is he having" drives everything hostile: anger gain, defence, dodging,
+  // how fast he snaps, how hard he hits back. Praise and time pull it down.
+  function badness(){
+    var b = 0;
+    b += Math.min(1, anger/100) * 0.45;                               // current anger
+    b += Math.min(1, (aigState.stats.ko||0) / 12) * 0.12;             // lifetime beatings
+    b += Math.min(1, bandaids.length / BANDAID_SPOTS.length) * 0.13;  // current damage
+    b += Math.min(1, badStreak / 4) * 0.15;                           // hits since last praise
+    var P = playerOf(); var ratio = P.hits / Math.max(1, P.hits + P.praises*3);
+    b += Math.min(1, ratio) * 0.15;                                   // how this person treats him
+    if(performance.now() < sulkUntil) b += 0.08;
+    if(performance.now() - lastPraiseAt < 15000) b -= 0.25;           // recent kindness takes the edge off
+    return Math.max(0, Math.min(1, b));
+  }
+  function aggroTier(){ var b = badness(); return b < 0.25 ? 0 : b < 0.5 ? 1 : b < 0.75 ? 2 : 3; }
+  var lastTier = 0, tierSaidAt = 0;
+  function updateAggro(ts){
+    var t = aggroTier();
+    if(t !== lastTier){
+      var up = t > lastTier; lastTier = t;
+      if(up && ts - tierSaidAt > 12000){
+        tierSaidAt = ts;
+        if(t === 1) say(pick(['Okay, I am noticing a pattern.','That is two. I am counting.','Careful.']), 1800);
+        else if(t === 2) say(pick(spicy(['I am done being polite.','You are on thin ice.','My patience has a torque spec.'],['I am done being fucking polite.'])), 2200, true);
+        else if(t === 3){ say(pick(spicy(['ENOUGH.','That is IT. No more nice mascot.','I am not the punching bag today.'],['ENOUGH. Goddamn it, enough.'])), 2400, true); shakeScreen(); tone(90,.35,'sawtooth',.06); }
+      }
+      if(t >= 2 && !madOn && anger < 70){ anger = Math.max(anger, 72); }   // tier 2 forces the mad state on
+    }
+  }
+
+  // ---------------- Self-healing ----------------
+  // Left alone he patches himself up: bandaids come off one at a time, splats wipe away,
+  // soot dusts off, anger bleeds out. Getting hit resets the clock.
+  var nextHealAt = 0, lastDayCheck = 0;
+  function updateHealing(ts){
+    if(ts < nextHealAt) return;
+    nextHealAt = ts + 20000;
+    var quiet = performance.now() - lastHitAt;
+    if(quiet < 45000 || mode === 'frozen' || fightOn || cursorStolen) return;
+    var did = null;
+    if(bandaids.length){
+      var b = bandaids.pop(); if(b) b.remove(); saveCond(); did = 'bandaid';
+    } else if(splats.length){
+      var s = splats.pop(); if(s) s.remove(); did = 'splat';
+    } else if(bounce.classList.contains('aig-sooty')){
+      bounce.classList.remove('aig-sooty'); saveCond(); did = 'soot';
+    } else if(hatKind === 'cone'){ clearHat('cone'); did = 'cone'; }
+    if(!did) return;
+    // a small visible beat so it does not just vanish
+    fxBurst(pos + 23, posY + 30, 6, ['#4ADE9F','#fff'], { speed: 0.05, g: -0.0002, size: 3, ttl: 700 });
+    tone(660, .06, 'sine', .025); tone(880, .08, 'sine', .02, .05);
+    if(Math.random() < 0.45) say(pick([
+      'Walked that one off.', 'Better. Slightly.', 'Self-care.', 'Buffed it out.',
+      'I heal. Slowly. Like a warranty claim.', 'Good as new. Ish.'
+    ]), 1800);
+    badStreak = Math.max(0, badStreak - 1);
+  }
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
