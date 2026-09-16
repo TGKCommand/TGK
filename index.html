@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.92';
+var TGK_CC_VERSION='v2.97';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16887,6 +16887,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-peek{position:fixed;z-index:2044;pointer-events:none;font-size:11px;color:#9CA3AF;font-family:var(--font,inherit)}
 .aig-hidespot{position:fixed;z-index:847;pointer-events:none;border:2px dashed rgba(255,209,102,.5);border-radius:8px;opacity:0;transition:opacity .2s}
 .aig-hidespot.on{opacity:1}
+.aig-cigar{position:absolute;left:26px;top:30px;width:22px;height:8px;z-index:7;pointer-events:none;background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEIAAAAYCAYAAABOQSt5AAAAm0lEQVR42mNgGAWjYBSMglEwCogFjDVhJv+xSURFyRHUvGzZowFxtFduF0E1VrZOjKSYyTSaFkYDAgWwDFeP/c9U/k+wXJh+l3E0RYxmDRxZ49GLT2RrpkQvXUG8N4K9cOtoihjNGsO11rhw4QJBNZbIHBzZYTRFjAYEnqxx58UHsjVTopcSYEFMJwqpsTSaIkYDYhSMglFAJQAA0ZUds6DTrB4AAAAASUVORK5CYII=) no-repeat center/contain;image-rendering:pixelated;transform-origin:0% 50%;transform:rotate(-8deg)}
+.aig-facing-left .aig-cigar{left:-2px;transform:scaleX(-1) rotate(8deg);transform-origin:100% 50%}
+.aig-onfire .aig-head img{filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)) drop-shadow(0 0 8px rgba(255,140,40,.95))}
+.aig-onfire .aig-body{background:linear-gradient(180deg,#5a2a12,#31160a)!important}
+.aig-flame{position:absolute;pointer-events:none;z-index:8;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 75%,#fff2b0,#ffb43c 35%,#ff6a10 65%,rgba(255,90,10,0) 78%);animation:aigFlick .18s steps(2) infinite alternate;mix-blend-mode:screen}
+@keyframes aigFlick{from{transform:scaleY(1) translateY(0)}to{transform:scaleY(1.18) translateY(-2px)}}
+.aig-scorch{position:fixed;z-index:837;pointer-events:none;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(0,0,0,0),rgba(30,18,10,.55),rgba(0,0,0,0));transition:opacity 2s;opacity:.8}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17000,6 +17007,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       <div class="aig-neck"></div>
       <div class="aig-head"><img src="data:image/png;base64,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" alt="" aria-hidden="true"></div>
       <div class="aig-body"><div class="aig-logo"></div></div>
+      <div class="aig-cigar" style="display:none"></div>
       <div class="aig-arm l"><div class="aig-seg"><div class="aig-hand"></div></div></div>
       <div class="aig-arm r"><div class="aig-seg"><div class="aig-hand"></div></div></div>
       <div class="aig-legs"><div class="aig-leg"><div class="aig-seg"><div class="aig-foot"></div></div></div><div class="aig-leg"><div class="aig-seg"><div class="aig-foot"></div></div></div></div>
@@ -17170,7 +17178,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit || hideSpot;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit || hideSpot || onFire;
   }
   function tick(ts){
     loopArmed = false;
@@ -17377,6 +17385,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     updateDrives(ts, rawDt);
     updateAggro(ts);
     updateHealing(ts);
+    updateCigar(ts);
+    updateFire(ts, dt);
     if(ts - lastDayCheck > 60000){ lastDayCheck = ts; checkNewDay(); }
     if(bit) runBit(ts);
     maybeHeckle(ts);
@@ -17738,6 +17748,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'banana': tone(620,.08,'sine',.04); tone(240,.16,'sine',.04,.07); break;
       case 'boulder': noiseBurst(.2, 240, 0.22, 2.5); tone(70,.22,'sine',.07); break;
       case 'mine': case 'dynamite': break;
+      case 'fire': noiseBurst(1.0, 1400, 0.2, 1.1); tone(150,.5,'sawtooth',.05); break;
       case 'freeze': tone(1800,.12,'sine',.04); tone(2400,.18,'sine',.03,.08); noiseBurst(.2, 3500, 0.05, 3); break;
       case 'shirt': noiseBurst(.12, 900, 0.14, 3); tone(240,.1,'sine',.04); break;
       case 'car': noiseBurst(.25, 500, 0.24, 2); tone(70,.35,'sawtooth',.07); tone(420,.12,'square',.05,.04); tone(350,.16,'square',.05,.12); break;
@@ -17804,6 +17815,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     dynamite: String.fromCodePoint(0x1F9E8),
     coffee: '\u2615',
     car: String.fromCodePoint(0x1F3CE),
+    fire: String.fromCodePoint(0x1F525), cigar: String.fromCodePoint(0x1F6AC),
     wrench: String.fromCodePoint(0x1F527), boost: String.fromCodePoint(0x1F4A8), cel: String.fromCodePoint(0x1F7E0), oil: String.fromCodePoint(0x1F6E2),
     tire: String.fromCodePoint(0x1F6DE), dyno: String.fromCodePoint(0x1F4C8), rs: String.fromCodePoint(0x1F3C1), dsg: String.fromCodePoint(0x1F3AE),
     k04: String.fromCodePoint(0x1F32A), box: String.fromCodePoint(0x1F4E6), quattro: String.fromCodePoint(0x1F3D4),
@@ -17823,6 +17835,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'pie',      type:'bad',  icon:ICN.pie,      label:'Pie',       weight:1, phrases:['Creamed!','Splat!','Right in the face!','Messy!'] },
     { id:'hammer',   type:'bad',  icon:ICN.hammer,   label:'Hammer',    weight:2, phrases:['Bonk!','Thwack!','Down goes the bot!','Right on the dome!'] },
     { id:'glove',    type:'bad',  icon:ICN.glove,    label:'Punch',     weight:2, phrases:['Pow!','Right hook!','Down for the count!','Ouch!'] },
+    { id:'fire',     type:'bad',  icon:ICN.fire,     label:'Set him on fire', weight:2, phrases:['WOOSH!','Ignition!','Lit!','Fully involved!'] },
     { id:'zap',      type:'bad',  icon:ICN.zap,      label:'Zap',       weight:2, phrases:['Zzzzap!','Shocking!','Sparks fly!','Overloaded!'] },
     { id:'bomb',     type:'bad',  icon:ICN.bomb,     label:'Bomb',      weight:3, phrases:['Kaboom!','Boom!','Blown away!','Flattened!'] },
     { id:'banana',   type:'bad',  kind:'place', icon:ICN.banana,   label:'Banana peel', weight:1, phrases:['Whoops!','Slipped!','Wipeout!','Down he goes!'] },
@@ -18062,6 +18075,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     else { if(aigState.bad >= 100) achieve('century'); }
 
     // Freeze ray: encase him. Light tools clink off the ice; weight 2+ shatters it.
+    if(tool.id === 'freeze' && onFire){ extinguish('frozen'); say(pick(['Oh thank god.','Cold. Good. Cold.']), 1800, true); return; }
+    if(tool.id === 'fire' && mode === 'frozen'){ thawHim(); }
     if(tool.id === 'freeze'){
       if(mode === 'frozen'){ tone(2200,.05,'sine',.03); return; }
       freezeHim();
@@ -18083,6 +18098,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!aigState.stats.bestToday || aigState.stats.bestToday.date !== dk) aigState.stats.bestToday = { date: dk, combo: 0 };
     if(comboCount > aigState.stats.bestToday.combo) aigState.stats.bestToday.combo = comboCount;
     checkUnlocks();
+    if(tool.id === 'fire'){ igniteHim(force); }
     if(comboCheck(tool)) return;
     if(tool.id === 'dsg' && !force){ setTimeout(function(){ applyToolHit(tool, hitX, hitY, 0.7); }, 180); }   // paddles: two quick shifts
     if(tool.type === 'bad'){
@@ -18914,6 +18930,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'recall',     name:'Recall',      desc:'Healed him 5 times. Responsible.' },
     { id:'rod_knock',  name:'Rod Knock',   desc:'25 KOs. Rebuild time.' },
     { id:'vorsprung',  name:'Vorsprung',   desc:'Unlocked every secret tool.' },
+    { id:'arsonist',   name:'Arsonist',    desc:'Set him on fire. You monster.' },
+    { id:'accelerant', name:'Accelerant',  desc:'Poured oil on the fire.' },
     { id:'hydroplane',  name:'Hydroplane',  desc:'Oil slick into a boost. No traction at all.' },
     { id:'limp_mode',   name:'Limp Mode',   desc:'Check engine, then boost. He crawled.' },
     { id:'peak_power',  name:'Peak Power',  desc:'Dyno then boost. Chart goes up.' },
@@ -19558,6 +19576,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       tog('fight', 'He fights back when mad', settings.fight !== false) +
       tog('steal', 'He can steal the cursor', settings.steal !== false) +
       tog('eyes', 'Looks at the cursor', settings.eyes !== false) +
+      tog('cigar', 'Cigar (default: on for Scott)', cigarShouldShow()) +
       tog('brain', 'AI brain (Claude writes his lines)', settings.brain !== false) +
       tog('swear', 'Swears (adults only, no slurs)', settings.swear !== false) +
       tog('mp', 'Teammates\' guys on my screen (realtime)', settings.mp !== false) +
@@ -19573,6 +19592,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(k==='size' || k==='speed') settings[k] = parseFloat(v); else if(k==='carImg' || k==='shirt' || k==='face') settings[k] = String(v||'').trim(); else settings[k] = !!v;
     if(k==='face'){ applyFace(root, sharedEmail(), settings.face); clones.forEach(function(b){ applyFace(b.el, sharedEmail(), settings.face); }); say(pick(['New face, same backorders.','Do I look different? I feel different.','Identity: updated.']), 1600, true); }
     if(k === 'mp'){ if(settings.mp) mpStart(); else mpStop(); }
+    if(k === 'cigar'){ nextPuffAt = 0; }
     saveSettings(); applySettings();
   };
   window.aiGuyHeal = function(){
@@ -19973,6 +19993,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       function(){ var t = T('sling'); vx = (Math.random()<0.5?-1:1)*1.6; vy = -1.2; mode = 'fly'; bounce.classList.add('aig-fly'); say('WHY', 900, true); },
       function(){ hitHim('shirt'); },
       function(){ sendCar(); },
+      function(){ hitHim('fire'); },
       function(){ hitHim('wrench'); }, function(){ hitHim('boost'); }, function(){ hitHim('cel'); }, function(){ rollTire(); },
       function(){ var t = T('oil'); if(t) placeTrap(t, pos + 23 + dir*60); }
     ];
@@ -20766,6 +20787,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!prev.id || now - prev.at > 3500) return false;
     var key = prev.id + '>' + tool.id;
     switch(key){
+      case 'fire>oil': case 'oil>fire':
+        fireUntil = performance.now() + 14000; spawnFloatText('ACCELERANT', 'bad', 10);
+        say(pick(spicy(['WHY WOULD YOU--','Oil! On the FIRE!','That is the opposite of helping!'],['Oil on a fire?! Are you INSANE'])), 2400, true);
+        achieve('accelerant'); return true;
+      case 'fire>boost': case 'boost>fire':
+        spawnFloatText('FLAMETHROWER', 'bad', 10); vx = (curX < pos+23 ? 1 : -1)*1.8; vy=-0.5; mode='fly'; bounce.classList.add('aig-fly');
+        say('I AM A ROCKET', 1800, true); return true;
       case 'oil>boost': case 'oil>wrench':
         slideUntil = now + 4000; vx = (curX < pos+23 ? 1 : -1) * 1.9; vy = -0.1; mode='fly'; bounce.classList.add('aig-fly');
         spawnFloatText('SLIP AND SEND', 'bad', 10); say(pick(spicy(['WHOOOAAA','No traction! NO TRACTION!','This is not quattro!'],['Oh SHIT no grip'])), 2000, true);
@@ -20977,15 +21005,41 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     hiding = true; hideHold = 0;
     var r = c.el.getBoundingClientRect();
     hideTarget = hideSpot.side < 0 ? (r.left - 18) : (r.right - 28);
-    root.style.zIndex = '1';                                        // behind the page furniture
+    applyCoverClip(c.el);                                           // clipped by the card's real rect
     peekSide = hideSpot.side; nextPeekAt = performance.now() + 1800;
     say(pick(['Nothing to see here.','I was never here.','You did not see me.','Stealth mode.']), 1600);
   }
   function stopHiding(){
     hiding = false; hideHold = 0; hideSpot = null;
-    if(root) root.style.zIndex = '';
-    bounce.style.clipPath = ''; 
+    clearCoverClip();
   }
+  // AI Guy lives in a fixed overlay above the page, so z-index can never put him behind a card.
+  // Instead we clip his own box: whatever part of him overlaps the cover is cut away, which reads
+  // exactly like he is standing behind it -- and it tracks the element as the page scrolls.
+  function applyCoverClip(el){
+    if(!root || !el) return;
+    var r = el.getBoundingClientRect(), g = guyRect();
+    var W = g.width, H = g.height;
+    var ovLeft = Math.max(g.left, r.left), ovRight = Math.min(g.right, r.right);
+    if(ovRight <= ovLeft || r.top >= g.bottom || r.bottom <= g.top){ root.style.clipPath = ''; return; }
+    var cutLeft = 0, cutRight = 0, cutBottom = 0;
+    if(r.top <= g.top){
+      // card is taller than him: only the sliver beside its edge shows, full height
+      if(ovLeft <= g.left + 1) cutLeft = Math.max(0, ovRight - g.left);      // card covers his left
+      else cutRight = Math.max(0, g.right - ovLeft);                          // card covers his right
+    } else {
+      // card's top edge is partway down him: his head shows over the top
+      cutBottom = Math.max(0, g.bottom - r.top);
+      if(ovLeft <= g.left + 1) cutLeft = Math.max(0, Math.min(W, ovRight - g.left) - 16);
+      else cutRight = Math.max(0, Math.min(W, g.right - ovLeft) - 16);
+    }
+    if(cutLeft >= W - 2) cutLeft = W - 8;
+    if(cutRight >= W - 2) cutRight = W - 8;
+    if(cutBottom >= H - 2) cutBottom = H - 8;
+    root.style.clipPath = 'inset(0px ' + cutRight.toFixed(1) + 'px ' + cutBottom.toFixed(1) + 'px ' + cutLeft.toFixed(1) + 'px)';
+    root.dataset.clipped = '1';
+  }
+  function clearCoverClip(){ if(root){ root.style.clipPath = ''; delete root.dataset.clipped; } }
   function hideTick(ts){
     if(!hiding || !hideSpot) return;
     var el = hideSpot.el;
@@ -20993,39 +21047,138 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var r = el.getBoundingClientRect(), gy = groundY();
     // cover moved out from under him (scroll, layout change, tab switch)
     if(r.bottom < gy - 40 || r.top > gy + 90 || r.right < 10 || r.left > window.innerWidth - 10){ loseCover('scrolled'); return; }
-    var edge = hideSpot.side < 0 ? (r.left - 18) : (r.right - 28);
+    var edge = (hideSpot.side < 0 ? (r.left - 18) : (r.right - 28)) + (hideSpot.peekOut || 0);
     if(Math.abs(edge - pos) > 6){ pos += Math.sign(edge - pos) * Math.min(Math.abs(edge - pos), 0.12*dt_last); setRootPos(); }
+    applyCoverClip(el);            // re-clip every frame so scrolling slides the mask with the card
     // peek: lean out past the edge, look at the cursor, duck back
     if(ts > nextPeekAt){
       nextPeekAt = ts + 2600 + Math.random()*3400;
       peekPhase = 1;
-      var out = hideSpot.side < 0 ? -14 : 14;
+      var out = hideSpot.side < 0 ? -16 : 16;
       dir = hideSpot.side < 0 ? -1 : 1;
       if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
-      bounce.style.transition = 'transform .35s cubic-bezier(.3,1.4,.5,1)';
-      bounce.style.transform = 'translateX('+out+'px)';
+      hideSpot.peekOut = out;                    // his whole box leans out, so the clip reveals him
       lookAt(curX, curY, 2200);
       if(Math.random() < 0.5) say(pick(['...','Are they gone?','Still there. Great.','Psst.','I can see you.']), 1500);
-      setTimeout(function(){
-        if(!hiding) return;
-        bounce.style.transform = 'translateX(0)';
-        setTimeout(function(){ if(bounce) bounce.style.transition = ''; }, 380);
-      }, 1500 + Math.random()*900);
+      setTimeout(function(){ if(hiding && hideSpot) hideSpot.peekOut = 0; }, 1500 + Math.random()*900);
     }
   }
   function loseCover(why){
     var was = hideSpot; hideSpot = null;
-    if(root) root.style.zIndex = '';
+    clearCoverClip();
     bounce.style.transition = ''; bounce.style.transform = '';
     if(why === 'scrolled'){
       say(pick(spicy(['HEY. My cover!','Who moved the-- the page MOVED.','That was my spot!','Do not scroll! DO NOT SCROLL.'],['Oh come ON, my goddamn cover.'])), 2000, true);
       // startled scramble: hop, then sprint for new cover
       vy = -0.55; vx = (Math.random()<0.5?-1:1)*0.25; mode = 'fly'; bounce.classList.add('aig-fly'); squash();
       scrambleUntil = performance.now() + 4000;
-      setTimeout(function(){ if(hiding) { var c = findCover(); if(c){ hideSpot = { el: c.el, side: (pos+23) < (c.r.left + c.r.width/2) ? -1 : 1 }; root.style.zIndex = '1'; nextPeekAt = performance.now() + 1200; say(pick(['Better.','This one will do.','Regrouping.']), 1400); } else stopHiding(); } }, 900);
+      setTimeout(function(){ if(hiding) { var c = findCover(); if(c){ hideSpot = { el: c.el, side: (pos+23) < (c.r.left + c.r.width/2) ? -1 : 1 }; applyCoverClip(c.el); nextPeekAt = performance.now() + 1200; say(pick(['Better.','This one will do.','Regrouping.']), 1400); } else stopHiding(); } }, 900);
     } else { stopHiding(); }
   }
   window.addEventListener('scroll', function(){ if(hiding && hideSpot) { lastCoverCheck = 0; } }, { passive:true, capture:true });
+
+  // ---------------- The cigar ----------------
+  // Scott's guy smokes. Puffs on a timer, ember brightens, smoke drifts up, and it goes out
+  // (comically) if he gets soaked, frozen or set on fire.
+  var cigarEl = null, nextPuffAt = 0, cigarOn = false;
+  function cigarShouldShow(){ return (settings.cigar === true) || (settings.cigar !== false && myFaceId() === 'scott'); }
+  function updateCigar(ts){
+    if(!cigarEl) cigarEl = root && root.querySelector('.aig-cigar');
+    if(!cigarEl) return;
+    var want = cigarShouldShow() && mode !== 'frozen' && !onFire;
+    if(want !== cigarOn){ cigarOn = want; cigarEl.style.display = want ? '' : 'none'; }
+    if(!want) return;
+    if(ts > nextPuffAt){
+      nextPuffAt = ts + 3000 + Math.random()*4000;
+      var r = guyRect(), sx = r.left + (dir < 0 ? 4 : r.width - 4), sy = r.top + 30*(settings.size||1);
+      for(var i=0;i<(perf.on?3:7);i++){
+        (function(i){ setTimeout(function(){
+          fxEmit({ x: sx + (Math.random()-0.5)*5, y: sy, vx: (dir<0?-1:1)*0.015 + (Math.random()-0.5)*0.01, vy: -0.035 - Math.random()*0.02,
+                   size: 3 + Math.random()*3, color: 'rgba(205,205,210,.42)', ttl: 1500 + Math.random()*900, shape:'smoke', drag:0.995, sway:true, phase:i });
+        }, i*110); })(i);
+      }
+      cigarEl.style.filter = 'brightness(1.45)'; setTimeout(function(){ if(cigarEl) cigarEl.style.filter = ''; }, 450);
+      if(Math.random() < 0.22) say(pick(['*puff*','Do not tell my wife.','This is a lunch break.','Ahh.','Cuban. Probably.']), 1600);
+    }
+  }
+  window.aiGuyCigar = function(on){ settings.cigar = !!on; saveSettings(); };
+
+  // ---------------- Fire ----------------
+  // He goes up, panics, sprints back and forth leaving scorch marks, and eventually
+  // stop-drops-and-rolls it out. Water-ish things and the freeze ray put him out early.
+  var onFire = false, fireUntil = 0, flames = [], nextScorchAt = 0, rolling = false, fireDir = 1, nextFireLineAt = 0;
+  function igniteHim(force){
+    if(onFire || mode === 'frozen') return;
+    onFire = true; rolling = false;
+    fireUntil = performance.now() + 7000 + Math.random()*3000;
+    bounce.classList.add('aig-onfire');
+    for(var i=0;i<5;i++){
+      var f = document.createElement('div'); f.className = 'aig-flame';
+      var w = 10 + Math.random()*10;
+      f.style.width = w+'px'; f.style.height = (w*1.5)+'px';
+      f.style.left = (2 + i*8 + (Math.random()-0.5)*4)+'px';
+      f.style.top = (-8 + Math.random()*36)+'px';
+      f.style.animationDelay = (Math.random()*0.2)+'s';
+      bounce.appendChild(f); flames.push(f);
+    }
+    unhide(); touch(); if(asleep) wakeUp(true);
+    fireDir = (curX > pos+23) ? -1 : 1;
+    addAnger(30);
+    noiseBurst(1.2, 900, 0.16, 0.9); tone(120,.6,'sawtooth',.05);
+    say(pick(spicy(['I AM ON FIRE.','AAAAAH','FIRE! ACTUAL FIRE!','This is a workplace hazard!'],['I am on fucking FIRE'])), 2000, true);
+    remember('set on fire', ''); achieve('arsonist');
+    shakeScreen();
+  }
+  function extinguish(why){
+    if(!onFire) return;
+    onFire = false; rolling = false;
+    bounce.classList.remove('aig-onfire');
+    flames.forEach(function(f){ f.remove(); }); flames = [];
+    var r = guyRect();
+    for(var i=0;i<(perf.on?6:16);i++) fxEmit({ x: r.left+r.width/2 + (Math.random()-0.5)*30, y: r.top+30, vx:(Math.random()-0.5)*0.05, vy:-0.05-Math.random()*0.05, size:6+Math.random()*6, color:'rgba(210,210,215,.5)', ttl:1200, shape:'smoke' });
+    setSooty();
+    noiseBurst(.5, 2200, 0.1, 2);
+    say(pick(spicy(['...that was not great.','I would like to file something.','Everything smells like me.','Out. OUT. Good.'],['Well that was shit.'])), 2400, true);
+  }
+  function updateFire(ts, dt){
+    if(!onFire) return;
+    if(ts > fireUntil){ extinguish('burnt out'); return; }
+    var left = fireUntil - ts;
+    // last 2.5s: stop, drop and roll
+    if(left < 2500 && !rolling){
+      if(mode !== 'walk'){ rolling = true; rotVel = 0.9; say(pick(['STOP. DROP.','Rolling! ROLLING!','I was trained for this.']), 1600, true); }
+    }
+    if(left < 2500 && !rolling && mode === 'walk'){
+      rolling = true;
+      say(pick(['STOP. DROP.','Rolling! ROLLING!','I was trained for this.']), 1600, true);
+      rotVel = 0.9; vx = (Math.random()<0.5?-1:1)*0.2; vy = -0.2; mode = 'fly'; bounce.classList.add('aig-fly');
+    }
+    // panic sprint while alight
+    if(mode === 'walk' && !rolling){
+      var W = window.innerWidth;
+      if(pos < 10) fireDir = 1; else if(pos > W - 56) fireDir = -1;
+      else if(Math.random() < 0.012) fireDir *= -1;
+      dir = fireDir; pos += fireDir * 0.24 * dt;
+      setRootPos();
+      if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
+    }
+    // embers + scorch marks on the floor
+    var r = guyRect();
+    for(var i=0;i<(perf.on?1:2);i++)
+      fxEmit({ x: r.left + Math.random()*r.width, y: r.top + 10 + Math.random()*30, vx:(Math.random()-0.5)*0.03, vy:-0.06-Math.random()*0.05,
+               size: 2+Math.random()*3, color: Math.random()<0.5 ? 'rgba(255,170,60,.85)' : 'rgba(255,90,20,.8)', ttl: 500+Math.random()*400, shape:'dot', drag:0.99 });
+    if(ts > nextScorchAt && mode === 'walk'){
+      nextScorchAt = ts + 260;
+      var s = document.createElement('div'); s.className = 'aig-scorch';
+      s.style.left = (pos - 6)+'px'; s.style.top = (floorY()-3)+'px'; s.style.width = '56px';
+      document.body.appendChild(s);
+      setTimeout(function(){ s.style.opacity = '0'; setTimeout(function(){ s.remove(); }, 2100); }, 4000);
+    }
+    if(ts > nextFireLineAt){
+      nextFireLineAt = ts + 2200;
+      say(pick(spicy(['WATER. SOMEONE.','Still on fire!','This is fine. THIS IS NOT FINE.','Where is the extinguisher?!','Not the beard! NOT THE BEARD!'],['Somebody get a goddamn hose'])), 1600, true);
+    }
+  }
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
@@ -21239,6 +21392,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     // stop all his states and timers
     fightOn = false; madOn = false; asleep = false; skit = null; bit = null; badDayOn = false;
     try{ stopHiding(); }catch(e){}
+    try{ if(onFire) extinguish('off'); }catch(e){}
+    document.querySelectorAll('.aig-scorch').forEach(function(el){ el.remove(); });
+    try{ clearCoverClip(); }catch(e){}
     dramaOn = false; carriedBy = null; anger = 0; rageMode = false; rage = 0; plan = null; driveGoal = null;
     clearTimeout(gravTimer); clearTimeout(carryTimer); clearTimeout(hatTimer); clearTimeout(sootTimer);
     gravSign = 1; timeScale = 1; slowUntil = 0; freezeUntil = 0; shakeUntil = 0;
