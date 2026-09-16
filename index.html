@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.07';
+var TGK_CC_VERSION='v3.08';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16887,8 +16887,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-peek{position:fixed;z-index:2044;pointer-events:none;font-size:11px;color:#9CA3AF;font-family:var(--font,inherit)}
 .aig-hidespot{position:fixed;z-index:847;pointer-events:none;border:2px dashed rgba(255,209,102,.5);border-radius:8px;opacity:0;transition:opacity .2s}
 .aig-hidespot.on{opacity:1}
-.aig-cigar{position:absolute;width:18px;height:4.5px;z-index:9;pointer-events:none;background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAAAkCAYAAABmHbPbAAABU0lEQVR42u3ar2sCYRjA8TsZIjIWTGKZLBiG4WzDYBT/ANPiwGIYBuPigsEgg+UtLZrH0tLlQ0XEINNwiOGCXBgrt/wa3pfjvRPv/H7ayz087/14eN+H4zUMAAAAAAAAnAOzWS0GsoDRc11rgt6TzVvW8DXbmqd8fxk+ESggUEBIpouGVZYGXN/q9UANyxXGzlIcW5VSpA+U9PyHBm/jIMp8tdd2uCb53TVZgcAWBgoIaeyBNq4nDVjP9f7jqPKrrutKev7YtW7Ecf1eGAbFl6HQEw0WfVYgsIWBAkIaeqC4J/D8X2FcuMyRPwTHcSLNV1MF2B+GrOdhBQJbGCggpKUH+tntjzph1PNd5bOJzq9yp7g+mc70JvhcsQKBLQwUEM6yB/L8P2nAt73U7Hn8WB9Adf+nnl/lodOVnsfpPXZDnRdSne9hBQJbGCggAAAAILX+AZAiXjDktOL1AAAAAElFTkSuQmCC) no-repeat center/contain;image-rendering:pixelated;transform-origin:15% 50%;will-change:transform,left,top}
-.aig-cigar.aig-cig-smoking{filter:brightness(1.35)}
+.aig-cigar{position:absolute;width:26px;height:7px;z-index:9;pointer-events:none;background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAAA0CAYAAADc3zcIAAAB/klEQVR42u3cMWtTURQA4EQ6dBCRUkRKB+lQaidx6CRFij/ARdAuQqE1g/QnOAhCB0EIDp1c1BAUxLmEUjrVDpIpdJBSgoOUEFCkdntu0nuHVx+vL6Gv37edl9x7bpJ3uPdAkkoFAAAAAAAoq6q3gGFafVpLTsb11+sDvScv+Qi4yBQACgD0AHAGGm/fBGf6nS+7ueYruiewA+AIBAoALqCR+MLLpTtJ2oDV54uFLqj+rBHEu53vQTw3O1lo/rLlyzv/t24v/PxfNTKNz9sDJA/HklxNbrNftQOAAgAFAGEPULs3E5yxJifGh7qgOH98hi16fWXLl3f+uAfIqvZkJd8LePEhjOevZRvf7NsBQAGAAoCoB4gvbO3spQ64NTeS+vjU7YUg3v+6mWlBn1rtIB67PJppfVn1fx+XKt+gX8/Q3b0fxjceBGFytBzegL2jNTsAKABQAOgB4P+12+2B5ruZdcDBxzDu9jZOhtV6d8MOAAoAFAB6ADjHtj6nPlytd9fsAKAAQAFA2AOst/aC30wuzF5P/Q1ma7uTOuFK9F2g054f6/06To3zGr8yWqp8Rc8/PXH1TN+Pd++bmZ7/KE6/fWgHAAUACgBy9gDxhcOff4a6oKLzx2fm856v6Pk3Oz+CHnH+cSUZ5P1w2v/62AFAAYACAAAAAAAAgH/+AhcmojWQlpK7AAAAAElFTkSuQmCC) no-repeat center/contain;image-rendering:pixelated;transform-origin:12% 50%;will-change:transform,left,top;filter:drop-shadow(0 1px 1px rgba(0,0,0,.55))}
+.aig-cigar.aig-cig-smoking{filter:brightness(1.4) drop-shadow(0 0 5px rgba(255,120,40,.85)) drop-shadow(0 1px 1px rgba(0,0,0,.55))}
 .aig-onfire .aig-head img{filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)) drop-shadow(0 0 8px rgba(255,140,40,.95))}
 .aig-onfire .aig-body{background:linear-gradient(180deg,#5a2a12,#31160a)!important}
 .aig-flame{position:absolute;pointer-events:none;z-index:8;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 75%,#fff2b0,#ffb43c 35%,#ff6a10 65%,rgba(255,90,10,0) 78%);animation:aigFlick .18s steps(2) infinite alternate;mix-blend-mode:screen}
@@ -21178,7 +21178,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var e = cigLift < 0.5 ? 2*cigLift*cigLift : 1 - Math.pow(-2*cigLift + 2, 2)/2;    // ease in-out
     var hold = (ts < cigRaiseUntil && cigLift > 0.94) ? Math.sin(ts/170)*0.5 : 0;     // tiny hold wobble
     // rest pose -> lips pose
-    var restX = MOUTH.x + 8, restY = MOUTH.y + 13, restA = 26;
+    var restX = MOUTH.x + 7, restY = MOUTH.y + 15, restA = 30;
     var lipX  = MOUTH.x + 1, lipY  = MOUTH.y,      lipA  = -15;
     var tipX = restX + (lipX - restX)*e;
     var tipY = restY + (lipY - restY)*e - Math.sin(e*Math.PI)*3 + hold;               // arcs outward on the way up
@@ -21188,7 +21188,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     cigarEl.style.top  = (tipY - 2.2).toFixed(1)+'px';
     cigarEl.style.transform = 'rotate(' + ang.toFixed(1) + 'deg)';
     // Hand grips the cigar about 45% along it.
-    var grip = 8;
+    var grip = 12;
     cigHand = { x: tipX + Math.cos(rad)*grip, y: tipY + Math.sin(rad)*grip };
     // Puff cycle: lift to the lips, ember flares, smoke drifts off the tip.
     if(ts > nextPuffAt){
@@ -21197,14 +21197,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       cigarEl.classList.add('aig-cig-smoking');
       setTimeout(function(){ if(cigarEl) cigarEl.classList.remove('aig-cig-smoking'); }, 1000);
       var s = settings.size||1, r = guyRect();
-      var ex2 = cigHand ? (cigHand.x + Math.cos(rad)*9) : (tipX + 17);
-      var ey2 = cigHand ? (cigHand.y + Math.sin(rad)*9) : (tipY - 2);
+      var ex2 = cigHand ? (cigHand.x + Math.cos(rad)*13) : (tipX + 25);
+      var ey2 = cigHand ? (cigHand.y + Math.sin(rad)*13) : (tipY - 2);
       var emberX = r.left + (dir < 0 ? (46 - ex2)*s : ex2*s);
       var emberY = r.top + ey2*s;
-      for(var i=0;i<(perf.on?3:8);i++){
+      for(var i=0;i<(perf.on?4:12);i++){
         (function(i){ setTimeout(function(){
-          fxEmit({ x: emberX + (Math.random()-0.5)*5, y: emberY, vx: (Math.random()-0.5)*0.012, vy: -0.032 - Math.random()*0.022,
-                   size: 3 + Math.random()*3.5, color: 'rgba(205,205,212,.4)', ttl: 1600 + Math.random()*900, shape:'smoke', drag:0.995, sway:true, phase:i });
+          fxEmit({ x: emberX + (Math.random()-0.5)*6, y: emberY, vx: (Math.random()-0.5)*0.016, vy: -0.036 - Math.random()*0.026,
+                   size: 4 + Math.random()*5, color: 'rgba(208,208,216,.46)', ttl: 2000 + Math.random()*1200, shape:'smoke', drag:0.996, sway:true, phase:i });
         }, 260 + i*120); })(i);
       }
       if(Math.random() < 0.22) say(pick(['*puff*','Do not tell my wife.','This is a lunch break.','Ahh.','Cuban. Probably.']), 1600);
@@ -21365,16 +21365,31 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     } else if(boss.phase === 'speak'){
       if(age > 3400){ boss.phase = 'toButton'; boss.t0 = ts; boss.dir = boss.btnX > boss.x ? 1 : -1; }
     } else if(boss.phase === 'toButton'){
+      // walk along the floor to stand under the button first -- no diagonal drifting
       var btnR = boss.btn ? boss.btn.getBoundingClientRect() : null;
       var tx = btnR ? (btnR.left + btnR.width/2 - 23) : boss.btnX;
-      var ty = btnR ? (btnR.top + btnR.height/2 - 30) : 20;
-      var k2 = Math.min(1, dt/420);
-      boss.x += (tx - boss.x) * k2;
-      boss.y += (ty - boss.y) * k2;
       boss.dir = tx > boss.x ? 1 : -1;
-      if(Math.abs(tx - boss.x) < 22 && Math.abs(ty - boss.y) < 26 && !boss.pressed){
+      var gap = tx - boss.x;
+      if(Math.abs(gap) > 4){
+        boss.x += boss.dir * Math.min(Math.abs(gap), 0.26*dt);
+        boss.y += (groundY() - 8 - boss.y) * Math.min(1, dt/400);
+      } else {
+        boss.x = tx; boss.phase = 'reach'; boss.t0 = ts;
+        bossSay(pick(['Right then.','Enough of this.','Where is that button.']), 1800);
+      }
+    } else if(boss.phase === 'reach'){
+      // rise up to the button, arm out, then a distinct downward jab
+      var btnR2 = boss.btn ? boss.btn.getBoundingClientRect() : null;
+      var ty = btnR2 ? (btnR2.top + btnR2.height/2 - 26) : 20;
+      boss.y += (ty - boss.y) * Math.min(1, dt/380);
+      var arms2 = boss.el.querySelectorAll('.aig-arm');
+      if(arms2.length >= 2){ arms2[1].style.transform = 'rotate(-150deg)'; arms2[0].style.transform = 'rotate(20deg)'; }
+      boss.reaching = true;
+      if(Math.abs(ty - boss.y) < 14 && !boss.pressed){
         boss.pressed = true; boss.phase = 'press'; boss.t0 = ts;
         bossSay(pick(['Back to work.','Enough.','Done.','That is enough of that.']), 2600);
+        // the jab: he lunges at the button, it depresses, then he settles back
+        boss.jab = ts;
         if(boss.btn){ boss.btn.classList.add('aig-btn-press'); setTimeout(function(){ if(boss && boss.btn) boss.btn.classList.remove('aig-btn-press'); }, 420); }
         tone(700,.05,'square',.05); tone(400,.08,'square',.05,.05);
         setTimeout(function(){
@@ -21383,7 +21398,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         }, 900);
       }
     } else if(boss.phase === 'press'){
-      if(age > 2600){ boss.phase = 'leave'; boss.t0 = ts; boss.dir = boss.x > W/2 ? 1 : -1; }
+      var jt = ts - (boss.jab||ts);
+      if(jt < 420){ boss.x += (Math.sin(jt/420*Math.PI) * 5) * (jt < 210 ? 0.08 : -0.08) * (dt/16); }
+      if(age > 2600){ boss.phase = 'leave'; boss.t0 = ts; boss.dir = boss.x > W/2 ? 1 : -1; boss.reaching = false;
+        var arms3 = boss.el.querySelectorAll('.aig-arm'); if(arms3.length>=2){ arms3[0].style.transform=''; arms3[1].style.transform=''; } }
     } else if(boss.phase === 'leave'){
       boss.y += (groundY() - 8 - boss.y) * Math.min(1, dt/600);
       boss.x += boss.dir * 0.22 * dt;
@@ -21396,7 +21414,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     // a plain walk cycle for him
     var s = Math.sin(ts/160);
     var arms = boss.el.querySelectorAll('.aig-arm'), legs = boss.el.querySelectorAll('.aig-leg');
-    if(arms.length >= 2){ arms[0].style.transform = 'rotate('+(16+s*20)+'deg)'; arms[1].style.transform = 'rotate('+(-16-s*20)+'deg)'; }
+    if(arms.length >= 2 && !boss.reaching){ arms[0].style.transform = 'rotate('+(16+s*20)+'deg)'; arms[1].style.transform = 'rotate('+(-16-s*20)+'deg)'; }
     if(legs.length >= 2){ legs[0].style.transform = 'rotate('+(-s*16)+'deg)'; legs[1].style.transform = 'rotate('+(s*16)+'deg)'; }
   }
   function despawnBoss(){
