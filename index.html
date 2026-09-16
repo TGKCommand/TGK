@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.84';
+var TGK_CC_VERSION='v2.87';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16878,6 +16878,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-boxon span{font-size:7px;font-weight:900;letter-spacing:.08em;color:#3b2410;font-family:var(--font,inherit)}
 .aig-boxon small{font-size:5px;color:#5a3a1a;font-family:var(--font,inherit)}
 .aig-boxdrop{font-size:36px}
+.aig-dyno{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:3100;background:#141618;border:1px solid #2e2e2e;border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.6);font-family:var(--font,inherit);width:280px;text-align:center}
+.aig-dyno h4{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9CA3AF}
+.aig-dyno-bar{position:relative;height:16px;border-radius:8px;background:linear-gradient(90deg,#1f6f5c,#2ABFAA 55%,#FFD166 76%,#ef4444 88%,#7f1d1d);overflow:hidden}
+.aig-dyno-needle{position:absolute;top:-3px;width:3px;height:22px;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.9);border-radius:2px}
+.aig-dyno-zone{position:absolute;top:0;bottom:0;left:78%;width:12%;background:rgba(255,255,255,.22);border-left:1px solid rgba(255,255,255,.6);border-right:1px solid rgba(255,255,255,.6)}
+.aig-dyno small{display:block;margin-top:8px;color:#6b7076;font-size:10px}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17030,10 +17036,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var raw = localStorage.getItem(STORE_KEY);
       if(raw){
         var parsed = JSON.parse(raw);
-        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[], players: parsed.players||{}, learn: parsed.learn||{}, chat: parsed.chat||[] };
+        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[], players: parsed.players||{}, learn: parsed.learn||{}, chat: parsed.chat||[], opinions: parsed.opinions||{} };
       }
     }catch(e){}
-    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[] };
+    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{} };
   }
   function stat(key, inc){ aigState.stats[key] = (aigState.stats[key]||0) + (inc==null?1:inc); return aigState.stats[key]; }
   var aigState = loadState();
@@ -17113,6 +17119,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       window.addEventListener('beforeunload', saveWorld);
       headImg = root.querySelector('.aig-head img');
       hookApp();
+      preloadFaces();
+      setTimeout(function(){ askDirector('you just came online for the day'); }, 12000);
       setTimeout(mpStart, 3000);
       document.addEventListener('visibilitychange', function(){
         if(document.hidden){ hiddenAt = Date.now(); }
@@ -17158,7 +17166,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit;
   }
   function tick(ts){
     loopArmed = false;
@@ -17267,6 +17275,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           }
         }
         var walkMul = (performance.now() < sulkUntil) ? 0.55 : (performance.now() < chillUntil ? 0.6 : 1);
+        if(performance.now() < settingsSpeedPenalty) walkMul *= 0.45;
         if(performance.now() < limpUntil) walkMul *= 0.5 + 0.15*Math.sin(ts/90);
         if(!skit){
           var targetV = 0.045 * settings.speed * walkMul * (fleeing ? 2.0 : 1);
@@ -17360,6 +17369,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     updateAnger(ts, rawDt);
     updateMind(ts, rawDt);
     updateDrives(ts, rawDt);
+    if(bit) runBit(ts);
+    maybeHeckle(ts);
+    directorTick(ts);
     mpTick(ts, rawDt);
     fxTick(rawDt);
     updateHead(ts, dt);
@@ -17934,6 +17946,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(kind === 'drop'){ dropBoulder(heldTool, x); return; }
     if(kind === 'spawn'){ spawnClone(x); return; }
     if(kind === 'toggle'){ flipGravity(); return; }
+    if(heldTool.id === 'dyno'){ openDyno(); return; }
     if(kind === 'cannon'){ if(heldTool.id === 'car') sendCar(); else if(heldTool.id === 'tire') rollTire(); else fireShirt(); return; }
     if(heldTool.id === 'box'){ dropBox(x); return; }
     if(kind === 'sling'){ return; }
@@ -18061,6 +18074,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!aigState.stats.bestToday || aigState.stats.bestToday.date !== dk) aigState.stats.bestToday = { date: dk, combo: 0 };
     if(comboCount > aigState.stats.bestToday.combo) aigState.stats.bestToday.combo = comboCount;
     checkUnlocks();
+    if(comboCheck(tool)) return;
     if(tool.id === 'dsg' && !force){ setTimeout(function(){ applyToolHit(tool, hitX, hitY, 0.7); }, 180); }   // paddles: two quick shifts
     if(tool.type === 'bad'){
       addAnger(7 + tool.weight*3);
@@ -18235,7 +18249,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   function maybeTaunt(ts){
     if(!settings.taunts) return;
+    if(bit) return;
     if(ts < nextTauntAt) return;
+    if(maybeCallback(ts)){ nextTauntAt = ts + 20000 + Math.random()*20000; return; }
+    var ops = aigState.opinions ? Object.keys(aigState.opinions) : [];
+    if(ops.length && Math.random() < 0.18){
+      var who = ops[Math.floor(Math.random()*ops.length)];
+      nextTauntAt = ts + 25000 + Math.random()*25000;
+      say('\u2726 ' + who.charAt(0).toUpperCase()+who.slice(1) + ': ' + aigState.opinions[who], 3400, true);
+      return;
+    }
+    if(ts > nextBitAt && Math.random() < 0.55 && startBit(ts)){ nextBitAt = ts + 120000 + Math.random()*150000; nextTauntAt = ts + 30000; return; }
     if(ts > nextGossipAt){ nextGossipAt = ts + 120000; loadGossip(); var gl = gossipLine(); if(gl && Math.random() < 0.5){ nextTauntAt = ts + 14000 + Math.random()*16000; say(gl, 3400); return; } }
     nextTauntAt = ts + 14000 + Math.random()*16000;
     if(performance.now() - lastHitAt < 6000) return;
@@ -18342,7 +18366,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     stat('ko'); achieve('first_ko'); hitsSinceKO = 0;
     if(lastBadTool === 'boost') achieve('boost_leak');
     if((aigState.stats.ko||0) >= 25) achieve('rod_knock');
-    remember('KO', 'by '+(lastBadTool||'?'));
+    remember('KO', 'by '+(lastBadTool||'?')); replanSoon('you were just knocked out');
     addAnger(22);
     aigState.stats.lastKoBy = { who: sharedEmail(), tool: lastBadTool||'', at: Date.now() }; saveState();
     if(lastBadTool){ fearTool = lastBadTool; }
@@ -18863,7 +18887,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'dyno_day',   name:'Dyno Day',    desc:'20 praises in a single day.' },
     { id:'recall',     name:'Recall',      desc:'Healed him 5 times. Responsible.' },
     { id:'rod_knock',  name:'Rod Knock',   desc:'25 KOs. Rebuild time.' },
-    { id:'vorsprung',  name:'Vorsprung',   desc:'Unlocked every secret tool.' }
+    { id:'vorsprung',  name:'Vorsprung',   desc:'Unlocked every secret tool.' },
+    { id:'hydroplane',  name:'Hydroplane',  desc:'Oil slick into a boost. No traction at all.' },
+    { id:'limp_mode',   name:'Limp Mode',   desc:'Check engine, then boost. He crawled.' },
+    { id:'peak_power',  name:'Peak Power',  desc:'Dyno then boost. Chart goes up.' },
+    { id:'perfect_pull',name:'Perfect Pull',desc:'Nailed the dyno redline.' },
+    { id:'blown_motor', name:'Blown Motor', desc:'Over-revved him on the dyno.' }
   ];
   function achieve(id){
     if(!aigState.ach) aigState.ach = [];
@@ -19583,7 +19612,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(madOn !== wasMad){
       bounce.classList.toggle('aig-mad', madOn);
       if(madOn){
-        remember('got mad', '');
+        remember('got mad', ''); replanSoon('you just got mad');
         think('you just crossed the line into MAD after repeated hits', '', pick(spicy(['Okay. Now I am mad.','That is IT.','You want a problem? You got a problem.','Keep going. See what happens.','I have HAD it with this sync AND with you.'],['Okay. Now I am pissed.','Oh, HELL no.','That is it. That is fucking it.','You absolute ass.','Keep swinging and see what the hell happens.'])), 2400);
         tone(110,.25,'sawtooth',.06); tone(90,.35,'sawtooth',.05,.1); shakeScreen();
         playVoice('hit');
@@ -19671,7 +19700,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(mode === 'walk'){ landToWalk(); }
     fleeDir = (curX > pos + 23) ? -1 : 1; fleeHopAt = 0; pauseUntil = 0;
     fightOn = false;
-    remember('stole the cursor', '');
+    remember('stole the cursor', ''); replanSoon('you just stole their cursor');
     think('you just stole the user\'s mouse cursor and are running away with it', '', pick(spicy(['Got your cursor. Come get it.','Mine now. Catch me.','No cursor for you.','You can have this back when you are nicer.'],['Got your damn cursor. Come get it.','Mine now, jackass.','No cursor for you. Deal with it.','Catch me, you bastard.'])), 2600);
     setTimeout(function(){
       if(!cursorStolen) return;
@@ -19773,15 +19802,21 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(age > 9000){ endSkit(); return; }
     if(skit.kind === 'goto'){
       var dg = skit.target - pos;
-      if(Math.abs(dg) > 10){ dir = dg > 0 ? 1 : -1; pos += dir * 0.08 * dt_last; }
+      if(Math.abs(dg) > 10){
+        dir = dg > 0 ? 1 : -1;
+        var ease = Math.min(1, Math.abs(dg)/90) * Math.min(1, age/420);   // ease out of the start, into the target
+        pos += dir * (0.02 + 0.075*ease) * dt_last;
+      }
       else { var fn = skit.done; endSkit(); if(fn) try{ fn(); }catch(e){} }
       if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
       return;
     }
     if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
     if(skit.kind === 'lap'){
-      dir = skit.target > pos ? 1 : -1; pos += dir * 0.09 * dt_last;
-      if(Math.abs(skit.target - pos) < 12){ endSkit(); }
+      var dl = skit.target - pos; dir = dl > 0 ? 1 : -1;
+      var el2 = Math.min(1, Math.abs(dl)/110) * Math.min(1, age/380);
+      pos += dir * (0.025 + 0.08*el2) * dt_last;
+      if(Math.abs(dl) < 12){ endSkit(); }
     } else if(skit.kind === 'pebble'){
       var d = skit.px - (pos+23);
       if(Math.abs(d) > 14){ dir = d > 0 ? 1 : -1; pos += dir * 0.05 * dt_last; }
@@ -19978,6 +20013,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
               .on('broadcast', { event: 'carry' }, function(m){ mpOnCarry(m.payload); })
               .on('broadcast', { event: 'throw' }, function(m){ mpOnThrow(m.payload); })
               .on('broadcast', { event: 'car' },   function(m){ var p = m.payload||{}; if(p.from && p.from !== mpName) sendCar(p.from, p.dir); })
+              .on('broadcast', { event: 'heckle' }, function(m){ mpOnHeckle(m.payload); })
+              .on('broadcast', { event: 'heckle_reply' }, function(m){ mpOnHeckleReply(m.payload); })
               .on('broadcast', { event: 'bye' },   function(m){ mpRemove(m.payload && m.payload.who); })
               .on('presence', { event: 'leave' },  function(p){ (p.leftPresences||[]).forEach(function(x){ mpRemove(x.who); }); })
               .on('presence', { event: 'sync' }, function(){ try{ var st = mpChan.presenceState(); mpOnline = Object.keys(st).map(function(k){ return (st[k][0] && st[k][0].name) || k.split('@')[0]; }); }catch(e){} })
@@ -20009,7 +20046,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     for(var i=mpRemotes.length-1;i>=0;i--){
       var r = mpRemotes[i];
       if(ts - r.seen > 20000){ mpRemove(r.who); continue; }
-      r.x += (r.tx - r.x) * Math.min(1, rawDt/90); r.y += (r.ty - r.y) * Math.min(1, rawDt/90);
+      // critically-damped follow with a little velocity prediction: 10Hz packets look native
+      var k = 1 - Math.exp(-rawDt/70);
+      r.vxs = (r.vxs||0)*0.85 + ((r.tx - r.x) * k)/Math.max(1,rawDt) * 0.15;
+      r.x += (r.tx - r.x) * k + (r.vxs||0)*rawDt*0.25;
+      r.y += (r.ty - r.y) * k;
       r.el.style.transform = 'translate3d('+r.x.toFixed(1)+'px,'+r.y.toFixed(1)+'px,0)';
       if(r.phys) r.phys.style.transform = 'rotate('+r.rot+'deg)';
       if(r.bub){ if(r.btxt){ r.bub.style.display=''; r.bub.style.transform = 'translate3d('+(r.x-10).toFixed(0)+'px,'+(r.y-40).toFixed(0)+'px,0)'; } else r.bub.style.display='none'; }
@@ -20106,7 +20147,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     pos = p.fx*W; posY = groundY() + p.fy*H;
     vx = Math.max(-2.2, Math.min(2.2, (p.vx||0)*W/1000)); vy = Math.max(-2.2, Math.min(2.2, (p.vy||0)*H/1000)); rotVel = vx*0.8;
     mode = 'fly'; bounce.classList.remove('aig-drag'); bounce.classList.add('aig-fly'); setRootPos();
-    remember('thrown by '+who, '');
+    remember('thrown by '+who, ''); replanSoon(who+' just threw you across the office');
     var hard = Math.hypot(vx, vy) > 0.6;
     if(hard){ playThrow(); think(who+' just picked you up and THREW you across the office from their computer', '', pick(spicy(['WHEEEE-- '+who+'!','I will remember this, '+who+'.','Tell HR it was '+who+'.'],[who+', you absolute ass!','What the hell, '+who+'!'])), 2400); }
     else say(pick(['Rude, '+who+'.','...okay then.']), 1400, true);
@@ -20514,6 +20555,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   function faceFor(email, override){ var id = faceIdFor(email, override); return id === 'default' ? DEFAULT_FACE : FACES[id]; }
   function myFaceId(){ return faceIdFor(sharedEmail(), settings.face); }
+  var _facePre = false;
+  function preloadFaces(){ if(_facePre) return; _facePre = true; Object.keys(FACES).forEach(function(k){ var i = new Image(); i.src = FACES[k]; }); }
   function applyFace(el, email, override){ var img = el && el.querySelector('.aig-head img'); var f = faceFor(email, override); if(img && f && img.getAttribute('src') !== f) img.setAttribute('src', f); }
   function faceName(id){ return id === 'default' ? 'Default' : id.charAt(0).toUpperCase() + id.slice(1); }
   function facePicker(){
@@ -20524,6 +20567,257 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       return '<button type="button" class="aig-swatch aig-facepick'+(id===cur?' on':'')+'" title="'+faceName(id)+'" style="width:30px;height:36px;border-radius:8px;background:#101214 url('+srcImg+') center/contain no-repeat" onclick="aiGuySetting(\'face\',\''+id+'\');this.parentNode.querySelectorAll(\'.aig-swatch\').forEach(function(b){b.classList.remove(\'on\')});this.classList.add(\'on\')"></button>';
     }).join('') + '</div>';
   }
+
+  // ---------------- Callbacks: he brings back the funniest thing that happened ----------------
+  var nextCallbackAt = 0, usedCallbacks = {};
+  function noteworthy(){
+    var mem = (aigState.memory||[]).filter(function(m){
+      if(usedCallbacks[m.t]) return false;
+      var age = Date.now() - m.t;
+      return age > 240000 && age < 8*3600000 && /KO|thrown|stole|fought|S6|hit from|achievement|mad|box|got mad/i.test(m.k);
+    });
+    return mem.length ? mem[Math.floor(Math.random()*mem.length)] : null;
+  }
+  function maybeCallback(ts){
+    if(ts < nextCallbackAt){ return false; }
+    nextCallbackAt = ts + 180000 + Math.random()*180000;
+    var m = noteworthy(); if(!m) return false;
+    usedCallbacks[m.t] = true;
+    var mins = Math.round((Date.now() - m.t)/60000);
+    var when = mins < 60 ? (mins+' minutes ago') : (Math.round(mins/60)+' hours ago');
+    var canned = pick([
+      'Still thinking about that '+m.k+'.',
+      'You know what I keep coming back to? The '+m.k+'.',
+      'That '+m.k+'. '+when.charAt(0).toUpperCase()+when.slice(1)+'. Unbelievable.',
+      'I have not forgotten the '+m.k+'. Just so we are clear.'
+    ]);
+    think('you are calling back to something that happened '+when+': "'+m.k+(m.d?' - '+m.d:'')+(m.who?' (by '+m.who+')':'')+'". Bring it up out of nowhere, like a coworker who cannot let it go', '', canned, 3600);
+    return true;
+  }
+
+  // ---------------- Bits: multi-beat gags that survive interruption ----------------
+  var bit = null, nextBitAt = 25000;   // he can start a bit about half a minute in
+  var BITS = [
+    { id:'story', beats:[
+      { t:0,    line:'So I was thinking about the sync--' },
+      { t:3200, line:'--and I realized nobody actually knows when it runs.' },
+      { t:6600, line:'Anyway. That is my story. Thank you.' } ] },
+    { id:'mine', beats:[
+      { t:0,    line:'There is a mine over there.' },
+      { t:3000, line:'I have been walking around it all morning.' },
+      { t:6200, line:'You know what? No.', act:'stomp' } ] },
+    { id:'raise', beats:[
+      { t:0,    line:'Can I ask you something?' },
+      { t:2600, line:'Do mascots get raises?' },
+      { t:5600, line:'...I will take that as a no.' } ] },
+    { id:'audit', beats:[
+      { t:0,    line:'I filed a complaint.' },
+      { t:3000, line:'With myself. I am the only one who listens.' },
+      { t:6000, line:'It was denied.' } ] },
+    { id:'boost', beats:[
+      { t:0,    line:'I have been reading about boost leaks.' },
+      { t:3400, line:'Turns out it is always the PCV. Always.' },
+      { t:6800, line:'I have no PCV. I am fine. Probably.' } ] }
+  ];
+  function startBit(ts){
+    var b = BITS[Math.floor(Math.random()*BITS.length)];
+    if(b.id === 'mine' && !traps.some(function(t){ return t.kind === 'mine'; })) return false;
+    bit = { def: b, i: 0, t0: ts, pausedFor: 0, resumeAt: 0 };
+    return true;
+  }
+  function runBit(ts){
+    if(!bit) return;
+    if(ts < bit.resumeAt) return;
+    var beat = bit.def.beats[bit.i]; if(!beat){ bit = null; return; }
+    if(ts - bit.t0 - bit.pausedFor < beat.t) return;
+    // interrupted? hold the bit and pick it up once he settles
+    if(mode !== 'walk' || performance.now() - lastHitAt < 2500){
+      bit.pausedFor += 1200; bit.resumeAt = ts + 1200;
+      if(!bit.interrupted){ bit.interrupted = true; }
+      return;
+    }
+    if(bit.interrupted && bit.i > 0){ bit.interrupted = false; say(pick(['Anyway. Where was I.','As I was SAYING.','Right. So.']), 1600, true); bit.pausedFor += 1800; bit.resumeAt = ts + 1800; return; }
+    say(beat.line, Math.min(3400, 1600 + beat.line.length*26), true);
+    if(beat.act === 'stomp'){
+      var m = traps.filter(function(t){ return t.kind === 'mine'; })[0];
+      if(m){ driveWalkTo(m.x - 23, function(){ setTimeout(function(){ var mm = traps.indexOf(m) >= 0 ? m : null; if(mm) detonate(mm, 105, 1.6, true); }, 500); }); }
+    }
+    bit.i++;
+    if(bit.i >= bit.def.beats.length) setTimeout(function(){ bit = null; }, 500);
+  }
+
+  // ---------------- Cross-office banter: guys heckle each other for real ----------------
+  var nextHeckleAt = 0;
+  var HECKLES = [
+    ['Rough day over there?', 'You have no idea.'],
+    ['Nice hat.', 'It is a cone. It is not a hat.'],
+    ['How many times today?', 'Do not ask.'],
+    ['Your guy looks tired.', 'YOUR guy looks tired.'],
+    ['Did yours get the S6 too?', 'Twice.'],
+    ['Any praise over there?', 'One. By accident.'],
+    ['Is your sync running?', 'Is ANYONE\u2019s sync running?'],
+    ['We should unionize.', 'I have filed. It was denied.'],
+    ['Swap desks?', 'Absolutely not.'],
+    ['Backorders?', 'Backorders.']
+  ];
+  function maybeHeckle(ts){
+    if(!mpOn || !mpChan || !mpRemotes.length || ts < nextHeckleAt) return;
+    if(mode !== 'walk' || heldTool || fightOn || cursorStolen || asleep || bit) return;
+    nextHeckleAt = ts + 45000 + Math.random()*60000;
+    if(Math.random() > 0.55) return;
+    var target = mpRemotes[Math.floor(Math.random()*mpRemotes.length)];
+    var pair = HECKLES[Math.floor(Math.random()*HECKLES.length)];
+    say(pair[0], 2600, true);
+    try{ mpChan.send({ type:'broadcast', event:'heckle', payload:{ to: target.who, from: mpName, line: pair[0], reply: pair[1] } }); }catch(e){}
+  }
+  function mpOnHeckle(p){
+    if(!p || p.to !== sharedEmail()) return;
+    var from = String(p.from||'someone'); from = from.charAt(0).toUpperCase()+from.slice(1);
+    lookAt(mpRemotes.length ? mpRemotes[0].x : window.innerWidth/2, posY, 2500);
+    setTimeout(function(){
+      var canned = p.reply || 'Sure. Whatever.';
+      think(from+'\u2019s guy just yelled across the office: "'+String(p.line||'').slice(0,80)+'". Fire back one line, same energy', '', canned, 2800);
+      try{ if(mpChan) mpChan.send({ type:'broadcast', event:'heckle_reply', payload:{ from: mpName, line: canned } }); }catch(e){}
+    }, 1100);
+  }
+  function mpOnHeckleReply(p){
+    if(!p || p.from === mpName) return;
+    var r = mpRemotes.filter(function(q){ return String(q.name||'').toLowerCase() === String(p.from||'').toLowerCase(); })[0];
+    if(r) cloneSay(r, String(p.line||'').slice(0,60));
+  }
+
+  // ---------------- Combos: two tools in sequence do something neither does alone ----------------
+  var lastToolUse = { id:null, at:-1e9 };
+  function comboCheck(tool){
+    var now = performance.now(), prev = lastToolUse;
+    lastToolUse = { id: tool.id, at: now };
+    if(!prev.id || now - prev.at > 3500) return false;
+    var key = prev.id + '>' + tool.id;
+    switch(key){
+      case 'oil>boost': case 'oil>wrench':
+        slideUntil = now + 4000; vx = (curX < pos+23 ? 1 : -1) * 1.9; vy = -0.1; mode='fly'; bounce.classList.add('aig-fly');
+        spawnFloatText('SLIP AND SEND', 'bad', 10); say(pick(spicy(['WHOOOAAA','No traction! NO TRACTION!','This is not quattro!'],['Oh SHIT no grip'])), 2000, true);
+        for(var i=0;i<20;i++) fxEmit({ x: pos+23, y: floorY()-4, vx:(Math.random()-0.5)*0.2, vy:-0.02-Math.random()*0.04, size:5, color:'rgba(60,50,70,.6)', ttl:700, shape:'smoke' });
+        achieve('hydroplane'); return true;
+      case 'freeze>car': case 'freeze>boulder': case 'freeze>rs':
+        spawnFloatText('SHATTERED', 'bad', 10); return false;
+      case 'banana>car':
+        say('Oh no. Oh no no--', 1200, true); return false;
+      case 'cel>boost': case 'cel>rs':
+        spawnFloatText('LIMP MODE', 'bad', 10); say(pick(['Limp mode! LIMP MODE!','The car says no.','Reduced power!']), 2000, true);
+        settingsSpeedPenalty = now + 12000; achieve('limp_mode'); return false;
+      case 'wrench>wrench':
+        spawnFloatText('DOUBLE TORQUE', 'bad', 8); return false;
+      case 'dyno>boost': case 'dyno>rs':
+        spawnFloatText('PEAK POWER', 'good', 10); confettiRain(pos+23, posY-30, 26); say(pick(['THAT is the number!','Print that chart!','Peak torque, baby!']), 2200, true); achieve('peak_power'); return false;
+      case 'tramp>car':
+        say('Ramp! RAMP!', 1200, true); vy = -1.6; mode='fly'; bounce.classList.add('aig-fly'); return false;
+    }
+    return false;
+  }
+  var settingsSpeedPenalty = 0;
+
+  // ---------------- Dyno mini-game: nail the redline, launch him accordingly ----------------
+  var dynoEl = null, dynoRaf = null;
+  function openDyno(){
+    if(dynoEl) return;
+    dynoEl = document.createElement('div'); dynoEl.className = 'aig-dyno';
+    dynoEl.innerHTML = '<h4>Dyno pull \u2014 click at the redline</h4><div class="aig-dyno-bar"><div class="aig-dyno-zone"></div><div class="aig-dyno-needle" style="left:0%"></div></div><small>too early = nothing. too late = blown motor.</small>';
+    document.body.appendChild(dynoEl);
+    var needle = dynoEl.querySelector('.aig-dyno-needle'), t0 = performance.now(), dur = 1300, done = false;
+    var loop = function(ts){
+      if(done) return;
+      var p = ((ts - t0) % dur)/dur;                        // sweeps up and resets
+      needle.style.left = (p*100).toFixed(1)+'%';
+      dynoRaf = requestAnimationFrame(loop);
+    };
+    dynoRaf = requestAnimationFrame(loop);
+    var fire = function(e){
+      if(done) return; done = true;
+      cancelAnimationFrame(dynoRaf);
+      var p = parseFloat(needle.style.left)/100;
+      closeDyno(); e && e.stopPropagation();
+      tone(60+p*240, .3, 'sawtooth', .06); noiseBurst(.3, 400+p*1600, 0.16, 1.4);
+      if(p > 0.90){                                          // over the redline
+        spawnFloatText('BLOWN MOTOR', 'bad', 10); explodeAt(pos+23, posY+30, 110); addSticker('CEL');
+        say(pick(spicy(['Rod knock! ROD KNOCK!','That was the motor. That WAS the motor.','You redlined me.'],['You blew the goddamn motor.'])), 2600, true);
+        applyToolHit(findTool('bomb'), pos+23, posY+30, 1.2); achieve('blown_motor');
+      } else if(p >= 0.78){                                  // perfect
+        spawnFloatText('PERFECT PULL', 'good', 12); confettiRain(pos+23, posY-30, 34); shockwave(pos+23, floorY()-4, 170);
+        vx = (Math.random()<0.5?-1:1)*2.2; vy = -1.2; rotVel = 1.6; mode='fly'; bounce.classList.add('aig-fly'); hitStop(110); slowMo(0.4, 700);
+        say(pick(['PEAK POWER!','That is the number!','Dyno queen!']), 2400, true); aigState.good++; saveState(); achieve('perfect_pull');
+      } else if(p >= 0.5){
+        spawnFloatText(Math.round(200+p*400)+' whp', 'good', 8); vx = (Math.random()<0.5?-1:1)*(0.5+p); vy = -0.5; mode='fly'; bounce.classList.add('aig-fly');
+        say('Respectable.', 1600);
+      } else {
+        spawnFloatText('no boost', 'bad', 6); say(pick(['That was idle.','You have to actually rev it.','Nothing. That was nothing.']), 1800);
+      }
+    };
+    setTimeout(function(){ document.addEventListener('click', fire, { once:true }); }, 30);
+    setTimeout(function(){ if(!done){ done = true; cancelAnimationFrame(dynoRaf); closeDyno(); } }, 9000);
+  }
+  function closeDyno(){ if(dynoEl){ dynoEl.remove(); dynoEl = null; } }
+
+  // ---------------- The director: Claude plans, local code executes ----------------
+  // Every few minutes (and after anything big) Claude gets his whole state back and returns a PLAN:
+  // a mood, a goal for the next couple of minutes, an opinion about someone, and one line to say.
+  // The drives and behaviours below execute it. This is what makes him seem motivated rather than reactive.
+  var plan = null, planAt = -1e9, planBusy = false, nextPlanAt = 0;
+  var PLAN_GOALS = { sulk:1, seek_praise:1, plot_revenge:1, make_friends:1, work:1, rest:1, mischief:1, none:1 };
+  function planContext(){
+    var c = brainContext();
+    c.opinions = aigState.opinions || {};
+    c.bits_told = bit ? bit.def.id : null;
+    c.people_online = mpOnline.slice(0,6);
+    return c;
+  }
+  function askDirector(reason){
+    if(!brainOn() || planBusy) return;
+    planBusy = true; nextPlanAt = performance.now() + 150000;
+    var sys = BRAIN_SYSTEM + ' You are planning, not speaking to anyone yet. Reply ONLY with JSON: ' +
+      '{"mood":"<one word>","goal":"<one of sulk|seek_praise|plot_revenge|make_friends|work|rest|mischief|none>",' +
+      '"about":"<person name or empty>","opinion":"<short opinion of that person, or empty>","say":"<one line under 90 chars, or empty>"}. ' +
+      'Pick the goal you would actually pursue for the next few minutes given your anger, who has been hitting you, and who has been kind.';
+    var timer = setTimeout(function(){ planBusy = false; }, 6000); var done = false;
+    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 120, system: sys, messages:[{ role:'user', content:'Why you are planning: '+reason+'\nState: '+JSON.stringify(planContext())+'\nJSON:' }] })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(done) return; done = true; clearTimeout(timer); planBusy = false;
+        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
+        var m = /\{[\s\S]*\}/.exec(txt); var o = null; try{ o = m ? JSON.parse(m[0]) : null; }catch(e){}
+        if(!o) return;
+        applyPlan(o);
+      })
+      .catch(function(){ if(done) return; done = true; clearTimeout(timer); planBusy = false; brainFails++; });
+  }
+  function applyPlan(o){
+    plan = { mood: String(o.mood||'').slice(0,20), goal: PLAN_GOALS[o.goal] ? o.goal : 'none', at: performance.now() };
+    planAt = performance.now();
+    if(o.about && o.opinion){
+      if(!aigState.opinions) aigState.opinions = {};
+      aigState.opinions[String(o.about).toLowerCase().slice(0,20)] = String(o.opinion).slice(0,80);
+      saveState();
+    }
+    // the goal biases the drives, so his idle behaviour follows the plan
+    switch(plan.goal){
+      case 'sulk':         drives.safety = 0.9; drives.social = 0; sulkUntil = performance.now() + 25000; bounce.classList.add('aig-sulk'); break;
+      case 'seek_praise':  drives.pride = 0.85; drives.social = 0.6; break;
+      case 'plot_revenge': drives.mischief = 0.95; anger = Math.min(100, anger + 12); break;
+      case 'make_friends': drives.social = 0.95; break;
+      case 'work':         drives.curiosity = 0.8; drives.rest = 0; break;
+      case 'rest':         drives.rest = 0.95; break;
+      case 'mischief':     drives.mischief = 0.9; break;
+    }
+    if(o.say && !SLUR_RX.test(o.say)) say('\u2726 ' + String(o.say).slice(0,110), 3600, true);
+  }
+  function directorTick(ts){
+    if(ts < nextPlanAt) return;
+    if(mode !== 'walk' || heldTool || fightOn || cursorStolen || asleep || badDayOn) { nextPlanAt = ts + 20000; return; }
+    askDirector('routine check-in');
+  }
+  // big moments re-plan immediately
+  function replanSoon(reason){ nextPlanAt = 0; setTimeout(function(){ askDirector(reason); }, 1200); }
+  window.aiGuyPlan = function(){ return { plan: plan, opinions: aigState.opinions||{}, drives: drivesSnapshot() }; };
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
@@ -20704,7 +20998,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   };
   window.aiGuyClearHistory = function(){
     if(!confirm('Clear all AI Guy history and reset the score? This cannot be undone.')) return;
-    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[] };
+    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{} };
     saveState();
     updateBadge();
     renderHistoryList();
