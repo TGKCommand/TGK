@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.87';
+var TGK_CC_VERSION='v2.89';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -17120,8 +17120,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       headImg = root.querySelector('.aig-head img');
       hookApp();
       preloadFaces();
-      setTimeout(function(){ askDirector('you just came online for the day'); }, 12000);
-      setTimeout(mpStart, 3000);
+      setTimeout(function(){ if(window.aiGuyIsOn && window.aiGuyIsOn()) askDirector('you just came online for the day'); }, 12000);
+      setTimeout(function(){ if(!window.aiGuyIsOn || window.aiGuyIsOn()) mpStart(); }, 3000);
       document.addEventListener('visibilitychange', function(){
         if(document.hidden){ hiddenAt = Date.now(); }
         else if(hiddenAt){
@@ -17131,7 +17131,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         }
       });
       setTimeout(function(){
-        if(heldTool) return;
+        if(heldTool || (window.aiGuyIsOn && !window.aiGuyIsOn())) return;
         try{ if(JSON.parse(localStorage.getItem('tgk_cc_session')||'null')) return; }catch(e){}
         var hr = new Date().getHours(), dow = new Date().getDay();
         var g = hr < 5 ? 'Why are we awake.' : hr < 11 ? 'Morning. Coffee first, then Shopify.' : hr < 14 ? 'Lunch? No? Cool. Fine.' : hr < 17 ? 'Afternoon. Backorder count is climbing.' : hr < 21 ? 'Evening. Ship it Friday, fix it Monday.' : 'Late night deploy? Bold.';
@@ -17171,7 +17171,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function tick(ts){
     loopArmed = false;
     // Hidden tab or hidden guy: stop rendering entirely, poll cheaply for a reason to resume.
-    if(document.hidden || (root && root.style.display === 'none')){
+    if(root && root.style.display === 'none'){ lastTs = 0; return; }        // switched off: the loop parks entirely
+    if(document.hidden){
       lastTs = 0;
       if(!hiddenPoll) hiddenPoll = setTimeout(function(){ hiddenPoll = null; armLoop(); }, 500);
       return;
@@ -18198,6 +18199,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function say(text, ms, force){
     if(!root) return;
     var now = performance.now();
+    if(root.style.display === 'none') return;      // switched off: he does not speak
     var isAI = String(text).charAt(0) === '\u2726';
     if(!isAI && now < aiHoldUntil) return;         // an AI line is on screen: minor chatter waits
     if(!force && now - lastSayAt < 700) return;   // do not machine-gun bubbles
@@ -19145,7 +19147,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   var lastBizEventAt = -1e9;
   window.aiGuyEvent = function(type, detail){
-    if(!root || mode === 'frozen') return;
+    if(!root || root.style.display === 'none' || mode === 'frozen') return;
     type = String(type||'');
     detail = detail || {};
     var label = detail.label ? String(detail.label).slice(0, 48) : '';
@@ -19886,6 +19888,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
   var badDayOn = false;   // declared before use in addAnger/retaliate (hoisted var, assigned here)
   window.aiGuyBadDay = function(){
+    if(!root || root.style.display === 'none') return;
     if(badDayOn) return; badDayOn = true; closePop(); window.aiGuyPutDownTool(); touch(); if(asleep) wakeUp(false); aiHoldUntil = -1e9;
     var T = function(id){ return findTool(id); };
     var hitHim = function(id, force){ var t = T(id); if(!t) return; var r = guyRect(); applyToolHit(t, r.left + r.width/2 + (Math.random()<0.5?-30:30), r.top + 20, force||1); };
@@ -19996,6 +19999,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // "where he is". No tables, no writes: broadcast + presence only. Fails closed if the lib or socket is unavailable.
   var mpClient = null, mpChan = null, mpOn = false, mpRemotes = [], mpLastSend = 0, mpLastState = '', mpName = '', mpFails = 0, mpStatus = 'off', mpOnline = [];
   function mpStart(){
+    if(root && root.style.display === 'none') return;
     if(settings.mp === false || mpOn || typeof TGK_SB_URL === 'undefined' || typeof TGK_SB_KEY === 'undefined'){ if(settings.mp === false) mpStatus = 'off'; return; }
     mpName = sharedEmail().split('@')[0] || 'someone';
     if(!mpName || mpName === 'anonymous'){ mpStatus = 'not signed in'; return; }   // need a signed-in identity to be a player
@@ -20417,6 +20421,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var talkBusy = false;
   var TALK_ACTIONS = { calm:1, come:1, nap:1, dance:1, sulk:1, attack:1, hide:1, wave:1, none:1 };
   window.aiGuyTalk = function(text){
+    if(!root || root.style.display === 'none') return;
     text = String(text||'').trim(); if(!text) return;
     closePop(); touch(); if(asleep) wakeUp(true);
     remember('you said', text.slice(0,50));
@@ -21003,16 +21008,57 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     updateBadge();
     renderHistoryList();
   };
+  // The robot button is a real off switch: everything he owns stops and is cleaned up.
   window.aiGuyToggleVisible = function(){
     if(!root) return;
     var willHide = root.style.display !== 'none';
     root.style.display = willHide ? 'none' : '';
-    if(!willHide) armLoop();
     try{ localStorage.setItem(HIDE_KEY, willHide ? '1' : '0'); }catch(e){}
     var btn = document.getElementById('ai-guy-toggle-btn');
     if(btn) btn.classList.toggle('aig-toggle-off', willHide);
     closePop();
+    if(willHide) aiGuyShutDown(); else aiGuyWakeUpAll();
   };
+  function aiGuyShutDown(){
+    // put the tool down and give the pointer back
+    try{ if(cursorStolen) returnCursor(false); }catch(e){}
+    try{ window.aiGuyPutDownTool(); }catch(e){}
+    document.documentElement.classList.remove('aig-nocursor');
+    // clear everything he spawned
+    try{ traps.slice().forEach(removeTrap); }catch(e){}
+    try{ clones.slice().forEach(removeClone); }catch(e){}
+    if(carObj){ if(carObj.el) carObj.el.remove(); carObj = null; }
+    projectiles.slice().forEach(function(p){ if(p.el) p.el.remove(); }); projectiles.length = 0;
+    fxParts.length = 0; if(fxCtx && fxCanvas) fxCtx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+    try{ wipeGlass(); }catch(e){}
+    closeDyno(); hideBubble(); clearTimeout(bubbleTimer);
+    mpRemotes.slice().forEach(function(r){ mpRemove(r.who); });
+    // stop all his states and timers
+    fightOn = false; madOn = false; asleep = false; hiding = false; skit = null; bit = null; badDayOn = false;
+    dramaOn = false; carriedBy = null; anger = 0; rageMode = false; rage = 0; plan = null; driveGoal = null;
+    clearTimeout(gravTimer); clearTimeout(carryTimer); clearTimeout(hatTimer); clearTimeout(sootTimer);
+    gravSign = 1; timeScale = 1; slowUntil = 0; freezeUntil = 0; shakeUntil = 0;
+    if(bounce) bounce.className = 'aig-bounce';
+    // leave the room so teammates stop seeing him, and stop any audio
+    try{ mpStop(); }catch(e){}
+    try{ if(audioCtx && audioCtx.suspend) audioCtx.suspend(); }catch(e){}
+    // tear down the leftover DOM he owns
+    ['#aig-held-chip','#aig-rage','#aig-vent','#aig-pop','#aig-fxflash','.aig-toast','.aig-zz','.aig-pebble','.aig-oil','.aig-clone-bub','.aig-remote-bub','.aig-glass','.aig-crack','.aig-air'].forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el){ el.remove(); });
+    });
+    updateRageUI && (rageBar = rageFill = ventBtn = null, rageShown = null, rageW = -1, rageFull = null, ventShown = null);
+    // the loop itself parks (tick() returns early while he is display:none)
+  }
+  function aiGuyWakeUpAll(){
+    try{ if(audioCtx && audioCtx.resume) audioCtx.resume(); }catch(e){}
+    posY = groundY(); mode = 'walk'; vx = 0; vy = 0; rotVel = 0; rotAngle = 0;
+    if(phys) phys.style.transform = ''; if(flip) flip.style.transform = ''; setRootPos();
+    lastTs = 0; armLoop();
+    buildRageUI();
+    if(settings.mp !== false) setTimeout(mpStart, 800);
+    setTimeout(function(){ say(pick(['I am back.','Miss me?','Where did everyone go?','Rested. Ready. Regretting it already.']), 2400, true); }, 900);
+  }
+  window.aiGuyIsOn = function(){ return !!(root && root.style.display !== 'none'); };
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', build); else build();
 })();
