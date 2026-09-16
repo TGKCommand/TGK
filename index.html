@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v2.98';
+var TGK_CC_VERSION='v3.01';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16887,8 +16887,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-peek{position:fixed;z-index:2044;pointer-events:none;font-size:11px;color:#9CA3AF;font-family:var(--font,inherit)}
 .aig-hidespot{position:fixed;z-index:847;pointer-events:none;border:2px dashed rgba(255,209,102,.5);border-radius:8px;opacity:0;transition:opacity .2s}
 .aig-hidespot.on{opacity:1}
-.aig-cigar{position:absolute;left:26px;top:30px;width:22px;height:8px;z-index:7;pointer-events:none;background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEIAAAAYCAYAAABOQSt5AAAAm0lEQVR42mNgGAWjYBSMglEwCogFjDVhJv+xSURFyRHUvGzZowFxtFduF0E1VrZOjKSYyTSaFkYDAgWwDFeP/c9U/k+wXJh+l3E0RYxmDRxZ49GLT2RrpkQvXUG8N4K9cOtoihjNGsO11rhw4QJBNZbIHBzZYTRFjAYEnqxx58UHsjVTopcSYEFMJwqpsTSaIkYDYhSMglFAJQAA0ZUds6DTrB4AAAAASUVORK5CYII=) no-repeat center/contain;image-rendering:pixelated;transform-origin:0% 50%;transform:rotate(-8deg)}
-.aig-facing-left .aig-cigar{left:-2px;transform:scaleX(-1) rotate(8deg);transform-origin:100% 50%}
+.aig-cigar{position:absolute;width:18px;height:4.5px;z-index:9;pointer-events:none;background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAAAkCAYAAABmHbPbAAABU0lEQVR42u3ar2sCYRjA8TsZIjIWTGKZLBiG4WzDYBT/ANPiwGIYBuPigsEgg+UtLZrH0tLlQ0XEINNwiOGCXBgrt/wa3pfjvRPv/H7ayz087/14eN+H4zUMAAAAAAAAnAOzWS0GsoDRc11rgt6TzVvW8DXbmqd8fxk+ESggUEBIpouGVZYGXN/q9UANyxXGzlIcW5VSpA+U9PyHBm/jIMp8tdd2uCb53TVZgcAWBgoIaeyBNq4nDVjP9f7jqPKrrutKev7YtW7Ecf1eGAbFl6HQEw0WfVYgsIWBAkIaeqC4J/D8X2FcuMyRPwTHcSLNV1MF2B+GrOdhBQJbGCggpKUH+tntjzph1PNd5bOJzq9yp7g+mc70JvhcsQKBLQwUEM6yB/L8P2nAt73U7Hn8WB9Adf+nnl/lodOVnsfpPXZDnRdSne9hBQJbGCggAAAAILX+AZAiXjDktOL1AAAAAElFTkSuQmCC) no-repeat center/contain;image-rendering:pixelated;transform-origin:15% 50%;will-change:transform,left,top}
+.aig-cigar.aig-cig-smoking{filter:brightness(1.35)}
 .aig-onfire .aig-head img{filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)) drop-shadow(0 0 8px rgba(255,140,40,.95))}
 .aig-onfire .aig-body{background:linear-gradient(180deg,#5a2a12,#31160a)!important}
 .aig-flame{position:absolute;pointer-events:none;z-index:8;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 75%,#fff2b0,#ffb43c 35%,#ff6a10 65%,rgba(255,90,10,0) 78%);animation:aigFlick .18s steps(2) infinite alternate;mix-blend-mode:screen}
@@ -17065,7 +17065,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var lastDir = 0, shakeUntil = 0, shakeAmp = 0, popOpen = false, hiddenPoll = null;
   var walkVel = 0, landBendUntil = 0, lastStepPhase = 0, turnUntil = 0, breath = 0;
   var hitFrom = null;
-  var lastPraiseHopAt = -1e9;
+  var lastPraiseHopAt = -1e9, cigForearm = 0;
   var blockUntil = 0, shieldEl = null, shieldUntil = 0, recentHits = [], lastDefendAt = -1e9, lastShieldAt = -1e9, defenseStats = { blocks:0, catches:0, parries:0 };
   var anger = 0, madHits = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
   var cursorStolen = false, stolenUntil = 0, stolenEl = null, lastDodgeAt = 0, fleeDir = 1, fleeHopAt = 0;
@@ -17450,10 +17450,21 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     var k = (mode==='walk' ? 0.02 : 0.012) * dt;
     var damp = Math.pow(mode==='walk' ? 0.82 : 0.9, dt/16);
+    if(cigHand){
+      // Solve the right arm to reach the cigar: shoulder (38,38), two 9px bones.
+      var sx2 = 38, sy2 = 38, L = 9;
+      var dx2 = cigHand.x - sx2, dy2 = cigHand.y - sy2;
+      var dist = Math.max(1, Math.min(2*L - 0.5, Math.hypot(dx2, dy2)));
+      var base = Math.atan2(dx2, dy2);                       // 0 = straight down, matches limb rotation
+      var bend = Math.acos(Math.max(-1, Math.min(1, dist/(2*L))));
+      tgt.ar = (base + bend) * 180/Math.PI;                  // shoulder angle
+      cigForearm = ((base - bend) * 180/Math.PI) - tgt.ar;   // forearm relative to the upper arm
+    }
     for(var key in tgt){
       limbV[key] = (limbV[key] + (tgt[key]-limbA[key])*k) * damp;
       limbA[key] += limbV[key];
     }
+    if(cigHand){ limbA.ar2 += (cigForearm - limbA.ar2) * Math.min(1, 0.02*dt); }
     // lower segments: lag the upper by a slower spring; bend only one way (elbows/knees)
     var k2 = 0.009*dt, damp2 = Math.pow(0.88, dt/16);
     var pairs = [['al','al2',1],['ar','ar2',-1],['ll','ll2',-1],['lr','lr2',1]];
@@ -21080,24 +21091,43 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // ---------------- The cigar ----------------
   // Scott's guy smokes. Puffs on a timer, ember brightens, smoke drifts up, and it goes out
   // (comically) if he gets soaked, frozen or set on fire.
-  var cigarEl = null, nextPuffAt = 0, cigarOn = false;
+  var cigarEl = null, nextPuffAt = 0, cigarOn = false, cigRaiseUntil = 0, cigHand = null;
   function cigarShouldShow(){ return (settings.cigar === true) || (settings.cigar !== false && myFaceId() === 'scott'); }
   function updateCigar(ts){
     if(!cigarEl) cigarEl = root && root.querySelector('.aig-cigar');
     if(!cigarEl) return;
     var want = cigarShouldShow() && mode !== 'frozen' && !onFire;
-    if(want !== cigarOn){ cigarOn = want; cigarEl.style.display = want ? '' : 'none'; }
+    if(want !== cigarOn){ cigarOn = want; cigarEl.style.display = want ? '' : 'none'; if(!want){ cigHand = null; } }
     if(!want) return;
+    var raised = ts < cigRaiseUntil;
+    // Mouth position in sprite coords: the head box is 40x50 at left:3, top:-6, mouth ~72% down.
+    var MOUTH = { x: 23, y: 30 };
+    // Cigar geometry: 18px long, held at its middle; mouth end (the band) touches the lips.
+    var ang = raised ? -16 : 22;                        // degrees; up to the lips, or resting lower
+    var rad = ang * Math.PI/180;
+    var tipX = raised ? MOUTH.x + 1 : MOUTH.x + 6;      // where the mouth end sits
+    var tipY = raised ? MOUTH.y : MOUTH.y + 9;
+    cigarEl.style.left = tipX.toFixed(1)+'px';
+    cigarEl.style.top  = (tipY - 2.2).toFixed(1)+'px';
+    cigarEl.style.transform = 'rotate(' + ang.toFixed(0) + 'deg)';
+    // Hand grips the cigar about 45% along it.
+    var grip = 8;
+    cigHand = { x: tipX + Math.cos(rad)*grip, y: tipY + Math.sin(rad)*grip };
+    // Puff cycle: lift to the lips, ember flares, smoke drifts off the tip.
     if(ts > nextPuffAt){
-      nextPuffAt = ts + 3000 + Math.random()*4000;
-      var r = guyRect(), sx = r.left + (dir < 0 ? 4 : r.width - 4), sy = r.top + 30*(settings.size||1);
-      for(var i=0;i<(perf.on?3:7);i++){
+      nextPuffAt = ts + 4000 + Math.random()*4500;
+      cigRaiseUntil = ts + 1600;
+      cigarEl.classList.add('aig-cig-smoking');
+      setTimeout(function(){ if(cigarEl) cigarEl.classList.remove('aig-cig-smoking'); }, 1000);
+      var s = settings.size||1, r = guyRect();
+      var emberX = r.left + (dir < 0 ? (46 - (tipX+18))*s : (tipX+18)*s);
+      var emberY = r.top + (tipY - 2)*s;
+      for(var i=0;i<(perf.on?3:8);i++){
         (function(i){ setTimeout(function(){
-          fxEmit({ x: sx + (Math.random()-0.5)*5, y: sy, vx: (dir<0?-1:1)*0.015 + (Math.random()-0.5)*0.01, vy: -0.035 - Math.random()*0.02,
-                   size: 3 + Math.random()*3, color: 'rgba(205,205,210,.42)', ttl: 1500 + Math.random()*900, shape:'smoke', drag:0.995, sway:true, phase:i });
-        }, i*110); })(i);
+          fxEmit({ x: emberX + (Math.random()-0.5)*5, y: emberY, vx: (Math.random()-0.5)*0.012, vy: -0.032 - Math.random()*0.022,
+                   size: 3 + Math.random()*3.5, color: 'rgba(205,205,212,.4)', ttl: 1600 + Math.random()*900, shape:'smoke', drag:0.995, sway:true, phase:i });
+        }, 260 + i*120); })(i);
       }
-      cigarEl.style.filter = 'brightness(1.45)'; setTimeout(function(){ if(cigarEl) cigarEl.style.filter = ''; }, 450);
       if(Math.random() < 0.22) say(pick(['*puff*','Do not tell my wife.','This is a lunch break.','Ahh.','Cuban. Probably.']), 1600);
     }
   }
