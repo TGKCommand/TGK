@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.13';
+var TGK_CC_VERSION='v3.19';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16905,6 +16905,24 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-boss-bub::after{content:'';position:absolute;left:18px;bottom:-7px;border:7px solid transparent;border-top-color:#ef4444;border-bottom:0}
 .aig-btn-press{animation:aigBtnPress .4s ease}
 @keyframes aigBtnPress{0%,100%{transform:scale(1)}40%{transform:scale(.82) rotate(-6deg)}}
+.aig-armed-veil{position:fixed;inset:0;z-index:2035;pointer-events:none;box-shadow:inset 0 0 0 2px rgba(255,209,102,.5),inset 0 0 40px rgba(255,209,102,.12)}
+.aig-armed-veil::after{content:attr(data-hint);position:fixed;left:50%;top:10px;transform:translateX(-50%);background:#18191b;color:#FFD166;border:1px solid rgba(255,209,102,.5);border-radius:999px;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:.03em;font-family:var(--font,inherit);white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.aig-blocked-flash{position:fixed;z-index:2100;pointer-events:none;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid rgba(255,107,107,.9);animation:aigRing .4s ease-out forwards}
+.aig-charge{position:fixed;z-index:2105;pointer-events:none;width:54px;height:54px;margin:-27px 0 0 -27px}
+.aig-charge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.aig-charge circle{fill:none;stroke-width:4;stroke-linecap:round}
+.aig-charge .bg{stroke:rgba(0,0,0,.45)}
+.aig-charge .fg{stroke:#FFD166;transition:stroke .1s}
+.aig-charge.full .fg{stroke:#ef4444}
+.aig-charge.full{animation:aigChargeShake .12s linear infinite}
+@keyframes aigChargeShake{0%,100%{transform:translate(0,0)}50%{transform:translate(1.5px,-1.5px)}}
+.aig-blow{position:fixed;z-index:2058;pointer-events:none;background:radial-gradient(ellipse at 0% 50%,rgba(190,225,255,.30),rgba(190,225,255,0) 72%);transform-origin:0% 50%}
+.aig-crate{position:fixed;z-index:839;pointer-events:none;will-change:transform}
+.aig-crate.box{width:34px;height:30px;background:linear-gradient(180deg,#c9a26a,#a67c45);border:2px solid #6b4a24;border-radius:3px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.08)}
+.aig-crate.box::after{content:'';position:absolute;left:0;right:0;top:45%;height:4px;background:rgba(120,80,30,.4)}
+.aig-crate.mug{width:20px;height:20px;background:#eceff4;border:2px solid #9aa3ad;border-radius:3px 3px 6px 6px}
+.aig-crate.mug::after{content:'';position:absolute;right:-7px;top:4px;width:7px;height:9px;border:2px solid #9aa3ad;border-left:0;border-radius:0 6px 6px 0}
+.aig-crate.cone{width:22px;height:24px;background:linear-gradient(180deg,#f97316,#c2410c);clip-path:polygon(50% 0,100% 100%,0 100%)}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17198,7 +17216,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit || hideSpot || onFire || boss;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit || hideSpot || onFire || boss || charging || blowing || crates.length || loose.length;
   }
   function tick(ts){
     loopArmed = false;
@@ -17406,6 +17424,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     updateAggro(ts);
     updateHealing(ts);
     updateCigar(ts);
+    if(charging) chargeTick(ts);
+    if(crates.length) updateCrates(ts, dt);
+    if(loose.length) updateLoose(ts, dt);
+    if(heldByGuy) guyUseTool(ts);
+    if(blowing) blowTick(ts, dt);
     if(boss) updateBoss(ts, dt);
     else if(bossShouldCome(ts)) summonBoss((performance.now() - lastInteractAt) > 420000 ? 'idle' : 'play');
     updateFire(ts, dt);
@@ -17674,7 +17697,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       sec('aig-tool-bad', 'Secret TGK tools', secret.filter(function(t){ return !toolLocked(t); }).length + '/' + secret.length + ' unlocked \u00b7 hover for how', secret) +
       '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.map(function(n){ var rr = mpRemotes.filter(function(q){ return q.name === n; })[0]; var s = rr ? shirtFor(rr.who, rr.sh) : myShirt(); return '<b style="color:'+s.hi+'">'+n+'</b>'; }).join(', ') : '')+'</span></div>'+
       '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something to him..." onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div>'+
-      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
+      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyClearProps()" title="Remove crates and mugs">Clear props</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
       settingsHtml();
     document.body.appendChild(pop);
     popOpen = true;
@@ -17791,6 +17814,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'boulder': noiseBurst(.2, 240, 0.22, 2.5); tone(70,.22,'sine',.07); break;
       case 'mine': case 'dynamite': break;
       case 'fire': noiseBurst(1.0, 1400, 0.2, 1.1); tone(150,.5,'sawtooth',.05); break;
+      case 'blower': noiseBurst(.6, 1800, 0.07, 1.1); break;
+      case 'hose': noiseBurst(.6, 900, 0.1, 1.2); break;
+      case 'crate': noiseBurst(.16, 500, 0.16, 2.4); tone(120,.16,'square',.05); break;
+      case 'mug': noiseBurst(.1, 4500, 0.16, 5); tone(1600,.06,'triangle',.05); break;
       case 'anvil': tone(1200,.1,'triangle',.06); tone(700,.25,'triangle',.05,.05); noiseBurst(.2, 900, 0.16, 2); break;
       case 'magnet': tone(90,.4,'sine',.05); tone(140,.4,'sine',.04,.08); break;
       case 'stapler': noiseBurst(.04, 6000, 0.14, 8); tone(1800,.04,'square',.05); break;
@@ -17865,7 +17892,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     coffee: '\u2615',
     car: String.fromCodePoint(0x1F3CE),
     fire: String.fromCodePoint(0x1F525), cigar: String.fromCodePoint(0x1F6AC),
-    anvil: String.fromCodePoint(0x1F3F7), magnet: String.fromCodePoint(0x1F9F2), bucket: String.fromCodePoint(0x1F9FA),
+    anvil: String.fromCodePoint(0x1F3F7), blower: String.fromCodePoint(0x1F343), hose: String.fromCodePoint(0x1F6BF),
+    crate: String.fromCodePoint(0x1F4E6), mug: String.fromCodePoint(0x2615), lasso: String.fromCodePoint(0x1FA80), magnet: String.fromCodePoint(0x1F9F2), bucket: String.fromCodePoint(0x1F9FA),
     ufo: String.fromCodePoint(0x1F6F8), spring: String.fromCodePoint(0x1F300), cake: String.fromCodePoint(0x1F382),
     coffee2: String.fromCodePoint(0x1F375), sax: String.fromCodePoint(0x1F3B7), stapler: String.fromCodePoint(0x1F4CE),
     wrench: String.fromCodePoint(0x1F527), boost: String.fromCodePoint(0x1F4A8), cel: String.fromCodePoint(0x1F7E0), oil: String.fromCodePoint(0x1F6E2),
@@ -17895,6 +17923,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'dynamite', type:'bad',  kind:'place', icon:ICN.dynamite, label:'Dynamite',    weight:3, phrases:['Kaboom!','Blown away!','Boom!','Sky high!'] },
     { id:'boulder',  type:'bad',  kind:'drop',  icon:ICN.boulder,  label:'Boulder',     weight:3, phrases:['Squashed!','Flattened!','Crunch!','Timber!'] },
     { id:'car',      type:'bad',  kind:'cannon',icon:ICN.car,      label:'The S6',      weight:3, phrases:['Run over!','Quattro!','Speed bump.','Hit and run.','Launch control.'] },
+    { id:'blower',   type:'bad',  kind:'hold',   icon:ICN.blower, label:'Leaf blower', weight:2, phrases:['Wind!','Blown away!','Gale force!'] },
+    { id:'hose',     type:'bad',  kind:'hold',   icon:ICN.hose,   label:'Fire hose',   weight:2, phrases:['Soaked!','Pressure washed!','Turn it off!'] },
+    { id:'crate',    type:'bad',  kind:'prop',   icon:ICN.crate,  label:'Drop a crate', weight:2, phrases:['Crate!','Shipping damage!','Fragile!'] },
+    { id:'mug',      type:'bad',  kind:'prop',   icon:ICN.mug,    label:'Coffee mug',  weight:1, phrases:['My coffee!','Ceramic!','That was full!'] },
     { id:'magnet',   type:'bad',  kind:'cannon', icon:ICN.magnet, label:'Magnet',      weight:2, phrases:['Dragged!','Metal!','I am being PULLED!'] },
     { id:'anvil',    type:'bad',  kind:'drop',   icon:ICN.anvil,  label:'Anvil',       weight:3, phrases:['ACME!','Flat.','Cartoon physics!','Clang.'] },
     { id:'stapler',  type:'bad',  icon:ICN.stapler, label:'Stapler',  weight:1, phrases:['Ka-chunk!','Office supplies!','That is a staple. In me.'] },
@@ -17970,6 +18002,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     document.addEventListener('pointerdown', aigHoldStart);
     document.addEventListener('pointerup', aigHoldEnd);
     setTimeout(function(){ document.addEventListener('click', aigSwingHandler); }, 0);
+    armPageGuard(tool);
   };
 
   window.aiGuyReopenTray = function(e){ if(e){ e.stopPropagation(); } openToolTray(); };
@@ -17983,11 +18016,15 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     document.removeEventListener('pointerdown', aigHoldStart);
     document.removeEventListener('pointerup', aigHoldEnd);
     document.removeEventListener('click', aigSwingHandler);
+    disarmPageGuard();
     aigHoldEnd();
   };
 
   function aigEscHandler(e){
-    if(e.key === 'Escape') window.aiGuyPutDownTool();
+    if(e.key !== 'Escape') return;
+    var t = heldTool;
+    window.aiGuyPutDownTool();
+    if(t && Math.random() < 0.6) spawnLoose(t, Math.max(30, Math.min(window.innerWidth-30, curX)), Math.min(curY, floorY()-60));
   }
 
   function showHeldChip(tool){
@@ -18025,6 +18062,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(heldTool.id === 'audit'){ dropAudit(x); return; }
     if(heldTool.id === 'box'){ dropBox(x); return; }
     if(heldTool.id === 'anvil' || heldTool.id === 'bucket'){ dropHeavy(heldTool, x); return; }
+    if(heldTool.kind === 'prop'){ playToolSound(heldTool); spawnCrate(heldTool.id === 'mug' ? 'mug' : 'box', x - 17, -40, (Math.random()-0.5)*0.1, 0); return; }
     if(kind === 'place'){ placeTrap(heldTool, x); return; }
     if(kind === 'drop'){ dropBoulder(heldTool, x); return; }
     if(kind === 'spawn'){ spawnClone(x); return; }
@@ -18069,8 +18107,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // Hold the mouse down to auto-swing (swing tools only) -- rapid-fire stress relief.
   function aigHoldStart(e){
     if(!heldTool) return;
-    if(isUiTarget(e.target)) return;
+    if(isUiTarget(e.target) || aigOwnUi(e.target)) return;
     if(heldTool.kind === 'sling'){ slingStart(e); return; }
+    if(chargeStart(e)) return;
+    if(blowStart(e)) return;
     if((heldTool.kind||'swing') !== 'swing' || settings.rapid === false) return;
     holdSwung = false;
     clearInterval(holdTimer);
@@ -18089,6 +18129,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   function aigHoldEnd(e){
     clearInterval(holdTimer); holdTimer = null;
+    if(charging){ chargeEnd(e); holdSwung = true; setTimeout(function(){ holdSwung = false; }, 0); return; }
+    if(blowing){ blowEnd(); holdSwung = true; setTimeout(function(){ holdSwung = false; }, 0); return; }
     if(slingOn) slingRelease(e);
     setTimeout(function(){ holdSwung = false; }, 0);
   }
@@ -18820,6 +18862,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var g = guyCenter();
     var d = Math.hypot(g.x - x, g.y - y);
     hitClonesFromBlast(x, y, radius, force, t.tool);
+    crates.forEach(function(c){
+      var d2 = Math.hypot(c.x + c.w/2 - x, c.y + c.h/2 - y);
+      if(d2 < radius*1.3){ var p2 = 1 - d2/(radius*1.3); c.vx += ((c.x + c.w/2) - x)/Math.max(1,d2) * 1.4 * p2; c.vy -= 0.9*p2; c.vr += (Math.random()-0.5)*1.2; if(--c.hp <= 0) smashCrate(c); }
+    });
     if(d < radius){
       var prox = 1 - d/radius;
       var f = force * (0.6 + prox*0.9);
@@ -19023,6 +19069,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'vorsprung',  name:'Vorsprung',   desc:'Unlocked every secret tool.' },
     { id:'arsonist',   name:'Arsonist',    desc:'Set him on fire. You monster.' },
     { id:'acme',       name:'ACME',        desc:'Dropped an anvil on him.' },
+    { id:'finders_keepers', name:'Finders Keepers', desc:'He picked up a tool you dropped.' },
+    { id:'insubordination', name:'Insubordination', desc:'He hit the boss with your own tool.' },
+    { id:'full_swing', name:'Full Swing',  desc:'Landed a fully charged hit.' },
+    { id:'butterfingers', name:'Butterfingers', desc:'Overcharged and dropped the tool.' },
     { id:'accelerant', name:'Accelerant',  desc:'Poured oil on the fire.' },
     { id:'hydroplane',  name:'Hydroplane',  desc:'Oil slick into a boost. No traction at all.' },
     { id:'limp_mode',   name:'Limp Mode',   desc:'Check engine, then boost. He crawled.' },
@@ -21494,6 +21544,273 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     noiseBurst(.35, 260, 0.035, 2.2);
   }
 
+  // ---------------- Armed-mode page guard ----------------
+  // While a tool is equipped, clicks must never reach the app underneath. A capture-phase
+  // listener swallows anything that is not AI Guy, his own UI, or a legitimate placement click
+  // on empty floor -- so a stray swing can never press a real ERP control.
+  var guardOn = false, veilEl = null;
+  var GUARD_EVENTS = ['click','dblclick','mousedown','mouseup','pointerdown','pointerup','auxclick','contextmenu','submit','change'];
+  function aigOwnUi(el){
+    return !!(el && el.closest && el.closest('#aig-root, #aig-pop, #aig-held-chip, #aig-rage, #aig-vent, #aig-modal-overlay, .aig-remote, .aig-dyno, #aig-fx, #ai-guy-toggle-btn, .aig-toast'));
+  }
+  function guardHandler(e){
+    if(!heldTool) return;
+    var t = e.target;
+    if(aigOwnUi(t)) return;                                  // his own UI still works normally
+    // Everything else in the page is off limits while armed.
+    e.stopPropagation();
+    if(e.cancelable) e.preventDefault();
+    if(typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    // The guard sits in front of everything, so AI Guy's own pointer handlers must be called here.
+    if(e.type === 'pointerdown'){ aigHoldStart(e); return; }
+    if(e.type === 'pointerup'){ aigHoldEnd(e); return; }
+    if(e.type === 'mousedown' || e.type === 'mouseup'){ return; }
+    // On a real click, decide whether it was a legitimate swing/placement or a misfire.
+    if(e.type === 'click'){
+      var kind = heldTool.kind || 'swing';
+      var r = guyRect(), pad = hitPad + 6;
+      var x = e.clientX, y = e.clientY;
+      var onHim = x >= r.left-pad && x <= r.right+pad && y >= r.top-pad && y <= r.bottom+pad;
+      var placeable = (kind !== 'swing');                    // traps/drops/cannons are meant to be aimed anywhere
+      var onFloor = e.clientY > floorY() - 120;              // near his floor band
+      if(heldTool.id === 'blower' || heldTool.id === 'hose') return;                 // pure hold tools
+      if(CHARGE_TOOLS[heldTool.id]){
+        // a press-and-hold produced the swing already; a bare click (no charge session) is a light tap
+        if(chargeJustFired){ chargeJustFired = false; return; }
+        if(onHim) applyToolHit(heldTool, x, y, 0.5);
+        return;
+      }
+      if(onHim || placeable || onFloor){
+        swingAt(e.clientX, e.clientY);
+      } else {
+        // misfire: tell the user, do nothing to the page
+        var f = document.createElement('div'); f.className = 'aig-blocked-flash';
+        f.style.left = e.clientX+'px'; f.style.top = e.clientY+'px';
+        document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 420);
+        tone(200,.05,'square',.03);
+        if(!guardWarnedAt || performance.now() - guardWarnedAt > 4000){
+          guardWarnedAt = performance.now();
+          say(pick(['Aim at ME.','That is the ERP. Do not.','Wrong target.','I am over HERE.']), 1600);
+        }
+      }
+    }
+  }
+  var guardWarnedAt = 0;
+  function armPageGuard(tool){
+    if(guardOn) return; guardOn = true;
+    GUARD_EVENTS.forEach(function(ev){ document.addEventListener(ev, guardHandler, true); });
+    document.removeEventListener('click', aigSwingHandler);   // the guard now performs the swing itself
+    if(!veilEl){ veilEl = document.createElement('div'); veilEl.className = 'aig-armed-veil'; document.body.appendChild(veilEl); }
+    var how = { place:'click the floor to place', drop:'click to drop', spawn:'click to spawn', sling:'grab, pull, release', cannon:'click to fire', toggle:'click anywhere' }[tool.kind] || 'click him to swing';
+    veilEl.setAttribute('data-hint', tool.icon + '  ' + tool.label + ' \u2014 ' + how + ' \u00b7 the page is locked \u00b7 Esc to put it down');
+    veilEl.style.display = '';
+  }
+  function disarmPageGuard(){
+    if(!guardOn) return; guardOn = false;
+    GUARD_EVENTS.forEach(function(ev){ document.removeEventListener(ev, guardHandler, true); });
+    if(veilEl) veilEl.style.display = 'none';
+  }
+
+  // ---------------- Verb: CHARGE (hold to wind up, release to swing) ----------------
+  var CHARGE_TOOLS = { hammer:1, glove:1, sling:0, rs:1, boulder:0 };
+  var charging = null, chargeEl = null, chargeJustFired = false;
+  function chargeStart(e){
+    if(!heldTool || !CHARGE_TOOLS[heldTool.id]) return false;
+    charging = { t0: performance.now(), x: e.clientX, y: e.clientY, over: false };
+    if(!chargeEl){
+      chargeEl = document.createElement('div'); chargeEl.className = 'aig-charge';
+      chargeEl.innerHTML = '<svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"></circle><circle class="fg" cx="20" cy="20" r="17" stroke-dasharray="107" stroke-dashoffset="107"></circle></svg>';
+      document.body.appendChild(chargeEl);
+    }
+    chargeEl.style.display = ''; chargeEl.style.left = e.clientX+'px'; chargeEl.style.top = e.clientY+'px';
+    tone(180,.08,'sine',.03);
+    return true;
+  }
+  function chargeTick(ts){
+    if(!charging || !chargeEl) return;
+    var held = ts - charging.t0, p = Math.min(1.35, held/1100);      // >1 is overcharge
+    chargeEl.style.left = curX+'px'; chargeEl.style.top = curY+'px';
+    var fg = chargeEl.querySelector('.fg');
+    if(fg) fg.setAttribute('stroke-dashoffset', String(107 * (1 - Math.min(1, p))));
+    var full = p >= 1;
+    if(full !== charging.over){ charging.over = full; chargeEl.classList.toggle('full', full); if(full) tone(900,.06,'square',.04); }
+    if(p >= 1.35 && !charging.slipped){                              // held too long: it slips
+      charging.slipped = true;
+      var t = heldTool; chargeEnd(null, true);
+      say(pick(spicy(['You dropped it.','Butterfingers.','Nice grip.'],['Ha! You dropped the damn thing.'])), 1700, true); achieve('butterfingers');
+      spawnLoose(t, curX, curY);
+      window.aiGuyPutDownTool();
+    }
+  }
+  function chargeEnd(e, silent){
+    if(!charging) return;
+    var held = performance.now() - charging.t0, p = Math.min(1, held/1100);
+    var slipped = charging.slipped; charging = null;
+    if(chargeEl) { chargeEl.style.display = 'none'; chargeEl.classList.remove('full'); }
+    if(slipped || silent) return;
+    chargeJustFired = true; setTimeout(function(){ chargeJustFired = false; }, 250);
+    var x = e ? e.clientX : curX, y = e ? e.clientY : curY;
+    var force = 0.45 + p*1.6;                                        // weak tap -> huge wind-up
+    var r = guyRect(), pad = hitPad + 6;
+    var onHim = x >= r.left-pad && x <= r.right+pad && y >= r.top-pad && y <= r.bottom+pad;
+    if(onHim){
+      if(p > 0.85){ hitStop(90); slowMo(0.4, 420); spawnFloatText('FULL SWING', 'bad', 12); shakeScreen(); achieve('full_swing'); }
+      applyToolHit(heldTool, x, y, force);
+    }
+  }
+
+  // ---------------- Verb: HOLD TO AIM (continuous force cone) ----------------
+  var blowing = null, blowEl = null;
+  function blowStart(e){
+    if(!heldTool || (heldTool.id !== 'blower' && heldTool.id !== 'hose')) return false;
+    blowing = { since: performance.now() };
+    if(!blowEl){ blowEl = document.createElement('div'); blowEl.className = 'aig-blow'; document.body.appendChild(blowEl); }
+    blowEl.style.display = '';
+    return true;
+  }
+  function blowTick(ts, dt){
+    if(!blowing || !blowEl) return;
+    var r = guyRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
+    var dx = cx - curX, dy = cy - curY, d = Math.hypot(dx, dy) || 1;
+    var ang = Math.atan2(dy, dx) * 180/Math.PI;
+    var len = 420;
+    blowEl.style.left = curX+'px'; blowEl.style.top = (curY-60)+'px';
+    blowEl.style.width = len+'px'; blowEl.style.height = '120px';
+    blowEl.style.transform = 'rotate('+ang.toFixed(1)+'deg)';
+    // particles streaming out of the nozzle
+    var hose = heldTool.id === 'hose';
+    for(var i=0;i<(perf.on?1:3);i++){
+      var spread = (Math.random()-0.5)*0.55;
+      var a2 = Math.atan2(dy, dx) + spread;
+      fxEmit({ x: curX, y: curY, vx: Math.cos(a2)*(hose?0.55:0.4), vy: Math.sin(a2)*(hose?0.55:0.4) - (hose?0:0.02),
+               size: hose ? 3 : 4, color: hose ? 'rgba(120,190,255,.75)' : 'rgba(210,225,245,.45)',
+               ttl: hose ? 520 : 700, shape: hose ? 'dot' : 'smoke', g: hose ? 0.0012 : 0, drag: 0.99 });
+    }
+    // push him if he is inside the cone
+    if(d < len){
+      var falloff = 1 - d/len;
+      var push = (hose ? 0.0052 : 0.0038) * (0.45 + falloff*0.55) * dt;
+      vx += (dx/d) * push; vy += (dy/d) * push - (hose ? 0 : 0.0004*dt);
+      if(mode === 'walk' && Math.abs(vx) > 0.15){ mode = 'fly'; bounce.classList.add('aig-fly'); }
+      rotVel += (dx > 0 ? 1 : -1) * 0.0006 * falloff * dt;
+      if(hose && onFire) extinguish('hosed');
+      if(ts - (blowing.saidAt||0) > 2600){ blowing.saidAt = ts; say(pick(hose ? ['I am soaked!','Turn it OFF','This is a HOSE'] : ['Wind! WIND!','I am being blown away','Stop stop stop']), 1500); }
+    }
+    if(ts - blowing.since > 400 && ts - (blowing.hitAt||0) > 900){ blowing.hitAt = ts; applyToolHit(heldTool, cx, cy, 0.12); }
+  }
+  function blowEnd(){ blowing = null; if(blowEl) blowEl.style.display = 'none'; }
+
+  // ---------------- Persistent physics props ----------------
+  // Crates and mugs live on the floor, get knocked around, and shatter. He trips on them,
+  // you can throw him into them, and explosions scatter them.
+  var crates = [];
+  function spawnCrate(kind, x, y, vx0, vy0){
+    if(crates.length > 7){ var old = crates.shift(); if(old.el) old.el.remove(); }
+    var el = document.createElement('div'); el.className = 'aig-crate ' + kind;
+    document.body.appendChild(el);
+    var c = { el: el, kind: kind, x: x, y: (y == null ? -40 : y), vx: vx0||0, vy: vy0||0, rot: 0, vr: (Math.random()-0.5)*0.3,
+              w: kind === 'box' ? 34 : kind === 'cone' ? 22 : 20, h: kind === 'box' ? 30 : kind === 'cone' ? 24 : 20,
+              hp: kind === 'mug' ? 1 : 3 };
+    crates.push(c); return c;
+  }
+  function smashCrate(c, hard){
+    var cols = c.kind === 'mug' ? ['#eceff4','#c9ced6','#8b5a2b'] : c.kind === 'cone' ? ['#f97316','#c2410c','#fff'] : ['#c9a26a','#8a6534','#6b4a24'];
+    fxBurst(c.x + c.w/2, c.y + c.h/2, perf.on ? 8 : 18, cols, { speed: 0.13, g: 0.0016, size: 4, ttl: 900, shape:'rect' });
+    playToolSound(findTool(c.kind === 'mug' ? 'mug' : 'crate'));
+    if(c.el) c.el.remove();
+    var i = crates.indexOf(c); if(i>=0) crates.splice(i,1);
+    if(c.kind === 'mug') say(pick(spicy(['MY COFFEE.','That was full.','Somebody owns that mug.'],['That was my goddamn coffee.'])), 1800, true);
+  }
+  function updateCrates(ts, dt){
+    if(!crates.length) return;
+    var fy = floorY(), W = window.innerWidth, g = guyRect();
+    for(var i=crates.length-1;i>=0;i--){
+      var c = crates[i];
+      c.vy += GRAVITY*1.2*dt; c.x += c.vx*dt; c.y += c.vy*dt; c.rot += c.vr*dt;
+      if(c.x < 0){ c.x = 0; c.vx = -c.vx*0.5; } if(c.x > W - c.w){ c.x = W - c.w; c.vx = -c.vx*0.5; }
+      if(c.y + c.h > fy){
+        c.y = fy - c.h;
+        if(Math.abs(c.vy) > 0.5 && c.kind === 'mug'){ smashCrate(c); continue; }
+        if(Math.abs(c.vy) > 0.25){ c.vy = -c.vy*0.28; playImpact(Math.min(0.5, Math.abs(c.vy))); if(--c.hp <= 0){ smashCrate(c); continue; } }
+        else { c.vy = 0; c.vx *= Math.pow(0.9, dt/16); c.vr *= Math.pow(0.85, dt/16); }
+      }
+      // he collides with it
+      var overlapping = (g.right > c.x && g.left < c.x + c.w && g.bottom > c.y && g.top < c.y + c.h);
+      if(overlapping){
+        var push = (g.left + g.width/2) < (c.x + c.w/2) ? 1 : -1;
+        if(mode === 'fly' && Math.hypot(vx, vy) > 0.4){
+          c.vx = push * (0.25 + Math.abs(vx)*0.6); c.vy = -0.35; c.vr = push*0.5;
+          if(--c.hp <= 0){ smashCrate(c); }
+          vx *= 0.55; spawnDust(c.x + c.w/2, c.y + c.h);
+          spawnFloatText('CRASH', 'bad', 6);
+        } else if(mode === 'walk'){
+          c.vx = push * 0.06; pos -= push * 0.05 * dt;            // he shoves it along the floor
+          if(ts - (c.bumpAt||0) > 3000){ c.bumpAt = ts; say(pick(['Who left this here.','Ow. My shin.','Warehouse floor, this.']), 1600); }
+        }
+      }
+      c.el.style.transform = 'translate3d('+c.x.toFixed(1)+'px,'+c.y.toFixed(1)+'px,0) rotate('+c.rot.toFixed(1)+'deg)';
+    }
+  }
+  window.aiGuyClearProps = function(){ crates.slice().forEach(function(c){ if(c.el) c.el.remove(); }); crates = []; };
+
+  // ---------------- He picks up dropped tools and uses them ----------------
+  var loose = [], nextGrabCheck = 0;
+  function spawnLoose(tool, x, y){
+    if(!tool) return;
+    var el = document.createElement('div'); el.className = 'aig-trap'; el.textContent = tool.icon;
+    el.style.left = (x-11)+'px'; el.style.top = (y-11)+'px'; el.style.zIndex = '841';
+    document.body.appendChild(el);
+    loose.push({ el: el, tool: tool, x: x, y: y, vy: 0, born: performance.now(), landed: false });
+  }
+  function updateLoose(ts, dt){
+    if(!loose.length) return;
+    var fy = floorY(), g = guyRect();
+    for(var i=loose.length-1;i>=0;i--){
+      var L = loose[i];
+      if(!L.landed){
+        L.vy += GRAVITY*1.3*dt; L.y += L.vy*dt;
+        if(L.y > fy - 14){ L.y = fy - 14; L.landed = true; spawnDust(L.x, fy); }
+        L.el.style.top = (L.y-11)+'px';
+      }
+      if(ts - L.born > 45000){ L.el.remove(); loose.splice(i,1); continue; }
+      // he walks over and picks it up
+      if(L.landed && mode === 'walk' && !heldByGuy && Math.abs(L.x - (pos+23)) < 26 && ts - L.born > 700){
+        L.el.remove(); loose.splice(i,1);
+        guyPickUp(L.tool);
+      }
+    }
+  }
+  var heldByGuy = null, guyToolEl = null, guyUseAt = 0;
+  function guyPickUp(tool){
+    heldByGuy = tool; guyUseAt = performance.now() + 900 + Math.random()*900;
+    if(!guyToolEl){ guyToolEl = document.createElement('div'); guyToolEl.className = 'aig-inhand'; }
+    guyToolEl.textContent = tool.icon; bounce.appendChild(guyToolEl);
+    say(pick(spicy(['Ooh. Mine now.','You dropped this.','Finders keepers.','Let me see that.'],['Mine now, asshole.'])), 1800, true);
+    tone(700,.06,'sine',.04); tone(980,.08,'sine',.04,.05);
+    achieve('finders_keepers');
+  }
+  function guyUseTool(ts){
+    if(!heldByGuy || ts < guyUseAt) return;
+    var t = heldByGuy; heldByGuy = null;
+    if(guyToolEl && guyToolEl.parentNode) guyToolEl.remove();
+    // who does he use it on? a clone, a teammate's guy, the boss, or you
+    var targets = [];
+    clones.forEach(function(b){ targets.push({ kind:'clone', o:b }); });
+    mpRemotes.forEach(function(r){ targets.push({ kind:'remote', o:r }); });
+    if(boss) targets.push({ kind:'boss', o:boss });
+    if(targets.length && Math.random() < 0.7){
+      var tg = targets[Math.floor(Math.random()*targets.length)];
+      if(tg.kind === 'clone'){ cloneHit(tg.o, t, tg.o.pos+23, tg.o.posY+20, 1); say(pick(['Sorry. Not sorry.','He had it coming.','Testing it on him first.']), 1800, true); }
+      else if(tg.kind === 'remote'){ mpHit(tg.o, t, tg.o.x+23, tg.o.y+20); say(pick(['Tell '+(tg.o.name||'them')+' it was an accident.','Long distance!']), 1800, true); }
+      else { bossSay('Did you just--', 1800); say(pick(['It slipped.','That was NOT me.','Uh oh.']), 1800, true); powBurst(boss.x+23, boss.y+20, ['BONK']); achieve('insubordination'); }
+    } else {
+      // throws it back at your cursor
+      throwBack(t);
+      say(pick(spicy(['Have it back.','Catch.','Returned to sender.'],['Take your damn '+t.label.toLowerCase()+'.'])), 1700, true);
+    }
+    playToolSound(t);
+  }
+
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
     if(!pop || !root) return;
@@ -21693,6 +22010,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     // put the tool down and give the pointer back
     try{ if(cursorStolen) returnCursor(false); }catch(e){}
     try{ window.aiGuyPutDownTool(); }catch(e){}
+    try{ disarmPageGuard(); }catch(e){}
     document.documentElement.classList.remove('aig-nocursor');
     // clear everything he spawned
     try{ traps.slice().forEach(removeTrap); }catch(e){}
@@ -21708,6 +22026,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     try{ stopHiding(); }catch(e){}
     try{ if(onFire) extinguish('off'); }catch(e){}
     try{ if(boss) despawnBoss(); }catch(e){}
+    try{ window.aiGuyClearProps(); }catch(e){}
+    loose.slice().forEach(function(L){ if(L.el) L.el.remove(); }); loose.length = 0;
+    heldByGuy = null; if(guyToolEl && guyToolEl.parentNode) guyToolEl.remove();
+    charging = null; blowing = null; if(chargeEl) chargeEl.style.display='none'; if(blowEl) blowEl.style.display='none';
     document.querySelectorAll('.aig-scorch').forEach(function(el){ el.remove(); });
     try{ clearCoverClip(); }catch(e){}
     dramaOn = false; carriedBy = null; anger = 0; rageMode = false; rage = 0; plan = null; driveGoal = null;
