@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.26';
+var TGK_CC_VERSION='v3.29';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16944,6 +16944,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-nozzle.hose{background:linear-gradient(180deg,#d9b23a,#9a7a18);border:2px solid #4d3c0a;border-radius:4px 8px 8px 4px}
 .aig-nozzle.hose::after{content:'';position:absolute;right:-10px;top:5px;width:12px;height:8px;background:linear-gradient(180deg,#c9ced6,#8d939b);border:2px solid #4a4f57;border-radius:2px 6px 6px 2px}
 .aig-nozzle .grip{position:absolute;left:2px;bottom:-9px;width:8px;height:12px;background:#2a2f36;border:2px solid #14171b;border-radius:3px;transform:rotate(12deg)}
+.aig-games{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.aig-game-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:linear-gradient(180deg,#22262c,#171a1f);border:1px solid #33404f;color:#cfd6df;border-radius:9px;padding:8px 4px 6px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;line-height:1.15;text-align:center}
+.aig-game-btn:hover{border-color:#7dc0ff;color:#fff;box-shadow:0 0 0 1px rgba(125,192,255,.5)}
+.aig-game-btn span{font-size:19px;line-height:1}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17110,10 +17114,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var raw = localStorage.getItem(STORE_KEY);
       if(raw){
         var parsed = JSON.parse(raw);
-        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[], players: parsed.players||{}, learn: parsed.learn||{}, chat: parsed.chat||[], opinions: parsed.opinions||{} };
+        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[], players: parsed.players||{}, learn: parsed.learn||{}, chat: parsed.chat||[], opinions: parsed.opinions||{}, beliefs: parsed.beliefs||null };
       }
     }catch(e){}
-    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{} };
+    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{}, beliefs:null };
   }
   function stat(key, inc){ aigState.stats[key] = (aigState.stats[key]||0) + (inc==null?1:inc); return aigState.stats[key]; }
   var aigState = loadState();
@@ -17203,6 +17207,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       document.addEventListener('keydown', aigKeyDown);
       document.addEventListener('keyup', aigKeyUp);
       setTimeout(function(){ if(window.aiGuyIsOn && window.aiGuyIsOn()) askDirector('you just came online for the day'); }, 12000);
+      setTimeout(loadSharedMemory, 6000);
+      setTimeout(maybeReflect, 40000);
+      setInterval(maybeReflect, 180000);        // keeps trying until he has enough of a day to reflect on
       setTimeout(function(){ if(!window.aiGuyIsOn || window.aiGuyIsOn()) mpStart(); }, 3000);
       document.addEventListener('visibilitychange', function(){
         if(document.hidden){ hiddenAt = Date.now(); }
@@ -17461,6 +17468,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(charging) chargeTick(ts);
     if(lasso) lassoTick(ts, dt);
     if(moleOn) moleTick(ts);
+    samplePerception(ts);
+    updateGoals(ts);
     noticeThings(ts);
     selfAct(ts);
     if(crates.length) updateCrates(ts, dt);
@@ -17737,8 +17746,16 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
       sec('aig-tool-bad', 'Secret TGK tools', secret.filter(function(t){ return !toolLocked(t); }).length + '/' + secret.length + ' unlocked \u00b7 hover for how', secret) +
       '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.map(function(n){ var rr = mpRemotes.filter(function(q){ return q.name === n; })[0]; var s = rr ? shirtFor(rr.who, rr.sh) : myShirt(); return '<b style="color:'+s.hi+'">'+n+'</b>'; }).join(', ') : '')+'</span></div>'+
+      '<div><div class="aig-sec-label">Games & modes<span>pick one</span></div><div class="aig-games">'+
+        '<button class="aig-game-btn" onclick="aiGuyWhackAMole()" title="45 seconds of whack-a-mole"><span>\u{1F573}</span>Whack-a-mole</button>'+
+        '<button class="aig-game-btn" onclick="aiGuyBadDay()" title="20 seconds of scripted torment"><span>\u{1F4A5}</span>Bad day</button>'+
+        '<button class="aig-game-btn" onclick="aiGuyDynoGame()" title="Nail the redline"><span>\u{1F4C8}</span>Dyno pull</button>'+
+        '<button class="aig-game-btn" onclick="aiGuyBestHit()" title="Replay your best hit today"><span>\u{1F3AC}</span>Best hit</button>'+
+        '<button class="aig-game-btn" onclick="aiGuyToggleSandbox()" title="Gravity, bounce and wind sliders"><span>\u269B</span>Sandbox</button>'+
+        '<button class="aig-game-btn" onclick="aiGuyVentMode()" title="Everything, all at once"><span>\u{1F525}</span>Chaos</button>'+
+      '</div></div>'+
       '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something to him..." onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div>'+
-      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyClearProps()" title="Remove crates and mugs">Clear props</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
+      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyClearProps()" title="Remove crates and mugs">Clear props</button></div>'+
       settingsHtml() + sandboxHtml();
     document.body.appendChild(pop);
     popOpen = true;
@@ -18462,6 +18479,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(bit) return;
     if(ts < nextTauntAt) return;
     if(maybeCallback(ts)){ nextTauntAt = ts + 20000 + Math.random()*20000; return; }
+    if(aigState.beliefs && Math.random() < 0.12){
+      var bl = pick([aigState.beliefs.self, aigState.beliefs.shop, aigState.beliefs.resolution].filter(Boolean));
+      if(bl){ nextTauntAt = ts + 30000 + Math.random()*30000; say('\u2726 ' + bl, 3600); return; }
+    }
     var ops = aigState.opinions ? Object.keys(aigState.opinions) : [];
     if(ops.length && Math.random() < 0.18){
       var who = ops[Math.floor(Math.random()*ops.length)];
@@ -19804,11 +19825,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       '<label>Gravity <span style="display:flex;align-items:center;gap:6px"><input type="range" min="0.2" max="2.5" step="0.1" value="'+(settings.grav||1)+'" oninput="aiGuySetting(\'grav\',this.value);this.nextSibling.textContent=(+this.value).toFixed(1)+\'x\'"><span style="width:30px;text-align:right;color:#f0f0f0">'+(settings.grav||1).toFixed(1)+'x</span></span></label>'+
       '<label>Bounce <span style="display:flex;align-items:center;gap:6px"><input type="range" min="0.1" max="1.2" step="0.05" value="'+(settings.bounce||1)+'" oninput="aiGuySetting(\'bounce\',this.value);this.nextSibling.textContent=(+this.value).toFixed(2)+\'x\'"><span style="width:34px;text-align:right;color:#f0f0f0">'+(settings.bounce||1).toFixed(2)+'x</span></span></label>'+
       '<label>Wind <span style="display:flex;align-items:center;gap:6px"><input type="range" min="-1" max="1" step="0.05" value="'+(settings.wind||0)+'" oninput="aiGuySetting(\'wind\',this.value);this.nextSibling.textContent=(+this.value).toFixed(2)"><span style="width:34px;text-align:right;color:#f0f0f0">'+(settings.wind||0).toFixed(2)+'</span></span></label>'+
-      '<div style="display:flex;gap:6px"><button onclick="aiGuyWhackAMole()">Whack-a-mole</button><button onclick="aiGuyBestHit()">Best hit today</button></div>'+
+
       '<div style="font-size:10px;color:#4a4f55">Hold SPACE any time for slow motion.</div>'+
     '</div>';
   }
-  window.aiGuyToggleSandbox = function(){ var p = document.getElementById('aig-sandbox'); if(p){ p.classList.toggle('open'); requestAnimationFrame(function(){ repositionPop(); }); } };
+  window.aiGuyToggleSandbox = function(){
+    var p = document.getElementById('aig-sandbox');
+    if(!p){ openToolTray(); setTimeout(function(){ var q = document.getElementById('aig-sandbox'); if(q){ q.classList.add('open'); repositionPop(); } }, 60); return; }
+    p.classList.toggle('open');
+    if(p.classList.contains('open')) p.scrollIntoView({ block:'nearest' });
+    requestAnimationFrame(function(){ repositionPop(); });
+  };
   function settingsHtml(){
     return '<div class="aig-settings" id="aig-settings">'+
       '<div class="aig-sec-label">Settings</div>'+
@@ -20269,12 +20296,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // call has a canned fallback -- if the proxy is down or slow he just says the scripted line.
   var brainBusy = false, lastThinkAt = -1e9, brainFails = 0, recentLines = [], lastRenameAt = -1e9;
   function brainOn(){ return settings.brain !== false && typeof tgkAIFetch === 'function' && brainFails < 4 && !perf.on; }
-  function remember(kind, detail){
-    if(!aigState.memory) aigState.memory = [];
-    aigState.memory.unshift({ t: Date.now(), k: kind, d: String(detail||'').slice(0,60), who: sharedEmail().split('@')[0] });
-    if(aigState.memory.length > 30) aigState.memory.length = 30;
-    saveState();
-  }
+  function remember(kind, detail, extra){ return memRemember(kind, detail, extra); }
   function brainContext(){
     var now = new Date();
     var wk = Date.now() - 7*86400000, hitsWk = 0, byTool = {};
@@ -20290,6 +20312,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       open_notifications: openItems, clones_on_screen: clones.length, traps_on_floor: traps.length,
       recent_events: (aigState.memory||[]).slice(0,8).map(function(m){ return Math.round((Date.now()-m.t)/60000)+'m ago: '+m.k+(m.d?' '+m.d:'')+(m.who?' (by '+m.who+')':''); }),
       achievements: (aigState.ach||[]).length,
+      perception: percept,
+      goals: goals.slice(0,4).map(function(g){ return { goal: g.id, why: g.why, priority: +g.priority.toFixed(2) }; }),
+      beliefs: aigState.beliefs || null,
       this_person: playerSummary(),
       face_i_am_wearing: faceName(myFaceId()),
       drives: drivesSnapshot()
@@ -20306,7 +20331,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!brainOn() || brainBusy || (!urgent && performance.now() - lastThinkAt < 35000)){ fb(); return; }
     brainBusy = true; lastThinkAt = performance.now();
     var ctx = brainContext();
-    var user = 'Moment: '+kind+(detail ? ' - '+detail : '')+'\nContext: '+JSON.stringify(ctx)+'\nDo not repeat any of these recent lines: '+JSON.stringify(recentLines.slice(-6))+'\nYour one line:';
+    var recalled = memoryLines(recallSimilar(kind, detail, 5));
+    var user = 'Moment: '+kind+(detail ? ' - '+detail : '')+
+               '\nContext: '+JSON.stringify(ctx)+
+               (recalled.length ? '\nThings you remember that are similar to this:\n- '+recalled.join('\n- ') : '')+
+               '\nDo not repeat any of these recent lines: '+JSON.stringify(recentLines.slice(-6))+
+               '\nYour one line:';
     var sys = BRAIN_SYSTEM + (settings.swear === false ? ' No profanity at all.' : ' Profanity is allowed and fits your character when you are hurt or mad: shit, damn, hell, ass, bastard, and an occasional fuck. Use it like a shop mechanic, not every line. Never slurs, nothing sexual, never mock anyone for who they are.');
     var timer = setTimeout(function(){ if(brainBusy){ brainBusy = false; fb(); } }, 4500);
     var done = false;
@@ -22223,6 +22253,234 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var a = opts[Math.floor(Math.random()*opts.length)];
     try{ a.run(); }catch(e){}
   }
+
+  // ================= #2 PERCEPTION =================
+  // What he can actually see: the page you are on, the controls around him, your cursor
+  // behaviour, the clock, the room. Cheap to gather, refreshed on a slow timer.
+  var percept = {}, nextPerceiveAt = 0, cursorTrail = [], lastCursorSample = 0;
+  function samplePerception(ts){
+    if(ts - lastCursorSample > 240){
+      lastCursorSample = ts;
+      cursorTrail.push({ x: curX, y: curY, t: ts });
+      if(cursorTrail.length > 25) cursorTrail.shift();
+    }
+    if(ts < nextPerceiveAt) return;
+    nextPerceiveAt = ts + 12000;
+    var p = {};
+    // where in the app are you
+    var heading = document.querySelector('.sec-head, h1, h2');
+    p.page_heading = heading ? String(heading.textContent||'').trim().slice(0, 48) : null;
+    p.visible_cards = document.querySelectorAll('.mod-card, .tbx-card').length;
+    var openModal = document.querySelector('.tbx-modal-overlay.open, .modal.open');
+    p.modal_open = !!openModal;
+    // the notification badge
+    var cnt = document.getElementById('cc-notif-count');
+    var n = cnt ? parseInt(String(cnt.textContent).replace('+',''),10) || 0 : 0;
+    p.open_notifications = n;
+    if(percept.open_notifications != null) p.notifications_trend = n > percept.open_notifications ? 'rising' : n < percept.open_notifications ? 'falling' : 'flat';
+    // your cursor behaviour
+    if(cursorTrail.length > 4){
+      var dist = 0, near = 0;
+      for(var i=1;i<cursorTrail.length;i++) dist += Math.hypot(cursorTrail[i].x-cursorTrail[i-1].x, cursorTrail[i].y-cursorTrail[i-1].y);
+      var r = guyRect();
+      cursorTrail.forEach(function(c){ if(Math.hypot(c.x-(r.left+23), c.y-(r.top+33)) < 150) near++; });
+      p.cursor_activity = dist < 60 ? 'still' : dist < 900 ? 'browsing' : 'busy';
+      p.cursor_hovering_me = near / cursorTrail.length > 0.5;
+    }
+    // the room around him
+    p.things_on_floor = { crates: crates.length, traps: traps.length, clones: clones.length, loose_tools: loose.length };
+    p.tool_in_your_hand = heldTool ? heldTool.label : null;
+    p.people_online = mpOnline.slice(0,6);
+    p.time = new Date().toLocaleString('en-US', { weekday:'short', hour:'numeric', minute:'2-digit' });
+    p.minutes_since_you_touched_me = Math.round((performance.now() - lastInteractAt)/60000);
+    p.window = { w: window.innerWidth, h: window.innerHeight, hidden: document.hidden };
+    percept = p;
+  }
+
+  // ================= #3 PERSISTENT MEMORY WITH RETRIEVAL =================
+  // Events go to Supabase with the situation that surrounded them. When something new happens,
+  // the most similar past events are pulled back into his prompt.
+  var memSyncQueue = [], memSyncTimer = null, memCache = null, memCacheAt = 0;
+  function memRemember(kind, detail, extra){
+    var m = { t: Date.now(), k: kind, d: String(detail||'').slice(0,60), who: sharedEmail().split('@')[0],
+              ctx: { anger: Math.round(anger), tool: heldTool ? heldTool.id : null, mood: currentMood() || 'neutral',
+                     hour: new Date().getHours(), day: new Date().toLocaleDateString('en-US',{weekday:'short'}) } };
+    if(extra) for(var k in extra) m.ctx[k] = extra[k];
+    if(!aigState.memory) aigState.memory = [];
+    aigState.memory.unshift(m);
+    if(aigState.memory.length > 60) aigState.memory.length = 60;
+    saveState();
+    if(sharedOk){ memSyncQueue.push(m); if(!memSyncTimer) memSyncTimer = setTimeout(flushMemory, 20000); }
+    return m;
+  }
+  function flushMemory(){
+    memSyncTimer = null;
+    if(!sharedOk || !memSyncQueue.length) return;
+    var rows = memSyncQueue.splice(0, 50).map(function(m){
+      return { user_email: sharedEmail(), kind: 'memory', tool: String(m.k).slice(0,40),
+               note: JSON.stringify({ d: m.d, ctx: m.ctx }).slice(0, 900) };
+    });
+    sbFetch('/rest/v1/ai_guy_events', { method:'POST', headers:{ 'apikey': TGK_SB_KEY, 'Authorization':'Bearer '+TGK_SB_KEY, 'Content-Type':'application/json', 'Prefer':'return=minimal' }, body: JSON.stringify(rows) })
+      .catch(function(){ /* column may not exist yet: stay local-only */ });
+  }
+  // Similarity: shared words in the kind/detail, plus matching mood, tool, hour-of-day and weekday.
+  function recallSimilar(kind, detail, n){
+    var pool = (aigState.memory || []).concat(memCache || []);
+    if(!pool.length) return [];
+    var words = (kind + ' ' + (detail||'')).toLowerCase().split(/[^a-z0-9]+/).filter(function(w){ return w.length > 2; });
+    var nowH = new Date().getHours(), nowD = new Date().toLocaleDateString('en-US',{weekday:'short'});
+    var curMood = currentMood() || 'neutral', curTool = heldTool ? heldTool.id : null;
+    var scored = pool.map(function(m){
+      var s = 0, text = ((m.k||'') + ' ' + (m.d||'')).toLowerCase();
+      words.forEach(function(w){ if(text.indexOf(w) >= 0) s += 3; });
+      var c = m.ctx || {};
+      if(c.mood && c.mood === curMood) s += 1.5;
+      if(curTool && c.tool === curTool) s += 2.5;
+      if(c.hour != null && Math.abs(c.hour - nowH) <= 1) s += 1;
+      if(c.day === nowD) s += 1;
+      var ageH = (Date.now() - (m.t||0))/3600000;
+      s += Math.max(0, 2 - ageH/24);                        // recency nudge, not dominance
+      return { m: m, s: s };
+    }).filter(function(o){ return o.s > 2.5; });
+    scored.sort(function(a,b){ return b.s - a.s; });
+    var seen = {}, out = [];
+    for(var i=0;i<scored.length && out.length < (n||5);i++){
+      var key = scored[i].m.k + '|' + scored[i].m.d;
+      if(seen[key]) continue; seen[key] = 1; out.push(scored[i].m);
+    }
+    return out;
+  }
+  function memoryLines(list){
+    return list.map(function(m){
+      var mins = Math.round((Date.now() - m.t)/60000);
+      var when = mins < 60 ? mins+'m ago' : mins < 1440 ? Math.round(mins/60)+'h ago' : Math.round(mins/1440)+'d ago';
+      var c = m.ctx || {};
+      return when + ': ' + m.k + (m.d ? ' (' + m.d + ')' : '') + (m.who ? ' [' + m.who + ']' : '') + (c.tool ? ' {' + c.tool + '}' : '');
+    });
+  }
+  function loadSharedMemory(){
+    if(!sharedOk || (Date.now() - memCacheAt < 600000)) return;
+    memCacheAt = Date.now();
+    sbFetch('/rest/v1/ai_guy_events?select=user_email,tool,note,created_at&kind=eq.memory&order=created_at.desc&limit=120')
+      .then(function(rows){
+        memCache = (rows||[]).map(function(r){
+          var parsed = {}; try{ parsed = JSON.parse(r.note||'{}'); }catch(e){}
+          return { t: new Date(r.created_at).getTime(), k: r.tool || 'event', d: parsed.d || '', who: String(r.user_email||'').split('@')[0], ctx: parsed.ctx || {} };
+        });
+      }).catch(function(){ memCache = []; });
+  }
+
+  // ================= #4 DAILY REFLECTION =================
+  // Once a day he reads his own history back and writes durable beliefs, which then ride along
+  // in every prompt. That is what gives him a past rather than a log.
+  function maybeReflect(){
+    var today = new Date().toISOString().slice(0,10);
+    if(aigState.stats.reflectedOn === today) return;
+    if((aigState.memory||[]).length < 8) return;
+    if(!brainOn()) return;
+    aigState.stats.reflectedOn = today; saveState();
+    var hist = (aigState.memory||[]).slice(0, 40).map(function(m){
+      var c = m.ctx||{};
+      return new Date(m.t).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + m.k + (m.d?': '+m.d:'') + (m.who?' by '+m.who:'') + (c.tool?' ['+c.tool+']':'');
+    });
+    var players = {}; Object.keys(aigState.players||{}).forEach(function(k){
+      var P = aigState.players[k]; players[k.split('@')[0]] = { hits:P.hits, praises:P.praises, favorite: favTool(P) };
+    });
+    var sys = BRAIN_SYSTEM + ' You are reflecting privately at the end of a day, not speaking to anyone. Reply ONLY with JSON: ' +
+      '{"about_people":{"<name>":"<one short belief>"},"about_self":"<one short belief>","about_the_shop":"<one short belief>","resolution":"<one thing you intend to do tomorrow>"}. ' +
+      'Base it strictly on the history given. Keep every value under 90 characters.';
+    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 320, system: sys,
+                 messages:[{ role:'user', content: 'Your history:\n' + hist.join('\n') + '\n\nPeople: ' + JSON.stringify(players) + '\n\nJSON:' }] })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
+        var mm = /\{[\s\S]*\}/.exec(txt); var o = null; try{ o = mm ? JSON.parse(mm[0]) : null; }catch(e){}
+        if(!o) return;
+        aigState.beliefs = {
+          people: o.about_people || {}, self: String(o.about_self||'').slice(0,120),
+          shop: String(o.about_the_shop||'').slice(0,120), resolution: String(o.resolution||'').slice(0,120),
+          on: new Date().toISOString().slice(0,10)
+        };
+        if(o.about_people) Object.keys(o.about_people).forEach(function(k){
+          if(!aigState.opinions) aigState.opinions = {};
+          aigState.opinions[String(k).toLowerCase()] = String(o.about_people[k]).slice(0,90);
+        });
+        saveState();
+        setTimeout(function(){ if(aigState.beliefs.resolution) say('\u2726 ' + aigState.beliefs.resolution, 4000, true); }, 3000);
+      }).catch(function(){});
+  }
+
+  // ================= #5 GOAL STACK =================
+  // Several goals at once with shifting priorities, so his behaviour looks deliberate over minutes.
+  var goals = [];
+  function pushGoal(id, why, priority, ttlMs){
+    var g = goals.filter(function(q){ return q.id === id; })[0];
+    if(g){ g.priority = Math.max(g.priority, priority); g.until = performance.now() + (ttlMs||120000); g.why = why || g.why; return g; }
+    g = { id: id, why: why||'', priority: priority, until: performance.now() + (ttlMs||120000), born: performance.now() };
+    goals.push(g); return g;
+  }
+  function dropGoal(id){ goals = goals.filter(function(g){ return g.id !== id; }); }
+  function topGoal(){ return goals.length ? goals[0] : null; }
+  function updateGoals(ts){
+    // decay and expiry
+    goals = goals.filter(function(g){ return ts < g.until; });
+    goals.forEach(function(g){ g.priority *= 0.9995; });
+    // goals form from his actual situation
+    var P = playerOf();
+    if(anger > 60) pushGoal('avoid_pain', 'anger is high', 0.6 + anger/250, 90000); else dropGoal('avoid_pain');
+    if(P.praises === 0 && P.hits > 12) pushGoal('get_praised', 'nobody has been kind', 0.5, 300000);
+    if(performance.now() - lastPraiseAt < 20000) dropGoal('get_praised');
+    if(mpRemotes.length) pushGoal('socialise', 'teammates are online', 0.45, 240000); else dropGoal('socialise');
+    if(traps.length >= 2) pushGoal('watch_floor', 'the floor is mined', 0.5, 180000); else dropGoal('watch_floor');
+    if(drives.rest > 0.8) pushGoal('rest', 'tired', 0.55, 120000); else dropGoal('rest');
+    if(aigState.beliefs && aigState.beliefs.resolution && !goals.some(function(g){ return g.id === 'resolution'; }))
+      pushGoal('resolution', aigState.beliefs.resolution, 0.4, 3600000);
+    var fav = favTool(P);
+    if(fav && heldTool && heldTool.id === fav) pushGoal('brace', 'they picked their favourite', 0.75, 20000);
+    goals.sort(function(a,b){ return b.priority - a.priority; });
+    // the top goal nudges the drives that the local behaviour already reads
+    var t = topGoal(); if(!t) return;
+    if(t.id === 'avoid_pain'){ drives.safety = Math.max(drives.safety, 0.8); }
+    else if(t.id === 'get_praised'){ drives.social = Math.max(drives.social, 0.6); drives.pride = Math.max(drives.pride, 0.5); }
+    else if(t.id === 'socialise'){ drives.social = Math.max(drives.social, 0.8); }
+    else if(t.id === 'rest'){ drives.rest = Math.max(drives.rest, 0.9); }
+    else if(t.id === 'watch_floor'){ drives.curiosity = Math.max(drives.curiosity, 0.7); }
+  }
+  window.aiGuyMind = function(){ return { goals: goals.slice(), beliefs: aigState.beliefs||null, perception: percept, memories: (aigState.memory||[]).length, shared: (memCache||[]).length }; };
+
+  window.aiGuyDynoGame = function(){ closePop(); window.aiGuyPutDownTool(); openDyno(); };
+  // Chaos: 25 seconds of everything at once. Purely for stress relief.
+  var chaosOn = false;
+  window.aiGuyVentMode = function(){
+    if(chaosOn) return; chaosOn = true; closePop(); window.aiGuyPutDownTool(); touch(); if(asleep) wakeUp(false);
+    aigToast('CHAOS', '25 seconds. Hold on.');
+    say(pick(spicy(['What is happening.','Oh no. OH NO.','I did not agree to this.'],['Oh you have got to be kidding me.'])), 2400, true);
+    var T = function(id){ return findTool(id); };
+    var hit = function(id, f){ var t = T(id); if(!t) return; var r = guyRect(); applyToolHit(t, r.left + r.width/2 + (Math.random()<0.5?-28:28), r.top + 20, f||1); };
+    var acts = [
+      function(){ hit('tomato'); }, function(){ hit('hammer', 1.2); }, function(){ hit('zap'); },
+      function(){ var t=T('boulder'); if(t) dropBoulder(t, pos+23); }, function(){ var t=T('anvil'); if(t) dropHeavy(t, pos+23); },
+      function(){ spawnCrate('box', pos + (Math.random()-0.5)*220, -40, 0, 0); },
+      function(){ spawnCrate('mug', pos + (Math.random()-0.5)*260, -40, 0, 0); },
+      function(){ var t=T('banana'); if(t) placeTrap(t, pos + 23 + (Math.random()<0.5?-70:70)); },
+      function(){ var t=T('mine'); if(t) placeTrap(t, pos + 23 + (Math.random()<0.5?-110:110)); },
+      function(){ hit('boost'); }, function(){ hit('glove'); }, function(){ rollTire(); },
+      function(){ if(clones.length < 4) spawnClone(pos + (Math.random()-0.5)*300); },
+      function(){ hit('cel'); }, function(){ var t=T('oil'); if(t) placeTrap(t, pos + 23 + dir*60); }
+    ];
+    var t0 = performance.now();
+    var iv = setInterval(function(){
+      if(performance.now() - t0 > 23000){ clearInterval(iv); return; }
+      try{ acts[Math.floor(Math.random()*acts.length)](); }catch(e){}
+    }, 700);
+    setTimeout(function(){ igniteHim(); }, 9000);
+    setTimeout(function(){ sendCar(); }, 15000);
+    setTimeout(function(){
+      chaosOn = false;
+      say(pick(spicy(['I am going to lie down.','Never again.','Was that necessary?'],['What the hell was that.'])), 3200, true);
+      aigToast('Chaos over', 'Feel better?');
+    }, 25000);
+  };
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
