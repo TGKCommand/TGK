@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.19';
+var TGK_CC_VERSION='v3.24';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -16923,6 +16923,18 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-crate.mug{width:20px;height:20px;background:#eceff4;border:2px solid #9aa3ad;border-radius:3px 3px 6px 6px}
 .aig-crate.mug::after{content:'';position:absolute;right:-7px;top:4px;width:7px;height:9px;border:2px solid #9aa3ad;border-left:0;border-radius:0 6px 6px 0}
 .aig-crate.cone{width:22px;height:24px;background:linear-gradient(180deg,#f97316,#c2410c);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.aig-rope{position:fixed;inset:0;z-index:2048;pointer-events:none}
+.aig-rope path{fill:none;stroke:#c9a15a;stroke-width:2.5;stroke-linecap:round}
+.aig-rope circle{fill:none;stroke:#c9a15a;stroke-width:2.5}
+.aig-slowmo{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:3060;background:#18191b;border:1px solid rgba(120,190,255,.5);color:#7dc0ff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;font-family:var(--font,inherit);pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.aig-sandbox{display:none;flex-direction:column;gap:7px;border-top:1px solid #232527;padding-top:8px;font-size:11px;color:#9CA3AF}
+.aig-sandbox.open{display:flex}
+.aig-sandbox label{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.aig-sandbox input[type=range]{width:110px!important;accent-color:#7dc0ff}
+.aig-mole{position:fixed;z-index:838;pointer-events:none;width:44px;height:14px;border-radius:22px 22px 4px 4px;background:linear-gradient(180deg,#3a3f46,#22262a);border:2px solid #14161a;box-shadow:inset 0 2px 4px rgba(0,0,0,.6)}
+.aig-mole.hot{border-color:#FFD166;box-shadow:inset 0 2px 4px rgba(0,0,0,.6),0 0 10px rgba(255,209,102,.6)}
+.aig-replay{position:fixed;right:16px;bottom:16px;z-index:3070;background:#18191b;border:1px solid #2e2e2e;border-radius:10px;padding:8px 12px;color:#9CA3AF;font-size:11px;font-family:var(--font,inherit);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.aig-replay b{color:#FFD166;display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
 .aig-toast{position:fixed;top:64px;right:16px;z-index:3200;background:#18191b;border:1px solid rgba(255,209,102,.55);border-radius:10px;padding:10px 14px;color:#f0f0f0;font-size:12px;font-family:var(--font,inherit);box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),top .3s;min-width:200px}
 .aig-toast.show{transform:none}
 .aig-toast b{color:#FFD166;display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
@@ -17170,6 +17182,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       headImg = root.querySelector('.aig-head img');
       hookApp();
       preloadFaces();
+      document.addEventListener('keydown', aigKeyDown);
+      document.addEventListener('keyup', aigKeyUp);
       setTimeout(function(){ if(window.aiGuyIsOn && window.aiGuyIsOn()) askDirector('you just came online for the day'); }, 12000);
       setTimeout(function(){ if(!window.aiGuyIsOn || window.aiGuyIsOn()) mpStart(); }, 3000);
       document.addEventListener('visibilitychange', function(){
@@ -17216,7 +17230,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var loopArmed = false, idleSkip = false;
   function armLoop(){ if(loopArmed) return; loopArmed = true; requestAnimationFrame(tick); }
   function isBusy(){
-    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit || hideSpot || onFire || boss || charging || blowing || crates.length || loose.length;
+    return mode !== 'walk' || clones.length || traps.length || projectiles.length || bubbleShown || performance.now() < shakeUntil || rageMode || hiding || madOn || fightOn || cursorStolen || asleep || skit || dramaOn || Math.abs(squishV) > 0.001 || fxParts.length || mpRemotes.length || carObj || driveGoal || bit || hideSpot || onFire || boss || charging || blowing || crates.length || loose.length || lasso || bulletTime || moleOn;
   }
   function tick(ts){
     loopArmed = false;
@@ -17239,7 +17253,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     // Idle (just walking, nothing else going on): render every other frame. Walking at 30fps reads fine.
     if(!isBusy()){ idleSkip = !idleSkip; if(idleSkip){ armLoop(); return; } }
     lastTs = ts;
-    if(ts > slowUntil && timeScale !== 1) timeScale = 1;
+    if(!bulletTime && ts > slowUntil && timeScale !== 1) timeScale = 1;
     var dt = rawDt * timeScale; dt_last = dt;
     var frozen = ts < freezeUntil;
     if(rageMode && ts > rageUntil) endRage();
@@ -17351,8 +17365,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       if(dir !== lastDir){ lastDir = dir; flip.style.transform = dir < 0 ? 'scaleX(-1)' : 'scaleX(1)'; bounce.classList.toggle('aig-facing-left', dir < 0); }
       maybeTaunt(ts);
     } else if(mode==='fly'){
-      var g = (rageMode ? GRAVITY*0.45 : GRAVITY) * gravSign;
+      var g = (rageMode ? GRAVITY*0.45 : GRAVITY) * gravSign * (settings.grav || 1);
       vy += g*dt;
+      if(settings.wind) vx += settings.wind * 0.00025 * dt;
       pos += vx*dt;
       posY += vy*dt;
       rotAngle += rotVel*dt;
@@ -17389,7 +17404,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
           if(Math.abs(vy) > SETTLE_V){
             playImpact(Math.min(1, Math.abs(vy)/0.9));
             if(Math.abs(vy) > 0.7){ shakeScreen(); say(pick(spicy(['Oof.','My spine.','Ten out of ten landing.','Stuck the landing. Kind of.','Everything hurts.'],['Oof. Shit.','My damn spine.','Everything hurts. Everything.','Ass first. Great.'])), 1300); }
-            vy = -vy*BOUNCE_DAMP;
+            vy = -vy*BOUNCE_DAMP*(settings.bounce || 1);
             vx *= 0.75;
             rotVel *= 0.7;
             squash();
@@ -17425,6 +17440,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     updateHealing(ts);
     updateCigar(ts);
     if(charging) chargeTick(ts);
+    if(lasso) lassoTick(ts, dt);
+    if(moleOn) moleTick(ts);
     if(crates.length) updateCrates(ts, dt);
     if(loose.length) updateLoose(ts, dt);
     if(heldByGuy) guyUseTool(ts);
@@ -17529,14 +17546,15 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       limbV[p[1]] = (limbV[p[1]] + (target - limbA[p[1]])*k2) * damp2;
       limbA[p[1]] += limbV[p[1]];
     });
-    limbs.al.style.transform = 'rotate('+limbA.al.toFixed(1)+'deg)';
-    limbs.ar.style.transform = 'rotate('+limbA.ar.toFixed(1)+'deg)';
+    if(!limbGrab || limbGrab.key !== 'al') limbs.al.style.transform = 'rotate('+limbA.al.toFixed(1)+'deg)';
+    if(!limbGrab || limbGrab.key !== 'ar') limbs.ar.style.transform = 'rotate('+limbA.ar.toFixed(1)+'deg)';
     if(limbs.alSeg) limbs.alSeg.style.transform = 'rotate('+(limbA.al2).toFixed(1)+'deg)';
     if(limbs.arSeg) limbs.arSeg.style.transform = 'rotate('+(-limbA.ar2).toFixed(1)+'deg)';
     if(limbs.legs.length >= 2){
       var lift = (mode==='walk') ? Math.abs(Math.sin(ts/150))*3 : 0;
-      limbs.legs[0].style.transform = 'translateY('+(-lift).toFixed(1)+'px) rotate('+limbA.ll.toFixed(1)+'deg)';
-      limbs.legs[1].style.transform = 'translateY('+(-(3-lift)).toFixed(1)+'px) rotate('+limbA.lr.toFixed(1)+'deg)';
+      if(!limbGrab || limbGrab.key !== 'll') limbs.legs[0].style.transform = 'translateY('+(-lift).toFixed(1)+'px) rotate('+limbA.ll.toFixed(1)+'deg)';
+      if(!limbGrab || limbGrab.key !== 'lr') limbs.legs[1].style.transform = 'translateY('+(-(3-lift)).toFixed(1)+'px) rotate('+limbA.lr.toFixed(1)+'deg)';
+      if(limbGrab && (limbGrab.key === 'll' || limbGrab.key === 'lr')){ /* grabbed leg keeps its stretch */ }
       if(limbs.legSegs && limbs.legSegs.length >= 2){
         limbs.legSegs[0].style.transform = 'rotate('+(-limbA.ll2).toFixed(1)+'deg)';
         limbs.legSegs[1].style.transform = 'rotate('+(limbA.lr2).toFixed(1)+'deg)';
@@ -17619,6 +17637,18 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
   function onPointerDown(e){
     touch();
+    // grabbing an ARM or LEG stretches that limb and spins him around the grip
+    if(!heldTool && e.target && e.target.closest && e.target.closest('.aig-arm, .aig-leg')){
+      var el = e.target.closest('.aig-arm, .aig-leg');
+      limbGrab = { el: el, key: el.classList.contains('l') ? 'al' : el.classList.contains('r') ? 'ar' : (el === limbs.legs[0] ? 'll' : 'lr'),
+                   x: e.clientX, y: e.clientY, t0: performance.now() };
+      mode = 'drag'; vx = 0; vy = 0; bounce.classList.add('aig-drag');
+      say(pick(spicy(['Not the arm!','That is attached!','Let GO.','This is assault.'],['Let go of my damn arm.'])), 1800, true);
+      document.addEventListener('pointermove', limbGrabMove);
+      document.addEventListener('pointerup', limbGrabEnd);
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
     if(cursorStolen){ e.preventDefault(); returnCursor(true); return; }
     if(heldTool) return;
     e.preventDefault();
@@ -17688,7 +17718,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var sec = function(cls, label, hint, list){ return '<div><div class="aig-sec-label">'+label+'<span>'+hint+'</span></div><div class="aig-tool-row '+cls+'">'+list.map(toolBtnHtml).join('')+'</div></div>'; };
     pop.innerHTML =
       '<div class="aig-tray-head"><div class="aig-tray-title">AI Guy</div>'+
-        '<button class="aig-mute-btn" onclick="aiGuyToggleSettings()" title="Settings">\u2699</button>'+
+        '<button class="aig-mute-btn" onclick="aiGuyToggleSandbox()" title="Physics sandbox">\u269B</button><button class="aig-mute-btn" onclick="aiGuyToggleSettings()" title="Settings">\u2699</button>'+
         '<button class="aig-mute-btn" onclick="aiGuyToggleMute()" id="aig-mute-btn" title="Mute sound">'+(muted?'\u2716':'\u266A')+'</button>'+
         '<button class="aig-mute-btn" onclick="aiGuyCloseTray()" title="Close">\u2715</button></div>'+
       sec('aig-tool-good', 'Praise', 'click him', praise) +
@@ -17698,7 +17728,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.map(function(n){ var rr = mpRemotes.filter(function(q){ return q.name === n; })[0]; var s = rr ? shirtFor(rr.who, rr.sh) : myShirt(); return '<b style="color:'+s.hi+'">'+n+'</b>'; }).join(', ') : '')+'</span></div>'+
       '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something to him..." onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div>'+
       '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyClearProps()" title="Remove crates and mugs">Clear props</button><button onclick="aiGuyBadDay()" title="20 seconds of scripted catharsis" style="flex:1 1 100%;border-color:rgba(255,107,107,.45);color:#FF6B6B">Bad day</button></div>'+
-      settingsHtml();
+      settingsHtml() + sandboxHtml();
     document.body.appendChild(pop);
     popOpen = true;
     pop.addEventListener('pointerdown', bombHoldStart);
@@ -17814,6 +17844,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'boulder': noiseBurst(.2, 240, 0.22, 2.5); tone(70,.22,'sine',.07); break;
       case 'mine': case 'dynamite': break;
       case 'fire': noiseBurst(1.0, 1400, 0.2, 1.1); tone(150,.5,'sawtooth',.05); break;
+      case 'lasso': noiseBurst(.25, 2200, 0.08, 2); tone(420,.1,'sine',.03); break;
       case 'blower': noiseBurst(.6, 1800, 0.07, 1.1); break;
       case 'hose': noiseBurst(.6, 900, 0.1, 1.2); break;
       case 'crate': noiseBurst(.16, 500, 0.16, 2.4); tone(120,.16,'square',.05); break;
@@ -17893,7 +17924,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     car: String.fromCodePoint(0x1F3CE),
     fire: String.fromCodePoint(0x1F525), cigar: String.fromCodePoint(0x1F6AC),
     anvil: String.fromCodePoint(0x1F3F7), blower: String.fromCodePoint(0x1F343), hose: String.fromCodePoint(0x1F6BF),
-    crate: String.fromCodePoint(0x1F4E6), mug: String.fromCodePoint(0x2615), lasso: String.fromCodePoint(0x1FA80), magnet: String.fromCodePoint(0x1F9F2), bucket: String.fromCodePoint(0x1F9FA),
+    crate: String.fromCodePoint(0x1F4E6), mug: String.fromCodePoint(0x2615), lasso: String.fromCodePoint(0x1FA80), mole: String.fromCodePoint(0x1F573), magnet: String.fromCodePoint(0x1F9F2), bucket: String.fromCodePoint(0x1F9FA),
     ufo: String.fromCodePoint(0x1F6F8), spring: String.fromCodePoint(0x1F300), cake: String.fromCodePoint(0x1F382),
     coffee2: String.fromCodePoint(0x1F375), sax: String.fromCodePoint(0x1F3B7), stapler: String.fromCodePoint(0x1F4CE),
     wrench: String.fromCodePoint(0x1F527), boost: String.fromCodePoint(0x1F4A8), cel: String.fromCodePoint(0x1F7E0), oil: String.fromCodePoint(0x1F6E2),
@@ -17923,6 +17954,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'dynamite', type:'bad',  kind:'place', icon:ICN.dynamite, label:'Dynamite',    weight:3, phrases:['Kaboom!','Blown away!','Boom!','Sky high!'] },
     { id:'boulder',  type:'bad',  kind:'drop',  icon:ICN.boulder,  label:'Boulder',     weight:3, phrases:['Squashed!','Flattened!','Crunch!','Timber!'] },
     { id:'car',      type:'bad',  kind:'cannon',icon:ICN.car,      label:'The S6',      weight:3, phrases:['Run over!','Quattro!','Speed bump.','Hit and run.','Launch control.'] },
+    { id:'lasso',    type:'bad',  kind:'lasso',  icon:ICN.lasso,  label:'Lasso',       weight:2, phrases:['Roped!','Yee-haw!','Reeled in!'] },
     { id:'blower',   type:'bad',  kind:'hold',   icon:ICN.blower, label:'Leaf blower', weight:2, phrases:['Wind!','Blown away!','Gale force!'] },
     { id:'hose',     type:'bad',  kind:'hold',   icon:ICN.hose,   label:'Fire hose',   weight:2, phrases:['Soaked!','Pressure washed!','Turn it off!'] },
     { id:'crate',    type:'bad',  kind:'prop',   icon:ICN.crate,  label:'Drop a crate', weight:2, phrases:['Crate!','Shipping damage!','Fragile!'] },
@@ -18020,6 +18052,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     aigHoldEnd();
   };
 
+  function aigKeyDown(e){
+    if(e.key === ' ' || e.code === 'Space'){
+      if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName||'')) return;
+      if(e.repeat) return; e.preventDefault(); bulletOn(); return;
+    }
+  }
+  function aigKeyUp(e){ if(e.key === ' ' || e.code === 'Space') bulletOff(); }
   function aigEscHandler(e){
     if(e.key !== 'Escape') return;
     var t = heldTool;
@@ -18071,6 +18110,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(kind === 'cannon'){ if(heldTool.id === 'car') sendCar(); else if(heldTool.id === 'tire') rollTire(); else if(heldTool.id === 'magnet') magnetPull(x, y); else fireShirt(); return; }
 
     if(kind === 'sling'){ return; }
+    if(kind === 'lasso'){ lassoThrow(x, y); return; }
     var pad = hitPad;
     for(var ri=mpRemotes.length-1; ri>=0; ri--){
       var rr = mpRemotes[ri], rx = rr.x, ry = rr.y;
@@ -18195,6 +18235,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(mode === 'fly') { airHits++; if(airHits >= 5) achieve('juggler'); }
 
     queueShared(tool.type, tool.id);
+    if(tool.type === 'bad'){ noteHit(tool, force||1, Math.hypot(vx, vy)); if(moleOn){ moleScore++; tone(900,.05,'triangle',.05); } }
     if(tool.type === 'bad'){ lastBadTool = tool.id; if(Math.random() < 0.15) remember('hit', 'with '+tool.label.toLowerCase()); }
     if(performance.now() - bossWindowStart > 600000){ bossWindowStart = performance.now(); bossPlayHits = 0; }
     bossPlayHits++;
@@ -19073,6 +19114,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'insubordination', name:'Insubordination', desc:'He hit the boss with your own tool.' },
     { id:'full_swing', name:'Full Swing',  desc:'Landed a fully charged hit.' },
     { id:'butterfingers', name:'Butterfingers', desc:'Overcharged and dropped the tool.' },
+    { id:'rodeo',      name:'Rodeo',       desc:'Roped him with the lasso.' },
+    { id:'stacker',    name:'Stacker',     desc:'Stacked three crates.' },
+    { id:'whack_master', name:'Whack Master', desc:'Scored 10 in whack-a-mole.' },
+    { id:'stretch_armstrong', name:'Stretch Armstrong', desc:'Grabbed him by a limb.' },
     { id:'accelerant', name:'Accelerant',  desc:'Poured oil on the fire.' },
     { id:'hydroplane',  name:'Hydroplane',  desc:'Oil slick into a boost. No traction at all.' },
     { id:'limp_mode',   name:'Limp Mode',   desc:'Check engine, then boost. He crawled.' },
@@ -19706,6 +19751,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     window.aiGuySetting(key, on);
     tone(on ? 880 : 520, .05, 'sine', .03);
   };
+  function sandboxHtml(){
+    return '<div class="aig-sandbox" id="aig-sandbox">'+
+      '<div class="aig-sec-label">Physics sandbox <span>live</span></div>'+
+      '<label>Gravity <span style="display:flex;align-items:center;gap:6px"><input type="range" min="0.2" max="2.5" step="0.1" value="'+(settings.grav||1)+'" oninput="aiGuySetting(\'grav\',this.value);this.nextSibling.textContent=(+this.value).toFixed(1)+\'x\'"><span style="width:30px;text-align:right;color:#f0f0f0">'+(settings.grav||1).toFixed(1)+'x</span></span></label>'+
+      '<label>Bounce <span style="display:flex;align-items:center;gap:6px"><input type="range" min="0.1" max="1.2" step="0.05" value="'+(settings.bounce||1)+'" oninput="aiGuySetting(\'bounce\',this.value);this.nextSibling.textContent=(+this.value).toFixed(2)+\'x\'"><span style="width:34px;text-align:right;color:#f0f0f0">'+(settings.bounce||1).toFixed(2)+'x</span></span></label>'+
+      '<label>Wind <span style="display:flex;align-items:center;gap:6px"><input type="range" min="-1" max="1" step="0.05" value="'+(settings.wind||0)+'" oninput="aiGuySetting(\'wind\',this.value);this.nextSibling.textContent=(+this.value).toFixed(2)"><span style="width:34px;text-align:right;color:#f0f0f0">'+(settings.wind||0).toFixed(2)+'</span></span></label>'+
+      '<div style="display:flex;gap:6px"><button onclick="aiGuyWhackAMole()">Whack-a-mole</button><button onclick="aiGuyBestHit()">Best hit today</button></div>'+
+      '<div style="font-size:10px;color:#4a4f55">Hold SPACE any time for slow motion.</div>'+
+    '</div>';
+  }
+  window.aiGuyToggleSandbox = function(){ var p = document.getElementById('aig-sandbox'); if(p){ p.classList.toggle('open'); requestAnimationFrame(function(){ repositionPop(); }); } };
   function settingsHtml(){
     return '<div class="aig-settings" id="aig-settings">'+
       '<div class="aig-sec-label">Settings</div>'+
@@ -19731,6 +19787,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   window.aiGuyToggleSettings = function(){ var p = document.getElementById('aig-settings'); if(p){ p.classList.toggle('open'); requestAnimationFrame(function(){ repositionPop(); }); } };
   window.aiGuySetting = function(k, v){
+    if(k==='grav' || k==='bounce' || k==='wind'){ settings[k] = parseFloat(v); saveSettings(); return; }
     if(k==='size' || k==='speed') settings[k] = parseFloat(v); else if(k==='carImg' || k==='shirt' || k==='face') settings[k] = String(v||'').trim(); else settings[k] = !!v;
     if(k==='face'){ applyFace(root, sharedEmail(), settings.face); clones.forEach(function(b){ applyFace(b.el, sharedEmail(), settings.face); }); say(pick(['New face, same backorders.','Do I look different? I feel different.','Identity: updated.']), 1600, true); }
     if(k === 'mp'){ if(settings.mp) mpStart(); else mpStop(); }
@@ -21728,8 +21785,15 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var c = crates[i];
       c.vy += GRAVITY*1.2*dt; c.x += c.vx*dt; c.y += c.vy*dt; c.rot += c.vr*dt;
       if(c.x < 0){ c.x = 0; c.vx = -c.vx*0.5; } if(c.x > W - c.w){ c.x = W - c.w; c.vx = -c.vx*0.5; }
-      if(c.y + c.h > fy){
-        c.y = fy - c.h;
+      // stack on top of another crate if one is under us
+      var rest = fy, under = null;
+      for(var k=0;k<crates.length;k++){
+        var o = crates[k]; if(o === c) continue;
+        if(c.x + c.w > o.x + 3 && c.x < o.x + o.w - 3 && c.y + c.h <= o.y + 8 && o.y < rest){ rest = o.y; under = o; }
+      }
+      if(c.y + c.h > rest){
+        c.y = rest - c.h;
+        if(under){ c.vx += under.vx*0.5; if(!c.stacked){ c.stacked = true; checkStack(); } } else c.stacked = false;
         if(Math.abs(c.vy) > 0.5 && c.kind === 'mug'){ smashCrate(c); continue; }
         if(Math.abs(c.vy) > 0.25){ c.vy = -c.vy*0.28; playImpact(Math.min(0.5, Math.abs(c.vy))); if(--c.hp <= 0){ smashCrate(c); continue; } }
         else { c.vy = 0; c.vx *= Math.pow(0.9, dt/16); c.vr *= Math.pow(0.85, dt/16); }
@@ -21751,6 +21815,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       c.el.style.transform = 'translate3d('+c.x.toFixed(1)+'px,'+c.y.toFixed(1)+'px,0) rotate('+c.rot.toFixed(1)+'deg)';
     }
   }
+  function checkStack(){
+    // a column of three: two crates each resting on another
+    var col = 0; crates.forEach(function(c){ if(c.stacked) col++; });
+    if(col >= 2) achieve('stacker');
+    if(col >= 1 && !stackSaid){ stackSaid = true; say(pick(['A tower. Lovely.','Warehouse vibes.','Do not knock that over.']), 1800); }
+  }
+  var stackSaid = false;
   window.aiGuyClearProps = function(){ crates.slice().forEach(function(c){ if(c.el) c.el.remove(); }); crates = []; };
 
   // ---------------- He picks up dropped tools and uses them ----------------
@@ -21810,6 +21881,170 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     playToolSound(t);
   }
+
+  // ---------------- Lasso: throw it, rope him, reel him in ----------------
+  var lasso = null, ropeEl = null;
+  function lassoThrow(x, y){
+    if(lasso) return;
+    var r = guyRect();
+    lasso = { phase:'fly', x: curX, y: curY, tx: r.left + r.width/2, ty: r.top + 26, t0: performance.now(), anchor:{ x: curX, y: curY } };
+    if(!ropeEl){
+      ropeEl = document.createElement('div'); ropeEl.className = 'aig-rope';
+      ropeEl.innerHTML = '<svg width="100%" height="100%" style="position:absolute;inset:0"><path/><circle r="11"/></svg>';
+      document.body.appendChild(ropeEl);
+    }
+    ropeEl.style.display = '';
+    playToolSound(findTool('lasso'));
+  }
+  function lassoTick(ts, dt){
+    if(!lasso) return;
+    var r = guyRect(), hx = r.left + r.width/2, hy = r.top + 26;
+    var p = ropeEl.querySelector('path'), c = ropeEl.querySelector('circle');
+    if(lasso.phase === 'fly'){
+      var k = Math.min(1, (ts - lasso.t0)/320);
+      lasso.x = lasso.anchor.x + (lasso.tx - lasso.anchor.x)*k;
+      lasso.y = lasso.anchor.y + (lasso.ty - lasso.anchor.y)*k - Math.sin(k*Math.PI)*60;
+      if(k >= 1){
+        var miss = Math.hypot(lasso.x - hx, lasso.y - hy) > 60;
+        if(miss){ say(pick(['Missed.','Not even close.','Try again, cowboy.']), 1400); lassoEnd(); return; }
+        lasso.phase = 'roped'; lasso.t0 = ts;
+        applyToolHit(findTool('lasso'), hx, hy, 0.4);
+        say(pick(spicy(['Roped. Great.','I am LASSOED.','What is this, a rodeo?'],['Oh you have GOT to be kidding.'])), 2000, true);
+        achieve('rodeo');
+      }
+    } else {
+      // reeling: he is dragged toward the cursor
+      lasso.x = hx; lasso.y = hy;
+      var dx = curX - hx, dy = curY - hy, d = Math.max(1, Math.hypot(dx, dy));
+      if(mode === 'walk'){ mode = 'fly'; bounce.classList.add('aig-fly'); }
+      vx += (dx/d) * 0.011 * dt; vy += (dy/d) * 0.011 * dt - 0.0012*dt;
+      vx *= Math.pow(0.985, dt/16); vy *= Math.pow(0.985, dt/16);
+      rotVel += (dx > 0 ? 1 : -1) * 0.0008 * dt;
+      if(ts - lasso.t0 > 6000 || d < 34){ lassoEnd(); return; }
+    }
+    if(!lasso) return;
+    var ax = lasso.anchor.x = curX, ay = lasso.anchor.y = curY;
+    p.setAttribute('d', 'M'+ax+' '+ay+' Q'+((ax+lasso.x)/2)+' '+((ay+lasso.y)/2 + 40)+' '+lasso.x+' '+lasso.y);
+    c.setAttribute('cx', lasso.x); c.setAttribute('cy', lasso.y);
+  }
+  function lassoEnd(){ lasso = null; if(ropeEl) ropeEl.style.display = 'none'; }
+
+  // ---------------- Hold-to-slow-mo ----------------
+  var bulletTime = false, bulletEl = null;
+  function bulletOn(){
+    if(bulletTime) return; bulletTime = true;
+    timeScale = 0.22; slowUntil = performance.now() + 600000;
+    if(!bulletEl){ bulletEl = document.createElement('div'); bulletEl.className = 'aig-slowmo'; bulletEl.textContent = 'SLOW MOTION \u00b7 release to resume'; document.body.appendChild(bulletEl); }
+    bulletEl.style.display = ''; tone(300,.2,'sine',.04); tone(150,.4,'sine',.04,.1);
+  }
+  function bulletOff(){
+    if(!bulletTime) return; bulletTime = false;
+    timeScale = 1; slowUntil = 0;
+    if(bulletEl) bulletEl.style.display = 'none'; tone(150,.15,'sine',.03); tone(400,.2,'sine',.04,.08);
+  }
+
+  // ---------------- Limb grabbing ----------------
+  var limbGrab = null;
+  function limbGrabMove(e){
+    if(!limbGrab) return;
+    var r = guyRect(), sx = r.left + r.width/2, sy = r.top + 40;
+    var dx = e.clientX - sx, dy = e.clientY - sy, d = Math.hypot(dx, dy);
+    // the body swings toward the hand, the limb stretches
+    var stretch = Math.max(1, Math.min(2.6, d/38));
+    limbGrab.el.style.transformOrigin = '50% 0%';
+    var ang = Math.atan2(dx, dy) * 180/Math.PI;
+    limbGrab.el.style.transform = 'rotate('+ang.toFixed(1)+'deg) scaleY('+stretch.toFixed(2)+')';
+    // body follows at a distance, dangling from the grip
+    var maxReach = 46;
+    if(d > maxReach){
+      pos += (e.clientX - (pos+23) - (dx/d)*maxReach) * 0.16;
+      posY += (e.clientY - (posY+40) - (dy/d)*maxReach) * 0.16;
+      setRootPos();
+    }
+    rotAngle += ((ang*0.35) - rotAngle) * 0.12;
+    phys.style.transform = 'rotate('+rotAngle.toFixed(1)+'deg)';
+    limbGrab.lastX = e.clientX; limbGrab.lastY = e.clientY; limbGrab.lastT = performance.now();
+  }
+  function limbGrabEnd(e){
+    if(!limbGrab) return;
+    var g = limbGrab; limbGrab = null;
+    document.removeEventListener('pointermove', limbGrabMove);
+    document.removeEventListener('pointerup', limbGrabEnd);
+    g.el.style.transform = ''; g.el.style.transformOrigin = '';
+    bounce.classList.remove('aig-drag');
+    // snap back like elastic
+    var dt2 = Math.max(16, performance.now() - (g.lastT || performance.now() - 100));
+    vx = Math.max(-2, Math.min(2, ((e.clientX - (g.lastX||e.clientX))/dt2) * 1.4 + (Math.random()-0.5)*0.3));
+    vy = Math.max(-2, Math.min(2, ((e.clientY - (g.lastY||e.clientY))/dt2) * 1.4 - 0.4));
+    rotVel = (Math.random()-0.5)*1.6;
+    mode = 'fly'; bounce.classList.add('aig-fly'); squash();
+    say(pick(spicy(['OW.','It POPPED.','That is going in the report.','Do that again and I quit.'],['Ow, my damn arm.'])), 1900, true);
+    playThrow(); achieve('stretch_armstrong');
+  }
+
+  // ---------------- Whack-a-mole ----------------
+  var moleOn = false, moles = [], moleScore = 0, moleUntil = 0, moleNextAt = 0, moleHud = null;
+  window.aiGuyWhackAMole = function(){
+    if(moleOn) return; moleOn = true; moleScore = 0; moleUntil = performance.now() + 45000;
+    closePop(); window.aiGuyPutDownTool(); touch();
+    var W = window.innerWidth, fy = floorY(), n = 5;
+    for(var i=0;i<n;i++){
+      var el = document.createElement('div'); el.className = 'aig-mole';
+      var x = 40 + (i+0.5)*((W-80)/n) - 22;
+      el.style.left = x+'px'; el.style.top = (fy-12)+'px';
+      document.body.appendChild(el);
+      moles.push({ el: el, x: x+22 });
+    }
+    moleHud = document.createElement('div'); moleHud.className = 'aig-slowmo'; moleHud.style.bottom = '54px';
+    document.body.appendChild(moleHud);
+    aigToast('Whack-a-mole', 'He pops between holes. Hit him before he ducks.');
+    say(pick(['Oh, this game.','Fine. Catch me.','Forty-five seconds. Go.']), 2200, true);
+    moleNextAt = performance.now() + 600;
+  }
+  function moleTick(ts){
+    if(!moleOn) return;
+    if(ts > moleUntil){ moleEnd(); return; }
+    if(moleHud) moleHud.textContent = 'WHACK-A-MOLE \u00b7 ' + moleScore + ' hits \u00b7 ' + Math.ceil((moleUntil-ts)/1000) + 's';
+    if(ts > moleNextAt){
+      moleNextAt = ts + 900 + Math.random()*900;
+      var m = moles[Math.floor(Math.random()*moles.length)];
+      moles.forEach(function(q){ q.el.classList.remove('hot'); });
+      m.el.classList.add('hot');
+      pos = m.x - 23; posY = groundY(); vx = 0; vy = 0; mode = 'walk'; setRootPos();
+      bounce.classList.remove('aig-fly');
+      vy = -0.4; mode = 'fly'; bounce.classList.add('aig-fly');       // pops up
+      tone(500,.05,'sine',.04);
+    }
+  }
+  function moleEnd(){
+    moleOn = false;
+    moles.forEach(function(m){ m.el.remove(); }); moles = [];
+    if(moleHud){ moleHud.remove(); moleHud = null; }
+    aigToast('Whack-a-mole over', moleScore + ' hits. ' + (moleScore >= 10 ? 'Menace.' : 'Room to improve.'));
+    if(moleScore >= 10) achieve('whack_master');
+    say(moleScore >= 10 ? pick(['You are a menace.','Fine. You won.']) : pick(['Too slow.','I barely felt that.']), 2400, true);
+  }
+
+  // ---------------- Best hit of the day (replay card) ----------------
+  var bestHit = null;
+  function noteHit(tool, force, speed){
+    var score = (tool.weight||1) * (force||1) * (1 + Math.min(2, speed||0));
+    var day = new Date().toISOString().slice(0,10);
+    if(!aigState.stats.bestHit || aigState.stats.bestHit.day !== day || score > aigState.stats.bestHit.score){
+      aigState.stats.bestHit = { day: day, score: +score.toFixed(2), tool: tool.id, label: tool.label, at: Date.now() };
+      saveState();
+    }
+  }
+  window.aiGuyBestHit = function(){
+    var b = aigState.stats.bestHit;
+    if(!b){ aigToast('No hits yet today', 'Go on then.'); return; }
+    var t = findTool(b.tool) || { label: b.label, id: b.tool };
+    aigToast('Best hit today', t.label + ' \u00b7 power ' + b.score);
+    // re-stage it
+    var r = guyRect();
+    slowMo(0.35, 1400); applyToolHit(t, r.left - 20, r.top + 24, Math.min(2, b.score/2));
+    say(pick(['Ah yes. That one.','I remember this.','Do we have to watch it again?']), 2400, true);
+  };
 
   function repositionPop(anchorRect){
     var pop = document.getElementById('aig-pop');
