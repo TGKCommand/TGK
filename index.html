@@ -16689,7 +16689,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.29';
+var TGK_CC_VERSION='v3.32';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -21496,6 +21496,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // ---------------- The boss walks in ----------------
   // If you are not playing as Tyler, the boss occasionally strolls on, tells you to get back to
   // work, marches over to the robot button, switches AI Guy off, and leaves.
+  var BOSS_HAND_DX = 34, BOSS_HAND_DY = 20;    // he stands beside the button and reaches across to it
   var boss = null, nextBossAt = 240000, bossPlayHits = 0, bossWindowStart = performance.now();
   var BOSS_LINES_PLAY = [
     'Having fun?', 'Is that what I pay for?', 'That thing is not on the P and L.',
@@ -21569,9 +21570,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     } else if(boss.phase === 'speak'){
       if(age > 3400){ boss.phase = 'toButton'; boss.t0 = ts; boss.dir = boss.btnX > boss.x ? 1 : -1; }
     } else if(boss.phase === 'toButton'){
-      // walk along the floor to stand under the button first -- no diagonal drifting
+      // walk along the floor to stand under the button first -- no diagonal drifting.
+      // He stands slightly to one side so his reaching HAND, not his head, meets the button.
       var btnR = boss.btn ? boss.btn.getBoundingClientRect() : null;
-      var tx = btnR ? (btnR.left + btnR.width/2 - 23) : boss.btnX;
+      var side = (btnR && (btnR.left + btnR.width/2) > window.innerWidth/2) ? -1 : 1;   // approach from the open side
+      boss.handSide = side;
+      var tx = btnR ? (btnR.left + btnR.width/2 - 23 - side*BOSS_HAND_DX) : boss.btnX;
       boss.dir = tx > boss.x ? 1 : -1;
       var gap = tx - boss.x;
       if(Math.abs(gap) > 4){
@@ -21582,14 +21586,22 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         bossSay(pick(['Right then.','Enough of this.','Where is that button.']), 1800);
       }
     } else if(boss.phase === 'reach'){
-      // rise up to the button, arm out, then a distinct downward jab
+      // Rise so the HAND reaches the button. His hand sits BOSS_HAND_DY below the top of his
+      // sprite box, so the body target is the button plus that offset -- head stays clear.
       var btnR2 = boss.btn ? boss.btn.getBoundingClientRect() : null;
-      var ty = btnR2 ? (btnR2.top + btnR2.height/2 - 26) : 20;
+      var side2 = boss.handSide || 1;
+      var ty = btnR2 ? (btnR2.top + btnR2.height/2 - BOSS_HAND_DY) : 40;
+      var txr = btnR2 ? (btnR2.left + btnR2.width/2 - 23 - side2*BOSS_HAND_DX) : boss.x;
       boss.y += (ty - boss.y) * Math.min(1, dt/380);
+      boss.x += (txr - boss.x) * Math.min(1, dt/420);
+      boss.dir = side2;                                         // face the button
       var arms2 = boss.el.querySelectorAll('.aig-arm');
-      if(arms2.length >= 2){ arms2[1].style.transform = 'rotate(-150deg)'; arms2[0].style.transform = 'rotate(20deg)'; }
+      // the arm nearest the button points at it; the far arm hangs
+      var near = side2 > 0 ? arms2[1] : arms2[0], far = side2 > 0 ? arms2[0] : arms2[1];
+      if(near) near.style.transform = 'rotate(' + (side2 > 0 ? -108 : 108) + 'deg) scaleY(1.7)';
+      if(far) far.style.transform = 'rotate(' + (side2 > 0 ? 18 : -18) + 'deg)';
       boss.reaching = true;
-      if(Math.abs(ty - boss.y) < 14 && !boss.pressed){
+      if(Math.abs(ty - boss.y) < 12 && Math.abs(txr - boss.x) < 12 && !boss.pressed){
         boss.pressed = true; boss.phase = 'press'; boss.t0 = ts;
         bossSay(pick(['Back to work.','Enough.','Done.','That is enough of that.']), 2600);
         // the jab: he lunges at the button, it depresses, then he settles back
@@ -21602,8 +21614,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         }, 900);
       }
     } else if(boss.phase === 'press'){
-      var jt = ts - (boss.jab||ts);
-      if(jt < 420){ boss.x += (Math.sin(jt/420*Math.PI) * 5) * (jt < 210 ? 0.08 : -0.08) * (dt/16); }
+      var jt = ts - (boss.jab||ts), sideJ = boss.handSide || 1;
+      if(jt < 420){
+        var jab = Math.sin(jt/420*Math.PI) * 6;                  // in and back out
+        boss.x += sideJ * jab * 0.09 * (dt/16);
+        boss.y -= jab * 0.05 * (dt/16);
+      }
       if(age > 2600){ boss.phase = 'leave'; boss.t0 = ts; boss.dir = boss.x > W/2 ? 1 : -1; boss.reaching = false;
         var arms3 = boss.el.querySelectorAll('.aig-arm'); if(arms3.length>=2){ arms3[0].style.transform=''; arms3[1].style.transform=''; } }
     } else if(boss.phase === 'leave'){
