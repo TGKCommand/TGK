@@ -383,6 +383,7 @@
 [data-theme="dark"] .bx-pbox{color:var(--text3)}
 /* ERP hero card */
 [data-theme="dark"] .erp-hero{border-color:rgba(42,191,170,.25)}
+[data-theme="dark"] .ghost-hero{border-color:rgba(124,58,237,.25)}
 /* Section labels */
 [data-theme="dark"] .section-group-label{color:#4B5563}
 [data-theme="dark"] .howto-txt{color:#9AA3AF}
@@ -1089,9 +1090,24 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 .support-hero-actions{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap}
 .support-open-btn{padding:9px 20px;background:#E07B28;border:none;border-radius:var(--r-md);font-size:var(--t-sm);font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:all .15s}
 .support-open-btn:hover{background:#c46820}
+.ghost-open-btn{padding:9px 20px;background:#7c3aed;border:none;border-radius:var(--r-md);font-size:var(--t-sm);font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:all .15s}
+.ghost-open-btn:hover{background:#5b21b6}
 .support-badge{font-size:var(--t-xs);font-weight:700;padding:3px 9px;border-radius:var(--r-sm);background:rgba(224,123,40,.15);color:#E07B28;border:1px solid rgba(224,123,40,.25);letter-spacing:.08em;text-transform:uppercase}
 .support-status{font-size:var(--t-sm);color:#9CA3AF;display:flex;align-items:center;gap:5px}
 .support-status-dot{width:6px;height:6px;border-radius:50%;background:#E07B28;box-shadow:0 0 5px #E07B28;animation:bdot-pulse 2s infinite}
+.ghost-hero{background:linear-gradient(135deg,var(--text) 0%,#1a2540 100%);border:1px solid rgba(124,58,237,.25);border-radius:var(--r-md);padding:24px 24px 20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15);margin-bottom:28px}
+.ghost-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7c3aed,#5b21b6)}
+.ghost-hero:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.2);border-color:rgba(124,58,237,.5)}
+.ghost-hero-inner{display:flex;align-items:center;gap:20px}
+.ghost-hero-icon{width:54px;height:54px;border-radius:var(--r-md);background:rgba(124,58,237,.15);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.ghost-hero-body{flex:1;min-width:0}
+.ghost-hero-label{font-size:var(--t-xs);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#a78bfa;margin-bottom:4px}
+.ghost-hero-name{font-size:var(--t-2xl);font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:4px}
+.ghost-hero-desc{font-size:var(--t-sm);color:#9CA3AF;line-height:1.5}
+.ghost-hero-actions{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap}
+.ghost-badge{font-size:var(--t-xs);font-weight:700;padding:3px 9px;border-radius:var(--r-sm);background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.25);letter-spacing:.08em;text-transform:uppercase}
+.ghost-status{font-size:var(--t-sm);color:#9CA3AF;display:flex;align-items:center;gap:5px}
+.ghost-status-dot{width:6px;height:6px;border-radius:50%;background:#a78bfa;box-shadow:0 0 5px #a78bfa;animation:bdot-pulse 2s infinite}
 /* ════ SEND TO ERP TOAST ════ */
 #erp-toast{position:fixed;bottom:24px;right:24px;z-index:5000;background:var(--text);border:1px solid rgba(42,191,170,.3);border-radius:var(--r-md);padding:14px 18px;font-size:var(--t-md);color:#fff;box-shadow:0 4px 24px rgba(0,0,0,.3);display:none;align-items:center;gap:12px;max-width:340px}
 #erp-toast.show{display:flex;animation:slide-in .3s ease}
@@ -1104,7 +1120,10 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #erp-loading{position:absolute;inset:0;background:var(--bg3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
 #support-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #support-viewer.active{display:flex}
+#ghost-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#ghost-viewer.active{display:flex}
 #support-frame{width:100%;flex:1;border:none;background:#fff}
+#ghost-frame{width:100%;flex:1;border:none;background:#fff}
 #support-loading{position:absolute;inset:0;background:var(--bg3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
 #sku-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #sku-viewer.active{display:flex}
@@ -1945,27 +1964,30 @@ thead th{background:transparent!important;color:#E8EDF0!important;border-bottom:
 [data-theme="dark"] .login-box{box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px var(--border)}
 #cc-version-badge{font-family:var(--mono);font-size:var(--t-xs);letter-spacing:.04em;color:#7E8994;margin-left:10px;white-space:nowrap;align-self:center}
 /* == HOME DASHBOARD - Machined pass (v2.3): carbon hero slabs, sill sections, translucent plates == */
-.erp-hero,.support-hero{background-color:var(--cb-c)!important;background-image:var(--cb-i)!important;background-size:100% 100%,100% 100%,100% 100%,auto 260px!important;background-position:0 0,0 0,0 0,0 0!important;border:none!important;border-radius:var(--r-md)!important;box-shadow:0 3px 12px rgba(17,24,39,.32),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.6)!important;position:relative;overflow:hidden}
-.erp-hero::before,.support-hero::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--teal);z-index:1}
+.erp-hero,.support-hero,.ghost-hero{background-color:var(--cb-c)!important;background-image:var(--cb-i)!important;background-size:100% 100%,100% 100%,100% 100%,auto 260px!important;background-position:0 0,0 0,0 0,0 0!important;border:none!important;border-radius:var(--r-md)!important;box-shadow:0 3px 12px rgba(17,24,39,.32),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.6)!important;position:relative;overflow:hidden}
+.erp-hero::before,.support-hero::before,.ghost-hero::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--teal);z-index:1}
 .support-hero::before{background:var(--orange)}
+.ghost-hero::before{background:var(--purple)}
 /* v2.12: every carbon surface previously sat at background-position 0 0, so they all
    cropped the identical slice of the same strip - the two hero slabs looked like copies
    of each other and the section bars matched them. Each surface now starts at a
    different point along the 3600px panoramic strip, and stacked section bars alternate,
    so no two adjacent carbon panels show the same pattern. */
 .support-hero{background-position:0 0,0 0,0 0,-1750px 0!important}
+.ghost-hero{background-position:0 0,0 0,0 0,-900px 0!important}
 .dash-section-lbl:nth-of-type(even){background-position:0 0,0 0,0 0,-2100px 0}
 .tgk-sh:nth-of-type(even){background-position:0 0,0 0,0 0,-1180px 0}
 .tgk-sh:nth-of-type(3n){background-position:0 0,0 0,0 0,-2450px 0}
 .erp-hero .erp-hero-label{color:#9BE8DB!important;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .support-hero .erp-hero-label{color:#F5C9A1!important}
+.ghost-hero .ghost-hero-label{color:#D8CCFB!important;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .erp-hero-name{text-shadow:0 1px 3px rgba(0,0,0,.75)}
 .erp-hero-desc{color:#BCC6CC!important;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .dash-section-lbl{background-color:var(--cb-c);background-image:var(--cb-i);background-size:100% 100%,100% 100%,100% 100%,auto 120px;background-position:0 0,0 0,0 0,-620px 0;color:#E4E9EC!important;font-weight:800;text-transform:uppercase;font-size:var(--t-sm);letter-spacing:.06em;padding:9px 16px;border-radius:var(--r-sm);border-bottom:2px solid rgba(42,191,170,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.14);text-shadow:0 1px 2px rgba(0,0,0,.7);margin-bottom:14px}
 html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
 .mod-card{transition:transform .12s,box-shadow .12s}
 .mod-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(14,20,24,.10),0 0 0 1px var(--border2)!important}
-@media print{.erp-hero,.support-hero,.dash-section-lbl{background:#fff!important;background-image:none!important;color:var(--text)!important;box-shadow:none!important;border:1px solid var(--border)!important}}
+@media print{.erp-hero,.support-hero,.ghost-hero,.dash-section-lbl{background:#fff!important;background-image:none!important;color:var(--text)!important;box-shadow:none!important;border:1px solid var(--border)!important}}
 
 
 
@@ -2066,6 +2088,11 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
     Support
   </button>
   <span class="cc-bc-sep">&#8250;</span>
+  <button class="cc-bc-home" id="cc-bc-ghost" onclick="openGhostTuning()" title="Jump straight to Ghost Tuning Center from anywhere">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17a1 1 0 001 1h1v2a1 1 0 001 1h2a1 1 0 001-1v-2h1a1 1 0 001-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm-2 15.5v-1h4v1a.5.5 0 01-.5.5h-3a.5.5 0 01-.5-.5z"/></svg>
+    Ghost Tuning
+  </button>
+  <span class="cc-bc-sep">&#8250;</span>
   <span class="cc-bc-label" id="cc-bc-label">Tool</span>
   <div id="cc-bc-actions"></div>
 </div>
@@ -2085,6 +2112,13 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
       <div class="erp-loading-text">Loading Support Center&hellip;</div>
     </div>
     <iframe id="support-frame" title="TGK Support Center" allowfullscreen></iframe>
+  </div>
+  <div id="ghost-viewer">
+    <div id="ghost-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading Ghost Tuning Center&hellip;</div>
+    </div>
+    <iframe id="ghost-frame" title="Ghost Tuning Center" allowfullscreen></iframe>
   </div>
   <div id="notes-viewer">
     <div id="notes-loading">
@@ -2207,6 +2241,21 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
       <button class="support-open-btn" onclick="openSupportCenter()">Open Support Center</button>
       <span class="support-badge">Supabase Connected</span>
       <span class="support-status"><span class="support-status-dot"></span> Connected</span>
+    </div>
+  </div>
+  <div class="ghost-hero" id="ghost-hero-card">
+    <div class="ghost-hero-inner">
+      <div class="ghost-hero-icon">&#128123;</div>
+      <div class="ghost-hero-body">
+        <div class="ghost-hero-label">&#9679; Live System</div>
+        <div class="ghost-hero-name">Ghost Tuning Center</div>
+        <div class="ghost-hero-desc">Custom ECU tuning applications &mdash; review submissions, message customers, and exchange tune files and datalogs, tuner-only.</div>
+      </div>
+    </div>
+    <div class="ghost-hero-actions">
+      <button class="ghost-open-btn" onclick="openGhostTuning()">Open Ghost Tuning</button>
+      <span class="ghost-badge">Supabase Connected</span>
+      <span class="ghost-status"><span class="ghost-status-dot"></span> Connected</span>
     </div>
   </div>
   <div class="tpl-bar">
@@ -12378,6 +12427,7 @@ var CAL_URL = 'https://command.tgkmotorsport.com/tgk_calendar.html';
 var TA_URL  = 'https://command.tgkmotorsport.com/TGK_TimeAttack.html';
 var SUPPORT_URL = 'https://support.tgkmotorsport.com';
 var NOTES_URL = 'https://command.tgkmotorsport.com/notes.html';
+var GHOST_URL = 'https://ghost.tgkmotorsport.com';
 
 // Every embedded module receives identity ONCE, on its own first load - nothing re-sent it if
 // the Command Center's own session changed afterward. That meant signing out here never told
@@ -12392,7 +12442,7 @@ var NOTES_URL = 'https://command.tgkmotorsport.com/notes.html';
 // on whether each of those files has its own listener - that's outside what this file controls.
 function _ccBroadcastToFrames(msg){
   [['erp-frame',ERP_URL],['support-frame',SUPPORT_URL],['cal-frame',CAL_URL],
-   ['notes-frame',NOTES_URL],['sku-frame',SKU_URL],['ta-frame',TA_URL]].forEach(function(pair){
+   ['notes-frame',NOTES_URL],['sku-frame',SKU_URL],['ta-frame',TA_URL],['ghost-frame',GHOST_URL]].forEach(function(pair){
     try{
       var frame=document.getElementById(pair[0]);
       if(!frame||!frame.src)return;
@@ -12618,6 +12668,8 @@ function openERP() {
   if (_tav && _tav.classList.contains('active')) { _tav.classList.remove('active'); }
   var _nt__tav = document.getElementById('notes-viewer');
   if (_nt__tav && _nt__tav.classList.contains('active')) { _nt__tav.classList.remove('active'); }
+  var _ghv1 = document.getElementById('ghost-viewer');
+  if (_ghv1 && _ghv1.classList.contains('active')) { _ghv1.classList.remove('active'); }
 
   // Swap cc-main for erp-viewer
   if (main)  main.style.display  = 'none';
@@ -12691,6 +12743,8 @@ function openSupportCenter() {
   if (_tav2 && _tav2.classList.contains('active')) { _tav2.classList.remove('active'); }
   var _nt__tav2 = document.getElementById('notes-viewer');
   if (_nt__tav2 && _nt__tav2.classList.contains('active')) { _nt__tav2.classList.remove('active'); }
+  var _ghv2 = document.getElementById('ghost-viewer');
+  if (_ghv2 && _ghv2.classList.contains('active')) { _ghv2.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12744,6 +12798,73 @@ function closeSupportCenter() {
   if (acts) acts.innerHTML = '';
 }
 
+function openGhostTuning() {
+  // Inline viewer, same overlay pattern as the ERP / Support Center viewers.
+  var main    = document.getElementById('cc-main');
+  var viewer  = document.getElementById('ghost-viewer');
+  var frame   = document.getElementById('ghost-frame');
+  var loading = document.getElementById('ghost-loading');
+  if (!viewer || !frame) { window.open(GHOST_URL, '_blank', 'noopener'); return; }
+
+  // Close every other viewer first - same reasoning as the symmetric checks in
+  // openERP()/openSupportCenter(), so switching tools never leaves two active at once.
+  ['erp-viewer','support-viewer','sku-viewer','cal-viewer','ta-viewer','notes-viewer'].forEach(function(id){
+    var v = document.getElementById(id);
+    if (v && v.classList.contains('active')) v.classList.remove('active');
+  });
+
+  if (main)  main.style.display  = 'none';
+  if (viewer) viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'Ghost Tuning Center';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeGhostTuning()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Ghost Tuning</button>';
+  }
+
+  // Pass auth session to Ghost Tuning Center so it skips its own login,
+  // same pattern as the ERP - it has its own matching listener for this.
+  if (frame.src !== GHOST_URL) {
+    frame.onload = function() {
+      if (loading) loading.classList.add('hidden');
+      var sess = _getSession();
+      if (sess && sess.access_token) {
+        setTimeout(function() {
+          try {
+            frame.contentWindow.postMessage({
+              source: 'TGK_CC',
+              type: 'AUTH_TOKEN',
+              access_token: sess.access_token,
+              refresh_token: sess.refresh_token || '',
+              email: sess.email || ''
+            }, GHOST_URL);
+          } catch(e) {}
+        }, 300);
+      }
+    };
+    frame.src = GHOST_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+  }
+}
+
+function closeGhostTuning() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('ghost-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
+}
+window.openGhostTuning = openGhostTuning;
+window.closeGhostTuning = closeGhostTuning;
+
 function openNotes() {
   // Inline viewer, same pattern as the ERP / Support Center / SKU Manager.
   var main    = document.getElementById('cc-main');
@@ -12752,7 +12873,7 @@ function openNotes() {
   var loading = document.getElementById('notes-loading');
   if (!viewer || !frame) { window.open(NOTES_URL, '_blank', 'noopener'); return; }
 
-  ['erp-viewer','support-viewer','sku-viewer','cal-viewer','ta-viewer'].forEach(function(id){
+  ['erp-viewer','support-viewer','sku-viewer','cal-viewer','ta-viewer','ghost-viewer'].forEach(function(id){
     var v = document.getElementById(id);
     if (v && v.classList.contains('active')) v.classList.remove('active');
   });
@@ -12810,6 +12931,8 @@ function openSKU() {
   if (_tav3 && _tav3.classList.contains('active')) { _tav3.classList.remove('active'); }
   var _ntv3 = document.getElementById('notes-viewer');
   if (_ntv3 && _ntv3.classList.contains('active')) { _ntv3.classList.remove('active'); }
+  var _ghv3 = document.getElementById('ghost-viewer');
+  if (_ghv3 && _ghv3.classList.contains('active')) { _ghv3.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12863,6 +12986,8 @@ function openCal() {
   if (_tavC && _tavC.classList.contains('active')) { _tavC.classList.remove('active'); }
   var _nt__tavC = document.getElementById('notes-viewer');
   if (_nt__tavC && _nt__tavC.classList.contains('active')) { _nt__tavC.classList.remove('active'); }
+  var _ghv4 = document.getElementById('ghost-viewer');
+  if (_ghv4 && _ghv4.classList.contains('active')) { _ghv4.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
@@ -12916,6 +13041,8 @@ function openTimeAttack() {
   if (_clvT && _clvT.classList.contains('active')) { _clvT.classList.remove('active'); }
   var _nt__clvT = document.getElementById('notes-viewer');
   if (_nt__clvT && _nt__clvT.classList.contains('active')) { _nt__clvT.classList.remove('active'); }
+  var _ghv5 = document.getElementById('ghost-viewer');
+  if (_ghv5 && _ghv5.classList.contains('active')) { _ghv5.classList.remove('active'); }
 
   if (main)  main.style.display  = 'none';
   if (viewer) viewer.classList.add('active');
