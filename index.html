@@ -3783,14 +3783,118 @@ function addVariant(){const id='vg'+Date.now();const d=document.createElement('d
 function getProd(){const vars=[];document.querySelectorAll('.variant-group').forEach(g=>{const name=g.querySelector('.vr-name')?.value||'';const opts=[...g.querySelectorAll('.vr-opt-val')].map(i=>i.value.trim()).filter(Boolean);if(name&&opts.length)vars.push(name+': '+opts.join(' / '));});return{name:document.getElementById('p-name').value||'Performance Part',cat:document.getElementById('p-cat').value||'Auto part',sku:document.getElementById('p-sku').value||'TGK-XX-0001',price:document.getElementById('p-price').value||'0',stock:document.getElementById('p-stock').value,make:document.getElementById('p-make').value||'Audi/VW',model:document.getElementById('p-model').value||'',years:document.getElementById('p-years').value||'',chassis:document.getElementById('p-chassis').value||'',engine:document.getElementById('p-engine').value||'',material:document.getElementById('p-material').value||'',points:document.getElementById('p-points').value||'',variants:vars.join('; '),oem:document.getElementById('p-oem').value||'',notes:document.getElementById('p-notes').value||'',refs:S.refs.join(', ')||'034 Motorsport',hardware:document.getElementById('p-hardware')?.checked??true,video:(document.getElementById('p-video')||{}).value||''};}
 /* ===== AI proxy: all Anthropic calls route through the anthropic-proxy Supabase Edge Function. No API key ever lives in the browser. ===== */
 try{localStorage.removeItem('tgk_api_key');}catch(e){}
-function tgkAIFetch(bodyObj){
-  var token='';
-  try{var s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}');if(s&&s.access_token)token=s.access_token;}catch(e){}
-  var anon=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
-  return fetch(TGK_SB_URL+'/functions/v1/anthropic-proxy',{method:'POST',headers:{'Content-Type':'application/json','apikey':anon,'Authorization':'Bearer '+(token||anon)},body:JSON.stringify(bodyObj)});
+/* v2.14 — the old tgkAIFetch read the access_token straight out of localStorage and
+   sent it as-is. Supabase access tokens expire after one hour and are only refreshed
+   by checkAuth() on page load, so any tab left open longer than that was sending a
+   dead JWT. The Supabase functions gateway rejects a dead JWT with a 401 BEFORE the
+   edge function runs, which means the function's own CORS headers are never attached
+   and the browser kills the response — fetch() rejects with "Failed to fetch" and
+   every caller reported that as NETWORK_ERROR / "Cannot reach the AI service".
+   This version refreshes the token when it is expired or close to it, normalises
+   non-2xx replies into an Anthropic-shaped error so the existing handlers can read
+   them, and records the real status and body on window._tgkLastAIFail. */
+function _tgkJwtExp(t){
+  try{
+    var p=String(t||'').split('.')[1];if(!p)return 0;
+    p=p.replace(/-/g,'+').replace(/_/g,'/');
+    while(p.length%4)p+='=';
+    var o=JSON.parse(atob(p));
+    return (o&&o.exp)?o.exp*1000:0;
+  }catch(e){return 0;}
 }
+async function _tgkFreshToken(){
+  var s={};
+  try{s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}')||{};}catch(e){s={};}
+  var tok=s.access_token||'';
+  if(!tok)return '';
+  var exp=_tgkJwtExp(tok);
+  // Refresh with 2 minutes of headroom so a long convert cannot expire mid-run.
+  if(exp && Date.now() < exp-120000) return tok;
+  if(!s.refresh_token){
+    console.warn('[TGK AI] access token expired and no refresh_token stored — falling back to the anon key.');
+    return '';
+  }
+  try{
+    var base=(typeof SB_AUTH_URL!=='undefined')?SB_AUTH_URL:TGK_SB_URL;
+    var key=(typeof SB_ANON_KEY!=='undefined')?SB_ANON_KEY:TGK_SB_KEY;
+    var rr=await fetch(base+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',
+      headers:{'apikey':key,'Content-Type':'application/json'},
+      body:JSON.stringify({refresh_token:s.refresh_token})
+    });
+    if(!rr.ok){
+      console.warn('[TGK AI] token refresh failed with HTTP '+rr.status+' — falling back to the anon key.');
+      return '';
+    }
+    var nd=await rr.json();
+    if(!nd||!nd.access_token)return '';
+    s.access_token=nd.access_token;
+    if(nd.refresh_token)s.refresh_token=nd.refresh_token;
+    try{localStorage.setItem('tgk_cc_session',JSON.stringify(s));}catch(e){}
+    console.info('[TGK AI] access token refreshed.');
+    return nd.access_token;
+  }catch(e){
+    console.warn('[TGK AI] token refresh threw:',e);
+    return '';
+  }
+}
+async function tgkAIFetch(bodyObj){
+  var anon=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
+  var token=await _tgkFreshToken();
+  var url=TGK_SB_URL+'/functions/v1/anthropic-proxy';
+  // Supabase edge functions have a wall-clock ceiling. Without an abort the tab can
+  // hang on a dead socket for minutes before the browser gives up.
+  var ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  var timer=ctl?setTimeout(function(){try{ctl.abort();}catch(e){}},150000):null;
+  var r;
+  try{
+    r=await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':anon,'Authorization':'Bearer '+(token||anon)},
+      body:JSON.stringify(bodyObj),
+      signal:ctl?ctl.signal:undefined
+    });
+  }catch(fe){
+    if(timer)clearTimeout(timer);
+    var why=(fe&&fe.name==='AbortError')
+      ? 'request timed out after 150s (the edge function did not answer)'
+      : 'the browser blocked or could not complete the request (CORS, offline, blocked by an extension, or the function crashed before sending CORS headers)';
+    window._tgkLastAIFail={when:new Date().toISOString(),status:0,reason:why,
+      name:(fe&&fe.name)||'',message:(fe&&fe.message)||String(fe),
+      usedSessionToken:!!token,bodyBytes:JSON.stringify(bodyObj).length,url:url};
+    console.error('[TGK AI] fetch rejected —',why,fe,window._tgkLastAIFail);
+    throw fe;
+  }
+  if(timer)clearTimeout(timer);
+  if(!r.ok){
+    var txt='';
+    try{txt=await r.text();}catch(e){}
+    window._tgkLastAIFail={when:new Date().toISOString(),status:r.status,
+      reason:'HTTP '+r.status+' from anthropic-proxy',body:String(txt).slice(0,800),
+      usedSessionToken:!!token,bodyBytes:JSON.stringify(bodyObj).length,url:url};
+    console.error('[TGK AI] HTTP '+r.status+' from anthropic-proxy:',txt);
+    // Re-shape into the error envelope the existing callers already understand, so a
+    // 401 reads as AUTH_ERROR and a 429 as RATE_ERROR instead of silently becoming
+    // an empty completion that later looks like TRUNCATED.
+    var type=(r.status===401||r.status===403)?'authentication_error'
+            :(r.status===429)?'rate_limit_error':'api_error';
+    return new Response(JSON.stringify({error:{type:type,
+      message:'HTTP '+r.status+' from anthropic-proxy'+(txt?(': '+String(txt).slice(0,400)):'')}}),
+      {status:200,headers:{'Content-Type':'application/json'}});
+  }
+  return r;
+}
+/* Paste tgkAIDiag() into the console after a failure for the real cause. */
+function tgkAIDiag(){
+  var d=window._tgkLastAIFail;
+  if(!d){console.log('[TGK AI] no failure recorded this session.');return null;}
+  console.log('[TGK AI] last failure:',d);return d;
+}
+window.tgkAIFetch=tgkAIFetch;window.tgkAIDiag=tgkAIDiag;
 function showErr(elId,err){const _m=String((err&&err.message)||err||'');if(_m.indexOf('TRUNCATED')===0&&_m.length>9){try{err=new Error('TRUNCATED');console.warn('[TGK AI] truncation detail:',_m);}catch(_e){}}
-  const map={'NETWORK_ERROR':'Cannot reach the AI service. Check your connection and try again.','AUTH_ERROR':'AI service is not configured. Contact the administrator.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'The AI response was cut off even after auto-continuing. Trim the source description and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
+  var _netDetail='Cannot reach the AI service. Check your connection and try again.';
+  try{var _f=window._tgkLastAIFail;if(_f&&_f.reason)_netDetail='Cannot reach the AI service — '+_f.reason+'. Run tgkAIDiag() in the browser console for the full detail.';}catch(_e){}
+  const map={'NETWORK_ERROR':_netDetail,'AUTH_ERROR':'AI service is not configured, or your sign-in expired. Reload the page and sign in again.','RATE_ERROR':'Rate limit reached. Wait 60 seconds and try again.','TRUNCATED':'The AI response was cut off even after auto-continuing. Trim the source description and try again.'};const msg=map[err.message]!==undefined?map[err.message]:err.message.startsWith('PARSE:')?err.message.replace('PARSE:',''):'Error: '+err.message;if(!msg)return;const el=document.getElementById(elId);if(el){el.textContent=msg;const c=el.closest('.ocard');if(c)c.classList.add('on');}}
 /* Reduce a pasted description to meaningful content: drop style/script/comments,
    collapse base64 images, and flatten runaway whitespace. Keeps text and structural
    tags so the model can still see headings, lists and tables. */
