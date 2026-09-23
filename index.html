@@ -3705,6 +3705,15 @@ function showView(name) {
   if (_ntv0 && _ntv0.classList.contains('active')) { _ntv0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc5 = document.getElementById('cc-breadcrumb'); if (_bc5) _bc5.classList.remove('visible'); }
   var _skv0 = document.getElementById('sku-viewer');
   if (_skv0 && _skv0.classList.contains('active')) { _skv0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc6 = document.getElementById('cc-breadcrumb'); if (_bc6) _bc6.classList.remove('visible'); }
+  // Ghost Tuning Center was added later and was missing from this list, so
+  // "All Tools" switched the view underneath but left the Ghost Tuning
+  // frame covering it.
+  var _ghv0 = document.getElementById('ghost-viewer');
+  if (_ghv0 && _ghv0.classList.contains('active')) { _ghv0.classList.remove('active'); if (_ccm) _ccm.style.display = ''; var _bc7 = document.getElementById('cc-breadcrumb'); if (_bc7) _bc7.classList.remove('visible'); }
+  // Drop any embedded tool's "Close ..." button - it belongs to the viewer
+  // that was just closed, not to the view being shown.
+  var _bca0 = document.getElementById('cc-bc-actions');
+  if (_bca0) _bca0.innerHTML = '';
   document.querySelectorAll('.cc-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.cc-navbtn').forEach(b => b.classList.remove('active'));
   const view = document.getElementById('view-' + name);
@@ -16923,7 +16932,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.32';
+var TGK_CC_VERSION='v3.33';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
