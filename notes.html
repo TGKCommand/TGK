@@ -778,6 +778,7 @@ async function afterLogin(user){
   if(typeof loadNotifs==='function'){loadNotifs();setInterval(function(){loadNotifs();if(S._inboxOpen&&S._inboxTab==='msgs'&&typeof loadThreads==='function')loadThreads();},40000);}
   if(typeof _realtimeInit==='function')_realtimeInit();
   if(typeof loadLeadTrackerCache==='function')loadLeadTrackerCache();
+  if(typeof _ltRealtimeInit==='function')_ltRealtimeInit();
   await loadPages();
 }
 (async()=>{
@@ -5367,6 +5368,25 @@ function _realtimeInit(){
   }catch(e){}
 }
 window._realtimeInit=_realtimeInit;
+function _ltRealtimeInit(){
+  try{
+    if(!sb||typeof sb.channel!=='function')return;
+    if(S._ltRtCh){try{sb.removeChannel(S._ltRtCh);}catch(e){}S._ltRtCh=null;}
+    var ch=sb.channel('lt-sync');
+    ch.on('postgres_changes',{event:'*',schema:'public',table:'workspace',filter:'id=eq.tgk_leads_v3'},function(p){
+      var row=(p&&p.new)||null;
+      if(!row||!row.data)return;
+      S._ltProducts=row.data.products||[];
+      S._ltLeads=row.data.leads||[];
+      S._ltGroups=row.data.groups||[];
+      S._ltLoaded=true;
+      document.querySelectorAll('[data-type="carref"]').forEach(function(el){loadCarRef(el.getAttribute('data-bid'));});
+    });
+    ch.subscribe();
+    S._ltRtCh=ch;
+  }catch(e){}
+}
+window._ltRealtimeInit=_ltRealtimeInit;
 function _onRealtime(p,incoming){
   try{
     if(incoming&&p&&p.eventType==='INSERT'&&!S._inboxOpen){
