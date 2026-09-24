@@ -421,6 +421,17 @@ body.dark .emb-bar{background:rgba(255,255,255,.04)}
 .carref-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);flex-shrink:0}
 .carref-dot.stale{background:var(--text3)}
 .carref-ic{flex-shrink:0}
+#slash-sub{position:fixed;z-index:61;background:#fff;border-radius:var(--r-lg);box-shadow:0 8px 28px rgba(14,20,24,.18),0 0 0 1px var(--border);width:280px;max-height:340px;overflow-y:auto;padding:5px;display:none}
+#slash-sub .si{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--r);cursor:pointer;font-size:13px}
+#slash-sub .si.sel,#slash-sub .si:hover{background:var(--teal-dim)}
+#slash-sub .si .em{width:20px;text-align:center;font-size:13px;color:var(--teal-d);flex-shrink:0}
+#slash-sub .si .d{font-size:10.5px;color:var(--text3)}
+#slash-sub .sh{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;color:var(--text3);text-transform:uppercase;padding:6px 9px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#slash-sub .at-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#slash .si.held{background:var(--bg3);box-shadow:inset 2px 0 0 var(--teal)}
+#slash .at-more{color:var(--text3);font-size:15px;padding-left:4px}
+body.dark #slash-sub{background:#202325;color:var(--text)}
+
 #blocks .carref-head .lt-in-title{font-weight:700;font-size:13px;flex:0 1 280px}
 .lt-in{font:inherit;font-size:12px;color:var(--text);background:transparent;border:1px solid transparent;border-radius:var(--r);padding:3px 6px;min-width:0;outline:none}
 .lt-in:hover{border-color:var(--border)}
@@ -1413,7 +1424,7 @@ body.dark #lt-app .modal-footer{background:var(--bg3)}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.74';
+const TGK_NOTES_VERSION='v1.75';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -1924,7 +1935,7 @@ document.addEventListener('input',e=>{
 
 document.addEventListener('keydown',e=>{
   if(slashOpen&&['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)){slashKey(e);return;}
-  if(typeof atOpen!=='undefined'&&atOpen&&['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)){atKey(e);return;}
+  if(typeof atOpen!=='undefined'&&atOpen&&['ArrowDown','ArrowUp','Enter','Escape','ArrowRight','ArrowLeft'].includes(e.key)){if(atKey(e)!==false)return;}
   const t=e.target;
   if(!t.classList||!t.classList.contains('bk-t'))return;
   const host=t.closest('.bk'),id=host.getAttribute('data-bid'),i=blockIndex(id),b=blocks(),bl=b[i];
@@ -3063,72 +3074,162 @@ document.addEventListener('click',function(e){
   e.preventDefault();window.open(href,'_blank','noopener');
 },true);
 
-/* @ picker inside the editor */
-let atOpen=false,atSel=0,atHost=null,atList=[];
+/* @ picker inside the editor
+   Top level: Team, Pages, and the Lead Tracker (Car Library cars, products, people).
+   Highlighting a Lead Tracker item opens a flyout with what's inside it:
+     car     -> its FB groups
+     product -> its leads and FB groups
+     person  -> every product they're on
+   Enter / click on the item inserts a live reference block; on a flyout row it inserts
+   that specific thing. Right arrow moves into the flyout, left arrow back out. */
+let atOpen=false,atSel=0,atHost=null,atList=[],atSub=[],atSubSel=-1;
 function openAt(host,filter){
-  const f=(filter||'').toLowerCase();
+  const f=(filter||'').toLowerCase().trim();
   const people=(typeof peopleHits==='function'?peopleHits(f):[]).map(t=>({_person:t}));
-  const pages=(S.pages||[]).filter(p=>p.id!==S.activeId&&(p.title||'').toLowerCase().includes(f)).slice(0,8);
-  const ltHits=(typeof ltSearch==='function'&&f.trim())?ltSearch(f):[];
-  const pick=k=>ltHits.filter(h=>h.kind===k).slice(0,6).map(h=>({_lt:h}));
-  atList=people.concat(pages).concat(pick('lt-car'),pick('lt-product'),pick('lt-person'));
+  const pages=(S.pages||[]).filter(p=>p.id!==S.activeId&&(p.title||'').toLowerCase().includes(f)).slice(0,f?8:4);
+  let lt=[];
+  if(f&&typeof ltSearch==='function'){
+    const hits=ltSearch(f),pick=(k,n)=>hits.filter(h=>h.kind===k).slice(0,n).map(h=>({_lt:h}));
+    lt=pick('lt-car',6).concat(pick('lt-product',6),pick('lt-person',6));
+  }else if(!f){
+    // bare "@": browse - every car, every product, and the most recent people
+    lt=(S._ltCars||[]).map(c=>({_lt:ltHitCar(c)}))
+      .concat((S._ltProducts||[]).map(p=>({_lt:ltHitProduct(p)})))
+      .concat(ltPeople().slice(-6).reverse().map(pp=>({_lt:ltHitPerson(pp)})));
+  }
+  atList=lt.concat(people,pages);   // Lead Tracker first: that's what @ is mostly used for here
   if(!atList.length){closeAt();return;}
-  atHost=host;atOpen=true;atSel=0;
+  atHost=host;atOpen=true;atSel=0;atSubSel=-1;
   const el=document.getElementById('slash'),r=host.getBoundingClientRect();
   el.style.display='block';
-  el.style.left=Math.min(r.left,window.innerWidth-280)+'px';
+  el.style.left=Math.min(r.left,window.innerWidth-560)+'px';
   el.style.top=(r.bottom+window.scrollY+4)+'px';
-  drawAt();_fitMenu(el);
+  drawAt();_fitMenu(el);drawAtSub();
+}
+function ltHitCar(c){return {kind:'lt-car',key:c.key,icon:'\u{1F697}',label:ltCarLabel(c),sub:(c.groups||[]).length+' FB groups'};}
+function ltHitProduct(p){return {kind:'lt-product',pid:p.id,icon:'\u{1F4E6}',label:ltProductLabel(p),sub:(p.sku?p.sku+' \u00b7 ':'')+ltLeadsForProduct(p.id).length+' leads \u00b7 '+ltGroupsForProduct(p.id).length+' groups'};}
+function ltHitPerson(pp){return {kind:'lt-person',key:pp.key,icon:'\u263A',label:pp.name||'Unnamed',sub:pp.leads.length+' product'+(pp.leads.length===1?'':'s')};}
+function atChildren(it){
+  const h=it&&it._lt;if(!h)return [];
+  const out=[];
+  if(h.kind==='lt-car'){
+    const c=(S._ltCars||[]).find(x=>x.key===h.key);if(!c)return [];
+    out.push({t:'ref',kind:'lt-car',ref:c.key,icon:'\u21b3',label:'Insert whole car',sub:(c.groups||[]).length+' FB groups, editable'});
+    (c.groups||[]).forEach(g=>out.push({t:'link',icon:'\u{1F465}',label:g.name||'Group',sub:g.members?Number(g.members).toLocaleString()+' members':'',url:g.url}));
+  }else if(h.kind==='lt-product'){
+    out.push({t:'ref',kind:'lt-product',ref:h.pid,icon:'\u21b3',label:'Insert whole product',sub:'leads + FB groups, editable'});
+    ltLeadsForProduct(h.pid).forEach(l=>out.push({t:'ref',kind:'lt-person',ref:ltPersonKey(l),icon:'\u263A',label:l.name||'Unnamed',sub:l.lastContact?'contacted '+fmtCarRefDate(l.lastContact):'never contacted'}));
+    ltGroupsForProduct(h.pid).forEach(g=>out.push({t:'link',icon:'\u{1F465}',label:g.name||'Group',sub:'FB group',url:g.url}));
+  }else if(h.kind==='lt-person'){
+    const pp=ltPeople().find(x=>x.key===h.key);if(!pp)return [];
+    out.push({t:'ref',kind:'lt-person',ref:pp.key,icon:'\u21b3',label:'Insert person',sub:'everything attached, editable'});
+    pp.leads.forEach(l=>{const p=ltProductById(l.productId);if(p)out.push({t:'ref',kind:'lt-product',ref:p.id,icon:'\u{1F4E6}',label:ltProductLabel(p),sub:l.lastContact?'contacted '+fmtCarRefDate(l.lastContact):'never contacted'});});
+    if(pp.link)out.push({t:'link',icon:'\u2197',label:'Profile link',sub:pp.link,url:pp.link});
+  }
+  return out;
 }
 function drawAt(){
   let out='',lastKind='';
+  const LBL={people:'Team (notify)',pages:'Pages','lt-car':'Car Library','lt-product':'Lead Tracker products','lt-person':'Leads (people)'};
   atList.forEach((p,i)=>{
     const kind=p._person?'people':(p._lt?p._lt.kind:'pages');
-    const LBL={people:'Team (notify)',pages:'Pages','lt-car':'Car Library','lt-product':'Lead Tracker products','lt-person':'Leads (people)'};
     if(kind!==lastKind){out+='<div class="sh">'+LBL[kind]+'</div>';lastKind=kind;}
+    const sel=(i===atSel?' sel':'')+(i===atSel&&atSubSel>=0?' held':'');
     if(p._person){
       const t=p._person;
-      out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">\u263A</span>'
+      out+='<div class="si'+sel+'" data-ai="'+i+'"><span class="em">\u263A</span>'
         +'<div><div>'+esc(t.display_name||t.email)+'</div><div class="d">'+esc(t.email||'')+' - notify</div></div></div>';
     }else if(p._lt){
       const h=p._lt;
-      out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">'+h.icon+'</span>'
-        +'<div><div>'+esc(h.label)+'</div><div class="d">'+esc(h.sub)+'</div></div></div>';
+      out+='<div class="si'+sel+'" data-ai="'+i+'"><span class="em">'+h.icon+'</span>'
+        +'<div style="flex:1;min-width:0"><div>'+esc(h.label)+'</div><div class="d">'+esc(h.sub)+'</div></div><span class="at-more">\u203a</span></div>';
     }else{
-      out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">'
+      out+='<div class="si'+sel+'" data-ai="'+i+'"><span class="em">'
         +(p.icon?esc(p.icon):'\u{1F4C4}')+'</span><div><div>'+esc(p.title||'Untitled')+'</div></div></div>';
     }
   });
-  document.getElementById('slash').innerHTML=out;
+  const el=document.getElementById('slash');el.innerHTML=out;
+  const s=el.querySelector('.si.sel');if(s&&s.scrollIntoView)s.scrollIntoView({block:'nearest'});
 }
-function closeAt(){atOpen=false;atHost=null;const e=document.getElementById('slash');if(e)e.style.display='none';}
+function atSubEl(){let e=document.getElementById('slash-sub');if(!e){e=document.createElement('div');e.id='slash-sub';document.body.appendChild(e);}return e;}
+function drawAtSub(){
+  const sub=atSubEl(),main=document.getElementById('slash');
+  atSub=atChildren(atList[atSel]);
+  if(!atOpen||!atSub.length){sub.style.display='none';return;}
+  if(atSubSel>=atSub.length)atSubSel=atSub.length-1;
+  sub.innerHTML='<div class="sh">'+esc(atList[atSel]._lt.label)+'</div>'+atSub.map((c,i)=>
+    '<div class="si'+(i===atSubSel?' sel':'')+'" data-asi="'+i+'"><span class="em">'+c.icon+'</span>'
+    +'<div style="min-width:0"><div class="at-l">'+esc(c.label)+'</div>'+(c.sub?'<div class="d at-l">'+esc(c.sub)+'</div>':'')+'</div></div>').join('');
+  const mr=main.getBoundingClientRect(),row=main.querySelector('.si.sel'),rr=row?row.getBoundingClientRect():mr;
+  sub.style.display='block';
+  const w=280,left=(mr.right+w+8<=window.innerWidth)?mr.right+4:Math.max(8,mr.left-w-4);
+  sub.style.left=left+'px';
+  sub.style.top=Math.max(8,Math.min(rr.top-6,window.innerHeight-sub.offsetHeight-8))+'px';
+  const s=sub.querySelector('.si.sel');if(s&&s.scrollIntoView)s.scrollIntoView({block:'nearest'});
+}
+function closeAt(){atOpen=false;atHost=null;atSub=[];atSubSel=-1;
+  const e=document.getElementById('slash');if(e)e.style.display='none';
+  const s=document.getElementById('slash-sub');if(s)s.style.display='none';}
 function atKey(e){
-  if(e.key==='Escape'){e.preventDefault();closeAt();return;}
-  if(e.key==='ArrowDown'){e.preventDefault();atSel=(atSel+1)%atList.length;drawAt();return;}
-  if(e.key==='ArrowUp'){e.preventDefault();atSel=(atSel-1+atList.length)%atList.length;drawAt();return;}
-  if(e.key==='Enter'){e.preventDefault();applyAt(atList[atSel]);}
+  const inSub=atSubSel>=0;
+  if(e.key==='Escape'){e.preventDefault();if(inSub){atSubSel=-1;drawAt();drawAtSub();}else closeAt();return;}
+  if(e.key==='ArrowRight'){if(!atSub.length)return false;e.preventDefault();if(!inSub){atSubSel=0;drawAt();drawAtSub();}return;}
+  if(e.key==='ArrowLeft'){if(!inSub)return false;e.preventDefault();atSubSel=-1;drawAt();drawAtSub();return;}
+  if(e.key==='ArrowDown'){e.preventDefault();
+    if(inSub)atSubSel=(atSubSel+1)%atSub.length;else{atSel=(atSel+1)%atList.length;}
+    drawAt();drawAtSub();return;}
+  if(e.key==='ArrowUp'){e.preventDefault();
+    if(inSub)atSubSel=(atSubSel-1+atSub.length)%atSub.length;else{atSel=(atSel-1+atList.length)%atList.length;}
+    drawAt();drawAtSub();return;}
+  if(e.key==='Enter'){e.preventDefault();if(inSub)applyAtChild(atSub[atSubSel]);else applyAt(atList[atSel]);}
+}
+function atInsertBlock(kind,ref){
+  const id=atHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
+  if(i<0){closeAt();return;}
+  const cur=b[i];
+  cur.text=(cur.text||'').replace(/@[^@]*$/,'');
+  const nb={id:uid(),type:'carref',text:'',indent:cur.indent||0,cg:cur.cg,col:cur.col};
+  ltSetRef(nb,kind,ref);
+  b.splice(i+1,0,nb);
+  closeAt();markDirty();renderBlocks();focusBlock(id);
+}
+function applyAtChild(c){
+  if(!c||!atHost)return;
+  if(c.t==='ref'){atInsertBlock(c.kind,c.ref);return;}
+  if(c.t==='link'){   // a single FB group / profile goes in as an inline link, right where you typed
+    const id=atHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
+    if(i<0){closeAt();return;}
+    const href=ltHref(c.url);
+    b[i].text=(b[i].text||'').replace(/@[^@]*$/,'')+(href==='#'?esc(c.label):'<a href="'+href+'">'+esc(c.label)+'</a>')+'&nbsp;';
+    closeAt();renderBlocks();focusBlock(id);markDirty();
+  }
 }
 function applyAt(p){
   if(!p||!atHost)return;
   if(p._person&&typeof applyPersonMention==='function'){applyPersonMention(p._person);return;}
   const id=atHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
   if(i<0){closeAt();return;}
-  if(p._lt){
-    const h=p._lt,cur=b[i];
-    cur.text=(cur.text||'').replace(/@[^@]*$/,'');
-    const nb={id:uid(),type:'carref',text:'',indent:cur.indent||0,cg:cur.cg,col:cur.col};
-    ltSetRef(nb,h.kind,h.key||h.pid);
-    b.splice(i+1,0,nb);
-    closeAt();markDirty();renderBlocks();focusBlock(id);
-    return;
-  }
+  if(p._lt){const h=p._lt;atInsertBlock(h.kind,h.key||h.pid);return;}
   b[i].text=b[i].text.replace(/@[^@]*$/,'@'+(p.title||'Untitled')+' ');
   closeAt();renderBlocks();focusBlock(id);markDirty();
 }
 document.addEventListener('click',e=>{
-  const si=e.target.closest&&e.target.closest('[data-ai]');
-  if(si&&atOpen){applyAt(atList[Number(si.getAttribute('data-ai'))]);}
+  if(!atOpen)return;
+  const c=e.target.closest&&e.target.closest('[data-asi]');
+  if(c){e.preventDefault();e.stopPropagation();applyAtChild(atSub[Number(c.getAttribute('data-asi'))]);return;}
+  const si=e.target.closest&&e.target.closest('#slash [data-ai]');
+  if(si){applyAt(atList[Number(si.getAttribute('data-ai'))]);}
 },true);
+// hovering a top-level item opens its flyout; hovering the flyout keeps it open
+document.addEventListener('mouseover',e=>{
+  if(!atOpen)return;
+  const si=e.target.closest&&e.target.closest('#slash [data-ai]');
+  if(si){const i=Number(si.getAttribute('data-ai'));if(i!==atSel||atSubSel>=0){atSel=i;atSubSel=-1;drawAt();drawAtSub();}return;}
+  const c=e.target.closest&&e.target.closest('#slash-sub [data-asi]');
+  if(c){const j=Number(c.getAttribute('data-asi'));if(j!==atSubSel){atSubSel=j;drawAt();drawAtSub();}}
+});
+// clicks in the menus must not steal focus/caret from the block being typed in
+document.addEventListener('mousedown',e=>{ if(atOpen&&e.target.closest&&e.target.closest('#slash,#slash-sub'))e.preventDefault(); },true);
 
 /* ---------- trash ---------- */
 async function archivePage(id){
