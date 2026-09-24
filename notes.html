@@ -405,6 +405,22 @@ body.dark .emb-bar{background:rgba(255,255,255,.04)}
 .emb-frame iframe{width:100%;height:100%;border:0;display:block}
 .emb-empty{padding:26px;text-align:center;border:1px dashed var(--border2);border-radius:var(--r-lg);color:var(--text3);cursor:pointer}
 .emb-empty:hover{border-color:var(--teal);color:var(--teal)}
+.carref-box{width:100%;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--card-bg);padding:12px 14px}
+.carref-head{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px}
+.carref-loading{color:var(--text3);font-size:11.5px;font-style:italic}
+.carref-open{margin-left:auto;font-size:11px;color:var(--teal-d);cursor:pointer}
+.carref-open:hover{text-decoration:underline}
+.carref-empty{font-size:11.5px;color:var(--text3);padding:4px 0}
+.carref-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.carref-col-h{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.carref-row{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;border-top:1px solid var(--border)}
+.carref-row:first-of-type{border-top:none}
+.carref-row a{color:var(--teal-d);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.carref-row a:hover{text-decoration:underline}
+.carref-meta{margin-left:auto;font-size:10.5px;color:var(--text3);white-space:nowrap;flex-shrink:0}
+.carref-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);flex-shrink:0}
+.carref-dot.stale{background:var(--text3)}
+.carref-ic{flex-shrink:0}
 .nc-opts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .nc-o{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:11px 13px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--card-bg);text-align:left;width:100%}
 .nc-o:hover{border-color:var(--teal);background:var(--teal-dim)}
@@ -672,6 +688,7 @@ table.tb th .tb-c{font-weight:700}
     <div class="side-logo"><img src="data:image/avif;base64,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" alt="TGK Motorsport"></div>
     <div class="side-top"><input id="q" class="side-search" placeholder="Search pages and rows..." oninput="renderTree()"></div>
     <div class="side-inbox" onclick="openInbox()"><span>&#128229; Inbox</span><span id="inbox-badge" class="ib-badge"></span></div>
+    <div class="side-inbox" id="lt-nav" onclick="openLeadTracker()" title="Lead Tracker"><span>&#128663; Lead Tracker</span></div>
     <div class="side-scroll">
       <div id="favs"></div>
       <div class="side-lbl">Workspace</div>
@@ -717,7 +734,7 @@ table.tb th .tb-c{font-weight:700}
         <span class="ver" id="ver"></span>
       </div>
     </div>
-    <div class="main" id="main"><div class="doc" id="doc"></div></div>
+    <div class="main" id="main"><div class="doc" id="doc"></div><div id="pinned-view" style="display:none;height:100%;flex-direction:column"></div></div>
   </div>
 </div></div>
 
@@ -725,7 +742,7 @@ table.tb th .tb-c{font-weight:700}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.68';
+const TGK_NOTES_VERSION='v1.69';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -760,6 +777,7 @@ async function afterLogin(user){
   if(typeof loadTeam==='function')await loadTeam();
   if(typeof loadNotifs==='function'){loadNotifs();setInterval(function(){loadNotifs();if(S._inboxOpen&&S._inboxTab==='msgs'&&typeof loadThreads==='function')loadThreads();},40000);}
   if(typeof _realtimeInit==='function')_realtimeInit();
+  if(typeof loadLeadTrackerCache==='function')loadLeadTrackerCache();
   await loadPages();
 }
 (async()=>{
@@ -985,7 +1003,8 @@ const BLOCKS=[
   {t:'dbembed',em:'\u25a6',n:'Database view',d:'Embed rows from another database'},
   {t:'newdb',em:'\u{1F5C3}',n:'New database',d:'Create a database in this page (also a sub-page)'},
   {t:'newtasks',em:'\u2611',n:'New task board',d:'Create a Projects & Tasks database in this page'},
-  {t:'embed',em:'\u25a7',n:'Embed / web app',d:'Embed a web page or TGK tool by URL'}
+  {t:'embed',em:'\u25a7',n:'Embed / web app',d:'Embed a web page or TGK tool by URL'},
+  {t:'carref',em:'\u{1F697}',n:'Vehicle leads & groups',d:'Live leads and FB groups for a car, from the Lead Tracker'}
 ];
 function curPage(){return pageById(S.activeId);}
 function isDb(p){return !!(p&&p.page_type==='db');}
@@ -1000,6 +1019,10 @@ function blocks(){
 
 function openPage(id,viaNav){
   if(S.dirty)savePage();
+  S.pinnedView=null;
+  var _pv=$('pinned-view');if(_pv){_pv.style.display='none';_pv.innerHTML='';}
+  var _lt=$('lt-nav');if(_lt)_lt.style.background='';
+  $('doc').style.display='';
   if(!viaNav&&S.activeId&&S.activeId!==id){S.navBack.push(S.activeId);S.navFwd=[];}
   S.activeId=id;
   S.rowEdit=null;   // row-detail is page-scoped; drop it so a stale id can't misrender
@@ -1073,6 +1096,7 @@ function renderBlocks(){
   }
   $('blocks').innerHTML=_out;
   if(typeof cbGrow==='function')document.querySelectorAll('.cb-ta').forEach(cbGrow);
+  if(typeof loadCarRef==='function')document.querySelectorAll('[data-type="carref"]').forEach(function(el){loadCarRef(el.getAttribute('data-bid'));});
   if(typeof _paintMultiSel==='function')_paintMultiSel();   // re-apply block multi-select highlight, since it just got wiped by the innerHTML rebuild above
 }
 function blockHTML(bl,i){
@@ -1100,6 +1124,9 @@ function blockHTML(bl,i){
     if(bl.type==='embed')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="embed" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u283f</span>'
         +(typeof embedHTML==='function'?embedHTML(bl):'')+'</div>';
+    if(bl.type==='carref')
+      return '<div class="bk" data-bid="'+bl.id+'" data-type="carref" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bl.id+'\',event.clientX,event.clientY)" title="Options / move">\u283f</span>'
+        +(typeof carRefHTML==='function'?carRefHTML(bl):'')+'</div>';
     if(bl.type==='toc')
       return '<div class="bk" data-bid="'+bl.id+'" data-type="toc" style="margin-left:'+pad+'px"><span class="bk-plus" onclick="event.stopPropagation();addBlockBelow(this)" title="Add a block below">+</span><span class="bk-handle" draggable="true" onclick="event.stopPropagation();openBlockMenu(this.closest(\'.bk\').getAttribute(\'data-bid\'),event.clientX,event.clientY)" title="Drag to move, click for options">\u283f</span>'
         +(typeof tocHTML==='function'?tocHTML():'')+'</div>';
@@ -1531,7 +1558,7 @@ function openSlash(host,filter){
   el.style.top=(r.bottom+window.scrollY+4)+'px';
   drawSlash();_fitMenu(el);
 }
-var SLASH_CATS={p:'Basic',h1:'Basic',h2:'Basic',h3:'Basic',bullet:'Basic',num:'Basic',todo:'Basic',toggle:'Basic',quote:'Basic',callout:'Basic',divider:'Basic',subpage:'Basic',col2:'Layout',col3:'Layout',col4:'Layout',image:'Media',bookmark:'Media',embed:'Media',code:'Media',table:'Database',dbembed:'Database',newdb:'Database',newtasks:'Database',toc:'Advanced'};
+var SLASH_CATS={p:'Basic',h1:'Basic',h2:'Basic',h3:'Basic',bullet:'Basic',num:'Basic',todo:'Basic',toggle:'Basic',quote:'Basic',callout:'Basic',divider:'Basic',subpage:'Basic',col2:'Layout',col3:'Layout',col4:'Layout',image:'Media',bookmark:'Media',embed:'Media',code:'Media',table:'Database',dbembed:'Database',newdb:'Database',newtasks:'Database',toc:'Advanced',carref:'Advanced'};
 var SLASH_CAT_ORDER=['Basic','Layout','Media','Database','Advanced'];
 function slashCat(t){return SLASH_CATS[t]||'Basic';}
 function drawSlash(){
@@ -2324,7 +2351,8 @@ function openAt(host,filter){
   const f=(filter||'').toLowerCase();
   const people=(typeof peopleHits==='function'?peopleHits(f):[]).map(t=>({_person:t}));
   const pages=(S.pages||[]).filter(p=>p.id!==S.activeId&&(p.title||'').toLowerCase().includes(f)).slice(0,8);
-  atList=people.concat(pages);
+  const vehicles=(S._ltProducts||[]).filter(p=>ltProductLabel(p).toLowerCase().includes(f)).slice(0,8).map(p=>({_vehicle:p}));
+  atList=people.concat(pages).concat(vehicles);
   if(!atList.length){closeAt();return;}
   atHost=host;atOpen=true;atSel=0;
   const el=document.getElementById('slash'),r=host.getBoundingClientRect();
@@ -2336,12 +2364,16 @@ function openAt(host,filter){
 function drawAt(){
   let out='',lastKind='';
   atList.forEach((p,i)=>{
-    const kind=p._person?'people':'pages';
-    if(kind!==lastKind){out+='<div class="sh">'+(kind==='people'?'People':'Pages')+'</div>';lastKind=kind;}
+    const kind=p._person?'people':(p._vehicle?'vehicles':'pages');
+    if(kind!==lastKind){out+='<div class="sh">'+(kind==='people'?'People':kind==='vehicles'?'Vehicles':'Pages')+'</div>';lastKind=kind;}
     if(p._person){
       const t=p._person;
       out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">\u263A</span>'
         +'<div><div>'+esc(t.display_name||t.email)+'</div><div class="d">'+esc(t.email||'')+' - notify</div></div></div>';
+    }else if(p._vehicle){
+      const v=p._vehicle,lc=ltLeadsForProduct(v.id).length,gc=ltGroupsForProduct(v.id).length;
+      out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">\u{1F697}</span>'
+        +'<div><div>'+esc(ltProductLabel(v))+'</div><div class="d">'+lc+' lead'+(lc===1?'':'s')+' \u00b7 '+gc+' group'+(gc===1?'':'s')+'</div></div></div>';
     }else{
       out+='<div class="si'+(i===atSel?' sel':'')+'" data-ai="'+i+'"><span class="em">'
         +(p.icon?esc(p.icon):'\u{1F4C4}')+'</span><div><div>'+esc(p.title||'Untitled')+'</div></div></div>';
@@ -2361,6 +2393,14 @@ function applyAt(p){
   if(p._person&&typeof applyPersonMention==='function'){applyPersonMention(p._person);return;}
   const id=atHost.getAttribute('data-bid'),i=blockIndex(id),b=blocks();
   if(i<0){closeAt();return;}
+  if(p._vehicle){
+    const v=p._vehicle,cur=b[i];
+    cur.text=(cur.text||'').replace(/@[^@]*$/,'');
+    const nb={id:uid(),type:'carref',text:'',indent:cur.indent||0,cg:cur.cg,col:cur.col,productId:v.id,label:ltProductLabel(v)};
+    b.splice(i+1,0,nb);
+    closeAt();markDirty();renderBlocks();focusBlock(id);
+    return;
+  }
   b[i].text=b[i].text.replace(/@[^@]*$/,'@'+(p.title||'Untitled')+' ');
   closeAt();renderBlocks();focusBlock(id);markDirty();
 }
@@ -4907,7 +4947,103 @@ function embedHTML(bl){
     +'<div class="emb-frame" style="height:'+h+'px" onmouseup="saveEmbedHeight(\''+bl.id+'\',this)">'
     +'<iframe src="'+esc(embedSrc(url))+'" referrerpolicy="no-referrer" loading="lazy" allow="clipboard-read; clipboard-write"></iframe></div></div>';
 }
+/* ---------- Lead Tracker data cache (read-only from Notes' side) ----------
+   The Lead Tracker tool stores its own state in the shared 'workspace' table
+   under fixed ids ('tgk_leads_v3' for products/leads, 'tgk_fbg_library' for
+   the FB group library). Notes reads the same rows so the @ mention picker
+   and vehicle-reference blocks always reflect the Lead Tracker's live data,
+   without needing any bridge or duplicate storage. */
+S._ltProducts=[];S._ltLeads=[];S._ltGroups=[];S._ltLoaded=false;
+async function loadLeadTrackerCache(){
+  try{
+    const {data:wsMain}=await sb.from('workspace').select('data').eq('id','tgk_leads_v3').limit(1).maybeSingle();
+    const main=(wsMain&&wsMain.data)||{};
+    S._ltProducts=main.products||[];
+    S._ltLeads=main.leads||[];
+    S._ltGroups=main.groups||[];
+    S._ltLoaded=true;
+  }catch(e){
+    console.warn('Lead Tracker data load failed:',e);
+    S._ltLoaded=false;
+  }
+}
+function ltProductLabel(p){ return [p.year,p.make,p.model].filter(Boolean).join(' ')||p.name||'Untitled vehicle'; }
+function ltLeadsForProduct(pid){ return (S._ltLeads||[]).filter(l=>l.productId===pid); }
+function ltGroupsForProduct(pid){ return (S._ltGroups||[]).filter(g=>g.productId===pid); }
+
+/* ---------- carref block: live leads + FB groups for one vehicle ---------- */
+function carRefHTML(bl){
+  var label=esc(bl.label||'Vehicle');
+  return '<div class="carref-box" id="carref-'+bl.id+'" data-pid="'+esc(bl.productId||'')+'">'
+    +'<div class="carref-head">\u{1F697} <b>'+label+'</b> <span class="carref-loading">loading\u2026</span></div>'
+    +'</div>';
+}
+async function loadCarRef(bid){
+  var b=blocks(),i=blockIndex(bid);if(i<0)return;
+  var bl=b[i];
+  var box=document.getElementById('carref-'+bid);if(!box)return;
+  if(!S._ltLoaded)await loadLeadTrackerCache();
+  var p=(S._ltProducts||[]).find(x=>x.id===bl.productId);
+  if(!p){
+    box.innerHTML='<div class="carref-head">\u{1F697} <b>'+esc(bl.label||'Vehicle')+'</b></div>'
+      +'<div class="carref-empty">Not found in the Lead Tracker (it may have been deleted, or the tool hasn\u2019t synced yet).</div>';
+    return;
+  }
+  bl.label=ltProductLabel(p); // keep the saved label in sync with the Lead Tracker
+  var leads=ltLeadsForProduct(p.id), groups=ltGroupsForProduct(p.id);
+  var leadsHtml=leads.length?leads.map(function(l){
+    var stale=!l.lastContact;
+    return '<div class="carref-row"><span class="carref-dot'+(stale?' stale':'')+'"></span>'
+      +'<a href="'+esc(l.link||'#')+'" target="_blank" rel="noopener">'+esc(l.name||'Unnamed lead')+'</a>'
+      +'<span class="carref-meta">'+(l.lastContact?('last contact '+fmtCarRefDate(l.lastContact)):'never contacted')+'</span></div>';
+  }).join(''):'<div class="carref-empty">No leads tracked yet.</div>';
+  var groupsHtml=groups.length?groups.map(function(g){
+    return '<div class="carref-row"><span class="carref-ic">'+(g.icon||'\u{1F465}')+'</span>'
+      +'<a href="'+esc(g.url||'#')+'" target="_blank" rel="noopener">'+esc(g.name||'Group')+'</a>'
+      +(g.members?('<span class="carref-meta">'+Number(g.members).toLocaleString()+' members</span>'):'')+'</div>';
+  }).join(''):'<div class="carref-empty">No FB groups linked yet.</div>';
+  box.innerHTML='<div class="carref-head">\u{1F697} <b>'+esc(ltProductLabel(p))+'</b>'
+    +'<a class="carref-open" onclick="event.stopPropagation();openLeadTracker()" title="Open in Lead Tracker">Open \u2197</a></div>'
+    +'<div class="carref-cols"><div class="carref-col"><div class="carref-col-h">Leads ('+leads.length+')</div>'+leadsHtml+'</div>'
+    +'<div class="carref-col"><div class="carref-col-h">FB Groups ('+groups.length+')</div>'+groupsHtml+'</div></div>';
+}
+function fmtCarRefDate(iso){ try{return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'});}catch(e){return '';} }
+window.carRefHTML=carRefHTML;window.loadCarRef=loadCarRef;
+
+
+
+var LT_URL_KEY='tgk_notes_leadtracker_url';
+function getLeadTrackerUrl(){ try{ return localStorage.getItem(LT_URL_KEY)||''; }catch(e){ return ''; } }
+function setLeadTrackerUrl(){
+  var cur=getLeadTrackerUrl();
+  var v=prompt('Lead Tracker URL (https://...). Paste the hosted address of the tool:',cur);
+  if(v===null)return;
+  v=String(v).trim();
+  if(v&&!/^https?:\/\//i.test(v))v='https://'+v;
+  try{localStorage.setItem(LT_URL_KEY,v);}catch(e){}
+  if(S.pinnedView==='leadtracker')openLeadTracker();
+}
+function openLeadTracker(){
+  if(S.dirty)savePage();
+  var url=getLeadTrackerUrl();
+  if(!url){ setLeadTrackerUrl(); url=getLeadTrackerUrl(); if(!url)return; }
+  S.activeId=null;
+  S.pinnedView='leadtracker';
+  $('doc').style.display='none';
+  var pv=$('pinned-view');
+  pv.style.display='flex';
+  pv.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0">'
+    +'<b style="font-size:12.5px">&#128663; Lead Tracker</b>'
+    +'<button class="btn btn-sm" onclick="setLeadTrackerUrl()" title="Change the hosted URL">Change URL</button></div>'
+    +'<iframe src="'+esc(url)+'" style="flex:1;width:100%;border:0;display:block" referrerpolicy="no-referrer" loading="lazy" allow="clipboard-read; clipboard-write"></iframe>';
+  var lt=$('lt-nav');if(lt)lt.style.background='var(--teal-dim)';
+  var ttEl=document.querySelector('.tb-tt');if(ttEl)ttEl.textContent='Lead Tracker';
+  renderTree();
+}
+window.openLeadTracker=openLeadTracker;window.setLeadTrackerUrl=setLeadTrackerUrl;
+
 function setEmbedUrl(bid){
+
   var b=blocks(),i=blockIndex(bid);if(i<0)return;
   var cur=b[i].url||'';
   var v=prompt('Embed URL (https://...). Paste the hosted address of the tool or page to embed:',cur);
