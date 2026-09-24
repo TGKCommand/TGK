@@ -1413,7 +1413,7 @@ body.dark #lt-app .modal-footer{background:var(--bg3)}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.73';
+const TGK_NOTES_VERSION='v1.74';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -3353,14 +3353,14 @@ function purgeRow(id){
   const d=db();d.rows=(d.rows||[]).filter(r=>r.id!==id);
   markDirty();renderDb();openDbArchive();
 }
-function rowTitle(d,r){
+function rowTitleOf(d,r){   // takes the database CONTENT (d); rowTitle(page,row) below takes the page
   const first=(d.props||[]).find(p=>p.type==='text')||(d.props||[])[0];
   return first?String((r.cells||{})[first.id]||'').trim():'';
 }
 function openDbArchive(){
   const d=db();
   const arch=(d.rows||[]).filter(r=>r.archived);
-  const list=arch.map(r=>'<div class="tr-row"><span class="tr-n">\u2637 '+(esc(rowTitle(d,r))||'<i style="color:var(--text3)">Untitled row</i>')+'</span>'
+  const list=arch.map(r=>'<div class="tr-row"><span class="tr-n">\u2637 '+(esc(rowTitleOf(d,r))||'<i style="color:var(--text3)">Untitled row</i>')+'</span>'
     +'<button class="nx-b sm" onclick="restoreRow(\''+r.id+'\')">Restore</button>'
     +'<button class="nx-b sm danger" onclick="purgeRow(\''+r.id+'\')">Delete forever</button></div>').join('')
     ||'<div class="nx-hint">No archived rows in this database.</div>';
@@ -3521,6 +3521,7 @@ function blocksToMd(bl){
       case 'image': out.push('!['+(t||'image')+']('+(b.src||'')+')');break;
       case 'bookmark': out.push('['+(b.title||b.url||'link')+']('+(b.url||'')+')');break;
       case 'embed': out.push('['+(b.url||'embed')+']('+(b.url||'')+')');break;
+      case 'carref': case 'personref': case 'carlib': out.push('> Lead Tracker: '+(b.label||(b.type==='carlib'?'car':b.type==='personref'?'person':'product')));break;
       default: out.push(t);
     }
     out.push('');
@@ -4321,7 +4322,7 @@ async function createRowPage(rid){
   const d=db(),r=(d.rows||[]).find(x=>x.id===rid);
   if(!r)return;
   const par=curPage();
-  const title=(typeof rowTitle==='function'?rowTitle(d,r):'')||'Untitled';
+  const title=rowTitleOf(d,r)||'Untitled';
   const row={title:title,icon:'',parent_id:S.activeId,sort_order:nextSort(S.activeId),
              page_type:'doc',content:[{id:uid(),type:'p',text:'',indent:0}],
              created_by:S.user?S.user.email:null};
@@ -5703,11 +5704,13 @@ window.addEventListener('lt:changed',function(){
 function ltRefreshRefs(){
   document.querySelectorAll('[data-type="carref"],[data-type="personref"],[data-type="carlib"]').forEach(function(el){
     if(el.contains(document.activeElement))return;   // never yank a field out from under the cursor
+    if([].some.call(el.querySelectorAll('[data-new]'),function(i){return i.value.trim();}))return;   // unsent "add" text
     loadLtRef(el.getAttribute('data-bid'));
   });
 }
 function ltCanEdit(){ if(window.LT&&LT.ready())return true; toast('Lead Tracker is still syncing - try again in a moment'); if(window.LT)LT.boot(); return false; }
 
+function ltHref(u){ u=String(u||'').trim(); if(!u)return '#'; if(!/^https?:\/\//i.test(u))u='https://'+u; return esc(u); }
 function ltProductLabel(p){ return p.name||[p.year,p.make,p.model].filter(Boolean).join(' ')||'Untitled product'; }
 function ltProductMatch(p,q){ return (ltProductLabel(p)+' '+(p.sku||'')).toLowerCase().includes(q); }
 function ltCarLabel(c){ return [c.year,c.make,c.model].filter(Boolean).join(' ')||c.key; }
@@ -5759,7 +5762,7 @@ function ltRefShell(bl,title,right,body){
 function carRefHTML(bl){ return ltRefShell(bl,'\u{1F697} <b>'+esc(bl.label||'Lead Tracker')+'</b> <span class="carref-loading">loading\u2026</span>'); }
 function ltIn(bid,act,arg,val,ph,cls,extra){
   return '<input class="lt-in'+(cls?' '+cls:'')+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'"'
-    +' data-bid="'+bid+'" data-act="'+act+'" data-arg="'+esc(arg||'')+'" onkeydown="ltInKey(event,this)" onchange="ltInCommit(this)"'+(extra||'')+'>';
+    +' data-bid="'+bid+'" data-act="'+act+'" data-arg="'+esc(arg==null?'':String(arg))+'" onkeydown="ltInKey(event,this)" onchange="ltInCommit(this)"'+(extra||'')+'>';
 }
 function ltInKey(e,el){ if(e.key==='Enter'){e.preventDefault();el.blur();} else if(e.key==='Escape'){el.value=el.defaultValue;el.blur();} e.stopPropagation(); }
 function ltInCommit(el){
@@ -5776,10 +5779,14 @@ function ltInCommit(el){
     ok=!!nk; if(nk&&bl&&bl.personKey!==nk){bl.personKey=nk;markDirty();}   // a new link = a new identity key
   }
   else if(act==='cg-name'||act==='cg-url'||act==='cg-mem'){
-    var f={};f[act==='cg-name'?'name':act==='cg-url'?'url':'members']=v; ok=LT.carUpdateGroup(bl&&bl.carKey,Number(arg),f);
+    var f={};f[act==='cg-name'?'name':act==='cg-url'?'url':'members']=v; ok=LT.carUpdateGroup(bl&&bl.carKey,Number(arg),f,el.getAttribute('data-url'));
+    if(!ok){toast('That group changed while you were editing - refreshed, please try again');el.value=el.defaultValue;loadLtRef(bid);return;}
   }
   if(!ok){toast('Not saved - that field can\u2019t be empty');el.value=el.defaultValue;return;}
   el.defaultValue=el.value;
+  if(act==='cg-url'&&bl){var car=(LT.cars()||[]).find(function(c){return c.key===bl.carKey;}),g=car&&car.groups[Number(arg)];
+    if(g){var row=el.closest('.lt-row');if(row)[].forEach.call(row.querySelectorAll('[data-url]'),function(x){x.setAttribute('data-url',g.url||'');});el.value=el.defaultValue=g.url||'';}}
+  if(act==='person-name'||act==='person-link'){if(bl)loadLtRef(bid);}
   if(bl&&act==='prod-name'){bl.label=v;markDirty();}
   toast('\u2713 Saved to Lead Tracker');
 }
@@ -5799,12 +5806,13 @@ function ltRefAdd(bid,kind){
   }
   loadLtRef(bid);
 }
-function ltRefAct(bid,act,arg){
+function ltRefAct(bid,act,arg,expect){
   if(!ltCanEdit())return;
   var b=blocks(),i=blockIndex(bid);if(i<0)return;var bl=b[i];
   if(act==='contact'){LT.contact(arg);toast('\u2713 Marked contacted');}
   else if(act==='unlink-group'){if(!confirm('Remove this FB group from the product?'))return;LT.removeProductGroup(arg);}
-  else if(act==='rm-cargroup'){if(!confirm('Remove this group from '+(bl.label||'the car')+'?'))return;LT.carRemoveGroup(bl.carKey,Number(arg));}
+  else if(act==='rm-cargroup'){if(!confirm('Remove this group from '+(bl.label||'the car')+'?'))return;
+    if(!LT.carRemoveGroup(bl.carKey,Number(arg),expect)){toast('That group changed while you were looking - refreshed, nothing removed');}}
   else if(act==='link-car'){   // copy all of a car's library groups onto this product
     var car=(S._ltCars||[]).find(function(c){return c.key===arg;});if(!car)return;
     var n=0;(car.groups||[]).forEach(function(g){if(LT.linkGroup(bl.productId,g))n++;});
@@ -5823,13 +5831,13 @@ function ltLeadRow(bid,l,opts){
     +ltIn(bid,'lead-note',l.id,l.note,'Note','lt-in-note')
     +'<span class="carref-meta">'+(l.lastContact?fmtCarRefDate(l.lastContact):'never')+'</span>'
     +'<button class="lt-mini" title="Mark contacted now" onclick="ltRefAct(\''+bid+'\',\'contact\',\''+l.id+'\')">\u2713</button>'
-    +(l.link?'<a class="lt-mini" href="'+esc(l.link)+'" target="_blank" rel="noopener" title="Open profile">\u2197</a>':'')
+    +(l.link?'<a class="lt-mini" href="'+ltHref(l.link)+'" target="_blank" rel="noopener" title="Open profile">\u2197</a>':'')
     +'<button class="lt-mini" title="Full editor (checklist, history)" onclick="ltOpenLead(\''+l.id+'\')">\u22ef</button>'
     +'</div>';
 }
 function ltGroupRow(g,right){
   return '<div class="lt-row"><span class="carref-ic">'+(g.icon||'\u{1F465}')+'</span>'
-    +'<a href="'+esc(g.url||'#')+'" target="_blank" rel="noopener" class="lt-grow">'+esc(g.name||'Group')+'</a>'
+    +'<a href="'+ltHref(g.url)+'" target="_blank" rel="noopener" class="lt-grow">'+esc(g.name||'Group')+'</a>'
     +(g.members?'<span class="carref-meta">'+Number(g.members).toLocaleString()+'</span>':'')+(right||'')+'</div>';
 }
 async function loadLtRef(bid){
@@ -5861,11 +5869,15 @@ async function loadLtRef(bid){
   }
 
   if(bl.type==='personref'){
-    var pp=ltPeople().find(function(x){return x.key===bl.personKey;});if(!pp)return missing('person');
+    var pp=ltPeople().find(function(x){return x.key===bl.personKey;});
+    if(!pp&&bl.leadId){var anchor=(S._ltLeads||[]).find(function(l){return l.id===bl.leadId;});
+      if(anchor){bl.personKey=ltPersonKey(anchor);markDirty();pp=ltPeople().find(function(x){return x.key===bl.personKey;});}}
+    if(!pp)return missing('person');
+    if(!pp.leads.some(function(l){return l.id===bl.leadId;})){bl.leadId=pp.leads[0].id;markDirty();}
     bl.label=pp.name;
     var last=pp.leads.map(function(l){return l.lastContact||'';}).sort().pop();
     box.innerHTML='<div class="carref-head">\u263A '+ltIn(bid,'person-name',pp.key,pp.name,'Name','lt-in-title')+ltIn(bid,'person-link',pp.key,pp.link,'Profile URL','lt-in-link')
-      +(pp.link?'<a class="carref-open" href="'+esc(pp.link)+'" target="_blank" rel="noopener">Profile \u2197</a>':'')
+      +(pp.link?'<a class="carref-open" href="'+ltHref(pp.link)+'" target="_blank" rel="noopener">Profile \u2197</a>':'')
       +'<a class="carref-open" data-key="'+esc(pp.key)+'" onclick="ltOpenKey(\'person\',this.dataset.key)">Open \u2197</a></div>'
       +'<div class="carref-col-h">'+pp.leads.length+' product'+(pp.leads.length===1?'':'s')+' \u00b7 last contact '+(last?fmtCarRefDate(last):'never')+'</div>'
       +pp.leads.map(function(l){var pr=ltProductById(l.productId);
@@ -5881,10 +5893,10 @@ async function loadLtRef(bid){
     box.innerHTML='<div class="carref-head">\u{1F697} <b>'+esc(ltCarLabel(car))+'</b> <span class="carref-meta" style="margin-left:6px">'+gs.length+' FB group'+(gs.length===1?'':'s')+'</span>'
       +'<a class="carref-open" data-key="'+esc(car.key)+'" onclick="ltOpenKey(\'car\',this.dataset.key)">Open in Car Library \u2197</a></div>'
       +gs.map(function(g,ix){return '<div class="lt-row"><span class="carref-ic">'+(g.icon||'\u{1F465}')+'</span>'
-          +ltIn(bid,'cg-name',ix,g.name,'Group name','lt-in-name')+ltIn(bid,'cg-url',ix,g.url,'Group URL','lt-in-link')
-          +ltIn(bid,'cg-mem',ix,g.members?String(g.members):'','Members','lt-in-sku')
-          +(g.url?'<a class="lt-mini" href="'+esc(g.url)+'" target="_blank" rel="noopener" title="Open group">\u2197</a>':'')
-          +'<button class="lt-mini" title="Remove from car" onclick="ltRefAct(\''+bid+'\',\'rm-cargroup\','+ix+')">\u2715</button></div>';}).join('')
+          +ltIn(bid,'cg-name',ix,g.name,'Group name','lt-in-name',' data-url="'+esc(g.url||'')+'"')+ltIn(bid,'cg-url',ix,g.url,'Group URL','lt-in-link',' data-url="'+esc(g.url||'')+'"')
+          +ltIn(bid,'cg-mem',ix,g.members?String(g.members):'','Members','lt-in-sku',' data-url="'+esc(g.url||'')+'"')
+          +(g.url?'<a class="lt-mini" href="'+ltHref(g.url)+'" target="_blank" rel="noopener" title="Open group">\u2197</a>':'')
+          +'<button class="lt-mini" title="Remove from car" data-url="'+esc(g.url||'')+'" onclick="ltRefAct(\''+bid+'\',\'rm-cargroup\','+ix+',this.dataset.url)">\u2715</button></div>';}).join('')
       +(gs.length?'':'<div class="carref-empty">No groups saved to this car yet.</div>')
       +'<div class="lt-row lt-add"><input class="lt-in lt-in-name" data-new="name" placeholder="+ Group name" onkeydown="event.stopPropagation()">'
       +'<input class="lt-in lt-in-link" data-new="url" placeholder="https://facebook.com/groups/..." onkeydown="event.stopPropagation()">'
@@ -5913,9 +5925,9 @@ window.ltChooserDraw=ltChooserDraw;window.ltChooserPick=ltChooserPick;
 function ltOpenKey(kind,key){ openLeadTracker(function(){ if(!window.LT)return; if(kind==='person')LT.openPerson(key); else LT.openCar(key); }); }
 window.ltOpenKey=ltOpenKey;
 function ltSetRef(bl,kind,ref){
-  delete bl.productId;delete bl.personKey;delete bl.carKey;
+  delete bl.productId;delete bl.personKey;delete bl.carKey;delete bl.leadId;
   if(kind==='lt-product'){bl.type='carref';bl.productId=ref;var p=ltProductById(ref);bl.label=p?ltProductLabel(p):'';}
-  else if(kind==='lt-person'){bl.type='personref';bl.personKey=ref;var pp=ltPeople().find(function(x){return x.key===ref;});bl.label=pp?pp.name:'';}
+  else if(kind==='lt-person'){bl.type='personref';bl.personKey=ref;var pp=ltPeople().find(function(x){return x.key===ref;});bl.label=pp?pp.name:'';if(pp)bl.leadId=pp.leads[0].id;}
   else if(kind==='lt-car'){bl.type='carlib';bl.carKey=ref;var c=(S._ltCars||[]).find(function(x){return x.key===ref;});bl.label=c?ltCarLabel(c):'';}
 }
 window.ltSetRef=ltSetRef;
@@ -7254,6 +7266,7 @@ function daysAgo(iso){
   if(d===0)return'TODAY';if(d===1)return'1D AGO';if(d<30)return d+'D AGO';if(d<365)return Math.floor(d/30)+'MO AGO';return Math.floor(d/365)+'YR AGO';
 }
 function contactCls(iso){if(!iso)return'never';const d=Math.floor((Date.now()-new Date(iso).getTime())/86400000);return d<=3?'recent':'stale';}
+function safeHref(u){ u=normalizeUrl(String(u||'')); return /^https?:\/\//i.test(u)?esc(u):'#'; }
 function normalizeUrl(url){
   if(!url)return'';url=url.trim();if(!url)return'';
   if(/^https?:\/\//i.test(url))return url;
@@ -7538,7 +7551,7 @@ function renderProducts(){
                   <td><input type="checkbox" class="bulk-check" data-lid="${l.id}" data-pid="${p.id}" onchange="onLeadCheck('${p.id}')" style="cursor:pointer;accent-color:var(--teal)"/></td>
                   <td><div class="avatar">${initials(l.name)}</div></td>
                   <td><button class="lead-name-btn" onclick="openLeadModal('${l.id}')">${esc(l.name)}</button></td>
-                  <td>${l.link?`<a class="fb-link" href="${l.link}" target="_blank" rel="noopener">↗ PROFILE</a>`:`<span style="color:var(--text3)">—</span>`}</td>
+                  <td>${l.link?`<a class="fb-link" href="${safeHref(l.link)}" target="_blank" rel="noopener">↗ PROFILE</a>`:`<span style="color:var(--text3)">—</span>`}</td>
                   <td><span class="contact-cell"><span class="status-tag ${cls}">${ago||'NEVER'}</span><button class="quick-contact-btn" onclick="event.stopPropagation();quickContact('${l.id}')" title="Mark contacted today">✓</button></span></td>
                   <td>${total?`<div class="mini-bar-wrap"><div class="mini-bar"><div class="mini-bar-fill" style="width:${pct}%"></div></div><span class="mini-label">${done}/${total}</span></div>`:`<span style="color:var(--text3);font-size:11px">—</span>`}</td>
                   <td><button class="icon-btn" onclick="openLeadModal('${l.id}')" title="Edit">✎</button></td>
@@ -7671,7 +7684,7 @@ function renderPeople(){
       <td style="width:200px" class="pt-name">${esc(p.name)}</td>
       <td>${prodTags}</td>
       <td style="text-align:right;padding-right:8px"><span class="contact-cell"><span class="pt-status ${statusCls}">${ago||'NEVER'}</span><button class="quick-contact-btn" onclick="event.stopPropagation();quickContact('${p.id}')" title="Mark contacted today">✓</button></span></td>
-      <td style="text-align:right;padding-right:12px;white-space:nowrap">${p.link?`<a class="fb-link" href="${p.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ PROFILE</a>`:''}</td>
+      <td style="text-align:right;padding-right:12px;white-space:nowrap">${p.link?`<a class="fb-link" href="${safeHref(p.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ PROFILE</a>`:''}</td>
     </tr>`;
   });
 
@@ -7826,7 +7839,7 @@ function scanDuplicates(){
             <div style="width:32px;height:32px;border-radius:50%;background:rgba(220,38,38,.12);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;border:1px solid rgba(220,38,38,.2)">${initials(l.name)}</div>
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(l.name)}</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:1px">${lp?esc(lp.name):'?'}${l.link?` · <a href="${l.link}" target="_blank" rel="noopener noreferrer" style="color:var(--teal);font-size:10px">FB ↗</a>`:''}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:1px">${lp?esc(lp.name):'?'}${l.link?` · <a href="${safeHref(l.link)}" target="_blank" rel="noopener noreferrer" style="color:var(--teal);font-size:10px">FB ↗</a>`:''}</div>
               <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
                 ${reasons.length?`<span style="font-size:9px;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:.06em">${reasons.join(' & ')}</span>`:'<span style="font-size:9px;color:var(--text3)">primary</span>'}
                 ${total?`<span style="font-size:9px;color:var(--text3)">${done}/${total} checklist</span>`:''}
@@ -8849,11 +8862,13 @@ function _ltCarEdit(key,fn){ var lib=fbgLibLoad(),car=lib.find(function(c){retur
 function _ltCarAddGroup(key,g){ var name=String((g&&g.name)||'').trim(),url=normalizeUrl((g&&g.url)||''); if(!name||!url)return false;
   return _ltCarEdit(key,function(car){ if(car.groups.some(function(x){return x.url===url;}))return false;
     car.groups.push({name:name,url:url,members:parseInt(g.members,10)||0,icon:'\u{1F465}',desc:''}); }); }
-function _ltCarUpdateGroup(key,idx,f){ return _ltCarEdit(key,function(car){ var g=car.groups[idx]; if(!g)return false;
+function _ltCarUpdateGroup(key,idx,f,expectUrl){ return _ltCarEdit(key,function(car){ var g=car.groups[idx]; if(!g)return false;
+  if(expectUrl!==undefined&&String(g.url||'')!==String(expectUrl))return false;
   if(f.name!==undefined){ var n=String(f.name).trim(); if(!n)return false; g.name=n; }
   if(f.url!==undefined) g.url=normalizeUrl(f.url);
   if(f.members!==undefined) g.members=parseInt(f.members,10)||0; }); }
-function _ltCarRemoveGroup(key,idx){ return _ltCarEdit(key,function(car){ if(!car.groups[idx])return false; car.groups.splice(idx,1); }); }
+function _ltCarRemoveGroup(key,idx,expectUrl){ return _ltCarEdit(key,function(car){ var g=car.groups[idx]; if(!g)return false;
+  if(expectUrl!==undefined&&String(g.url||'')!==String(expectUrl))return false; car.groups.splice(idx,1); }); }
 function _ltCarsCloud(cloud){ if(!Array.isArray(cloud))return;
   // every local car-library edit is pushed immediately, so the cloud copy is authoritative here
   try{ localStorage.setItem(FBG_LIBRARY_KEY, JSON.stringify(cloud)); }catch(e){}
