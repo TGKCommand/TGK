@@ -12771,8 +12771,6 @@ function openSupportCenter() {
     acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSupportCenter()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Support Center</button>';
   }
 
-  // Note: unlike the ERP, this does not pass an auth token via postMessage —
-  // staff sign in to the Support Center separately with their own login.
   if (frame.src !== SUPPORT_URL) {
     frame.onload = function() {
       if (loading) loading.classList.add('hidden');
@@ -12903,9 +12901,28 @@ function openNotes() {
     acts.innerHTML = '<button class="cc-bc-btn" onclick="closeNotes()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Notes</button>';
   }
 
-  // Notes has its own Supabase login gate, so no token is handed across.
+  // Hand the session to Notes so it skips its own login - same pattern as the ERP, Support
+  // Center and Ghost Tuning. Notes (v1.72+) has the matching listener: it only accepts
+  // TGK_CC messages from this origin, ignores a repeat for the same person, and reloads
+  // itself if the person changed.
   if (frame.src !== NOTES_URL) {
-    frame.onload = function(){ if (loading) loading.classList.add('hidden'); };
+    frame.onload = function(){
+      if (loading) loading.classList.add('hidden');
+      var sess = _getSession();
+      if (sess && sess.access_token) {
+        setTimeout(function() {
+          try {
+            frame.contentWindow.postMessage({
+              source: 'TGK_CC',
+              type: 'AUTH_TOKEN',
+              access_token: sess.access_token,
+              refresh_token: sess.refresh_token || '',
+              email: sess.email || ''
+            }, new URL(NOTES_URL).origin);
+          } catch(e) {}
+        }, 300);
+      }
+    };
     frame.src = NOTES_URL;
   } else {
     if (loading) loading.classList.add('hidden');
@@ -16932,7 +16949,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.33';
+var TGK_CC_VERSION='v3.34';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
