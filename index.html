@@ -1132,6 +1132,11 @@ body{font-family:var(--font);background:var(--body-bg);color:var(--text);font-si
 #cal-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #cal-viewer.active{display:flex}
 #cal-frame{width:100%;flex:1;border:none;background:#fff}
+#hb-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#hb-viewer.active{display:flex}
+#hb-frame{width:100%;flex:1;border:none;background:#fff}
+#hb-loading{position:absolute;inset:0;background:var(--bg3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#hb-loading.hidden{display:none}
 #notes-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #notes-viewer.active{display:flex}
 #notes-viewer iframe{flex:1;width:100%;border:none;background:#ECEEF0}
@@ -2151,6 +2156,13 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
     </div>
     <iframe id="ta-frame" title="TGK Time Attack" allowfullscreen></iframe>
   </div>
+  <div id="hb-viewer">
+    <div id="hb-loading">
+      <div class="erp-spinner"></div>
+      <div class="erp-loading-text">Loading Harness Builder&hellip;</div>
+    </div>
+    <iframe id="hb-frame" title="TGK Harness Builder" allowfullscreen></iframe>
+  </div>
   <div id="cc-sidebar">
     <span class="cc-slbl">Tools</span>
     <button class="cc-navbtn active" id="cc-nav-home" onclick="showView('home')" draggable="true">
@@ -2290,6 +2302,7 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
     <div class="mod-grid">
       <div class="mod-card ac-teal" onclick="openSKU()" data-mid="sku"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127991;</div><div class="mod-card-name">SKU Manager</div><div class="mod-card-cat">Inventory &middot; Registry &middot; Supabase</div><div class="mod-card-desc">Create and edit raw part &amp; assembly SKUs &mdash; categories, notes, reference links, files, and dev/live/discontinued lifecycle. Feeds directly into the ERP.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Inventory</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-teal" onclick="openCal()" data-mid="calendar"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128197;</div><div class="mod-card-name">Team Calendar</div><div class="mod-card-cat">Operations &middot; Scheduling &middot; Supabase</div><div class="mod-card-desc">Shared company calendar &mdash; time off, deadlines, and notes across the team, with a month grid and multi-day event bars.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Team</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
+      <div class="mod-card ac-teal" onclick="openHarnessBuilder()" data-mid="harness"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128268;</div><div class="mod-card-name">Harness Builder</div><div class="mod-card-cat">Wiring &middot; Pinouts &middot; Supabase</div><div class="mod-card-desc">Design wiring harnesses &mdash; schematic, bundle layout with real lengths, wire list, BOM, and build checks. Shared with the team.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Engineering</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-teal" onclick="showView('box')" data-mid="box"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128230;</div><div class="mod-card-name">Box Selector</div><div class="mod-card-cat">Shipping &middot; Packing &middot; 3D</div><div class="mod-card-desc">Build an order, run the 3D bin-packing algorithm and get the optimal shipping box in seconds.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Shipping</span></div><div style="display:flex;align-items:center;gap:7px"><div class="bdot" id="bdot-box"></div><span class="mod-card-arrow">Open &rarr;</span></div></div></div>
       <div class="mod-card ac-teal" onclick="openNotes()" data-mid="notes"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#128221;</div><div class="mod-card-name">Notes</div><div class="mod-card-cat">Docs &middot; Wiki &middot; Databases</div><div class="mod-card-desc">Block-editor pages and Notion-style databases &mdash; SOPs, build notes, research logs, linked together.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Docs</span></div><span class="mod-card-open">Open &rarr;</span></div></div>
       <div class="mod-card ac-purple" onclick="showView('toolbox')" data-mid="toolbox"><div class="mod-card-icon" style="background:rgba(124,58,237,.1)">&#128279;</div><div class="mod-card-name">Toolbox</div><div class="mod-card-cat">External Tools &middot; Links</div><div class="mod-card-desc">Manage external tools and links &mdash; add, organize, and launch from one place.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-purple">External</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
@@ -12440,6 +12453,7 @@ var TA_URL  = 'https://command.tgkmotorsport.com/TGK_TimeAttack.html';
 var SUPPORT_URL = 'https://support.tgkmotorsport.com';
 var NOTES_URL = 'https://command.tgkmotorsport.com/notes.html';
 var GHOST_URL = 'https://ghost.tgkmotorsport.com';
+var HB_URL = 'https://command.tgkmotorsport.com/tgk_harness_builder.html';
 
 // Every embedded module receives identity ONCE, on its own first load - nothing re-sent it if
 // the Command Center's own session changed afterward. That meant signing out here never told
@@ -12454,7 +12468,7 @@ var GHOST_URL = 'https://ghost.tgkmotorsport.com';
 // on whether each of those files has its own listener - that's outside what this file controls.
 function _ccBroadcastToFrames(msg){
   [['erp-frame',ERP_URL],['support-frame',SUPPORT_URL],['cal-frame',CAL_URL],
-   ['notes-frame',NOTES_URL],['sku-frame',SKU_URL],['ta-frame',TA_URL],['ghost-frame',GHOST_URL]].forEach(function(pair){
+   ['notes-frame',NOTES_URL],['sku-frame',SKU_URL],['ta-frame',TA_URL],['ghost-frame',GHOST_URL],['hb-frame',HB_URL]].forEach(function(pair){
     try{
       var frame=document.getElementById(pair[0]);
       if(!frame||!frame.src)return;
@@ -13130,6 +13144,121 @@ function _calSendIdentity() {
   } catch (e) {}
 }
 
+/* ---- HARNESS BUILDER (Operations tool, same inline-viewer pattern as SKU Manager / Calendar) ---- */
+function openHarnessBuilder() {
+  var main    = document.getElementById('cc-main');
+  var viewer  = document.getElementById('hb-viewer');
+  var frame   = document.getElementById('hb-frame');
+  var loading = document.getElementById('hb-loading');
+  if (!viewer || !frame) { window.open(HB_URL, '_blank', 'noopener'); return; }
+  // Close every other inline viewer so two tools are never active at once.
+  ['erp-viewer','support-viewer','ghost-viewer','notes-viewer','sku-viewer','cal-viewer','ta-viewer'].forEach(function(id){
+    var v = document.getElementById(id); if (v && v.classList.contains('active')) v.classList.remove('active');
+  });
+  if (main)  main.style.display  = 'none';
+  viewer.classList.add('active');
+  if (loading) loading.classList.remove('hidden');
+  var bc = document.getElementById('cc-breadcrumb');
+  if (bc) bc.classList.add('visible');
+  var lbl = document.getElementById('cc-bc-label');
+  if (lbl) lbl.textContent = 'Harness Builder';
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) {
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeHarnessBuilder()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Harness Builder</button>';
+  }
+  if (frame.src !== HB_URL) {
+    frame.onload = function() { if (loading) loading.classList.add('hidden'); _hbSendAuth(); };
+    frame.src = HB_URL;
+  } else {
+    if (loading) loading.classList.add('hidden');
+    _hbSendAuth();
+  }
+  setTimeout(function(){ if (loading) loading.classList.add('hidden'); }, 4000);
+}
+function closeHarnessBuilder() {
+  var main   = document.getElementById('cc-main');
+  var viewer = document.getElementById('hb-viewer');
+  var bc     = document.getElementById('cc-breadcrumb');
+  if (main)   main.style.display = '';
+  if (viewer) viewer.classList.remove('active');
+  if (bc)     bc.classList.remove('visible');
+  var acts = document.getElementById('cc-bc-actions');
+  if (acts) acts.innerHTML = '';
+}
+window.openHarnessBuilder = openHarnessBuilder; window.closeHarnessBuilder = closeHarnessBuilder;
+
+// The Command Center owns the Supabase session. Modules ask for a token instead of refreshing
+// it themselves: if two places rotate the same refresh token, Supabase's reuse detection can
+// revoke the session for everyone. So when a module asks and the access token is close to
+// expiring, refresh it HERE once, save it, and hand the new one to every open module.
+function _ccTokenExp(tok){ try{ return JSON.parse(atob(tok.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).exp*1000; }catch(e){ return 0; } }
+var _ccRefreshing = null;
+async function _ccFreshSession() {
+  var sess = _getSession();
+  if (!sess || !sess.access_token) return null;
+  if (_ccTokenExp(sess.access_token) - Date.now() > 120000) return sess;
+  if (!sess.refresh_token) return sess;
+  if (!_ccRefreshing) {
+    _ccRefreshing = (async function(){
+      try {
+        var rr = await fetch(SB_AUTH_URL + '/auth/v1/token?grant_type=refresh_token', {
+          method: 'POST', headers: { 'apikey': SB_ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: sess.refresh_token })
+        });
+        if (!rr.ok) { console.error('[CC] token refresh failed', rr.status); return _getSession(); }
+        var nd = await rr.json();
+        _setSession({ access_token: nd.access_token, refresh_token: nd.refresh_token, email: sess.email });
+        var ns = _getSession();
+        _ccBroadcastToFrames({ source:'TGK_CC', type:'AUTH_TOKEN', access_token: ns.access_token, refresh_token: ns.refresh_token || '', email: ns.email || '' });
+        return ns;
+      } catch(e) { console.error('[CC] token refresh error', e); return _getSession(); }
+      finally { setTimeout(function(){ _ccRefreshing = null; }, 0); }
+    })();
+  }
+  return _ccRefreshing;
+}
+async function _hbSendAuth() {
+  try {
+    var frame = document.getElementById('hb-frame');
+    if (!frame || !frame.contentWindow || !frame.src) return;
+    var sess = await _ccFreshSession();
+    if (!sess || !sess.access_token) return;
+    frame.contentWindow.postMessage({
+      source: 'TGK_CC', type: 'AUTH_TOKEN',
+      access_token: sess.access_token, refresh_token: sess.refresh_token || '', email: sess.email || ''
+    }, new URL(HB_URL).origin);
+  } catch (e) { console.error('[CC] harness handshake failed', e); }
+}
+// The Harness Builder announces itself (and asks again whenever its token is about to expire).
+window.addEventListener('message', function(e) {
+  if (!e || !e.data || e.data.type !== 'tgk-harness-ready') return;
+  var frame = document.getElementById('hb-frame');
+  if (!frame || e.source !== frame.contentWindow) return; // only answer our own frame
+  var l = document.getElementById('hb-loading'); if (l) l.classList.add('hidden');
+  _hbSendAuth();
+});
+// Opening any other module (or going back to a dashboard view) hides the Harness Builder,
+// the same way those modules already hide each other. Done as one wrapper instead of editing
+// every open function, so a module added later cannot be missed the way Ghost once was.
+(function(){
+  function hideHB(restoreMain){
+    var v = document.getElementById('hb-viewer');
+    if (!v || !v.classList.contains('active')) return;
+    v.classList.remove('active');
+    if (restoreMain) {
+      var m = document.getElementById('cc-main'); if (m) m.style.display = '';
+      var bc = document.getElementById('cc-breadcrumb'); if (bc) bc.classList.remove('visible');
+      var acts = document.getElementById('cc-bc-actions'); if (acts) acts.innerHTML = '';
+    }
+  }
+  ['openERP','openSupportCenter','openGhostTuning','openNotes','openSKU','openCal','openTimeAttack'].forEach(function(n){
+    var f = window[n]; if (typeof f !== 'function') return;
+    window[n] = function(){ hideHB(false); return f.apply(this, arguments); };
+  });
+  var sv = window.showView;
+  if (typeof sv === 'function') window.showView = function(){ hideHB(true); return sv.apply(this, arguments); };
+})();
+
 // The calendar announces itself with {type:'tgk-cal-ready'}; reply with the current identity.
 window.addEventListener('message', function(e) {
   if (e && e.data && e.data.type === 'tgk-cal-ready') { var _cl = document.getElementById('cal-loading'); if (_cl) _cl.classList.add('hidden'); _calSendIdentity(); }
@@ -13212,8 +13341,8 @@ function erpToast(msg, detail) {
 /* ─── LAYOUT ─────────────────────────────────────────── */
 var LAYOUT_KEY = 'tgk_layout_v3';
 var layout = {
-  visible: ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade','timeattack'],
-  order:   ['launch','social','ideas','fbgroups','box','sku','calendar','toolbox','arcade','timeattack'],
+  visible: ['launch','social','ideas','fbgroups','box','sku','calendar','harness','toolbox','arcade','timeattack'],
+  order:   ['launch','social','ideas','fbgroups','box','sku','calendar','harness','toolbox','arcade','timeattack'],
   pinned:  [],
   custom:  false
 };
@@ -13231,10 +13360,13 @@ function loadLayout() {
   // Team Calendar added after SKU — same migration so it's always present going forward.
   if (layout.visible.indexOf('calendar') === -1) layout.visible.push('calendar');
   if (layout.order.indexOf('calendar') === -1) layout.order.push('calendar');
+  // Harness Builder added after the Calendar - same migration so saved layouts pick it up.
+  if (layout.visible.indexOf('harness') === -1) layout.visible.push('harness');
+  if (layout.order.indexOf('harness') === -1) layout.order.push('harness');
 }
 
 /* ─── RENDER DASHBOARD ───────────────────────────────── */
-var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','notes','toolbox'], fun:['arcade','timeattack'] };
+var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','harness','notes','toolbox'], fun:['arcade','timeattack'] };
 
 function renderDashboard() {
   var n = document.getElementById('tpl-name');
@@ -16934,7 +17066,7 @@ if ('serviceWorker' in navigator) {
       if(dr && dr.classList.contains('cc-drawer-open')){ dr.classList.remove('cc-drawer-open'); var bd=document.getElementById('cc-drawer-backdrop'); if(bd)bd.classList.remove('cc-drawer-open'); handled=true; }
     }
     if(!handled){
-      var v=document.querySelector('#erp-viewer.active, #support-viewer.active, #cal-viewer.active');
+      var v=document.querySelector('#erp-viewer.active, #support-viewer.active, #cal-viewer.active, #hb-viewer.active');
       if(v){ try{ showView('home'); }catch(_){ v.classList.remove('active'); } handled=true; }
     }
     if(!handled){
