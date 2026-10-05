@@ -404,10 +404,11 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 .wire-hit{fill:none;stroke:transparent;stroke-width:12;cursor:pointer}
 .dim{opacity:.13}
 .draft{fill:none;stroke:var(--text);stroke-width:1.6;stroke-dasharray:5 5;pointer-events:none}
-.seg{stroke:#b4bac3;stroke-width:9;stroke-linecap:round;cursor:pointer}
-.seg:hover{stroke:#9aa1ab}
+.seg{fill:none;stroke:#cdd2d8;stroke-width:8;stroke-linecap:round;stroke-linejoin:round;cursor:pointer}
+.seg-edge{fill:none;stroke:#9aa1aa;stroke-width:11;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.seg:hover{stroke:#b9bfc7}
 .seg.sel{stroke:var(--teal)}
-.seg-hit{stroke:transparent;stroke-width:20;cursor:pointer}
+.seg-hit{fill:none;stroke:transparent;stroke-width:22;cursor:pointer}
 .slen{font-family:var(--mono);font-size:10.5px;font-weight:500;fill:var(--text2);pointer-events:none}
 .slen-bg{fill:#ECEEF0}
 .slen.est{fill:var(--orange);font-style:italic}
@@ -423,7 +424,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 .step-d{font-size:var(--t-sm);color:var(--text3);line-height:1.4;margin-top:1px}
 .ltag{font-family:var(--mono);font-size:9.5px;font-weight:500;fill:var(--text2);pointer-events:none}
 .ltag-bg{fill:#fff;stroke:var(--border2)}
-.lnode{fill:#374151;cursor:move}
+.lnode{fill:#4b5563;stroke:#2f353b;stroke-width:1;cursor:move}
 .lnode.sel{fill:var(--teal)}
 .lcon{fill:#d1d5db;stroke:#8b939c;stroke-width:1;cursor:move}
 .lcon.sel{stroke:var(--teal);stroke-width:2.5}
@@ -520,6 +521,61 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 .sub-lbl{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:6px 12px 2px 26px}
 .nav-subitem .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .filter-bar .sel{padding:7px 9px}
+
+/* connector cards on the layout: picture, mating face, wiring table */
+.leader{fill:none;stroke:#a3aab3;stroke-width:1.2;stroke-dasharray:3 3;pointer-events:none}
+.ccard{font-family:var(--font);font-size:11px;background:#fff;border-radius:var(--r-md);overflow:hidden;box-shadow:0 2px 8px rgba(14,20,24,.10),0 0 0 1px var(--border2)}
+.ccard .fh{display:flex;justify-content:space-between;gap:8px;padding:5px 10px;font-weight:700;font-size:11.5px;line-height:16px;cursor:move;color:#E8EDF0;text-shadow:0 1px 2px rgba(0,0,0,.75);border-bottom:2px solid rgba(13,148,136,.6);background-color:var(--cb-c);background-image:var(--cb-i);background-size:100% 100%,100% 100%,100% 100%,auto 120px;background-position:var(--cb-p)}
+.ccard .fh span+span{color:#a7b1b8;font-weight:500;font-family:var(--mono);font-size:10px}
+.ctiles,.dtiles{display:flex;gap:8px;padding:7px 8px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.dtiles{background:none;border:0;padding:6px 0 10px}
+.ctile{height:70px;min-width:70px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);cursor:move}
+.ctile.img{width:70px;background:#fff;box-shadow:0 0 0 1px var(--border)}
+.ctile.face{padding:0 6px;background:#1b1f22;box-shadow:inset 0 0 0 1px #2b3035}
+.ctile.big{height:124px;min-width:124px}
+.ctile.big.img{width:124px}
+.ctile img,.thumb img{display:block}
+.ccard table{border-collapse:collapse;width:100%;font-size:11px}
+.ccard thead th{background:var(--bg3);background-image:none;color:var(--text3);text-shadow:none;font-size:9.5px;letter-spacing:.06em;padding:4px 6px;border-bottom:1px solid var(--border);box-shadow:none}
+.ccard thead{background:var(--bg3);background-image:none;box-shadow:none}
+.ccard tbody tr{border-bottom:1px solid var(--bg3)}
+.ccard td{padding:0 6px;height:24px;line-height:16px;white-space:nowrap;font-size:11px;color:var(--text2);box-sizing:border-box}
+.ccard tbody tr{height:24px}
+.ccard thead tr{height:23px}
+.ccard .fh{height:28px;box-sizing:border-box}
+.ctiles{height:85px;box-sizing:border-box}
+.ccard td.m{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.ccard td b{color:var(--text)}
+.ccard .mu{color:var(--text3)}
+.ccard tr.on td{background:rgba(13,148,136,.08)}
+.ccard tr:hover td{background:var(--teal-dim)}
+.wchip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--text2);border:1px solid var(--border);border-radius:999px;padding:0 6px 0 4px;line-height:14px;background:#fff}
+.wchip i{display:inline-block;width:12px;height:3px;border-radius:2px}
+.cchip{font-family:var(--mono);font-size:9.5px;color:var(--text2);border:1px solid var(--border);border-radius:999px;padding:0 6px;line-height:14px;background:#fff}
+.cchip.bad{color:var(--yellow);border-color:rgba(217,119,6,.4)}
+.thumb{width:40px;height:40px;border-radius:var(--r-sm);background:#fff;box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cat-grid{grid-template-columns:1fr 360px}
+.dtable{width:100%;border-collapse:collapse;font-size:var(--t-sm);margin-top:4px;background:#fff;border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--border)}
+.dtable thead{display:none}
+.dtable td{padding:5px 8px;border-bottom:1px solid var(--bg3);color:var(--text);vertical-align:top;font-size:var(--t-sm)}
+.dtable td.dk{width:96px;color:var(--text3);font-size:var(--t-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--bg2)}
+.dtable a{color:var(--teal)}
+
+/* cables and twisted wires */
+.grp{cursor:pointer}
+.grp-hit{fill:transparent;stroke:none}
+.grp-ring{fill:none;stroke:#374151;stroke-width:1.6}
+.grp.twist .grp-ring{stroke:var(--teal);stroke-width:1.6;stroke-dasharray:none}
+.grp-shield{fill:none;stroke:#6b7280;stroke-width:1.2;stroke-dasharray:3 3}
+.grp-twist{fill:none;stroke:var(--teal);stroke-width:1.5;stroke-linecap:round}
+.grp-tag-bg{fill:#fff;stroke:var(--border2)}
+.grp.twist .grp-tag-bg{fill:#f0fdfa;stroke:rgba(13,148,136,.45)}
+.grp-tag{font-family:var(--mono);font-size:9.5px;font-weight:600;fill:var(--text2)}
+.grp.sel .grp-ring{stroke:var(--orange);stroke-width:2.4}
+.gchip{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:600;border-radius:999px;padding:0 6px;line-height:14px;border:1px solid var(--border);background:#fff;color:var(--text2);vertical-align:1px}
+.gchip.twist{color:var(--teal);border-color:rgba(13,148,136,.4);background:#f0fdfa}
+.gchip.cable{color:#374151;border-color:#9ca3af;background:#f3f4f6}
+.grow{font-size:var(--t-sm);padding:4px 0;border-bottom:1px solid var(--bg3)}
 #print{display:none}
 @media print{
   @page{size:landscape;margin:10mm}
@@ -586,7 +642,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.0.1';
+var HB_VERSION = '2.2.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -700,7 +756,7 @@ function otherEnd(w,cid,p){ return (w.a.c===cid&&w.a.p===p) ? w.b : w.a; }
 function newProject(name){
   return {id:uid('h'), name:name||'Untitled harness', created:Date.now(), updated:Date.now(), rev:'A',
     settings:{gauge:'18',wtype:WIRE_TYPES[0],extra:0,units:'mm',waste:10,mmPerPx:2},
-    comps:[], wires:[], nodes:[], segs:[]};
+    comps:[], wires:[], nodes:[], segs:[], groups:[]};
 }
 function nextName(prefix){
   var n=1, names={}; P().comps.forEach(function(c){ names[c.name]=1; });
@@ -777,7 +833,7 @@ function wireLen(w){
   if(_lenStamp!==_stamp){ _lenCache={}; _lenStamp=_stamp; }
   if(_lenCache[w.id]!==undefined) return _lenCache[w.id];
   var sp=shortestPath('c:'+w.a.c,'c:'+w.b.c);
-  var v = sp ? sp.dist + 2*num(settings().extra,0) : null;
+  var v = sp ? (sp.dist + 2*num(settings().extra,0))*twistFactor(w) : null;
   _lenCache[w.id]=v; return v;
 }
 function wirePath(w){ return shortestPath('c:'+w.a.c,'c:'+w.b.c); }
@@ -914,16 +970,6 @@ function svgShell(which,inner,cls){
 
 // ---------- schematic geometry
 var SW=196, HDR=30, ROW=24, TW=160, TH=30;
-function compBox(c){
-  if(c.type==='connector') return {x:c.sx,y:c.sy,w:SW,h:HDR+c.pins.length*ROW};
-  if(c.type==='terminal') return {x:c.sx,y:c.sy,w:TW,h:TH};
-  return {x:c.sx-8,y:c.sy-8,w:16,h:16};
-}
-function pinPt(c,p,side){
-  if(c.type==='connector') return {x:side>0?c.sx+SW:c.sx, y:c.sy+HDR+p*ROW+ROW/2};
-  if(c.type==='terminal') return {x:side>0?c.sx+TW:c.sx, y:c.sy+TH/2};
-  return {x:c.sx+side*6,y:c.sy};
-}
 function roundPath(pts,r){
   var q=[pts[0]];
   for(var i=1;i<pts.length;i++){ var a=q[q.length-1], b=pts[i]; if(Math.abs(a.x-b.x)>0.01||Math.abs(a.y-b.y)>0.01) q.push(b); }
@@ -938,23 +984,6 @@ function roundPath(pts,r){
   }
   var l=q[q.length-1]; d+=' L'+l.x.toFixed(1)+' '+l.y.toFixed(1);
   return d;
-}
-function schWireD(w,i){
-  var A=comp(w.a.c), B=comp(w.b.c); if(!A||!B) return '';
-  var ba=compBox(A), bb=compBox(B);
-  var ca=ba.x+ba.w/2, cb=bb.x+bb.w/2, sa, sb;
-  if(ba.x+ba.w < bb.x-24){ sa=1; sb=-1; } else if(bb.x+bb.w < ba.x-24){ sa=-1; sb=1; } else { sa=1; sb=1; }
-  var s=pinPt(A,w.a.p,sa), e=pinPt(B,w.b.p,sb);
-  var lane=((i*5)%9-4)*5;
-  var pts;
-  if(sa!==sb){
-    var mx=(s.x+e.x)/2+lane;
-    pts=[s,{x:s.x+sa*14,y:s.y},{x:mx,y:s.y},{x:mx,y:e.y},{x:e.x+sb*14,y:e.y},e];
-  } else {
-    var x=Math.max(s.x,e.x)+22+Math.abs(lane)*1.4;
-    pts=[s,{x:x,y:s.y},{x:x,y:e.y},e];
-  }
-  return roundPath(pts,8);
 }
 function activeNet(){
   if(S.hoverNet) return S.hoverNet;
@@ -981,6 +1010,7 @@ function schWorld(){
     var sel = S.sel && S.sel.kind==='wire' && S.sel.id===w.id;
     out+='<g data-k="wire" data-id="'+w.id+'">'+wireStroke(w,d,2.6,dim,sel)+'<path class="wire-hit" d="'+d+'"/></g>';
   });
+  out+=groupsSVG(an);
   // mate links
   p.comps.forEach(function(c){
     if(c.type==='connector' && c.mate && c.id<c.mate){
@@ -994,7 +1024,7 @@ function schWorld(){
   out+=notesSVG('sch');
   // draft wire
   if(S.drag && S.drag.type==='wire'){
-    var A=comp(S.drag.from.c); if(A){ var s=pinPt(A,S.drag.from.p,S.drag.side); out+='<path class="draft" d="M'+s.x+' '+s.y+' C'+(s.x+S.drag.side*60)+' '+s.y+' '+(S.drag.x-S.drag.side*40)+' '+S.drag.y+' '+S.drag.x+' '+S.drag.y+'"/>'; }
+    var dd=draftD(); if(dd) out+='<path class="draft" d="'+dd+'"/>';
   }
   return out;
 }
@@ -1003,7 +1033,7 @@ function handle(c,i,side,x,y){
   var col=pinColor(c,i);
   return '<circle class="hdl" cx="'+x+'" cy="'+y+'" r="4.5" data-k="pin" data-c="'+c.id+'" data-p="'+i+'" data-side="'+side+'"'+(col?' style="fill:'+col+';stroke:'+col+'"':'')+'/>';
 }
-function schComp(c,an){
+function schCompRowsFull(c,an){
   var sel=S.sel && S.sel.kind==='comp' && S.sel.id===c.id;
   var part=partByPn(c.partPn), out='<g data-k="comp" data-id="'+c.id+'">';
   if(c.type==='connector'){
@@ -1050,25 +1080,6 @@ function schematicHTML(){
 }
 
 // ---------- layout
-function layComp(c){
-  var sel=S.sel && S.sel.kind==='comp' && S.sel.id===c.id, start=S.segStart==='c:'+c.id;
-  var part=partByPn(c.partPn), out='<g data-k="lcomp" data-id="'+c.id+'" style="cursor:move">';
-  if(c.type==='connector'){
-    out+='<rect class="lcon'+(sel?' sel':'')+(start?' lstart':'')+'" x="'+(c.lx-17)+'" y="'+(c.ly-12)+'" width="34" height="24" rx="7" style="fill:'+((part&&part.color)||'#d1d5db')+'"/>';
-    out+='<rect x="'+(c.lx-11)+'" y="'+(c.ly-6)+'" width="22" height="12" rx="3" fill="rgba(255,255,255,.35)" style="pointer-events:none"/>';
-    out+='<text class="lname" x="'+c.lx+'" y="'+(c.ly-20)+'" text-anchor="middle">'+esc(c.name)+'</text>';
-    if(c.partPn){ var tw=c.partPn.length*6+14; out+='<rect class="ltag-bg" x="'+(c.lx-tw/2)+'" y="'+(c.ly+17)+'" width="'+tw+'" height="15" rx="4"/><text class="ltag" x="'+c.lx+'" y="'+(c.ly+28)+'" text-anchor="middle">'+esc(c.partPn)+'</text>'; }
-  } else if(c.type==='terminal'){
-    out+='<circle cx="'+c.lx+'" cy="'+c.ly+'" r="9" fill="#fff" stroke="'+(sel||start?(start?'#ea580c':'#0d9488'):'#6b7280')+'" stroke-width="'+(sel||start?3:2.2)+'"/>';
-    out+='<circle cx="'+c.lx+'" cy="'+c.ly+'" r="3" fill="#6b7280"/>';
-    out+='<text class="lname" x="'+c.lx+'" y="'+(c.ly-16)+'" text-anchor="middle">'+esc(c.name)+'</text>';
-    if(c.partPn){ var tw2=c.partPn.length*6+14; out+='<rect class="ltag-bg" x="'+(c.lx-tw2/2)+'" y="'+(c.ly+14)+'" width="'+tw2+'" height="15" rx="4"/><text class="ltag" x="'+c.lx+'" y="'+(c.ly+25)+'" text-anchor="middle">'+esc(c.partPn)+'</text>'; }
-  } else {
-    out+='<rect x="'+(c.lx-6)+'" y="'+(c.ly-6)+'" width="12" height="12" transform="rotate(45 '+c.lx+' '+c.ly+')" fill="'+(sel?'#0d9488':start?'#ea580c':'#fff')+'" stroke="#6b7280" stroke-width="1.5"/>';
-    out+='<text class="ltag" x="'+(c.lx+11)+'" y="'+(c.ly-8)+'">'+esc(c.name)+'</text>';
-  }
-  return out+'</g>';
-}
 function offsetPoly(pts,off){
   if(!off) return pts;
   var out=[];
@@ -1079,73 +1090,6 @@ function offsetPoly(pts,off){
     var nl=Math.hypot(nx,ny)||1; out.push({x:pts[i].x+nx/nl*off,y:pts[i].y+ny/nl*off});
   }
   return out;
-}
-function layWorld(){
-  var p=P(), out='', an=activeNet();
-  // segments
-  p.segs.forEach(function(s){
-    var a=nodePos(s.a), b=nodePos(s.b); if(!a||!b) return;
-    var sel=S.sel && S.sel.kind==='seg' && S.sel.id===s.id;
-    out+='<g data-k="seg" data-id="'+s.id+'"><line class="seg'+(sel?' sel':'')+'" x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'"/><line class="seg-hit" x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'"/></g>';
-  });
-  // net overlay
-  if(an && S.showNet){
-    var ws=p.wires.filter(function(w){ return netOfWire(w)===an; });
-    ws.forEach(function(w,i){
-      var sp=wirePath(w); if(!sp||sp.nodes.length<2) return;
-      var pts=sp.nodes.map(nodePos).filter(Boolean);
-      var off=(i-(ws.length-1)/2)*3.2;
-      pts=offsetPoly(pts,off);
-      out+=wireStroke(w,roundPath(pts,10),2.4,false,false).replace(/class="wire"/g,'class="wire" style="pointer-events:none"');
-    });
-  }
-  // segment labels
-  p.segs.forEach(function(s){
-    var a=nodePos(s.a), b=nodePos(s.b); if(!a||!b) return;
-    var mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
-    if(!num(s.len,0) && !s.covering) return;
-    var txt=(s.est?'~':'')+fmtLen(num(s.len,0)), tw=txt.length*6.4+8;
-    if(vert) out+='<g transform="translate('+(mx-14)+','+my+') rotate(-90)"><rect class="slen-bg" x="'+(-tw/2)+'" y="-9" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="0" y="1" text-anchor="middle">'+txt+'</text></g>';
-    else out+='<rect class="slen-bg" x="'+(mx-tw/2)+'" y="'+(my-22)+'" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="'+mx+'" y="'+(my-12)+'" text-anchor="middle">'+txt+'</text>';
-    if(s.covering){
-      var cw=s.covering.length*6+14, cx=vert?mx+10:mx-cw/2, cy=vert?my-7:my+9;
-      out+='<rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="4" style="fill:#fff7ed;stroke:#fdba74"/><text class="ltag" x="'+(cx+cw/2)+'" y="'+(cy+11)+'" text-anchor="middle">'+esc(s.covering)+'</text>';
-    }
-  });
-  // mates
-  p.comps.forEach(function(c){
-    if(c.type==='connector' && c.mate && c.id<c.mate){ var m=comp(c.mate); if(!m) return;
-      var dx=m.lx-c.lx, dy=m.ly-c.ly, l=Math.hypot(dx,dy)||1, ux=dx/l, uy=dy/l;
-      out+='<line class="mate" x1="'+(c.lx+ux*22)+'" y1="'+(c.ly+uy*22)+'" x2="'+(m.lx-ux*22)+'" y2="'+(m.ly-uy*22)+'" marker-start="url(#arr)" marker-end="url(#arr)"/>'; }
-  });
-  // branch nodes
-  p.nodes.forEach(function(n){
-    var sel=S.sel && S.sel.kind==='node' && S.sel.id===n.id, start=S.segStart==='n:'+n.id;
-    out+='<rect class="lnode'+(sel?' sel':'')+'" data-k="lnode" data-id="'+n.id+'" x="'+(n.x-6)+'" y="'+(n.y-6)+'" width="12" height="12" rx="2.5"'+(start?' style="fill:#ea580c"':'')+'/>';
-  });
-  p.comps.forEach(function(c){ out+=layComp(c); });
-  if(S.showTables) p.comps.forEach(function(c){ if(c.type==='connector') out+=pinTableFO(c,an); });
-  out+=notesSVG('lay');
-  if(S.drag && S.drag.type==='segdraft'){ var a2=nodePos(S.segStart); if(a2) out+='<line class="draft" x1="'+a2.x+'" y1="'+a2.y+'" x2="'+S.drag.x+'" y2="'+S.drag.y+'"/>'; }
-  return out;
-}
-function pinTableFO(c,an){
-  var rows=[];
-  for(var i=0;i<c.pins.length;i++){
-    var ws=wiresAt(c.id,i);
-    if(!ws.length) rows.push({d:desig(c,i),p:i,to:'',sig:c.pins[i].signal||'',w:null});
-    ws.forEach(function(w){ var o=otherEnd(w,c.id,i), oc=comp(o.c); rows.push({d:desig(c,i),p:i,to:oc?pinRef(oc,o.p):'?',sig:w.signal||pinSignal(c,i),w:w}); });
-  }
-  var W=286, H=30+rows.length*20;
-  var dx=c.tdx!=null?c.tdx:-W/2, dy=c.tdy!=null?c.tdy:-(H+46);
-  var html='<div xmlns="http://www.w3.org/1999/xhtml" class="ftable"><div class="fh" data-k="ftable" data-id="'+c.id+'"><span>'+esc(c.name)+'</span><span style="color:#9ca3af;font-weight:500">'+esc(c.partPn||'')+'</span></div><table>';
-  rows.forEach(function(r){
-    var dim=an && r.w && netOfWire(r.w)!==an;
-    html+='<tr data-k="ftrow" data-c="'+c.id+'" data-p="'+r.p+'" style="cursor:pointer;'+(dim?'opacity:.35':'')+'"><td class="m">'+esc(r.d)+'</td><td>'+(r.to?'<b>'+esc(r.to)+'</b>':'<span style="color:#9ca3af">--</span>')+(r.sig?' <span style="color:#9ca3af">('+esc(r.sig)+')</span>':'')+'</td>'+
-      '<td>'+(r.w?'<span class="sw" style="width:10px;height:10px;vertical-align:-1px;background:'+hexOf(colBase(r.w.color))+'"></span> '+esc(r.w.gauge)+' AWG':'')+'</td><td class="m" style="text-align:right">'+(r.w?fmtLen(wireLen(r.w)):'')+'</td></tr>';
-  });
-  html+='</table></div>';
-  return '<foreignObject x="'+(c.lx+dx)+'" y="'+(c.ly+dy)+'" width="'+W+'" height="'+H+'">'+html+'</foreignObject>';
 }
 function layoutHTML(){
   var p=P(), t=S.layTool;
@@ -1201,13 +1145,14 @@ document.addEventListener('pointerdown',function(ev){
     }
     if(k==='wire'){ selectWire(el.getAttribute('data-id')); return; }
     if(k==='note'){ startNoteDrag(ev,el,w,svg); return; }
+    if(k==='group'){ S.sel={kind:'group',id:el.getAttribute('data-id')}; S.hiNet=null; render(); return; }
     startPan(ev,true); return;
   }
   // layout
   var tool=S.layTool;
   if(k==='note'){ startNoteDrag(ev,el,w,svg); return; }
   if(k==='ftrow'){ var tn=netOfPin(el.getAttribute('data-c'),+el.getAttribute('data-p')); S.hiNet=(S.hiNet===tn)?null:tn; S.sel={kind:'comp',id:el.getAttribute('data-c')}; render(); return; }
-  if(k==='ftable'){ var fc=comp(el.getAttribute('data-id')); S.drag={type:'ftable',id:fc.id,ox:w.x-(fc.lx+(fc.tdx!=null?fc.tdx:-143)),oy:w.y-(fc.ly+(fc.tdy!=null?fc.tdy:0)),started:false}; svg.setPointerCapture(ev.pointerId); return; }
+  if(k==='ftable'){ var fc=comp(el.getAttribute('data-id')), fr=cardRect(fc); S.drag={type:'ftable',id:fc.id,ox:w.x-fr.x,oy:w.y-fr.y,started:false}; svg.setPointerCapture(ev.pointerId); return; }
   if(tool==='segment'){
     var key=null;
     if(k==='lcomp') key='c:'+el.getAttribute('data-id');
@@ -1343,19 +1288,6 @@ document.addEventListener('keydown',function(ev){
   if(ev.key==='f' && (S.view==='layout'||S.view==='schematic')) fitView();
 });
 
-function fitView(){
-  var svg=$('cv'); if(!svg) return;
-  var which=svg.getAttribute('data-v'), t=S[which], p=P(), bx=[];
-  if(which==='sch') p.comps.forEach(function(c){ var b=compBox(c); bx.push(b); });
-  else { p.comps.forEach(function(c){ bx.push({x:c.lx-60,y:c.ly-40,w:120,h:80}); if(S.showTables&&c.type==='connector'){ var H=30+c.pins.length*20; var dx=c.tdx!=null?c.tdx:-143, dy=c.tdy!=null?c.tdy:-(H+46); bx.push({x:c.lx+dx,y:c.ly+dy,w:286,h:H}); } }); p.nodes.forEach(function(n){ bx.push({x:n.x-10,y:n.y-10,w:20,h:20}); }); }
-  if(!bx.length){ t.tx=40; t.ty=40; t.k=1; syncTransform(which); return; }
-  var x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
-  bx.forEach(function(b){ x0=Math.min(x0,b.x); y0=Math.min(y0,b.y); x1=Math.max(x1,b.x+b.w); y1=Math.max(y1,b.y+b.h); });
-  var r=svg.getBoundingClientRect(), pad=60;
-  var k=Math.min((r.width-pad*2)/(x1-x0||1),(r.height-pad*2-30)/(y1-y0||1)); k=Math.max(0.2,Math.min(1.4,k));
-  t.k=k; t.tx=(r.width-(x1-x0)*k)/2-x0*k; t.ty=(r.height-(y1-y0)*k)/2-y0*k+15; syncTransform(which);
-}
-
 // ===== model operations =====
 function viewCenter(which){
   var svg=$('cv'), t=S[which];
@@ -1436,19 +1368,9 @@ function addSeg(a,b,noCommit){
   var pa=nodePos(a), pb=nodePos(b);
   var len=Math.max(10,Math.round(Math.hypot(pb.x-pa.x,pb.y-pa.y)*settings().mmPerPx/10)*10);
   var s={id:uid('s'),a:a,b:b,len:len,covering:'',est:true};
+  s.len=Math.max(10,Math.round(segDrawLen(s)*settings().mmPerPx/10)*10);
   P().segs.push(s); S.sel={kind:'seg',id:s.id};
   if(!noCommit) commit();
-}
-function splitSeg(id,pt){
-  var s=seg(id); if(!s) return;
-  var a=nodePos(s.a), b=nodePos(s.b);
-  var dx=b.x-a.x, dy=b.y-a.y, L2=dx*dx+dy*dy||1, t=Math.max(0.05,Math.min(0.95,((pt.x-a.x)*dx+(pt.y-a.y)*dy)/L2));
-  pushUndo();
-  var n={id:uid('n'),x:snap10(a.x+dx*t),y:snap10(a.y+dy*t)}; P().nodes.push(n);
-  var l1=Math.round(num(s.len,0)*t/5)*5, oldB=s.b;
-  var s2={id:uid('s'),a:'n:'+n.id,b:oldB,len:num(s.len,0)-l1,covering:s.covering,est:s.est};
-  s.b='n:'+n.id; s.len=l1; P().segs.push(s2);
-  S.sel={kind:'node',id:n.id}; commit();
 }
 function deleteSel(){
   var sl=S.sel; if(!sl) return; pushUndo();
@@ -1460,7 +1382,8 @@ function deleteSel(){
     p.segs=p.segs.filter(function(s){ return s.a!==key && s.b!==key; });
     p.comps.forEach(function(c){ if(c.mate===sl.id) c.mate=null; });
     p.comps=p.comps.filter(function(c){ return c.id!==sl.id; });
-  } else if(sl.kind==='wire'){ p.wires=p.wires.filter(function(w){ return w.id!==sl.id; }); }
+  } else if(sl.kind==='wire'){ p.wires=p.wires.filter(function(w){ return w.id!==sl.id; }); groupsArr().forEach(function(g){ g.wires=g.wires.filter(function(id){return id!==sl.id;}); }); p.groups=groupsArr().filter(function(g){return g.wires.length>0;}); }
+  else if(sl.kind==='group'){ p.groups=groupsArr().filter(function(g){return g.id!==sl.id;}); }
   else if(sl.kind==='seg'){ p.segs=p.segs.filter(function(s){ return s.id!==sl.id; }); }
   else if(sl.kind==='node'){ var nk='n:'+sl.id; p.segs=p.segs.filter(function(s){ return s.a!==nk && s.b!==nk; }); p.nodes=p.nodes.filter(function(n){ return n.id!==sl.id; }); }
   S.sel=null; S.hiNet=null; S.segStart=null; commit();
@@ -1498,7 +1421,8 @@ function assignPart(pn){
   var part=partByPn(pn); if(!part) return;
   var sl=S.sel; if(!sl){ toast('Select a component or bundle first.'); return; }
   pushUndo();
-  if(sl.kind==='seg'){ if(part.type!=='covering'){ toast('Bundles take coverings only.'); S.undo.pop(); return; } seg(sl.id).covering=pn; }
+  if(sl.kind==='group'){ var gp=groupById(sl.id); if(!gp||gp.kind!=='cable'||part.type!=='cable'){ toast('Pick a cable part for a cable.'); S.undo.pop(); return; } gp.partPn=pn; if(part.shield) gp.shield=true; }
+  else if(sl.kind==='seg'){ if(part.type!=='covering'){ toast('Bundles take coverings only.'); S.undo.pop(); return; } seg(sl.id).covering=pn; }
   else if(sl.kind==='comp'){
     var c=comp(sl.id);
     if(part.type!==c.type){ toast('That part is a '+part.type+'; the selected item is a '+c.type+'.','err'); S.undo.pop(); return; }
@@ -1523,6 +1447,7 @@ function renderInsp(){
   else if(sl && sl.kind==='seg' && seg(sl.id)) h=inspSeg(seg(sl.id));
   else if(sl && sl.kind==='node' && lnode(sl.id)) h=inspNode(lnode(sl.id));
   else if(sl && sl.kind==='note' && noteById(sl.id)) h=inspNote(noteById(sl.id));
+  else if(sl && sl.kind==='group' && groupById(sl.id)) h=inspGroup(groupById(sl.id));
   else if(!S.cur) h=inspBrowse();
   else h=inspProject();
   $('insp').innerHTML=h;
@@ -1562,10 +1487,13 @@ function inspComp(c){
   if(c.type==='connector'){
     h+='<div class="f"><label>Cavities</label><input class="inp mono" type="number" min="1" max="64" value="'+c.pins.length+'" onchange="setCompField(\''+c.id+'\',\'pins\',this.value)"></div>'+
       '<div class="f"><label>Pin names</label><select class="sel" onchange="setCompField(\''+c.id+'\',\'desig\',this.value)">'+opt('num','1, 2, 3',c.desig)+opt('alpha','A, B, C',c.desig)+opt('custom','Custom (30, 85, A12...)',c.desig)+'</select></div>'+
+      '<div class="f"><label>Pins drawn</label><select class="sel" onchange="setOrient(\''+c.id+'\',this.value)">'+opt('h','In rows',isV(c)?'v':'h')+opt('v','In columns (standing)',isV(c)?'v':'h')+'</select></div>'+
+      '<div class="f"><label>On layout</label><div class="row2" style="flex-wrap:wrap;gap:4px 10px">'+[['img','Picture'],['face','Face'],['table','Table']].map(function(t){ return '<label class="checkbox-row" style="margin:0;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" '+(cardShow(c,t[0])?'checked':'')+' onchange="toggleCard(\''+c.id+'\',\''+t[0]+'\')"> '+t[1]+'</label>'; }).join('')+'</div></div>'+
       '<div class="f"><label>Mates with</label><select class="sel" onchange="setCompField(\''+c.id+'\',\'mate\',this.value)">'+opt('','Nothing (end connector)',c.mate||'')+
       P().comps.filter(function(x){return x.type==='connector'&&x.id!==c.id;}).map(function(x){return opt(x.id,x.name,c.mate||'');}).join('')+'</select></div>';
   }
   h+='</div><div class="is"><div class="is-t"><span>Part</span><button class="btn btn-sm btn-teal" onclick="openCatalog(\''+c.type+'\')">'+(c.partPn?'Change':'Choose part')+'</button></div>';
+  if(part) h+='<div class="dtiles" style="margin-bottom:8px"><div class="ctile img">'+partImgHTML(part,70)+'</div>'+(c.type==='connector'?'<div class="ctile face">'+compFaceSVG(c,activeNet(),68)+'</div>':'')+'</div>';
   if(part) h+='<div class="partcard"><div class="ppn">'+esc(part.pn)+'</div><div class="d">'+esc(part.mfr)+'. '+esc(part.desc)+'</div>'+(part.lock?'<div class="d" style="margin-top:4px">Lock '+esc(part.lock)+(part.plug?', seal plug '+esc(part.plug):'')+'</div>':'')+'</div>';
   else if(c.partPn) h+='<div class="partcard"><div class="ppn">'+esc(c.partPn)+'</div><div class="d">Not in the catalog</div></div>';
   else h+='<p class="muted" style="margin:0">No part assigned. The BOM will list this as unassigned.</p>';
@@ -1601,6 +1529,9 @@ function inspWire(w){
     '<div class="is"><div class="is-t">Contacts</div>'+
     '<div class="f"><label>'+esc(pinRef(A,w.a.p))+'</label><span class="mono" style="font:12px var(--mono);color:'+(ca&&!ca.ok?'var(--yellow)':'inherit')+'">'+(ca?esc(ca.pn)+(ca.ok?'':' (gauge out of range)'):'<span class="muted">none</span>')+'</span></div>'+
     '<div class="f"><label>'+esc(pinRef(B,w.b.p))+'</label><span class="mono" style="font:12px var(--mono);color:'+(cb&&!cb.ok?'var(--yellow)':'inherit')+'">'+(cb?esc(cb.pn)+(cb.ok?'':' (gauge out of range)'):'<span class="muted">none</span>')+'</span></div></div>'+
+    '<div class="is"><div class="is-t">Twist and cable</div>'+(groupsOf(w).length?'<div style="margin-bottom:8px">'+groupChipsHTML(w)+'</div>':'<p class="muted" style="margin:0 0 8px">Not twisted, not in a cable.</p>')+
+      '<div class="acts"><button class="btn btn-sm" onclick="'+(twistOf(w)?"openGroupDialog(null,null,'"+twistOf(w).id+"')":"openGroupDialog('twist','"+w.id+"')")+'">'+(twistOf(w)?'Edit twist':'Twist with...')+'</button><button class="btn btn-sm" onclick="'+(cableOf(w)?"openGroupDialog(null,null,'"+cableOf(w).id+"')":"openGroupDialog('cable','"+w.id+"')")+'">'+(cableOf(w)?'Edit cable':'Put in a cable...')+'</button></div>'+
+      (twistOf(w)?'<p class="note">Twisting adds '+((twistFactor(w)-1)*100).toFixed(1)+'% to this wire. The length above includes it.</p>':'')+'</div>'+
     '<div class="is"><div class="f" style="grid-template-columns:1fr"><textarea class="inp" placeholder="Notes" onchange="setWireField(\''+w.id+'\',\'notes\',this.value)">'+esc(w.notes||'')+'</textarea></div>'+
     '<div class="acts"><button class="btn btn-sm" onclick="applyNetSignal(\''+w.id+'\')" title="Give every wire in this circuit the same name and color">Apply to whole circuit</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete wire</button></div></div>';
   return h;
@@ -1639,7 +1570,7 @@ function wiresHTML(){
   function th(k,l,cls){ var a=S.wireSort.k===k?(S.wireSort.d>0?' ^':' v'):''; return '<th data-sort="1" class="'+(cls||'')+'" onclick="sortWires(\''+k+'\')">'+l+a+'</th>'; }
   var h='<div class="doc-in"><div class="doc-h"><h2>Wire list</h2><span class="muted">'+rows.length+' wires. Click a row to edit it on the right.</span><div class="spacer"></div><button class="btn btn-sm" onclick="exportWireCSV()">Download CSV</button></div>';
   if(!rows.length) return h+'<p class="muted">No wires yet. Draw them in the Schematic tab.</p></div>';
-  h+='<div class="tbl-wrap"><table class="dt"><thead><tr>'+th('idx','#')+th('sig','Signal')+th('from','From')+th('to','To')+th('color','Color')+th('gauge','Gauge')+'<th>Type</th>'+th('len','Length','num')+'<th>Contacts</th></tr></thead><tbody>';
+  h+='<div class="tbl-wrap"><table class="dt"><thead><tr>'+th('idx','#')+th('sig','Signal')+th('from','From')+th('to','To')+th('color','Color')+th('gauge','Gauge')+'<th>Type</th>'+th('len','Length','num')+'<th>Twist / cable</th><th>Contacts</th></tr></thead><tbody>';
   rows.forEach(function(r){
     var w=r.w, A=comp(w.a.c), B=comp(w.b.c), ca=chooseContact(A&&partByPn(A.partPn),w.gauge), cb=chooseContact(B&&partByPn(B.partPn),w.gauge);
     h+='<tr class="'+(sel===w.id?'sel':'')+'" onclick="if(event.target.tagName!==\'SELECT\'&&event.target.tagName!==\'INPUT\')selectWire(\''+w.id+'\')">'+
@@ -1650,6 +1581,7 @@ function wiresHTML(){
       '<td><select class="sel" onchange="setWireField(\''+w.id+'\',\'gauge\',this.value)">'+GAUGES.map(function(g){return opt(g,g,w.gauge);}).join('')+'</select></td>'+
       '<td class="muted">'+esc(w.wtype||'')+'</td>'+
       '<td class="num" style="color:'+(r.len==null?'var(--red)':'inherit')+'">'+fmtLen(r.len)+(w.lenOverride?' *':'')+'</td>'+
+      '<td>'+groupChipsHTML(w)+'</td>'+
       '<td class="mono" style="font-size:11px">'+(ca?esc(ca.pn):'--')+' / '+(cb?esc(cb.pn):'--')+'</td></tr>';
   });
   return h+'</tbody></table></div><p class="note">* manual length override</p></div>';
@@ -1657,7 +1589,7 @@ function wiresHTML(){
 
 // ===== BOM =====
 function computeBOM(){
-  var p=P(), rows={}, order=['Connectors','Contacts','Hardware','Terminals','Splices','Wire','Covering'];
+  var p=P(), rows={}, order=['Connectors','Contacts','Hardware','Terminals','Splices','Wire','Cable','Covering'];
   function add(cat,pn,desc,qty,unit){ var k=cat+'|'+pn; if(!rows[k]) rows[k]={cat:cat,pn:pn,desc:desc,qty:0,unit:unit}; rows[k].qty+=qty; }
   p.comps.forEach(function(c){
     var part=partByPn(c.partPn), cat={connector:'Connectors',terminal:'Terminals',splice:'Splices'}[c.type];
@@ -1675,7 +1607,13 @@ function computeBOM(){
     }
   });
   var waste=1+num(settings().waste,0)/100;
-  p.wires.forEach(function(w){ var L=wireLen(w); if(L==null) return; add('Wire',(w.wtype||'Wire')+' '+w.gauge+' AWG '+w.color,w.gauge+' AWG, '+w.color+' (includes '+settings().waste+'% waste)',L*waste,'len'); });
+  groupsArr().forEach(function(g){
+    if(g.kind!=='cable') return;
+    var L=0; g.wires.forEach(function(id){ var w=wire(id), l=w&&wireLen(w); if(l>L) L=l; }); if(!L) return;
+    var cp=partByPn(g.partPn);
+    add('Cable',g.partPn||('(unassigned) cable '+groupLabel(g)),(cp?cp.desc:'Cable')+' for '+groupLabel(g)+' (includes '+settings().waste+'% waste)',L*waste,'len');
+  });
+  p.wires.forEach(function(w){ if(cableOf(w)) return; var L=wireLen(w); if(L==null) return; add('Wire',(w.wtype||'Wire')+' '+w.gauge+' AWG '+w.color,w.gauge+' AWG, '+w.color+' (includes '+settings().waste+'% waste)',L*waste,'len'); });
   p.segs.forEach(function(s){ if(!s.covering) return; var part=partByPn(s.covering); add('Covering',s.covering,part?part.desc:'',num(s.len,0)*1.05,'len'); });
   var out=Object.keys(rows).map(function(k){ return rows[k]; });
   out.sort(function(a,b){ return order.indexOf(a.cat)-order.indexOf(b.cat) || (a.pn>b.pn?1:-1); });
@@ -1686,10 +1624,11 @@ function bomHTML(){
   var rows=computeBOM(), cat='';
   var h='<div class="doc-in"><div class="doc-h"><h2>Bill of materials</h2><span class="muted">Built from the parts, wires, and bundles in this harness.</span><div class="spacer"></div><button class="btn btn-sm" onclick="exportBOMCSV()">Download CSV</button></div>';
   if(!rows.length) return h+'<p class="muted">Nothing to list yet.</p></div>';
-  h+='<div class="tbl-wrap"><table class="dt"><thead><tr><th>Part number</th><th>Description</th><th class="num" style="text-align:right">Qty</th></tr></thead><tbody>';
+  h+='<div class="tbl-wrap"><table class="dt"><thead><tr><th style="width:52px"></th><th>Part number</th><th>Description</th><th class="num" style="text-align:right">Qty</th></tr></thead><tbody>';
   rows.forEach(function(r){
-    if(r.cat!==cat){ cat=r.cat; h+='<tr class="cat"><td colspan="3">'+esc(cat)+'</td></tr>'; }
-    h+='<tr style="cursor:default"><td class="mono" style="color:'+(r.pn.indexOf('(unassigned)')===0?'var(--yellow)':'inherit')+'">'+esc(r.pn)+'</td><td>'+esc(r.desc)+'</td><td class="num">'+bomQty(r)+'</td></tr>';
+    if(r.cat!==cat){ cat=r.cat; h+='<tr class="cat"><td colspan="4">'+esc(cat)+'</td></tr>'; }
+    var bp=partByPn(r.pn);
+    h+='<tr style="cursor:default"><td style="padding:3px 6px">'+(bp&&bp.type!=='contact'?'<div class="thumb">'+partImgHTML(bp,38)+'</div>':'')+'</td><td class="mono" style="color:'+(r.pn.indexOf('(unassigned)')===0?'var(--yellow)':'inherit')+'">'+esc(r.pn)+'</td><td>'+esc(r.desc)+'</td><td class="num">'+bomQty(r)+'</td></tr>';
   });
   return h+'</tbody></table></div><p class="note">Contacts are picked from each connector part by wire gauge. Unused cavities get a sealing plug. Verify part numbers against the manufacturer datasheet before ordering.</p></div>';
 }
@@ -1703,39 +1642,6 @@ function goCheck(i){
 
 // ===== catalog =====
 function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; }
-function openCatalog(type){
-  if(type) S.catFilter=type;
-  else if(S.sel && S.sel.kind==='comp' && comp(S.sel.id)) S.catFilter=comp(S.sel.id).type;
-  else if(S.sel && S.sel.kind==='seg') S.catFilter='covering';
-  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal wide">'+
-    '<div class="mh"><div class="modal-title">Parts catalog</div><span class="muted" id="catTarget"></span><div class="spacer"></div><button class="btn btn-sm" onclick="openCustomPart()">Add custom part</button></div>'+
-    '<div class="mb"><div class="search-wrap" style="max-width:none"><span class="search-icon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg></span><input id="catQ" placeholder="Search part number or description, e.g. DT06-6S" value="'+esc(S.catQuery)+'" oninput="S.catQuery=this.value;renderCatList()"></div>'+
-    '<div class="tabs-row" id="catChips" style="margin:12px 0"></div><div class="tbl-wrap cat-scroll" id="catList"></div></div>'+
-    '<div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button></div></div></div>';
-  renderCatList(); setTimeout(function(){ var q=$('catQ'); if(q) q.focus(); },30);
-}
-
-function renderCatList(){
-  var f=S.catFilter, q=S.catQuery.trim().toLowerCase();
-  var tgt=''; if(S.sel&&S.sel.kind==='comp'&&comp(S.sel.id)) tgt='Assigning to '+comp(S.sel.id).name; else if(S.sel&&S.sel.kind==='seg') tgt='Assigning a covering to the selected bundle';
-  $('catTarget').textContent=tgt;
-  $('catChips').innerHTML=[['all','All'],['connector','Connectors'],['terminal','Terminals'],['splice','Splices'],['covering','Coverings']].map(function(c){ return '<div class="tab'+(f===c[0]?' active':'')+'" onclick="S.catFilter=\''+c[0]+'\';renderCatList()">'+c[1]+'</div>'; }).join('');
-  var terms=q.split(/\s+/).filter(Boolean);
-  var list=allParts().filter(function(p){
-    if(f!=='all' && p.type!==f) return false;
-    var hay=(p.pn+' '+p.mfr+' '+p.desc+' '+(p.cav?p.cav+'-way':'')).toLowerCase();
-    return terms.every(function(t){ return hay.indexOf(t)>=0; });
-  }).slice(0,150);
-  var canAssign=S.sel && (S.sel.kind==='comp'||S.sel.kind==='seg');
-  if(!list.length){ $('catList').innerHTML='<div class="empty">No parts match. Add it as a custom part.</div>'; return; }
-  $('catList').innerHTML='<table><thead><tr><th style="width:24px"></th><th>Part number</th><th>Description</th><th>Cav</th><th></th></tr></thead><tbody>'+list.map(function(p){
-    return '<tr><td><span class="sw" style="border-radius:3px;background:'+(p.color||(p.type==='covering'?'#fdba74':'#e5e7eb'))+'"></span></td>'+
-      '<td class="main-col"><span class="mono" style="font-size:var(--t-sm);font-weight:700">'+esc(p.pn)+'</span>'+(p.base?'':' <span class="pill pill-teal">custom</span>')+'</td>'+
-      '<td>'+esc(p.mfr)+'. '+esc(p.desc)+'</td><td class="mono">'+(p.cav||'')+'</td>'+
-      '<td style="text-align:right;white-space:nowrap">'+(canAssign?'<button class="btn btn-sm btn-teal" onclick="assignPart(\''+esc(p.pn).replace(/'/g,'')+'\')">Assign</button> ':'')+(p.base?'':'<button class="btn btn-sm btn-danger" onclick="deleteCustomPart(\''+esc(p.pn)+'\')">Delete</button>')+'</td></tr>';
-  }).join('')+'</tbody></table>';
-}
-
 function openCustomPart(){
   function g(label,inner){ return '<div class="form-group"><label class="form-label">'+label+'</label>'+inner+'</div>'; }
   $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:600px">'+
@@ -1746,6 +1652,7 @@ function openCustomPart(){
     '<div class="form-row cols-2">'+g('Lock / TPA','<input class="form-input mono" id="cpLock" placeholder="optional">')+g('Seal plug','<input class="form-input mono" id="cpPlug" placeholder="optional">')+'</div>'+
     '<div class="form-row cols-2">'+g('Pin names','<select class="form-input" id="cpDes">'+opt('num','1, 2, 3','num')+opt('alpha','A, B, C','')+'</select>')+g('Body color','<input class="form-input" id="cpCol" type="color" value="#9ca3af" style="padding:3px;height:39px">')+'</div>'+
     '<div class="form-row">'+g('Description','<input class="form-input" id="cpDesc">')+'</div>'+
+    '<div class="form-row">'+g('Photo URL (optional)','<input class="form-input" id="cpImg" placeholder="https://... picture of the part, shown on the layout and in the catalog">')+'</div>'+
     '<div class="modal-footer"><button class="btn" onclick="openCatalog()">Back</button><button class="btn btn-primary" onclick="saveCustomPart()">Add part</button></div></div></div>';
   setTimeout(function(){ var e=$('cpPn'); if(e) e.focus(); },30);
 }
@@ -1755,7 +1662,7 @@ function saveCustomPart(){
   if(partByPn(pn)){ toast(pn+' is already in the catalog.','err'); return; }
   var awg=$('cpAwg').value.split(/[^0-9]+/).filter(Boolean).map(Number).sort(function(a,b){return a-b;});
   var p={pn:pn,mfr:$('cpMfr').value.trim()||'Custom',type:$('cpType').value,cav:num($('cpCav').value,1),desc:$('cpDesc').value.trim(),
-    color:$('cpCol').value,lock:$('cpLock').value.trim(),plug:$('cpPlug').value.trim(),desig:$('cpDes').value,series:'Custom',gender:''};
+    color:$('cpCol').value,lock:$('cpLock').value.trim(),plug:$('cpPlug').value.trim(),desig:$('cpDes').value,series:'Custom',gender:'',img:($('cpImg')&&$('cpImg').value.trim())||''};
   if($('cpCt').value.trim()) p.contacts=[{pn:$('cpCt').value.trim(),awg:awg.length?[awg[0],awg[awg.length-1]]:null}];
   if(p.type!=='connector'){ delete p.cav; }
   dbSavePart(p).then(function(){ S.lib.push(p); S.catQuery=pn; openCatalog(p.type); toast('Added '+pn+' to the shared catalog.','ok'); }).catch(function(e){ logErr('Could not save the part',e); });
@@ -1780,10 +1687,10 @@ function download(name,text,type){
 function fileBase(){ return (P().name||'harness').replace(/[^A-Za-z0-9_-]+/g,'_')+'_rev'+(P().rev||'A'); }
 function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportWireCSV(){
-  var lines=[['Wire','Signal','From','To','Color','Gauge (AWG)','Type','Length (mm)','Length (in)','Contact From','Contact To','Notes'].join(',')];
+  var lines=[['Wire','Signal','From','To','Color','Gauge (AWG)','Type','Length (mm)','Length (in)','Twisted with','Cable','Contact From','Contact To','Notes'].join(',')];
   P().wires.forEach(function(w,i){
     var A=comp(w.a.c), B=comp(w.b.c), L=wireLen(w), ca=chooseContact(A&&partByPn(A.partPn),w.gauge), cb=chooseContact(B&&partByPn(B.partPn),w.gauge);
-    lines.push([ 'W'+(i+1),w.signal,pinRef(A,w.a.p),pinRef(B,w.b.p),w.color,w.gauge,w.wtype,L==null?'':Math.round(L),L==null?'':(L/25.4).toFixed(1),ca?ca.pn:'',cb?cb.pn:'',w.notes ].map(csvCell).join(','));
+    lines.push([ 'W'+(i+1),w.signal,pinRef(A,w.a.p),pinRef(B,w.b.p),w.color,w.gauge,w.wtype,L==null?'':Math.round(L),L==null?'':(L/25.4).toFixed(1),twistOf(w)?groupLabel(twistOf(w)):'',cableOf(w)?groupLabel(cableOf(w)):'',ca?ca.pn:'',cb?cb.pn:'',w.notes ].map(csvCell).join(','));
   });
   download(fileBase()+'_wirelist.csv',lines.join('\n'),'text/csv');
 }
@@ -1817,7 +1724,7 @@ function exportSVGString(){
   p.comps.forEach(function(c){ x0=Math.min(x0,c.lx-80); y0=Math.min(y0,c.ly-40); x1=Math.max(x1,c.lx+80); y1=Math.max(y1,c.ly+40); });
   p.nodes.forEach(function(n){ x0=Math.min(x0,n.x-20); y0=Math.min(y0,n.y-20); x1=Math.max(x1,n.x+20); y1=Math.max(y1,n.y+20); });
   if(!isFinite(x0)){ x0=0;y0=0;x1=400;y1=300; }
-  var css='text{font-family:DM Sans,Arial,sans-serif}.seg{stroke:#b8bec7;stroke-width:9;stroke-linecap:round}.seg-hit{display:none}.slen{font:500 10.5px monospace;fill:#374151}.slen-bg{fill:#fff}.ltag{font:500 9.5px monospace;fill:#374151}.ltag-bg{fill:#fff;stroke:#d1d5db}.lnode{fill:#6b7280}.lcon{stroke:#9ca3af}.lname{font-size:12px;font-weight:600;fill:#111827}.mate{stroke:#9ca3af;stroke-width:1.3;stroke-dasharray:4 4;fill:none}';
+  var css='text{font-family:DM Sans,Arial,sans-serif}.seg{fill:none;stroke:#cdd2d8;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.seg-edge{fill:none;stroke:#9aa1aa;stroke-width:11;stroke-linecap:round;stroke-linejoin:round}.seg-hit{display:none}.leader{display:none}.slen{font:500 10.5px monospace;fill:#374151}.slen-bg{fill:#fff}.ltag{font:500 9.5px monospace;fill:#374151}.ltag-bg{fill:#fff;stroke:#d1d5db}.lnode{fill:#6b7280}.lcon{stroke:#9ca3af}.lname{font-size:12px;font-weight:600;fill:#111827}.mate{stroke:#9ca3af;stroke-width:1.3;stroke-dasharray:4 4;fill:none}';
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+x0+' '+y0+' '+(x1-x0)+' '+(y1-y0)+'" width="'+(x1-x0)+'" height="'+(y1-y0)+'"><style>'+css+'</style><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1L9 5L0 9" fill="none" stroke="#9ca3af" stroke-width="1.5"/></marker></defs><rect x="'+x0+'" y="'+y0+'" width="'+(x1-x0)+'" height="'+(y1-y0)+'" fill="#fff"/>'+inner+'</svg>';
 }
 function exportSVG(){ download(fileBase()+'_layout.svg',exportSVGString(),'image/svg+xml'); }
@@ -1883,21 +1790,21 @@ function buildExample(){
   var coil1=C('connector',{name:'Coil 1',partPn:'DT04-3P',pins:['IGN 1','GND','BAT +'],sx:40,sy:150,lx:280,ly:60});
   var inj2=C('connector',{name:'Injector 2',partPn:'DT04-2P',pins:['BAT +','INJ 2'],sx:40,sy:290,lx:720,ly:60});
   var coil2=C('connector',{name:'Coil 2',partPn:'DT04-3P',pins:['IGN 2','GND','BAT +'],sx:40,sy:400,lx:940,ly:60});
-  var be=C('connector',{name:'Bulk Head E',partPn:'DT06-6S',pins:['INJ 1','INJ 2','IGN 1','IGN 2','BAT +','BAT -'],sx:620,sy:120,lx:500,ly:380});
-  var bc=C('connector',{name:'Bulk Head C',partPn:'DT04-6P',pins:['INJ 1','INJ 2','IGN 1','IGN 2','BAT +','BAT -'],sx:620,sy:420,lx:500,ly:470});
+  var be=C('connector',{name:'Bulk Head E',partPn:'DT06-6S',pins:['INJ 1','INJ 2','IGN 1','IGN 2','BAT +','BAT -'],sx:640,sy:610,lx:500,ly:380}); be.orient='v';
+  var bc=C('connector',{name:'Bulk Head C',partPn:'DT04-6P',pins:['INJ 1','INJ 2','IGN 1','IGN 2','BAT +','BAT -'],sx:640,sy:790,lx:500,ly:470}); bc.orient='v';
   be.mate=bc.id; bc.mate=be.id;
-  var ecu1=C('connector',{name:'ECU 1',partPn:'DT04-2P',pins:['CAN H','CAN L'],sx:1040,sy:640,lx:110,ly:780});
-  var ecu2=C('connector',{name:'ECU 2',partPn:'DT06-6S',pins:['BAT +','INJ 1','INJ 2','IGN 1','IGN 2','GND'],sx:1040,sy:400,lx:110,ly:620});
-  var dash=C('connector',{name:'Dashboard',partPn:'DT04-4P',pins:['BAT +','CAN H','CAN L','GND'],sx:1040,sy:760,lx:110,ly:920});
+  var ecu1=C('connector',{name:'ECU 1',partPn:'DT04-2P',pins:['CAN H','CAN L'],sx:40,sy:1230,lx:110,ly:780});
+  var ecu2=C('connector',{name:'ECU 2',partPn:'DT06-6S',pins:['BAT +','INJ 1','INJ 2','IGN 1','IGN 2','GND'],sx:40,sy:1010,lx:110,ly:620});
+  var dash=C('connector',{name:'Dashboard',partPn:'DT04-4P',pins:['BAT +','CAN H','CAN L','GND'],sx:40,sy:1350,lx:110,ly:920});
   var gL=C('terminal',{name:'GND L',kind:'ring',partPn:'RING-22-16-516',signal:'GND',sx:340,sy:30,lx:0,ly:300});
   var gR=C('terminal',{name:'GND R',kind:'ring',partPn:'RING-22-16-516',signal:'GND',sx:340,sy:520,lx:1000,ly:300});
   var gC=C('terminal',{name:'GND C',kind:'ring',partPn:'RING-16-14-516',signal:'GND',sx:340,sy:250,lx:500,ly:200});
-  var bp=C('terminal',{name:'BAT +',kind:'ring',partPn:'RING-16-14-516',signal:'BAT +',sx:620,sy:700,lx:450,ly:1150});
-  var bn=C('terminal',{name:'BAT -',kind:'ring',partPn:'RING-16-14-516',signal:'BAT -',sx:620,sy:780,lx:550,ly:1150});
+  var bp=C('terminal',{name:'BAT +',kind:'ring',partPn:'RING-16-14-516',signal:'BAT +',sx:900,sy:1000,lx:450,ly:1150});
+  var bn=C('terminal',{name:'BAT -',kind:'ring',partPn:'RING-16-14-516',signal:'BAT -',sx:900,sy:1110,lx:550,ly:1150});
   var s1=C('splice',{name:'S1',partPn:'SPLICE-SOLDER-M',sx:420,sy:160,lx:170,ly:150});
   var s2=C('splice',{name:'S2',partPn:'SPLICE-SOLDER-M',sx:420,sy:420,lx:830,ly:150});
-  var s3=C('splice',{name:'S3',partPn:'SPLICE-SOLDER-L',sx:880,sy:620,lx:480,ly:1100});
-  var s4=C('splice',{name:'S4',partPn:'SPLICE-SOLDER-L',sx:880,sy:760,lx:520,ly:1100});
+  var s3=C('splice',{name:'S3',partPn:'SPLICE-SOLDER-L',sx:780,sy:980,lx:480,ly:1100});
+  var s4=C('splice',{name:'S4',partPn:'SPLICE-SOLDER-L',sx:820,sy:1080,lx:520,ly:1100});
   function W(a,ap,b,bp2,sig,col,g){ p.wires.push({id:uid('w'),a:{c:a.id,p:ap},b:{c:b.id,p:bp2},signal:sig,color:col,gauge:g||'18',wtype:WIRE_TYPES[0],lenOverride:'',notes:''}); }
   W(be,0,inj1,1,'INJ 1','orange'); W(be,1,inj2,1,'INJ 2','yellow'); W(be,2,coil1,0,'IGN 1','green'); W(be,3,coil2,0,'IGN 2','blue');
   W(be,4,s1,0,'BAT +','red','16'); W(s1,0,s2,0,'BAT +','red','16'); W(s1,0,inj1,0,'BAT +','red'); W(s1,0,coil1,2,'BAT +','red'); W(s2,0,inj2,0,'BAT +','red'); W(s2,0,coil2,2,'BAT +','red');
@@ -1906,6 +1813,7 @@ function buildExample(){
   W(bc,4,s3,0,'BAT +','red','16'); W(s3,0,bp,0,'BAT +','red','14'); W(s3,0,ecu2,0,'BAT +','red'); W(s3,0,dash,0,'BAT +','red');
   W(bc,5,s4,0,'BAT -','black','16'); W(s4,0,bn,0,'BAT -','black','14'); W(s4,0,ecu2,5,'GND','black'); W(s4,0,dash,3,'GND','black');
   W(ecu1,0,dash,1,'CAN H','violet'); W(ecu1,1,dash,2,'CAN L','brown');
+  p.groups=[{id:uid('g'),kind:'twist',name:'TP1',lay:25,wires:[p.wires[p.wires.length-2].id,p.wires[p.wires.length-1].id]}];
   function N(x,y){ var n={id:uid('n'),x:x,y:y}; p.nodes.push(n); return 'n:'+n.id; }
   function G(a,b,len,cov){ p.segs.push({id:uid('s'),a:a,b:b,len:len,covering:cov||''}); }
   function K(c){ return 'c:'+c.id; }
@@ -1916,8 +1824,15 @@ function buildExample(){
   var nb1=N(500,720), ne=N(240,720), nd=N(500,920), nbat=N(500,1100);
   G(K(bc),nb1,500,'DR-25-3/8'); G(nb1,ne,600,'DR-25-1/4'); G(ne,K(ecu2),100); G(ne,K(ecu1),100);
   G(nb1,nd,400,'DR-25-3/8'); G(nd,K(dash),800,'DR-25-1/4'); G(nd,nbat,1000,'DR-25-3/8'); G(nbat,K(s3),0); G(nbat,K(s4),0); G(nbat,K(bp),20); G(nbat,K(bn),20);
-  [inj1,coil1,inj2,coil2].forEach(function(c){ c.tdy=-(30+c.pins.length*20)-40; c.tdx=({})[c.id]; c.tdx=(c===inj1)?-220:(c===coil1)?-120:(c===inj2)?-160:-50; });
-  be.tdx=40; be.tdy=-60; bc.tdx=40; bc.tdy=10; ecu2.tdx=-330; ecu2.tdy=-150; ecu1.tdx=-330; ecu1.tdy=-10; dash.tdx=-330; dash.tdy=-10;
+  // connector cards: injectors staggered above the coils, bulkheads to the right, cabin side to the left
+  function cardH(c){ c.tdx=0; c.tdy=0; return cardRect(c).h; } function cardW(c){ return cardRect(c).w; }
+  var hc=cardH(coil1);
+  inj1.tdx=-cardW(inj1)+40; inj1.tdy=-(hc+cardH(inj1)+90);
+  coil1.tdx=-cardW(coil1)/2+20; coil1.tdy=-(hc+40);
+  inj2.tdx=-cardW(inj2)/2-20; inj2.tdy=-(hc+cardH(inj2)+90);
+  coil2.tdx=-60; coil2.tdy=-(hc+40);
+  be.tdx=70; be.tdy=-40; bc.tdx=70; bc.tdy=162;
+  ecu2.tdx=-cardW(ecu2)-70; ecu2.tdy=-260; ecu1.tdx=-cardW(ecu1)-70; ecu1.tdy=-126; dash.tdx=-cardW(dash)-70; dash.tdy=-72;
   p.settings.units='in';
   S.cur=save; return p;
 }
@@ -2260,6 +2175,7 @@ function runChecks(){
   if(est.length && p.wires.length) out.push({sev:'warn',msg:est.length+' bundle length'+(est.length===1?' is an estimate':'s are estimates')+' from the drawing. Measure on the car and type the real length.',sel:{kind:'seg',id:est[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(est[0].id)+')'}});
   var connected={}; p.segs.forEach(function(s){ connected[s.a]=1; connected[s.b]=1; });
   p.nodes.forEach(function(n){ if(!connected['n:'+n.id]) out.push({sev:'info',msg:'A branch point is not attached to any bundle.',sel:{kind:'node',id:n.id},fix:{label:'Delete it',js:'fixDeleteNode('+q(n.id)+')',safe:true}}); });
+  groupChecks(out);
   var rank={error:0,warn:1,info:2}; out.sort(function(a,b){ return rank[a.sev]-rank[b.sev]; });
   return out;
 }
@@ -2368,16 +2284,12 @@ function autoBundles(){
   pushUndo();
   var added=0, mpp=settings().mmPerPx;
   edges.forEach(function(e){ if(u(e.a,e.b)){ p.segs.push({id:uid('s'),a:e.a,b:e.b,len:Math.max(10,Math.round(e.d*mpp/10)*10),covering:'',est:true}); added++; } });
+  refreshEstimates();
   if(!added){ S.undo.pop(); toast('Every wire already has a route.'); return; }
   S.sel=null; commit(); setTimeout(fitView,30);
   toast('Drew '+added+' bundle'+(added===1?'':'s')+'. Drag parts to where they sit on the car, then type the measured lengths.','ok');
 }
 // keep estimated lengths following the drawing until someone types a real length
-function refreshEstimates(){
-  var mpp=settings().mmPerPx;
-  P().segs.forEach(function(s){ if(!s.est) return; var a=nodePos(s.a), b=nodePos(s.b); if(a&&b) s.len=Math.max(10,Math.round(Math.hypot(a.x-b.x,a.y-b.y)*mpp/10)*10); });
-}
-
 // ===== step tracker =====
 function buildSteps(){
   var p=P(), ck=runChecks(), conns=p.comps.length;
@@ -2435,6 +2347,8 @@ var ICON2 = {
   save:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 2h8v12l-4-3-4 3z"/></svg>',
   copy:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M3 11V3.5A1.5 1.5 0 014.5 2H11"/></svg>',
   trash:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.8 9.5h6.4L12 4"/></svg>',
+  twist:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 5c3 0 4 6 7 6s4-6 7-6M1 11c3 0 4-6 7-6s4 6 7 6"/></svg>',
+  cable:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 6h14M1 10h14"/><ellipse cx="8" cy="8" rx="2.6" ry="5"/></svg>',
   trace:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 12c3 0 3-8 7-8s4 8 7 8"/></svg>',
   branch:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 8h14M8 8V2"/><rect x="6" y="6" width="4" height="4" rx="1" fill="currentColor"/></svg>',
   split:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 8h5M10 8h5M8 4v8"/></svg>',
@@ -2475,9 +2389,11 @@ function addMenuItems(which){
     ctxItem('Connector',ICON.connector,'addCompUI(\'connector\')'),
     {l:'Terminal',i:ICON.terminal,sub:terms},
     ctxItem('Splice',ICON.splice,'addCompUI(\'splice\')'),
+    ctxItem('Cable...',ICON2.cable,'openGroupDialog(\'cable\')'),
     ctxItem('Bulkhead pair',ICON.bulk,'addBulkheadUI()'),
     ctxItem('Diode',ICON2.diode,'addTemplate(\'inline-diode\')'),
     ctxItem('Resistor',ICON2.resistor,'addTemplate(\'inline-resistor\')'),
+    ctxItem('Twisted wires...',ICON2.twist,'openGroupDialog(\'twist\')'),
     ctxItem('Note',ICON2.note,'addNote()'),
     '-',
     ctxItem('From library...',ICON.lib,'openLibrary()'),
@@ -2495,6 +2411,13 @@ function compMenuItems(c,pin){
     items.push(ctxItem('Paste pinout...',ICON2.paste,'openPastePinout(\''+id+'\')'));
     items.push(ctxItem('Save as template...',ICON2.save,'openSaveTemplate(\''+id+'\')'));
   }
+  if(c.type==='connector'){
+    if(S.view==='layout'){
+      items.push('-',ctxItem((cardShow(c,'img')?'Hide':'Show')+' part picture',ICON2.part,'toggleCard(\''+id+'\',\'img\')'),
+        ctxItem((cardShow(c,'face')?'Hide':'Show')+' face view',ICON2.part,'toggleCard(\''+id+'\',\'face\')'),
+        ctxItem((cardShow(c,'table')?'Hide':'Show')+' wiring table',ICON2.part,'toggleCard(\''+id+'\',\'table\')'),'-');
+    } else items.push(ctxItem(isV(c)?'Show pins in rows':'Show pins in columns',ICON2.split,'setOrient(\''+id+'\',\''+(isV(c)?'h':'v')+'\')'));
+  }
   items.push(ctxItem('Duplicate',ICON2.copy,'duplicateComp(\''+id+'\')',{k:'Ctrl+D'}));
   items.push('-',ctxItem('Delete',ICON2.trash,'S.sel={kind:\'comp\',id:\''+id+'\'};deleteSel()',{danger:true,k:'Del'}));
   return items;
@@ -2504,6 +2427,8 @@ function wireMenuItems(w,pt){
   return [
     ctxItem('Trace this circuit',ICON2.trace,'S.hiNet=netOfWire(wire(\''+id+'\'));S.sel={kind:\'wire\',id:\''+id+'\'};render()'),
     ctxItem('Splice into this wire here',ICON.splice,'spliceWireAt(\''+id+'\')'),
+    ctxItem(twistOf(w)?'Edit twist...':'Twist with...',ICON2.twist,twistOf(w)?"openGroupDialog(null,null,'"+twistOf(w).id+"')":"openGroupDialog('twist','"+id+"')"),
+    ctxItem(cableOf(w)?'Edit cable...':'Put in a cable...',ICON2.cable,cableOf(w)?"openGroupDialog(null,null,'"+cableOf(w).id+"')":"openGroupDialog('cable','"+id+"')"),
     ctxItem('Apply name and color to circuit',ICON2.copy,'applyNetSignal(\''+id+'\')'),
     '-',ctxItem('Delete wire',ICON2.trash,'S.sel={kind:\'wire\',id:\''+id+'\'};deleteSel()',{danger:true,k:'Del'})
   ];
@@ -2542,6 +2467,7 @@ function canvasMenu(ev){
   if(k==='wire' && wire(id)){ var wr=wire(id); S.sel={kind:'wire',id:id}; render(); openCtx(ev.clientX,ev.clientY,wireMenuItems(wr),pinRef(comp(wr.a.c),wr.a.p)+' to '+pinRef(comp(wr.b.c),wr.b.p)); return true; }
   if(k==='seg' && seg(id)){ S.sel={kind:'seg',id:id}; render(); openCtx(ev.clientX,ev.clientY,segMenuItems(seg(id)),'Bundle, '+fmtLen(num(seg(id).len,0))); return true; }
   if(k==='lnode' && lnode(id)){ S.sel={kind:'node',id:id}; render(); openCtx(ev.clientX,ev.clientY,nodeMenuItems(lnode(id)),'Branch point'); return true; }
+  if(k==='group' && groupById(id)){ var gg=groupById(id); S.sel={kind:'group',id:id}; render(); openCtx(ev.clientX,ev.clientY,[ctxItem('Change wires...',ICON2.copy,"openGroupDialog(null,null,'"+id+"')"),'-',ctxItem('Remove '+(gg.kind==='twist'?'twist':'cable'),ICON2.trash,"deleteGroup('"+id+"')",{danger:true})],groupLabel(gg)); return true; }
   if(k==='note' && noteById(id)){ S.sel={kind:'note',id:id}; render(); openCtx(ev.clientX,ev.clientY,noteMenuItems(noteById(id)),'Note'); return true; }
   openCtx(ev.clientX,ev.clientY,addMenuItems(which),'Add here');
   return true;
@@ -2749,7 +2675,7 @@ async function openHarness(id){
   }catch(e){ setSync('err','Open failed'); logErr('Could not open the harness',e); }
 }
 function normalizeProject(p,id){
-  p.id=p.id||id; p.comps=p.comps||[]; p.wires=p.wires||[]; p.nodes=p.nodes||[]; p.segs=p.segs||[]; p.notes=p.notes||[];
+  p.id=p.id||id; p.groups=p.groups||[]; p.comps=p.comps||[]; p.wires=p.wires||[]; p.nodes=p.nodes||[]; p.segs=p.segs||[]; p.notes=p.notes||[];
   if(!p.kind) p.kind='Engine'; if(!p.status) p.status='Draft'; if(p.platform==null) p.platform=''; if(p.customer==null) p.customer=''; if(!p.tags) p.tags=[];
   return p;
 }
@@ -3081,6 +3007,594 @@ async function newRevision(){
     var n=clone(p); n.id=uid('h'); n.rev=nextRev(p.rev); n.status='Draft'; n.prevRev={id:p.id,rev:p.rev||'A'}; n.created=Date.now();
     await createHarness(n); await openHarness(n.id); toast('Rev '+n.rev+' created as a draft.','ok');
   }catch(e){ logErr('Could not start a new revision',e); }
+}
+
+
+// =====================================================================
+// LOOK: connector pictures, mating-face views, connector cards on the
+// layout, orthogonal bundles, and connectors that can stand on end.
+// =====================================================================
+function isV(c){ return c && c.type==='connector' && c.orient==='v'; }
+var VHDR=30, VH=128;
+function compBox(c){
+  if(c.type==='connector'){ if(isV(c)) return {x:c.sx,y:c.sy,w:VHDR+c.pins.length*ROW,h:VH}; return {x:c.sx,y:c.sy,w:SW,h:HDR+c.pins.length*ROW}; }
+  if(c.type==='terminal') return {x:c.sx,y:c.sy,w:TW,h:TH};
+  return {x:c.sx-8,y:c.sy-8,w:16,h:16};
+}
+function pinPt(c,p,side){
+  if(c.type==='connector'){
+    if(isV(c)) return {x:c.sx+VHDR+p*ROW+ROW/2, y:side>0?c.sy+VH:c.sy};
+    return {x:side>0?c.sx+SW:c.sx, y:c.sy+HDR+p*ROW+ROW/2};
+  }
+  if(c.type==='terminal') return {x:side>0?c.sx+TW:c.sx, y:c.sy+TH/2};
+  return {x:c.sx+side*6,y:c.sy};
+}
+// which side of a part a wire should leave from, and in which direction
+function wireEnd(c,p,other,hSideDefault){
+  var b=compBox(c), ob=compBox(other);
+  if(isV(c)){ var sd=(ob.y+ob.h/2 >= b.y+b.h/2)?1:-1; var pt=pinPt(c,p,sd); return {pt:pt,dx:0,dy:sd,side:sd,v:true}; }
+  var sh=hSideDefault; var pt2=pinPt(c,p,sh); return {pt:pt2,dx:sh,dy:0,side:sh,v:false};
+}
+function schWirePts(w,i){
+  var A=comp(w.a.c), B=comp(w.b.c); if(!A||!B) return null;
+  var ba=compBox(A), bb=compBox(B), sa, sb;
+  if(ba.x+ba.w < bb.x-24){ sa=1; sb=-1; } else if(bb.x+bb.w < ba.x-24){ sa=-1; sb=1; }
+  else { var ca=ba.x+ba.w/2, cb=bb.x+bb.w/2; if(isV(A)||isV(B)){ sa=cb>=ca?1:-1; sb=-sa; } else { sa=1; sb=1; } }
+  var ea=wireEnd(A,w.a.p,B,sa), eb=wireEnd(B,w.b.p,A,sb);
+  var s=ea.pt, e=eb.pt, lane=((i*5)%9-4)*5, pts;
+  var s1={x:s.x+ea.dx*14,y:s.y+ea.dy*14}, e1={x:e.x+eb.dx*14,y:e.y+eb.dy*14};
+  if(!ea.v && !eb.v){
+    if(ea.side!==eb.side){ var mx=(s.x+e.x)/2+lane; pts=[s,s1,{x:mx,y:s.y},{x:mx,y:e.y},e1,e]; }
+    else { var x=Math.max(s.x,e.x)+22+Math.abs(lane)*1.4; pts=[s,{x:x,y:s.y},{x:x,y:e.y},e]; }
+  } else if(ea.v && eb.v){
+    if(ea.side!==eb.side){ var my=(s.y+e.y)/2+lane; pts=[s,s1,{x:s.x,y:my},{x:e.x,y:my},e1,e]; }
+    else { var y=(ea.side>0?Math.max(s.y,e.y)+22:Math.min(s.y,e.y)-22)+Math.abs(lane)*ea.side; pts=[s,{x:s.x,y:y},{x:e.x,y:y},e]; }
+  } else if(ea.v){ pts=[s,{x:s.x,y:e.y},e1,e]; }
+  else { pts=[s,s1,{x:e.x,y:s.y},e]; }
+  return pts;
+}
+function schWireD(w,i){ var pts=schWirePts(w,i); return pts?roundPath(pts,9):''; }
+function draftD(){
+  var d=S.drag, A=comp(d.from.c); if(!A) return '';
+  var s=pinPt(A,d.from.p,d.side);
+  if(isV(A)) return 'M'+s.x+' '+s.y+' C'+s.x+' '+(s.y+d.side*60)+' '+d.x+' '+(d.y-d.side*40)+' '+d.x+' '+d.y;
+  return 'M'+s.x+' '+s.y+' C'+(s.x+d.side*60)+' '+s.y+' '+(d.x-d.side*40)+' '+d.y+' '+d.x+' '+d.y;
+}
+
+// ---------- schematic part box (rows or columns)
+function schComp(c,an){
+  if(!isV(c)) return schCompRowsFull(c,an);
+  var sel=S.sel && S.sel.kind==='comp' && S.sel.id===c.id;
+  var part=partByPn(c.partPn), out='<g data-k="comp" data-id="'+c.id+'">';
+  if(c.type==='connector' && isV(c)){
+    var W=VHDR+c.pins.length*ROW;
+    out+='<rect class="cbox'+(sel?' sel':'')+'" x="'+c.sx+'" y="'+c.sy+'" width="'+W+'" height="'+VH+'" rx="8"/>';
+    out+='<path class="chdr" data-k="comp" data-id="'+c.id+'" d="M'+(c.sx+VHDR)+' '+c.sy+' H'+(c.sx+8)+' Q'+c.sx+' '+c.sy+' '+c.sx+' '+(c.sy+8)+' V'+(c.sy+VH-8)+' Q'+c.sx+' '+(c.sy+VH)+' '+(c.sx+8)+' '+(c.sy+VH)+' H'+(c.sx+VHDR)+' Z"/>';
+    out+='<line class="cbezel" x1="'+(c.sx+VHDR)+'" x2="'+(c.sx+VHDR)+'" y1="'+c.sy+'" y2="'+(c.sy+VH)+'"/>';
+    if(part) out+='<rect x="'+(c.sx+11)+'" y="'+(c.sy+VH-18)+'" width="8" height="8" rx="2" fill="'+(part.color||'#9ca3af')+'"/>';
+    out+='<text class="cname on-dark" transform="translate('+(c.sx+19.5)+','+(c.sy+VH-(part?24:10))+') rotate(-90)">'+esc(c.name)+'</text>';
+    for(var i=0;i<c.pins.length;i++){
+      var x0=c.sx+VHDR+i*ROW, nr=netOfPin(c.id,i), sig=pinSignal(c,i), hi=an&&nr===an;
+      if(i>0) out+='<line class="rowline" x1="'+x0+'" x2="'+x0+'" y1="'+(c.sy+1)+'" y2="'+(c.sy+VH-1)+'"/>';
+      out+='<rect class="prow'+(hi?' hi':'')+'" x="'+x0+'" y="'+(c.sy+1)+'" width="'+ROW+'" height="'+(VH-2)+'" data-k="pinrow" data-c="'+c.id+'" data-p="'+i+'"/>';
+      out+='<text class="pdes" transform="translate('+(x0+16)+','+(c.sy+VH-9)+') rotate(-90)">'+esc(desig(c,i))+'</text>';
+      out+='<text class="psig'+(sig?'':' none')+'" transform="translate('+(x0+16)+','+(c.sy+VH-27)+') rotate(-90)">'+esc((sig||'unused').slice(0,14))+'</text>';
+      out+=handle(c,i,-1,x0+ROW/2,c.sy)+handle(c,i,1,x0+ROW/2,c.sy+VH);
+    }
+    return out+'</g>';
+  }
+  return '';
+}
+
+// ---------- mating face layouts
+// Face view of the connector from the mating side. DT-family rule: numbers run down one
+// column and back up the other; plug and receptacle faces are mirror images of each other.
+function isRecept(part,c){ var pn=(part&&part.pn)||(c&&c.partPn)||''; if(part&&/Receptacle/i.test(part.gender||'')) return true; if(part&&/Plug/i.test(part.gender||'')) return false; return /^(DT|DTM|DTP)04/i.test(pn); }
+function faceLayout(n,desig,recept){
+  var pts=[], shape='rect', cols, rows;
+  if(n===3 && desig==='alpha'){
+    shape='tri';
+    pts = recept ? [{i:0,x:1,y:0},{i:1,x:0,y:0},{i:2,x:0.5,y:1}] : [{i:0,x:0,y:0},{i:1,x:1,y:0},{i:2,x:0.5,y:1}];
+    return {pts:pts,shape:shape,cols:2,rows:2};
+  }
+  if(n<=2){ for(var a=0;a<n;a++) pts.push({i:a,x:a,y:0}); return {pts:pts,shape:'rect',cols:Math.max(n,1),rows:1}; }
+  if(n%2===0 && n<=12){
+    rows=n/2;
+    for(var r=0;r<rows;r++){
+      var L={i:r,x:0,y:r}, R={i:n-1-r,x:1,y:r};
+      if(recept){ L.x=1; R.x=0; }
+      pts.push(L,R);
+    }
+    return {pts:pts,shape:'rect',cols:2,rows:rows};
+  }
+  cols=Math.ceil(Math.sqrt(n)); rows=Math.ceil(n/cols);
+  for(var k=0;k<n;k++) pts.push({i:k,x:k%cols,y:Math.floor(k/cols)});
+  return {pts:pts,shape:'rect',cols:cols,rows:rows};
+}
+// returns an <svg> string; fills[i] = hex color to light up cavity i
+function faceSVG(n,desigMode,recept,labels,fills,h){
+  var L=faceLayout(n,desigMode,recept), sp=26, r=9.5, pad=12, tab=7;
+  var w=L.cols*sp+pad*2-(sp-2*r)+4, hh=L.rows*sp+pad*2-(sp-2*r)+4;
+  if(L.shape==='tri'){ w=sp+2*r+pad*2+10; hh=sp+2*r+pad*2+6; }
+  var vw=w, vh=hh+tab, scale=h?h/vh:1;
+  var out='<svg xmlns="http://www.w3.org/2000/svg" width="'+(vw*scale).toFixed(0)+'" height="'+(vh*scale).toFixed(0)+'" viewBox="0 0 '+vw+' '+vh+'" class="facesvg">';
+  if(L.shape==='tri'){
+    var cx=vw/2, t0=tab+3, bw=vw-6;
+    out+='<rect x="'+(cx-12)+'" y="1" width="24" height="'+(tab+4)+'" rx="3" fill="#2f3439"/>';
+    out+='<path d="M'+(cx-bw/2+8)+' '+t0+' H'+(cx+bw/2-8)+' Q'+(cx+bw/2)+' '+t0+' '+(cx+bw/2-3)+' '+(t0+8)+' L'+(cx+7)+' '+(vh-6)+' Q'+cx+' '+(vh-1)+' '+(cx-7)+' '+(vh-6)+' L'+(cx-bw/2+3)+' '+(t0+8)+' Q'+(cx-bw/2)+' '+t0+' '+(cx-bw/2+8)+' '+t0+' Z" fill="#23272b" stroke="#3d4349" stroke-width="2"/>';
+  } else {
+    out+='<rect x="'+(vw/2-14)+'" y="1" width="28" height="'+(tab+4)+'" rx="3" fill="#2f3439"/>';
+    out+='<rect x="2" y="'+(tab+2)+'" width="'+(vw-4)+'" height="'+(hh-2)+'" rx="10" fill="#23272b" stroke="#3d4349" stroke-width="2"/>';
+  }
+  var ox=(L.shape==='tri')?(vw/2-sp/2):(vw-((L.cols-1)*sp))/2, oy=tab+2+(hh-2-((L.rows-1)*sp))/2;
+  if(L.shape==='tri') oy=tab+2+pad+r-2;
+  L.pts.forEach(function(q){
+    var x=ox+q.x*sp, y=oy+q.y*(L.shape==='tri'?sp*0.95:sp), f=fills&&fills[q.i];
+    out+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+r+'" fill="'+(f||'#3a4046')+'" stroke="'+(f?'#ffffff':'#4b5259')+'" stroke-width="'+(f?1.6:1)+'"/>';
+    var lab=String(labels[q.i]==null?q.i+1:labels[q.i]);
+    out+='<text x="'+x.toFixed(1)+'" y="'+(y+3.6).toFixed(1)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="'+(lab.length>2?7.5:9.5)+'" font-weight="700" fill="'+(f?'#ffffff':'#9aa3ab')+'">'+esc(lab)+'</text>';
+  });
+  return out+'</svg>';
+}
+function compFaceSVG(c,an,h){
+  var part=partByPn(c.partPn), labels=[], fills=[];
+  for(var i=0;i<c.pins.length;i++){
+    labels.push(desig(c,i));
+    var hit=an && netOfPin(c.id,i)===an;
+    if(hit){ var ws=wiresAt(c.id,i), wc=ws[0]?ws[0].color:null; if(!wc && c.mate){ var mw=wiresAt(c.mate,i)[0]; if(mw) wc=mw.color; } fills.push(wc?hexOf(colBase(wc)):'#0d9488'); }
+    else fills.push(null);
+  }
+  return faceSVG(c.pins.length,c.desig,isRecept(part,c),labels,fills,h);
+}
+function partFaceSVG(p,h){ var labels=[]; for(var i=0;i<(p.cav||0);i++){ labels.push(p.desig==='alpha'?'ABCDEFGHJKLMNPRSTUVWXYZ'[i]:String(i+1)); } return faceSVG(p.cav||1,p.desig,isRecept(p,null),labels,[],h); }
+
+// ---------- product pictures (drawn, so they work offline and for every part)
+function shade(hex,amt){
+  var h=String(hex||'#9ca3af').replace('#',''); if(h.length===3) h=h.split('').map(function(x){return x+x;}).join('');
+  var n=parseInt(h,16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  function f(v){ return Math.max(0,Math.min(255,Math.round(amt>0?v+(255-v)*amt:v*(1+amt)))); }
+  return '#'+[f(r),f(g),f(b)].map(function(v){return ('0'+v.toString(16)).slice(-2);}).join('');
+}
+function partImgHTML(p,size,kind){
+  if(p && p.img) return '<img src="'+esc(p.img)+'" alt="" referrerpolicy="no-referrer" style="width:'+size+'px;height:'+size+'px;object-fit:contain">';
+  return partImgSVG(p,size,kind);
+}
+function partImgSVG(p,size,kind){
+  var t=(p&&p.type)||kind||'connector', col=(p&&p.color)||'#9ca3af';
+  var o='<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 100 100">';
+  if(t==='terminal'){
+    var k=(p&&p.kind)||'ring', ins=/RED|22-16/.test((p&&p.pn)||'')?'#dc2626':/BLU|16-14/.test((p&&p.pn)||'')?'#2563eb':/YEL|12-10/.test((p&&p.pn)||'')?'#eab308':'#9ca3af';
+    o+='<rect x="8" y="42" width="34" height="16" rx="6" fill="'+ins+'"/><rect x="10" y="44" width="30" height="5" rx="2.5" fill="rgba(255,255,255,.35)"/>';
+    o+='<rect x="40" y="45" width="16" height="10" fill="#d4a24c"/>';
+    if(k==='ring') o+='<circle cx="72" cy="50" r="17" fill="#e0b25c" stroke="#b8862f" stroke-width="2"/><circle cx="72" cy="50" r="7" fill="#fff" stroke="#b8862f" stroke-width="1.5"/>';
+    else if(k==='spade') o+='<path d="M54 40 H86 V47 H66 V53 H86 V60 H54 Z" fill="#e0b25c" stroke="#b8862f" stroke-width="1.5"/>';
+    else if(k==='ferrule') o+='<rect x="54" y="47" width="34" height="6" rx="1" fill="#cfd4da" stroke="#9ca3af"/>';
+    else o+='<rect x="54" y="43" width="32" height="14" rx="2" fill="#e0b25c" stroke="#b8862f" stroke-width="1.5"/>';
+    return o+'</svg>';
+  }
+  if(t==='splice') return o+'<rect x="10" y="38" width="80" height="24" rx="12" fill="#e5e7eb" stroke="#9ca3af"/><rect x="38" y="40" width="24" height="20" rx="4" fill="#cbd5e1"/><rect x="22" y="38" width="6" height="24" fill="#2563eb" opacity=".6"/><rect x="72" y="38" width="6" height="24" fill="#2563eb" opacity=".6"/></svg>';
+  if(t==='cable'){ // cross-section: jacket, optional foil, cores in their colors
+    var cc=(p&&p.coreColors)||['white','black'], n=cc.length, R=n<=2?13:n<=3?14:15;
+    o+='<path d="M8 50 H70" stroke="#1f2937" stroke-width="30" stroke-linecap="round"/>';
+    o+='<circle cx="72" cy="50" r="24" fill="#1f2937"/>'+((p&&p.shield)?'<circle cx="72" cy="50" r="19.5" fill="#cbd5e1"/>':'')+'<circle cx="72" cy="50" r="17.5" fill="#374151"/>';
+    cc.forEach(function(c,i){ var a=(i/n)*Math.PI*2-Math.PI/2, rr=n===1?0:(n===2?8:9); o+='<circle cx="'+(72+Math.cos(a)*rr).toFixed(1)+'" cy="'+(50+Math.sin(a)*rr).toFixed(1)+'" r="'+(n<=2?7:6)+'" fill="'+hexOf(c)+'" stroke="#111" stroke-width="1"/>'; });
+    return o+'</svg>';
+  }
+  if(t==='covering') return o+'<path d="M12 40 H80 A10 10 0 0 1 80 60 H12 Z" fill="#1f2937"/><ellipse cx="80" cy="50" rx="6" ry="10" fill="#374151"/><path d="M20 40 V60 M32 40 V60 M44 40 V60 M56 40 V60 M68 40 V60" stroke="#4b5563" stroke-width="2"/></svg>';
+  var pn=(p&&p.pn)||'';
+  if(/^DIODE/.test(pn)) return o+'<path d="M6 50 H32 M68 50 H94" stroke="#9ca3af" stroke-width="3"/><rect x="30" y="38" width="40" height="24" rx="5" fill="#1f2937"/><rect x="58" y="38" width="6" height="24" fill="#e5e7eb"/></svg>';
+  if(/^RES/.test(pn)) return o+'<path d="M6 50 H28 M72 50 H94" stroke="#9ca3af" stroke-width="3"/><rect x="26" y="38" width="48" height="24" rx="10" fill="#d6b48a"/><rect x="36" y="38" width="4" height="24" fill="#8a4b16"/><rect x="46" y="38" width="4" height="24" fill="#111"/><rect x="56" y="38" width="4" height="24" fill="#dc2626"/><rect x="66" y="38" width="3" height="24" fill="#d4a24c"/></svg>';
+  // connector: three-quarter view of the housing, front face shows the cavities
+  var cav=(p&&p.cav)||2, rec=isRecept(p,null), L=faceLayout(cav,p&&p.desig,rec);
+  var fw=Math.min(56,24+L.cols*12), fh=Math.min(46,20+L.rows*10), fx=16, fy=58-fh/2, dx=24, dy=-15;
+  var top=shade(col,0.28), side=shade(col,-0.22), front=shade(col,0.08), dark=shade(col,-0.45);
+  if(rec){ // receptacle: flange plate behind the face
+    o+='<path d="M'+(fx+fw*0.55)+' '+(fy-6)+' h'+(fw*0.5)+' l'+(dx*0.5)+' '+(dy*0.5)+' v'+(fh+12)+' l'+(-dx*0.5)+' '+(-dy*0.5)+' h'+(-fw*0.5)+' Z" fill="'+side+'"/>';
+  }
+  o+='<path d="M'+fx+' '+fy+' l'+dx+' '+dy+' h'+fw+' l'+(-dx)+' '+(-dy)+' Z" fill="'+top+'"/>';
+  o+='<path d="M'+(fx+fw)+' '+fy+' l'+dx+' '+dy+' v'+fh+' l'+(-dx)+' '+(-dy)+' Z" fill="'+side+'"/>';
+  if(!rec) o+='<path d="M'+(fx+fw*0.3)+' '+(fy-1)+' l'+(dx*0.55)+' '+(dy*0.55)+' h'+(fw*0.4)+' l'+(-dx*0.55)+' '+(-dy*0.55)+' Z" fill="'+shade(col,0.45)+'" stroke="'+side+'" stroke-width="1"/>';
+  o+='<rect x="'+fx+'" y="'+fy+'" width="'+fw+'" height="'+fh+'" rx="6" fill="'+front+'" stroke="'+side+'" stroke-width="1.2"/>';
+  o+='<rect x="'+(fx+3)+'" y="'+(fy+3)+'" width="'+(fw-6)+'" height="'+(fh-6)+'" rx="4" fill="'+(rec?dark:'#f97316')+'" opacity="'+(rec?0.55:0.9)+'"/>';
+  var sx=(fw-10)/Math.max(L.cols,1), sy=(fh-10)/Math.max(L.rows,1), rr=Math.max(2,Math.min(sx,sy)*0.28);
+  L.pts.forEach(function(q){ o+='<circle cx="'+(fx+5+sx*(q.x+0.5)).toFixed(1)+'" cy="'+(fy+5+sy*(q.y+0.5)).toFixed(1)+'" r="'+rr.toFixed(1)+'" fill="#111827"/>'; });
+  return o+'</svg>';
+}
+
+// ---------- connector cards on the layout (picture + face + wiring table)
+function cardShow(c,k){ return c['hide_'+k]!==true; }
+function cardRows(c){
+  var rows=[];
+  for(var i=0;i<c.pins.length;i++){
+    var ws=wiresAt(c.id,i);
+    if(!ws.length) rows.push({d:desig(c,i),p:i,to:'',sig:c.pins[i].signal||'',w:null});
+    ws.forEach(function(w){ var o=otherEnd(w,c.id,i), oc=comp(o.c); rows.push({d:desig(c,i),p:i,to:oc?pinRef(oc,o.p):'?',sig:w.signal||pinSignal(c,i),w:w}); });
+  }
+  return rows;
+}
+function cardRect(c){
+  var part=partByPn(c.partPn), hasContacts=!!(part&&part.contacts&&part.contacts.length);
+  // heights match the card CSS exactly (header 28, tiles 85, table head 23, rows 24)
+  var tiles=(cardShow(c,'img')||cardShow(c,'face'))?85:0, table=cardShow(c,'table')?23+cardRows(c).length*24:0;
+  var W=hasContacts&&cardShow(c,'table')?380:300, H=28+tiles+table+3;
+  var dx=c.tdx!=null?c.tdx:-W/2, dy=c.tdy!=null?c.tdy:-(H+64);
+  return {x:c.lx+dx,y:c.ly+dy,w:W,h:H,contacts:hasContacts};
+}
+function cardFO(c,an){
+  var R=cardRect(c), part=partByPn(c.partPn), rows=cardRows(c);
+  var h='<div xmlns="http://www.w3.org/1999/xhtml" class="ccard"><div class="fh" data-k="ftable" data-id="'+c.id+'"><span>'+esc(c.name)+'</span><span>'+esc(c.partPn||'no part')+'</span></div>';
+  if(cardShow(c,'img')||cardShow(c,'face')){
+    h+='<div class="ctiles">';
+    if(cardShow(c,'img')) h+='<div class="ctile img" data-k="ftable" data-id="'+c.id+'" title="'+esc(part?part.pn+' - '+part.desc:'No part assigned')+'">'+partImgHTML(part,70,'connector')+'</div>';
+    if(cardShow(c,'face')) h+='<div class="ctile face" data-k="ftable" data-id="'+c.id+'" title="Mating face'+(part?', '+(isRecept(part,c)?'receptacle':'plug'):'')+'">'+compFaceSVG(c,an,68)+'</div>';
+    h+='</div>';
+  }
+  if(cardShow(c,'table')){
+    h+='<table><thead><tr><th style="width:24px"></th><th>Destination</th><th>Part</th><th style="text-align:right">Length</th>'+(R.contacts?'<th>Contact</th>':'')+'</tr></thead><tbody>';
+    rows.forEach(function(r){
+      var dim=an && (!r.w || netOfWire(r.w)!==an), on=an && r.w && netOfWire(r.w)===an;
+      var ct=r.w&&R.contacts?chooseContact(part,r.w.gauge):null;
+      h+='<tr data-k="ftrow" data-c="'+c.id+'" data-p="'+r.p+'" class="'+(on?'on':'')+'" style="'+(dim?'opacity:.38':'')+'"><td class="m">'+esc(r.d)+'</td>'+
+        '<td>'+(r.to?'<b>'+esc(r.to)+'</b>':'<span class="mu">--</span>')+(r.sig?' <span class="mu">('+esc(r.sig)+')</span>':'')+'</td>'+
+        '<td>'+(r.w?'<span class="wchip"><i style="background:'+hexOf(colBase(r.w.color))+'"></i>'+esc(r.w.gauge)+' AWG</span>'+groupChipsHTML(r.w):'')+'</td>'+
+        '<td class="m" style="text-align:right">'+(r.w?fmtLen(wireLen(r.w)):'')+'</td>'+
+        (R.contacts?'<td class="m">'+(ct?'<span class="cchip'+(ct.ok?'':' bad')+'">'+esc(ct.pn)+'</span>':'')+'</td>':'')+'</tr>';
+    });
+    h+='</tbody></table>';
+  }
+  h+='</div>';
+  // thin leader from the card to its connector on the bundle
+  var gx=Math.max(R.x+14,Math.min(R.x+R.w-14,c.lx)), below=c.ly>R.y+R.h/2, gy=below?R.y+R.h:R.y;
+  var lead='<path class="leader" d="M'+gx+' '+gy+' L'+c.lx+' '+(below?c.ly-14:c.ly+14)+'"/>';
+  return lead+'<foreignObject x="'+R.x+'" y="'+R.y+'" width="'+R.w+'" height="'+R.h+'">'+h+'</foreignObject>';
+}
+
+// ---------- bundles drawn square with rounded bends
+function segPts(s){
+  var a=nodePos(s.a), b=nodePos(s.b); if(!a||!b) return null;
+  if(Math.abs(a.x-b.x)<3||Math.abs(a.y-b.y)<3) return [a,b];
+  var corner;
+  if(s.a.indexOf('c:')===0) corner={x:a.x,y:b.y};           // leave a connector straight out
+  else if(s.b.indexOf('c:')===0) corner={x:b.x,y:a.y};      // arrive at a connector straight in
+  else corner=Math.abs(b.y-a.y)>Math.abs(b.x-a.x)?{x:a.x,y:b.y}:{x:b.x,y:a.y};
+  return [a,corner,b];
+}
+function polyLen(pts){ var L=0; for(var i=1;i<pts.length;i++) L+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); return L; }
+function segDrawLen(s){ var p=segPts(s); return p?polyLen(p):0; }
+function refreshEstimates(){
+  var mpp=settings().mmPerPx;
+  P().segs.forEach(function(s){ if(!s.est) return; var L=segDrawLen(s); if(L) s.len=Math.max(10,Math.round(L*mpp/10)*10); });
+}
+function projectOnPoly(pts,pt){
+  var best=null, bd=Infinity, acc=0, tot=polyLen(pts);
+  for(var i=1;i<pts.length;i++){
+    var a=pts[i-1], b=pts[i], dx=b.x-a.x, dy=b.y-a.y, L2=dx*dx+dy*dy||1, t=Math.max(0,Math.min(1,((pt.x-a.x)*dx+(pt.y-a.y)*dy)/L2));
+    var q={x:a.x+dx*t,y:a.y+dy*t}, d=Math.hypot(q.x-pt.x,q.y-pt.y), sl=Math.sqrt(L2);
+    if(d<bd){ bd=d; best={x:q.x,y:q.y,frac:tot?(acc+sl*t)/tot:0.5}; }
+    acc+=sl;
+  }
+  return best;
+}
+function splitSeg(id,pt){
+  var s=seg(id); if(!s) return; var pts=segPts(s); if(!pts) return;
+  var pr=projectOnPoly(pts,pt), t=Math.max(0.05,Math.min(0.95,pr.frac));
+  pushUndo();
+  var n={id:uid('n'),x:snap10(pr.x),y:snap10(pr.y)}; P().nodes.push(n);
+  var l1=Math.round(num(s.len,0)*t/5)*5, oldB=s.b;
+  var s2={id:uid('s'),a:'n:'+n.id,b:oldB,len:num(s.len,0)-l1,covering:s.covering,est:s.est};
+  s.b='n:'+n.id; s.len=l1; P().segs.push(s2);
+  S.sel={kind:'node',id:n.id}; commit();
+}
+function routePts(sp){
+  // points of a wire route through the bundles, following each bundle's drawn shape
+  var out=[];
+  for(var i=0;i<sp.segs.length;i++){
+    var s=seg(sp.segs[i]); if(!s) continue; var pts=segPts(s); if(!pts) continue;
+    if(s.a!==sp.nodes[i]) pts=pts.slice().reverse();
+    if(out.length) pts=pts.slice(1);
+    out=out.concat(pts);
+  }
+  return out;
+}
+function layComp(c){
+  var sel=S.sel && S.sel.kind==='comp' && S.sel.id===c.id, start=S.segStart==='c:'+c.id;
+  var part=partByPn(c.partPn), out='<g data-k="lcomp" data-id="'+c.id+'" style="cursor:move">';
+  if(c.type==='connector'){
+    var col=(part&&part.color)||'#c9ced6';
+    out+='<rect x="'+(c.lx-15)+'" y="'+(c.ly-13)+'" width="30" height="20" rx="7" fill="'+col+'" stroke="'+(start?'#ea580c':sel?'#0d9488':shade(col,-0.3))+'" stroke-width="'+(sel||start?2.5:1)+'"/>';
+    out+='<rect x="'+(c.lx-15)+'" y="'+(c.ly-13)+'" width="30" height="6" rx="3" fill="'+shade(col,-0.25)+'" style="pointer-events:none"/>';
+    out+='<rect x="'+(c.lx-8)+'" y="'+(c.ly+7)+'" width="16" height="7" rx="2" fill="'+shade(col,-0.35)+'" style="pointer-events:none"/>';
+    out+='<text class="lname" x="'+c.lx+'" y="'+(c.ly-20)+'" text-anchor="middle">'+esc(c.name)+'</text>';
+    if(c.partPn){ var tw=c.partPn.length*6+22; out+='<rect class="ltag-bg" x="'+(c.lx-tw/2)+'" y="'+(c.ly+17)+'" width="'+tw+'" height="15" rx="7.5"/><circle cx="'+(c.lx-tw/2+9)+'" cy="'+(c.ly+24.5)+'" r="3.2" fill="'+col+'" stroke="'+shade(col,-0.3)+'" stroke-width=".8"/><text class="ltag" x="'+(c.lx+5)+'" y="'+(c.ly+28)+'" text-anchor="middle">'+esc(c.partPn)+'</text>'; }
+  } else if(c.type==='terminal'){
+    out+='<circle cx="'+c.lx+'" cy="'+c.ly+'" r="8" fill="#fff" stroke="'+(start?'#ea580c':sel?'#0d9488':'#6b7280')+'" stroke-width="'+(sel||start?3:2.4)+'"/>';
+    out+='<circle cx="'+c.lx+'" cy="'+c.ly+'" r="2.6" fill="#6b7280"/>';
+    out+='<text class="lname" x="'+c.lx+'" y="'+(c.ly-15)+'" text-anchor="middle">'+esc(c.name)+'</text>';
+    if(c.partPn){ var tw2=c.partPn.length*6+22; out+='<rect class="ltag-bg" x="'+(c.lx-tw2/2)+'" y="'+(c.ly+13)+'" width="'+tw2+'" height="15" rx="7.5"/><circle cx="'+(c.lx-tw2/2+9)+'" cy="'+(c.ly+20.5)+'" r="3" fill="none" stroke="#6b7280" stroke-width="1.4"/><text class="ltag" x="'+(c.lx+5)+'" y="'+(c.ly+24)+'" text-anchor="middle">'+esc(c.partPn)+'</text>'; }
+  } else {
+    out+='<circle cx="'+c.lx+'" cy="'+c.ly+'" r="5.5" fill="'+(sel?'#0d9488':start?'#ea580c':'#fff')+'" stroke="#4b5563" stroke-width="1.8"/>';
+    out+='<text class="ltag" x="'+(c.lx+9)+'" y="'+(c.ly-7)+'">'+esc(c.name)+'</text>';
+  }
+  return out+'</g>';
+}
+function layWorld(){
+  var p=P(), out='', an=activeNet();
+  var cache={}; p.segs.forEach(function(s){ cache[s.id]=segPts(s); });
+  p.segs.forEach(function(s){
+    var pts=cache[s.id]; if(!pts) return; var d=roundPath(pts,18);
+    var sel=S.sel && S.sel.kind==='seg' && S.sel.id===s.id;
+    out+='<g data-k="seg" data-id="'+s.id+'"><path class="seg-edge" d="'+d+'"/><path class="seg'+(sel?' sel':'')+'" d="'+d+'"/><path class="seg-hit" d="'+d+'"/></g>';
+  });
+  if(an && S.showNet){
+    var ws=p.wires.filter(function(w){ return netOfWire(w)===an; });
+    ws.forEach(function(w,i){
+      var sp=wirePath(w); if(!sp||sp.nodes.length<2) return;
+      var pts=routePts(sp); if(pts.length<2) return;
+      pts=offsetPoly(pts,(i-(ws.length-1)/2)*3.2);
+      out+=wireStroke(w,roundPath(pts,16),2.6,false,false).replace(/class="wire"/g,'class="wire" style="pointer-events:none"');
+    });
+  }
+  p.segs.forEach(function(s){
+    var pts=cache[s.id]; if(!pts) return;
+    if(!num(s.len,0) && !s.covering) return;
+    var bi=1, bl=0; for(var i=1;i<pts.length;i++){ var l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); if(l>bl){ bl=l; bi=i; } }
+    var a=pts[bi-1], b=pts[bi], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
+    var txt=(s.est?'~':'')+fmtLen(num(s.len,0)), tw=txt.length*6.4+8;
+    if(num(s.len,0)||s.est){
+      if(vert) out+='<g transform="translate('+(mx-15)+','+my+') rotate(-90)"><rect class="slen-bg" x="'+(-tw/2)+'" y="-9" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="0" y="1" text-anchor="middle">'+txt+'</text></g>';
+      else out+='<rect class="slen-bg" x="'+(mx-tw/2)+'" y="'+(my-22)+'" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="'+mx+'" y="'+(my-12)+'" text-anchor="middle">'+txt+'</text>';
+    }
+    if(s.covering){
+      var cw=s.covering.length*6+24, cx=vert?mx+11:mx-cw/2, cy=vert?my-7:my+10;
+      out+='<g style="pointer-events:none"><rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="7.5"/><path d="M'+(cx+6)+' '+(cy+5)+' h7 l3 -2 v9 l-3 -2 h-7 z" fill="#6b7280"/><text class="ltag" x="'+(cx+cw/2+6)+'" y="'+(cy+11)+'" text-anchor="middle">'+esc(s.covering)+'</text></g>';
+    }
+  });
+  p.comps.forEach(function(c){
+    if(c.type==='connector' && c.mate && c.id<c.mate){ var m=comp(c.mate); if(!m) return;
+      var dx=m.lx-c.lx, dy=m.ly-c.ly, l=Math.hypot(dx,dy)||1, ux=dx/l, uy=dy/l;
+      out+='<line class="mate" x1="'+(c.lx+ux*24)+'" y1="'+(c.ly+uy*24)+'" x2="'+(m.lx-ux*24)+'" y2="'+(m.ly-uy*24)+'" marker-start="url(#arr)" marker-end="url(#arr)"/>'; }
+  });
+  p.nodes.forEach(function(n){
+    var sel=S.sel && S.sel.kind==='node' && S.sel.id===n.id, start=S.segStart==='n:'+n.id;
+    out+='<rect class="lnode'+(sel?' sel':'')+'" data-k="lnode" data-id="'+n.id+'" x="'+(n.x-8)+'" y="'+(n.y-8)+'" width="16" height="16" rx="3.5"'+(start?' style="fill:#ea580c"':'')+'/>';
+  });
+  p.comps.forEach(function(c){ out+=layComp(c); });
+  if(S.showTables) p.comps.forEach(function(c){ if(c.type==='connector') out+=cardFO(c,an); });
+  out+=notesSVG('lay');
+  if(S.drag && S.drag.type==='segdraft'){ var a2=nodePos(S.segStart); if(a2) out+='<line class="draft" x1="'+a2.x+'" y1="'+a2.y+'" x2="'+S.drag.x+'" y2="'+S.drag.y+'"/>'; }
+  return out;
+}
+function fitView(){
+  var svg=$('cv'); if(!svg) return;
+  var which=svg.getAttribute('data-v'), t=S[which], p=P(), bx=[];
+  if(which==='sch') p.comps.forEach(function(c){ bx.push(compBox(c)); });
+  else {
+    p.comps.forEach(function(c){ bx.push({x:c.lx-60,y:c.ly-40,w:120,h:80}); if(S.showTables&&c.type==='connector') bx.push(cardRect(c)); });
+    p.nodes.forEach(function(n){ bx.push({x:n.x-10,y:n.y-10,w:20,h:20}); });
+  }
+  if(!bx.length){ t.tx=40; t.ty=40; t.k=1; syncTransform(which); return; }
+  var x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  bx.forEach(function(b){ x0=Math.min(x0,b.x); y0=Math.min(y0,b.y); x1=Math.max(x1,b.x+b.w); y1=Math.max(y1,b.y+b.h); });
+  var r=svg.getBoundingClientRect(), pad=60;
+  var k=Math.min((r.width-pad*2)/(x1-x0||1),(r.height-pad*2-30)/(y1-y0||1)); k=Math.max(0.2,Math.min(1.4,k));
+  t.k=k; t.tx=(r.width-(x1-x0)*k)/2-x0*k; t.ty=(r.height-(y1-y0)*k)/2-y0*k+15; syncTransform(which);
+}
+function toggleCard(cid,k){ var c=comp(cid); if(!c) return; pushUndo(); c['hide_'+k]=cardShow(c,k)?true:false; if(!c['hide_'+k]) delete c['hide_'+k]; commit(); }
+function setOrient(cid,v){ var c=comp(cid); if(!c) return; pushUndo(); if(v==='v') c.orient='v'; else delete c.orient; commit(); }
+
+// ---------- parts catalog with a detail panel
+S.catSel=null;
+function openCatalog(type){
+  if(type) S.catFilter=type;
+  else if(S.sel && S.sel.kind==='comp' && comp(S.sel.id)) S.catFilter=comp(S.sel.id).type;
+  else if(S.sel && S.sel.kind==='seg') S.catFilter='covering';
+  if(S.sel && S.sel.kind==='comp' && comp(S.sel.id) && comp(S.sel.id).partPn) S.catSel=comp(S.sel.id).partPn;
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal wide" style="width:1040px">'+
+    '<div class="mh"><div class="modal-title">Parts catalog</div><span class="muted" id="catTarget"></span><div class="spacer"></div><button class="btn btn-sm" onclick="openCustomPart()">Add custom part</button></div>'+
+    '<div class="mb"><div class="search-wrap" style="max-width:none"><span class="search-icon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg></span><input id="catQ" placeholder="Search part number or description, e.g. DT06-6S or 6-way" value="'+esc(S.catQuery)+'" oninput="S.catQuery=this.value;renderCatList()"></div>'+
+    '<div class="tabs-row" id="catChips" style="margin:12px 0"></div><div class="lib-grid cat-grid"><div class="tbl-wrap cat-scroll" id="catList"></div><div id="catDetail" class="lib-prev"></div></div></div>'+
+    '<div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button></div></div></div>';
+  renderCatList(); var q=$('catQ'); if(q) q.focus();
+}
+function catMatches(){
+  var f=S.catFilter, terms=S.catQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return allParts().filter(function(p){
+    if(f!=='all' && p.type!==f) return false;
+    var hay=(p.pn+' '+p.mfr+' '+p.desc+' '+(p.cav?p.cav+'-way '+p.cav+' way':'')+' '+(p.gender||'')).toLowerCase();
+    return terms.every(function(t){ return hay.indexOf(t)>=0; });
+  }).slice(0,200);
+}
+function renderCatList(){
+  var f=S.catFilter;
+  var tgt=''; if(S.sel&&S.sel.kind==='comp'&&comp(S.sel.id)) tgt='Assigning to '+comp(S.sel.id).name; else if(S.sel&&S.sel.kind==='seg') tgt='Assigning a covering to the selected bundle'; else if(S.sel&&S.sel.kind==='group'&&groupById(S.sel.id)) tgt='Choosing the cable for '+groupLabel(groupById(S.sel.id));
+  $('catTarget').textContent=tgt;
+  $('catChips').innerHTML=[['all','All'],['connector','Connectors'],['terminal','Terminals'],['splice','Splices'],['cable','Cables'],['covering','Coverings']].map(function(c){ return '<div class="tab'+(f===c[0]?' active':'')+'" onclick="S.catFilter=\''+c[0]+'\';renderCatList()">'+c[1]+'</div>'; }).join('');
+  var list=catMatches(), canAssign=S.sel && (S.sel.kind==='comp'||S.sel.kind==='seg'||S.sel.kind==='group');
+  if(!list.length){ $('catList').innerHTML='<div class="empty">No parts match. Add it as a custom part.</div>'; $('catDetail').innerHTML=''; return; }
+  if(!S.catSel || !list.some(function(p){return p.pn===S.catSel;})) S.catSel=list[0].pn;
+  $('catList').innerHTML='<table><thead><tr><th style="width:52px"></th><th>Part number</th><th>Description</th><th>Cav</th><th></th></tr></thead><tbody>'+list.map(function(p){
+    return '<tr class="'+(S.catSel===p.pn?'lib-on':'')+'" style="cursor:pointer" onclick="if(event.target.tagName!==\'BUTTON\'){S.catSel=\''+esc(p.pn).replace(/'/g,'')+'\';renderCatList()}"><td style="padding:3px 6px"><div class="thumb">'+partImgHTML(p,38)+'</div></td>'+
+      '<td class="main-col"><span class="mono" style="font-size:var(--t-sm);font-weight:700">'+esc(p.pn)+'</span>'+(p.base?'':' <span class="pill pill-teal">custom</span>')+'</td>'+
+      '<td>'+esc(p.mfr)+'. '+esc(p.desc)+'</td><td class="mono">'+(p.cav||'')+'</td>'+
+      '<td style="text-align:right;white-space:nowrap">'+(canAssign?'<button class="btn btn-sm btn-teal" onclick="assignPart(\''+esc(p.pn).replace(/'/g,'')+'\')">Assign</button>':'')+'</td></tr>';
+  }).join('')+'</tbody></table>';
+  renderCatDetail();
+}
+function teUrl(p){ return /^TE/.test(p.mfr||'') && p.type==='connector' ? 'https://www.te.com/usa-en/product-'+encodeURIComponent(p.pn)+'.html' : ''; }
+function renderCatDetail(){
+  var p=partByPn(S.catSel); if(!p){ $('catDetail').innerHTML=''; return; }
+  var canAssign=S.sel && (S.sel.kind==='comp'||S.sel.kind==='seg'||S.sel.kind==='group'), url=p.url||teUrl(p);
+  function row(k,v){ return v?'<tr><td class="dk">'+k+'</td><td>'+v+'</td></tr>':''; }
+  var h='<div class="lib-prev-h"><div><div class="ppn" style="font-size:var(--t-lg)">'+esc(p.pn)+'</div><div class="muted">'+esc(p.mfr)+'</div></div>'+(canAssign?'<button class="btn btn-sm btn-primary" onclick="assignPart(\''+esc(p.pn).replace(/'/g,'')+'\')">Assign</button>':'')+'</div>'+
+    '<div class="dtiles"><div class="ctile img big">'+partImgHTML(p,120)+'</div>'+(p.type==='connector'?'<div class="ctile face big" title="Mating face">'+partFaceSVG(p,104)+'</div>':'')+'</div>'+
+    '<table class="dtable">'+row('Description',esc(p.desc))+row('Type',esc(p.type))+row('Cavities',p.cav?String(p.cav):'')+row('Pin names',p.type==='connector'?(p.desig==='alpha'?'Letters A, B, C':p.desig==='custom'?'Custom labels':'Numbers 1, 2, 3'):'')+
+    row('Gender',esc(p.gender||''))+row('Contacts',(p.contacts||[]).map(function(c){return '<span class="mono">'+esc(c.pn)+'</span>'+(c.awg?' <span class="muted">'+(c.awg[0]===c.awg[1]?c.awg[0]:c.awg[0]+'-'+c.awg[1])+' AWG</span>':'');}).join('<br>'))+
+    row('Wedgelock',p.lock?'<span class="mono">'+esc(p.lock)+'</span>':'')+row('Seal plug',p.plug?'<span class="mono">'+esc(p.plug)+'</span>':'')+
+    row('Body color',p.color&&p.type==='connector'?'<span class="sw" style="border-radius:3px;background:'+p.color+'"></span>':'')+
+    row('Link',url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">Manufacturer page</a>':'')+'</table>'+
+    (p.type==='connector'?'<div class="note">Face view is from the mating side. The picture is drawn from the part data'+(p.img?'; this part uses your photo.':'. Add a photo URL to a custom part to show the real one.')+'</div>':'')+
+    (p.base?'':'<div class="acts" style="margin-top:10px"><button class="btn btn-sm btn-danger" onclick="deleteCustomPart(\''+esc(p.pn)+'\')">Delete custom part</button></div>');
+  $('catDetail').innerHTML=h;
+}
+
+
+// =====================================================================
+// CABLES AND TWISTED WIRES
+// A group ties existing wires together:
+//   twist: the wires are twisted around each other (CAN, crank/cam VR). Each wire gets
+//          longer by the twist; the lay length (mm per full twist) sets how much.
+//   cable: the wires are the cores of one jacketed cable. The BOM buys the cable,
+//          not the separate wires.
+// A wire can be in one twist and one cable at the same time (a twisted pair inside a cable).
+// =====================================================================
+(function(){
+  function cab(pn,cores,awg,shield,twisted,colors,desc){
+    LIB_BASE.push({base:true,pn:pn,mfr:'Generic',type:'cable',cores:cores,awg:awg,shield:shield,twisted:twisted,coreColors:colors,
+      desc:desc+' (placeholder, swap in your cable part number)'});
+  }
+  cab('CABLE-2C-22-TP-SH',2,'22',true,true,['white','blue'],'2-core 22 AWG twisted pair, foil shield + drain (CAN)');
+  cab('CABLE-2C-20-TP-SH',2,'20',true,true,['white','black'],'2-core 20 AWG twisted pair, shielded (crank/cam VR)');
+  cab('CABLE-3C-22-SH',3,'22',true,false,['red','black','white'],'3-core 22 AWG, shielded (sensor: 5V, signal, ground)');
+  cab('CABLE-4C-22-SH',4,'22',true,false,['red','black','white','green'],'4-core 22 AWG, shielded');
+  cab('CABLE-4C-20',4,'20',false,false,['red','black','white','green'],'4-core 20 AWG, unshielded');
+})();
+// approximate finished outside diameter (mm) of thin-wall automotive wire by gauge
+var AWG_OD={'4':7.3,'6':5.8,'8':4.6,'10':3.6,'12':2.9,'14':2.4,'16':2.0,'18':1.7,'20':1.45,'22':1.25,'24':1.1,'26':1.0};
+function groupsArr(){ var p=P(); if(!p.groups) p.groups=[]; return p.groups; }
+function groupById(id){ var a=groupsArr(); for(var i=0;i<a.length;i++) if(a[i].id===id) return a[i]; return null; }
+function groupsOf(w){ return groupsArr().filter(function(g){ return g.wires.indexOf(w.id)>=0; }); }
+function twistOf(w){ return groupsOf(w).filter(function(g){return g.kind==='twist';})[0]||null; }
+function cableOf(w){ return groupsOf(w).filter(function(g){return g.kind==='cable';})[0]||null; }
+// helical length factor: each wire follows a helix of pitch diameter ~ one wire OD
+function twistFactor(w){
+  var g=twistOf(w); if(!g) return 1;
+  var lay=Math.max(5,num(g.lay,25)), od=AWG_OD[w.gauge]||1.5;
+  return Math.sqrt(1+Math.pow(Math.PI*od/lay,2));
+}
+function groupLabel(g){ return g.name||(g.kind==='twist'?'Twisted pair':'Cable'); }
+
+// ---------- schematic: oval around the group where its wires run side by side
+function polyMid(pts){
+  var L=polyLen(pts), h=L/2, acc=0;
+  for(var i=1;i<pts.length;i++){ var a=pts[i-1], b=pts[i], l=Math.hypot(b.x-a.x,b.y-a.y); if(acc+l>=h){ var t=l?(h-acc)/l:0; return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,vert:Math.abs(b.y-a.y)>Math.abs(b.x-a.x)}; } acc+=l; }
+  return pts[0];
+}
+function polyAt(pts,d){
+  var acc=0;
+  for(var i=1;i<pts.length;i++){ var a=pts[i-1], b=pts[i], l=Math.hypot(b.x-a.x,b.y-a.y); if(acc+l>=d){ var t=l?(d-acc)/l:0; return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,vert:Math.abs(b.y-a.y)>Math.abs(b.x-a.x)}; } acc+=l; }
+  return polyMid(pts);
+}
+function groupsSVG(an){
+  var p=P(), out='', ptsOf={}, idx={};
+  p.wires.forEach(function(w,i){ var pts=schWirePts(w,i); if(pts) ptsOf[w.id]=pts; });
+  groupsArr().forEach(function(g){
+    // mark the group a fixed distance out from the part all its wires share, so the marks line up
+    var ws=g.wires.map(wire).filter(function(w){return w&&ptsOf[w.id];}); if(!ws.length) return;
+    var shared=[ws[0].a.c,ws[0].b.c].filter(function(cid){ return ws.every(function(w){ return w.a.c===cid||w.b.c===cid; }); })[0];
+    var ms=ws.map(function(w){
+      var pts=ptsOf[w.id]; if(!shared) return polyMid(pts);
+      if(w.a.c!==shared) pts=pts.slice().reverse();
+      return polyAt(pts,Math.min(56,polyLen(pts)/2));
+    });
+    var x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    ms.forEach(function(m){ x0=Math.min(x0,m.x); y0=Math.min(y0,m.y); x1=Math.max(x1,m.x); y1=Math.max(y1,m.y); });
+    var vert=ms[0].vert, cx=(x0+x1)/2, cy=(y0+y1)/2;
+    var rx=Math.max(vert?9:12,(x1-x0)/2+9), ry=Math.max(vert?12:9,(y1-y0)/2+9);
+    var sel=S.sel&&S.sel.kind==='group'&&S.sel.id===g.id, dim=an&&!g.wires.some(function(id){var w=wire(id);return w&&netOfWire(w)===an;});
+    var cls='grp '+g.kind+(sel?' sel':'')+(dim?' dim':'');
+    out+='<g class="'+cls+'" data-k="group" data-id="'+g.id+'">';
+    out+='<ellipse class="grp-hit" cx="'+cx+'" cy="'+cy+'" rx="'+(rx+5)+'" ry="'+(ry+5)+'"/>';
+    if(g.kind==='cable' && g.shield) out+='<ellipse class="grp-shield" cx="'+cx+'" cy="'+cy+'" rx="'+(rx+4)+'" ry="'+(ry+4)+'"/>';
+    out+='<ellipse class="grp-ring" cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'"/>';
+    if(g.kind==='twist'){ // little twist mark across the pair
+      var tx=cx+rx+4, ty=cy-ry-4;
+      out+='<path class="grp-twist" d="M'+(tx-6)+' '+(ty+4)+' q3 -8 6 0 t6 0 M'+(tx-6)+' '+(ty-4)+' q3 8 6 0 t6 0"/>';
+    }
+    var lab=groupLabel(g)+(g.kind==='cable'&&g.partPn?'  '+g.partPn:''), lw=lab.length*5.8+12, lx=cx+rx+(g.kind==='twist'?14:6), ly=cy-ry-14;
+    out+='<rect class="grp-tag-bg" x="'+lx+'" y="'+ly+'" width="'+lw+'" height="15" rx="7.5"/><text class="grp-tag" x="'+(lx+lw/2)+'" y="'+(ly+11)+'" text-anchor="middle">'+esc(lab)+'</text>';
+    out+='</g>';
+  });
+  return out;
+}
+
+// ---------- create / edit dialog
+function sameEnds(a,b){ return (a.a.c===b.a.c&&a.b.c===b.b.c)||(a.a.c===b.b.c&&a.b.c===b.a.c); }
+function nextGroupName(kind){ var pre=kind==='twist'?'TP':'CBL', n=1, names={}; groupsArr().forEach(function(g){names[g.name]=1;}); while(names[pre+n]) n++; return pre+n; }
+function openGroupDialog(kind,wid,gid){
+  var g=gid?groupById(gid):null; kind=g?g.kind:kind;
+  var seed=wid?wire(wid):null, checked={};
+  if(g) g.wires.forEach(function(id){checked[id]=1;});
+  else if(seed){ checked[seed.id]=1; P().wires.forEach(function(w){ if(w!==seed && sameEnds(w,seed)) checked[w.id]=1; }); }
+  S._grp={kind:kind,id:g?g.id:null};
+  var cables=allParts().filter(function(p){return p.type==='cable';});
+  var rows=P().wires.map(function(w,i){
+    var A=comp(w.a.c), B=comp(w.b.c), along=seed&&w!==seed&&sameEnds(w,seed), other=kind==='twist'?twistOf(w):cableOf(w), busy=other&&(!g||other.id!==g.id);
+    return {w:w,i:i,html:'<tr><td><input type="checkbox" class="gpick" value="'+w.id+'" '+(checked[w.id]?'checked':'')+'></td><td class="mono">W'+(i+1)+'</td><td>'+esc(w.signal||'')+(along?' <span class="pill pill-teal">same route</span>':'')+(busy?' <span class="pill pill-yellow">in '+esc(groupLabel(other))+'</span>':'')+'</td><td class="mono">'+esc(pinRef(A,w.a.p))+'</td><td class="mono">'+esc(pinRef(B,w.b.p))+'</td><td><span class="wchip"><i style="background:'+hexOf(colBase(w.color))+'"></i>'+esc(w.gauge)+' AWG</span></td></tr>', top:checked[w.id]?0:along?1:2};
+  }).sort(function(a,b){ return a.top-b.top || a.i-b.i; });
+  function f(label,inner){ return '<div class="form-group"><label class="form-label">'+label+'</label>'+inner+'</div>'; }
+  var fields = kind==='twist'
+    ? '<div class="form-row cols-2">'+f('Name',  '<input class="form-input" id="gName" value="'+esc(g?g.name:nextGroupName('twist'))+'">')+f('Lay length (mm per full twist)','<input class="form-input mono" id="gLay" type="number" min="5" step="1" value="'+(g?num(g.lay,25):25)+'">')+'</div>'+
+      '<div class="note" style="margin-top:-4px">25 mm is about 40 twists per meter, a common choice for CAN. Tighter twists reject more noise and add a little more length; the wire list and BOM include it.</div>'
+    : '<div class="form-row cols-2">'+f('Name','<input class="form-input" id="gName" value="'+esc(g?g.name:nextGroupName('cable'))+'">')+f('Cable part','<select class="form-input" id="gPart">'+opt('','None yet',g?g.partPn:'')+cables.map(function(p){return opt(p.pn,p.pn+' ('+p.cores+'-core '+p.awg+' AWG'+(p.shield?', shielded':'')+')',g?g.partPn:'');}).join('')+'</select>')+'</div>'+
+      '<label class="checkbox-row" style="margin:0 0 6px"><input type="checkbox" id="gShield" '+((g?g.shield:false)?'checked':'')+'> Shielded (shown as a dashed outline; drain wire handled in your build notes)</label>';
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal wide" style="width:760px">'+
+    '<div class="mh"><div class="modal-title">'+(g?'Edit ':'New ')+(kind==='twist'?'twisted wires':'cable')+'</div></div>'+
+    '<div class="mb">'+fields+'<div class="form-label" style="margin:10px 0 6px">'+(kind==='twist'?'Wires to twist together':'Wires that are cores of this cable')+'</div>'+
+    '<div class="tbl-wrap cat-scroll" style="max-height:42vh"><table class="dt"><thead><tr><th style="width:30px"></th><th style="width:50px">#</th><th>Signal</th><th>From</th><th>To</th><th>Wire</th></tr></thead><tbody>'+rows.map(function(r){return r.html;}).join('')+'</tbody></table></div></div>'+
+    '<div class="modal-footer">'+(g?'<button class="btn btn-danger" style="margin-right:auto" onclick="deleteGroup(\''+g.id+'\')">Remove '+(kind==='twist'?'twist':'cable')+'</button>':'')+'<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveGroupDialog()">'+(g?'Save':'Create')+'</button></div></div></div>';
+}
+function saveGroupDialog(){
+  var st=S._grp, ids=Array.prototype.slice.call(document.querySelectorAll('.gpick:checked')).map(function(x){return x.value;});
+  if(st.kind==='twist' && ids.length<2){ toast('Pick at least two wires to twist together.','err'); return; }
+  if(st.kind==='cable' && ids.length<1){ toast('Pick the wires that run inside this cable.','err'); return; }
+  var part=st.kind==='cable'?partByPn($('gPart').value):null;
+  if(part && part.cores && ids.length>part.cores){ if(!confirm(part.pn+' has '+part.cores+' cores but you picked '+ids.length+' wires. Save anyway?')) return; }
+  pushUndo();
+  var g=st.id?groupById(st.id):null;
+  if(!g){ g={id:uid('g'),kind:st.kind}; groupsArr().push(g); }
+  g.name=$('gName').value.trim()||nextGroupName(st.kind); g.wires=ids;
+  if(st.kind==='twist') g.lay=Math.max(5,num($('gLay').value,25));
+  else { g.partPn=$('gPart').value; g.shield=$('gShield').checked || !!(part&&part.shield&&!st.id); }
+  // a wire can only be in one twist and one cable: take these wires out of other groups of the same kind
+  groupsArr().forEach(function(o){ if(o!==g && o.kind===g.kind) o.wires=o.wires.filter(function(id){return ids.indexOf(id)<0;}); });
+  P().groups=groupsArr().filter(function(o){ return o.wires.length>0; });
+  closeModal(); S.sel={kind:'group',id:g.id}; commit();
+  toast((st.kind==='twist'?'Twisted ':'Cable '+g.name+' holds ')+ids.length+' wire'+(ids.length===1?'':'s')+'.','ok');
+}
+function deleteGroup(id){ pushUndo(); P().groups=groupsArr().filter(function(g){return g.id!==id;}); closeModal(); if(S.sel&&S.sel.kind==='group') S.sel=null; commit(); }
+function inspGroup(g){
+  var ws=g.wires.map(wire).filter(Boolean), part=partByPn(g.partPn);
+  var h='<div class="ih"><div class="k">'+(g.kind==='twist'?'Twisted wires':'Cable')+'</div><h2>'+esc(groupLabel(g))+'</h2><div class="muted">'+ws.length+' wire'+(ws.length===1?'':'s')+'</div></div><div class="is">';
+  if(g.kind==='twist'){
+    var f=ws.length?twistFactor(ws[0]):1;
+    h+='<div class="f"><label>Lay length</label><div class="row2"><input class="inp mono" type="number" min="5" value="'+num(g.lay,25)+'" onchange="pushUndo();groupById(\''+g.id+'\').lay=Math.max(5,num(this.value,25));commit()"><span class="muted">mm</span></div></div>'+
+      '<p class="note" style="margin-top:0">About '+Math.round(1000/num(g.lay,25))+' twists per meter. Twisting adds '+((f-1)*100).toFixed(1)+'% to each wire; that is already in the lengths.</p>';
+  } else {
+    if(part) h+='<div class="dtiles"><div class="ctile img">'+partImgHTML(part,70)+'</div></div><div class="partcard"><div class="ppn">'+esc(part.pn)+'</div><div class="d">'+esc(part.desc)+'</div></div>';
+    else h+='<p class="muted" style="margin:0 0 8px">No cable part chosen yet.</p>';
+    h+='<div class="acts" style="margin-top:8px"><button class="btn btn-sm btn-teal" onclick="openCatalog(\'cable\')">'+(part?'Change cable':'Choose cable')+'</button></div>';
+    h+='<label class="checkbox-row"><input type="checkbox" '+(g.shield?'checked':'')+' onchange="pushUndo();groupById(\''+g.id+'\').shield=this.checked;commit()"> Shielded</label>';
+  }
+  h+='</div><div class="is"><div class="is-t">Wires</div>'+ws.map(function(w){ var A=comp(w.a.c), B=comp(w.b.c); return '<div class="grow"><span class="wchip"><i style="background:'+hexOf(colBase(w.color))+'"></i>'+esc(w.gauge)+'</span> <b>'+esc(w.signal||'')+'</b> <span class="muted">'+esc(pinRef(A,w.a.p))+' to '+esc(pinRef(B,w.b.p))+'</span></div>'; }).join('')+
+    '</div><div class="is"><div class="acts"><button class="btn btn-sm" onclick="openGroupDialog(null,null,\''+g.id+'\')">Change wires</button><button class="btn btn-sm btn-danger" onclick="deleteGroup(\''+g.id+'\')">Remove '+(g.kind==='twist'?'twist':'cable')+'</button></div><p class="note">Removing it keeps the wires; they just stop being twisted or bundled as a cable.</p></div>';
+  return h;
+}
+function groupChipsHTML(w){
+  var out=''; groupsOf(w).forEach(function(g){ out+=' <span class="gchip '+g.kind+'" title="'+(g.kind==='twist'?'Twisted with ':'Core of cable ')+esc(groupLabel(g))+'">'+esc(groupLabel(g))+'</span>'; });
+  return out;
+}
+function groupChecks(out){
+  groupsArr().forEach(function(g){
+    var ws=g.wires.map(wire).filter(Boolean);
+    if(g.kind==='twist' && ws.length<2) out.push({sev:'warn',msg:groupLabel(g)+' has only one wire left, so nothing is twisted.',sel:{kind:'group',id:g.id},fix:{label:'Edit',js:"openGroupDialog(null,null,'"+g.id+"')"}});
+    if(g.kind==='twist' && ws.length>=2 && !ws.every(function(w){return sameEnds(w,ws[0]);})) out.push({sev:'warn',msg:groupLabel(g)+': the wires do not run between the same two parts, so they untwist where their routes split.',sel:{kind:'group',id:g.id},fix:{label:'Show',js:"S.sel={kind:'group',id:'"+g.id+"'};setView('schematic')"}});
+    if(g.kind==='cable'){
+      var part=partByPn(g.partPn);
+      if(!g.partPn) out.push({sev:'info',msg:'Cable '+groupLabel(g)+' has no cable part number.',sel:{kind:'group',id:g.id},fix:{label:'Choose cable',js:"S.sel={kind:'group',id:'"+g.id+"'};openCatalog('cable')"}});
+      if(part && part.cores && ws.length>part.cores) out.push({sev:'error',msg:'Cable '+groupLabel(g)+' carries '+ws.length+' wires but '+part.pn+' has only '+part.cores+' cores.',sel:{kind:'group',id:g.id},fix:{label:'Edit',js:"openGroupDialog(null,null,'"+g.id+"')"}});
+      if(part && part.awg) ws.forEach(function(w){ if(String(w.gauge)!==String(part.awg)) out.push({sev:'warn',msg:'Wire '+(w.signal||'')+' is '+w.gauge+' AWG but cable '+groupLabel(g)+' has '+part.awg+' AWG cores.',sel:{kind:'wire',id:w.id},fix:{label:'Use '+part.awg+' AWG',js:"fixGauge('"+w.id+"','"+part.awg+"')"}}); });
+    }
+  });
 }
 
 // ===== boot =====
