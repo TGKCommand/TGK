@@ -586,7 +586,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.0.0';
+var HB_VERSION = '2.0.1';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -2702,7 +2702,16 @@ function enc(v){ return encodeURIComponent(v); }
 
 // ---------- harness rows
 var LIST_COLS='id,name,platform,kind,status,customer,tags,rev,stats,created_by,updated_by,created_at,updated_at';
-function projStats(p){
+// Lengths, nets and settings are computed against the OPEN harness (P()). Anything that needs
+// them for a harness that is not open - stats for a new, imported, uploaded or demo harness -
+// must run inside withProject, or it reads the wrong harness (or crashes when none is open).
+function withProject(p,fn){
+  var save=S.cur; if(save===p) return fn();
+  S.cur=p; touch();
+  try{ return fn(); } finally { S.cur=save; touch(); }
+}
+function projStats(p){ return withProject(p,function(){ return projStatsOpen(p); }); }
+function projStatsOpen(p){
   var tot=0, unr=0; p.wires.forEach(function(w){ var l=wireLen(w); if(l==null) unr++; else tot+=l; });
   return {wires:p.wires.length,connectors:p.comps.filter(function(c){return c.type==='connector';}).length,parts:p.comps.length,length_mm:Math.round(tot),unrouted:unr};
 }
