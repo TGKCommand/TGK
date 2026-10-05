@@ -576,6 +576,35 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 .gchip.twist{color:var(--teal);border-color:rgba(13,148,136,.4);background:#f0fdfa}
 .gchip.cable{color:#374151;border-color:#9ca3af;background:#f3f4f6}
 .grow{font-size:var(--t-sm);padding:4px 0;border-bottom:1px solid var(--bg3)}
+
+/* build mode: large tap targets for a tablet at the bench */
+.bld-top{display:flex;align-items:center;gap:12px;margin:4px 0 12px}
+.bld-bar{flex:1;height:10px;border-radius:999px;background:var(--bg4);overflow:hidden;box-shadow:inset 0 0 0 1px var(--border)}
+.bld-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),#14b8a6);border-radius:999px;transition:width .25s}
+.bld-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.bld-tab{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);font-family:var(--font);font-size:var(--t-md);font-weight:600;color:var(--text2);cursor:pointer}
+.bld-tab span{font-family:var(--mono);font-size:var(--t-xs);color:var(--text3)}
+.bld-tab.on{border-color:var(--teal);color:var(--teal);background:var(--teal-dim)}
+.bld-tab.done span{color:var(--green)}
+.bld-hint{display:flex;align-items:center;gap:8px;font-size:var(--t-sm);color:var(--text3);margin-bottom:8px}
+.bld-list{display:flex;flex-direction:column;gap:6px}
+.bld-group{font-family:var(--mono);font-size:var(--t-xs);font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:10px 4px 2px}
+.bld-item{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:9px 14px;border:1px solid var(--border2);border-radius:var(--r-md);background:var(--bg);cursor:pointer;text-align:left;font-family:var(--font);transition:background .1s,border-color .1s}
+.bld-item:hover{border-color:var(--teal)}
+.bld-item.on{background:#f0fdf4;border-color:rgba(22,163,74,.35)}
+.bld-item.on .bld-txt b{color:var(--text3);text-decoration:line-through}
+.bld-box{width:28px;height:28px;flex:none;border-radius:7px;border:2px solid var(--border2);display:grid;place-items:center;background:#fff}
+.bld-item.on .bld-box{background:var(--green);border-color:var(--green)}
+.bld-wire{width:6px;align-self:stretch;border-radius:3px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.bld-txt{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.bld-txt b{font-size:var(--t-lg);color:var(--text)}
+.bld-txt span{font-size:var(--t-sm);color:var(--text2)}
+.bld-meta{text-align:right;font-family:var(--mono);font-size:var(--t-md);font-weight:600;color:var(--text);white-space:nowrap;display:flex;flex-direction:column;gap:2px}
+.bld-meta small{font-family:var(--font);font-size:var(--t-xs);font-weight:500;color:var(--green)}
+.lbl-prev{padding:14px;background:var(--bg2);border-radius:var(--r);display:flex;justify-content:center;margin-bottom:8px}
+.lbl{display:flex;flex-direction:column;justify-content:center;gap:.15em;padding:0 1.2mm;box-sizing:border-box;background:#fff;border:1px dashed #9ca3af;font-family:var(--mono);line-height:1.15;overflow:hidden;white-space:nowrap;color:#000}
+.lbl b{font-weight:700}
+.lbl span{font-size:.8em}
 #print{display:none}
 @media print{
   @page{size:landscape;margin:10mm}
@@ -642,7 +671,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.2.0';
+var HB_VERSION = '2.3.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -885,7 +914,7 @@ var ICON = {
   splice:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8h4M11 8h4" stroke-linecap="round"/><circle cx="8" cy="8" r="2.5"/></svg>',
   bulk:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="5" height="10" rx="1.5"/><rect x="9" y="3" width="5" height="10" rx="1.5"/></svg>'
 };
-var TABS = [['schematic','Schematic'],['layout','Layout'],['wires','Wire list'],['bom','BOM'],['checks','Checks']];
+var TABS = [['schematic','Schematic'],['layout','Layout'],['wires','Wire list'],['bom','BOM'],['checks','Checks'],['build','Build']];
 
 function render(){
   if(!S.cur && S.view!=='browse') S.view='browse';
@@ -928,6 +957,7 @@ function renderNav(){
     var badge='', alert='';
     if(t[0]==='checks' && (e||w)){ badge='<span class="nav-badge">'+(e||w)+'</span>'; if(e) alert=' alert-nav'; }
     if(t[0]==='wires') badge='<span class="nav-badge">'+P().wires.length+'</span>';
+    if(t[0]==='build' && S.buildsFor===P().id && curBuild()) badge='<span class="nav-badge">'+buildProgress(curBuild()).pct+'%</span>';
     if(t[0]==='schematic') badge='<span class="nav-badge">'+P().comps.length+'</span>';
     return '<button class="nav-item'+(S.view===t[0]?' active':'')+alert+'" onclick="setView(\''+t[0]+'\')"><span class="nav-dot"></span>'+t[1]+badge+'</button>';
   }).join('');
@@ -944,6 +974,7 @@ function renderView(){
   else if(S.view==='layout') el.innerHTML=layoutHTML();
   else if(S.view==='wires') el.innerHTML=wiresHTML();
   else if(S.view==='bom') el.innerHTML=bomHTML();
+  else if(S.view==='build') el.innerHTML=buildHTML();
   else el.innerHTML=checksHTML();
   if(bn){ var d=document.createElement('div'); d.className='banners'; d.innerHTML=bn; el.insertBefore(d,el.firstChild); }
 }
@@ -1823,7 +1854,7 @@ function buildExample(){
   G(nlt,K(s1),0); G(nrt,K(s2),0); G(nc,K(gC),150,'DR-25-1/4'); G(nc,K(be),150,'DR-25-3/8');
   var nb1=N(500,720), ne=N(240,720), nd=N(500,920), nbat=N(500,1100);
   G(K(bc),nb1,500,'DR-25-3/8'); G(nb1,ne,600,'DR-25-1/4'); G(ne,K(ecu2),100); G(ne,K(ecu1),100);
-  G(nb1,nd,400,'DR-25-3/8'); G(nd,K(dash),800,'DR-25-1/4'); G(nd,nbat,1000,'DR-25-3/8'); G(nbat,K(s3),0); G(nbat,K(s4),0); G(nbat,K(bp),20); G(nbat,K(bn),20);
+  G(nb1,nd,400,'DR-25-3/8'); G(nd,K(dash),800,'DR-25-1/4'); G(nd,nbat,1000,'DR-25-3/8'); G(nbat,K(s3),0); G(nbat,K(s4),0); G(nbat,K(bp),150); G(nbat,K(bn),150);
   // connector cards: injectors staggered above the coils, bulkheads to the right, cabin side to the left
   function cardH(c){ c.tdx=0; c.tdy=0; return cardRect(c).h; } function cardW(c){ return cardRect(c).w; }
   var hc=cardH(coil1);
@@ -2175,6 +2206,11 @@ function runChecks(){
   if(est.length && p.wires.length) out.push({sev:'warn',msg:est.length+' bundle length'+(est.length===1?' is an estimate':'s are estimates')+' from the drawing. Measure on the car and type the real length.',sel:{kind:'seg',id:est[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(est[0].id)+')'}});
   var connected={}; p.segs.forEach(function(s){ connected[s.a]=1; connected[s.b]=1; });
   p.nodes.forEach(function(n){ if(!connected['n:'+n.id]) out.push({sev:'info',msg:'A branch point is not attached to any bundle.',sel:{kind:'node',id:n.id},fix:{label:'Delete it',js:'fixDeleteNode('+q(n.id)+')',safe:true}}); });
+  p.wires.forEach(function(w){
+    var L=wireLen(w); if(L==null) return;
+    var A=comp(w.a.c), B=comp(w.b.c), need=12*2+20;
+    if(L<need) out.push({sev:'warn',msg:'Wire '+pinRef(A,w.a.p)+' to '+pinRef(B,w.b.p)+' is only '+fmtLen(L)+' long, too short to strip and terminate both ends. Check the bundle lengths, or set an extra length per end in harness settings.',sel:{kind:'wire',id:w.id},fix:{label:'Show',js:"fixShowWire('"+w.id+"')"}});
+  });
   groupChecks(out);
   var rank={error:0,warn:1,info:2}; out.sort(function(a,b){ return rank[a.sev]-rank[b.sev]; });
   return out;
@@ -2663,7 +2699,7 @@ async function openHarness(id){
     var rows=await api('GET','harness_projects?select=id,data,updated_at&id=eq.'+enc(id));
     if(!rows||!rows.length){ toast('That harness no longer exists. Someone may have deleted it.','err'); await loadList(); return; }
     var p=rows[0].data; normalizeProject(p,id);
-    S.cur=p; S.curVer=rows[0].updated_at; S.dirty=false; S.conflict=null;
+    S.cur=p; S.curVer=rows[0].updated_at; S.dirty=false; S.conflict=null; S.builds=[]; S.buildsFor=null; S.buildId=null;
     S.sel=null; S.hiNet=null; S.undo=[]; S.redo=[]; S.segStart=null; touch();
     if(S.view==='browse') S.view='schematic';
     pushRecent(id);
@@ -2943,6 +2979,7 @@ var HB_SQL=[
 "drop policy if exists hb_templates_auth on public.harness_templates;",
 "create policy hb_templates_auth on public.harness_templates for all to authenticated using (true) with check (true);"
 ].join('\n');
+setTimeout(function(){ if(typeof HB_BUILD_SQL!=='undefined') HB_SQL=HB_SQL+'\n-- bench builds\n'+HB_BUILD_SQL; },0);
 
 // ---------- new harness dialog
 function openNewHarness(){
@@ -3595,6 +3632,273 @@ function groupChecks(out){
       if(part && part.awg) ws.forEach(function(w){ if(String(w.gauge)!==String(part.awg)) out.push({sev:'warn',msg:'Wire '+(w.signal||'')+' is '+w.gauge+' AWG but cable '+groupLabel(g)+' has '+part.awg+' AWG cores.',sel:{kind:'wire',id:w.id},fix:{label:'Use '+part.awg+' AWG',js:"fixGauge('"+w.id+"','"+part.awg+"')"}}); });
     }
   });
+}
+
+
+// =====================================================================
+// BUILD MODE: a bench checklist for one physical harness, plus wire labels.
+// Each build is its own row in harness_builds, so ticking boxes at the bench never
+// collides with someone editing the design. Ticks merge by time, so two people can
+// work the same build from two tablets.
+// =====================================================================
+var STRIP_MM={DT:6.4,DTM:4.0,DTP:8.0}; // default strip lengths by contact series; verify on the contact datasheet
+S.builds=[]; S.buildId=null; S.buildVer=null; S.buildsFor=null; S.buildsMissing=false; S.buildSec='cut';
+function curBuild(){ var a=S.builds; for(var i=0;i<a.length;i++) if(a[i].id===S.buildId) return a[i]; return null; }
+async function loadBuilds(force){
+  if(!S.cur) return; if(!force && S.buildsFor===S.cur.id) return;
+  var prev=S.dbState;
+  try{
+    var rows=await api('GET','harness_builds?select=id,harness_id,rev,label,status,data,created_by,updated_by,created_at,updated_at&harness_id=eq.'+enc(S.cur.id)+'&order=created_at.desc');
+    S.builds=rows||[]; S.buildsFor=S.cur.id; S.buildsMissing=false;
+    if(!S.builds.some(function(b){return b.id===S.buildId;})) S.buildId=(S.builds.filter(function(b){return b.status!=='Complete';})[0]||S.builds[0]||{}).id||null;
+  }catch(e){
+    S.dbState=prev;
+    if(e.code==='missing') S.buildsMissing=true; else logErr('Could not load builds',e);
+  }
+  if(S.view==='build') renderView(); renderNav();
+}
+
+// ---------- what has to happen to build this harness
+function stripFor(part,kind){
+  if(part && part.strip) return part.strip;
+  if(part && STRIP_MM[part.series]) return STRIP_MM[part.series];
+  return 6;
+}
+function endInfo(w,side){
+  var e=side==='a'?w.a:w.b, c=comp(e.c), part=c?partByPn(c.partPn):null, txt='', strip=null;
+  if(!c) return {txt:'?',strip:null,c:null};
+  if(c.type==='connector'){ var ct=chooseContact(part,w.gauge); txt=ct?'Crimp contact '+ct.pn:'Crimp contact (no part chosen)'; strip=stripFor(part); }
+  else if(c.type==='terminal'){ txt=c.kind==='loose'?'Leave as a loose end':'Crimp '+(c.partPn||TERM_KINDS[c.kind]||'terminal'); strip=c.kind==='loose'?null:stripFor(null); }
+  else { txt='Into splice '+c.name+(c.partPn?' ('+c.partPn+')':''); strip=stripFor(null); }
+  return {txt:txt,strip:strip,c:c,ref:pinRef(c,e.p)};
+}
+function wireNo(w){ return 'W'+(P().wires.indexOf(w)+1); }
+function buildPlan(){
+  var p=P(), secs=[], u=settings().units;
+  function L(mm){ return mm==null?'no route':fmtLen(mm,'mm')+' / '+fmtLen(mm,'in'); }
+  // 1 cut and label (cables are cut once, their cores are not cut separately)
+  var cut=[];
+  groupsArr().filter(function(g){return g.kind==='cable';}).forEach(function(g){
+    var Lm=0; g.wires.forEach(function(id){ var w=wire(id), l=w&&wireLen(w); if(l>Lm) Lm=l; });
+    cut.push({key:'cut:'+g.id,title:'Cut cable '+groupLabel(g),sub:(g.partPn||'cable part not chosen')+', cores: '+g.wires.map(function(id){var w=wire(id);return w?wireNo(w)+' '+(w.signal||''):'';}).join(', '),meta:L(Lm),sort:'0'});
+  });
+  p.wires.filter(function(w){return !cableOf(w);}).slice().sort(function(a,b){ return (+a.gauge)-(+b.gauge) || String(a.color).localeCompare(b.color) || (wireLen(b)||0)-(wireLen(a)||0); }).forEach(function(w){
+    var tw=twistOf(w);
+    cut.push({key:'cut:'+w.id,title:'Cut and label '+wireNo(w)+(w.signal?'  '+w.signal:''),sub:w.gauge+' AWG '+w.color+', '+(w.wtype||'')+(tw?'. Twisted in '+groupLabel(tw):''),meta:L(wireLen(w)),color:w.color});
+  });
+  secs.push({id:'cut',name:'Cut and label',items:cut,hint:'Sorted by gauge and color so you can cut from one spool at a time. Lengths already include the extra per end and any twist.'});
+  // 2 twist
+  var tws=groupsArr().filter(function(g){return g.kind==='twist';}).map(function(g){
+    return {key:'twist:'+g.id,title:'Twist '+groupLabel(g),sub:g.wires.map(function(id){var w=wire(id);return w?wireNo(w)+' '+(w.signal||''):'';}).join(' + '),meta:num(g.lay,25)+' mm per twist, about '+Math.round(1000/num(g.lay,25))+' per meter'};
+  });
+  if(tws.length) secs.push({id:'twist',name:'Twist',items:tws,hint:'Twist before terminating. Keep the lay even, and leave the last 50 mm near each connector untwisted.'});
+  // 3 strip and terminate every wire end
+  var term=[];
+  p.wires.forEach(function(w){
+    ['a','b'].forEach(function(sd){
+      var ei=endInfo(w,sd);
+      term.push({key:'end:'+w.id+':'+sd,title:wireNo(w)+' at '+(ei.ref||'?'),sub:ei.txt,meta:ei.strip?'strip '+ei.strip+' mm':'',color:w.color});
+    });
+  });
+  secs.push({id:'term',name:'Strip and terminate',items:term,hint:'Strip lengths are typical values for each contact series. Check them against the contact datasheet the first time.'});
+  // 4 splices
+  var spl=p.comps.filter(function(c){return c.type==='splice';}).map(function(c){
+    var ws=wiresAt(c.id,0);
+    return {key:'spl:'+c.id,title:'Make splice '+c.name,sub:'Join '+ws.map(function(w){return wireNo(w)+' '+(w.signal||'');}).join(', '),meta:c.partPn||''};
+  });
+  if(spl.length) secs.push({id:'spl',name:'Splices',items:spl,hint:'Slide any heat shrink on before joining.'});
+  // 5 populate connectors
+  var pop=[];
+  p.comps.filter(function(c){return c.type==='connector';}).forEach(function(c){
+    var part=partByPn(c.partPn), empty=0;
+    for(var i=0;i<c.pins.length;i++){
+      var ws=wiresAt(c.id,i);
+      if(!ws.length){ empty++; continue; }
+      ws.forEach(function(w){ var sd=(w.a.c===c.id&&w.a.p===i)?'a':'b', o=otherEnd(w,c.id,i);
+        pop.push({key:'ins:'+w.id+':'+sd,title:c.name+' cavity '+desig(c,i),sub:'Insert '+wireNo(w)+' '+(w.signal||'')+' (to '+pinRef(comp(o.c),o.p)+')',meta:w.gauge+' AWG',color:w.color,group:c.name}); });
+    }
+    if(empty && part && part.plug) pop.push({key:'plug:'+c.id,title:c.name+': seal '+empty+' empty cavit'+(empty===1?'y':'ies'),sub:'Sealing plug '+part.plug,meta:'',group:c.name});
+    if(part && part.lock) pop.push({key:'lock:'+c.id,title:c.name+': install wedgelock',sub:part.lock+'. Check every contact clicks in before locking.',meta:'',group:c.name});
+  });
+  secs.push({id:'pop',name:'Populate connectors',items:pop,hint:'Insert each contact until it clicks, then tug it gently to make sure it is locked.'});
+  // 6 coverings
+  var cov=p.segs.filter(function(s){return s.covering;}).map(function(s){
+    function nm(k){ if(k.indexOf('c:')===0){ var c=comp(k.slice(2)); return c?c.name:'?'; } return 'branch'; }
+    return {key:'cov:'+s.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:s.covering,meta:fmtLen(num(s.len,0),'mm')+(s.est?' (estimated)':'')};
+  });
+  if(cov.length) secs.push({id:'cov',name:'Coverings',items:cov,hint:'Shrink tubing goes on before the second end is terminated.'});
+  // 7 test
+  var test=p.wires.map(function(w){ var A=comp(w.a.c), B=comp(w.b.c); return {key:'test:'+w.id,title:'Continuity '+wireNo(w)+(w.signal?'  '+w.signal:''),sub:pinRef(A,w.a.p)+' to '+pinRef(B,w.b.p),meta:'',color:w.color}; });
+  secs.push({id:'test',name:'Test',items:test,hint:'Beep each circuit end to end, then check nothing is shorted to its neighbours.'});
+  return secs;
+}
+function itemState(b,key){ var it=b&&b.data&&b.data.items&&b.data.items[key]; return it&&it.v?it:null; }
+function buildProgress(b,secs){
+  secs=secs||buildPlan(); var tot=0, done=0;
+  secs.forEach(function(s){ s.items.forEach(function(it){ tot++; if(itemState(b,it.key)) done++; }); });
+  return {tot:tot,done:done,pct:tot?Math.round(done*100/tot):0};
+}
+
+// ---------- view
+function buildHTML(){
+  var h='<div class="doc-in build"><div class="doc-h"><h2>Build</h2><span class="muted">A bench checklist for one harness. Ticks save as you go.</span><div class="spacer"></div>'+
+    '<button class="btn btn-sm" onclick="openLabels()">Print wire labels</button>'+(curBuild()?'<button class="btn btn-sm" onclick="printTraveler()">Print checklist</button>':'')+'<button class="btn btn-sm btn-primary" onclick="openStartBuild()">Start a build</button></div>';
+  if(S.buildsMissing) return h+'<div class="panel"><div class="panel-title">One more table</div><p style="color:var(--text2);margin-bottom:10px">Builds are saved in their own table. Run this once in the Supabase SQL editor, then click Check again.</p><textarea class="form-input" readonly rows="9" style="font-family:var(--mono);font-size:var(--t-sm)" onclick="this.select()">'+esc(HB_BUILD_SQL)+'</textarea><div class="acts" style="margin-top:10px"><button class="btn btn-sm" onclick="navigator.clipboard.writeText(HB_BUILD_SQL).then(function(){toast(\'SQL copied\',\'ok\')})">Copy SQL</button><button class="btn btn-sm btn-primary" onclick="loadBuilds(true)">Check again</button></div></div></div>';
+  if(S.buildsFor!==S.cur.id){ loadBuilds(); return h+'<div class="panel">Loading builds...</div></div>'; }
+  var errs=runChecks().filter(function(c){return c.sev==='error';}).length;
+  if(errs) h+='<div class="banner err"><b>'+errs+' error'+(errs===1?'':'s')+' in this design.</b> Some steps below will be wrong until they are fixed.<div class="spacer"></div><button class="btn btn-sm" onclick="setView(\'checks\')">Open checks</button></div>';
+  else if(S.cur.status!=='Released') h+='<div class="banner warn"><b>This design is '+esc(S.cur.status||'Draft')+', not Released.</b> Lengths and pins may still change. Release it first for a production build.</div>';
+  if(!S.builds.length) return h+'<div class="panel" style="text-align:center;padding:28px"><h3 style="margin-bottom:6px">No builds yet</h3><p class="muted" style="margin-bottom:14px">Start a build for each harness you make, named after the order or car it is for.</p><button class="btn btn-primary" onclick="openStartBuild()">Start a build</button></div></div>';
+  var b=curBuild(), secs=buildPlan(), pr=buildProgress(b,secs);
+  h+='<div class="bld-top"><select class="sel" style="width:auto;min-width:260px" onchange="S.buildId=this.value;renderView()">'+S.builds.map(function(x){ var q=buildProgress(x,secs); return opt(x.id,(x.label||'Build')+'  ('+q.pct+'%'+(x.status==='Complete'?', complete':'')+')',S.buildId); }).join('')+'</select>'+
+    '<div class="bld-bar"><i style="width:'+pr.pct+'%"></i></div><b class="mono">'+pr.done+' / '+pr.tot+'</b>'+(b.status==='Complete'?'<span class="pill pill-green">Complete</span>':'')+'</div>';
+  if(b.data && b.data.design && b.data.design.updated && S.curVer && b.data.design.updated!==S.curVer) h+='<div class="banner warn">The design was changed after this build started. The steps follow the current design; already ticked steps stay ticked.</div>';
+  h+='<div class="bld-tabs">'+secs.map(function(s){ var d=s.items.filter(function(it){return itemState(b,it.key);}).length; return '<button class="bld-tab'+(S.buildSec===s.id?' on':'')+(d===s.items.length&&s.items.length?' done':'')+'" onclick="S.buildSec=\''+s.id+'\';renderView()">'+esc(s.name)+'<span>'+d+'/'+s.items.length+'</span></button>'; }).join('')+'</div>';
+  var sec=secs.filter(function(s){return s.id===S.buildSec;})[0]||secs[0];
+  h+='<div class="bld-hint">'+esc(sec.hint||'')+'<div class="spacer"></div><button class="btn btn-sm" onclick="tickSection(\''+sec.id+'\',true)">Tick all</button><button class="btn btn-sm" onclick="tickSection(\''+sec.id+'\',false)">Clear all</button></div><div class="bld-list">';
+  var lastGroup=null;
+  sec.items.forEach(function(it){
+    if(it.group && it.group!==lastGroup){ lastGroup=it.group; h+='<div class="bld-group">'+esc(it.group)+'</div>'; }
+    var st=itemState(b,it.key);
+    h+='<button class="bld-item'+(st?' on':'')+'" onclick="toggleBuildItem(\''+it.key+'\')"><span class="bld-box">'+(st?'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>':'')+'</span>'+
+      (it.color?'<span class="bld-wire" style="background:'+hexOf(colBase(it.color))+'"></span>':'')+
+      '<span class="bld-txt"><b>'+esc(it.title)+'</b><span>'+esc(it.sub||'')+'</span></span><span class="bld-meta">'+esc(it.meta||'')+(st?'<small>'+esc((st.by||'').split('@')[0])+', '+new Date(st.at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+'</small>':'')+'</span></button>';
+  });
+  return h+'</div></div>';
+}
+var _bsT=null;
+function toggleBuildItem(key){
+  var b=curBuild(); if(!b) return;
+  b.data=b.data||{}; b.data.items=b.data.items||{};
+  var cur=itemState(b,key);
+  b.data.items[key]={v:!cur,at:Date.now(),by:userEmail()};
+  S.buildDirty=true; renderView(); renderNav();
+  clearTimeout(_bsT); _bsT=setTimeout(saveBuild,600);
+}
+function tickSection(id,on){
+  var b=curBuild(); if(!b) return; var sec=buildPlan().filter(function(s){return s.id===id;})[0]; if(!sec) return;
+  if(on && !confirm('Tick every step in "'+sec.name+'"? Only do this if they really are done.')) return;
+  b.data=b.data||{}; b.data.items=b.data.items||{}; var now=Date.now();
+  sec.items.forEach(function(it){ b.data.items[it.key]={v:on,at:now,by:userEmail()}; });
+  S.buildDirty=true; renderView(); renderNav(); clearTimeout(_bsT); _bsT=setTimeout(saveBuild,300);
+}
+function mergeItems(server,mine){
+  var out={}, k; server=server||{}; mine=mine||{};
+  for(k in server) out[k]=server[k];
+  for(k in mine) if(!out[k] || (mine[k].at||0)>(out[k].at||0)) out[k]=mine[k];
+  return out;
+}
+async function saveBuild(){
+  var b=curBuild(); if(!b || !S.buildDirty) return;
+  setSync('busy','Saving build...');
+  try{
+    for(var attempt=0;attempt<4;attempt++){
+      var rows=await api('GET','harness_builds?select=id,data,updated_at,status&id=eq.'+enc(b.id));
+      if(!rows.length) throw new Error('This build was deleted.');
+      var srv=rows[0], data=Object.assign({},srv.data||{},{items:mergeItems((srv.data||{}).items,(b.data||{}).items)});
+      var tmp={data:data}, pr=buildProgress(tmp), status=pr.tot&&pr.done===pr.tot?'Complete':'In progress';
+      var out=await api('PATCH','harness_builds?id=eq.'+enc(b.id)+'&updated_at=eq.'+enc(srv.updated_at)+'&select=id,data,updated_at,status,label,created_by,created_at,updated_by,rev,harness_id',{data:data,status:status,updated_by:userEmail(),updated_at:new Date().toISOString()},'return=representation');
+      if(out && out.length){
+        var i=S.builds.findIndex(function(x){return x.id===b.id;}); if(i>=0) S.builds[i]=out[0];
+        S.buildDirty=false; setSync('ok','Build saved');
+        if(status==='Complete' && srv.status!=='Complete') toast('Build complete. Every step is ticked.','ok');
+        if(S.view==='build') renderView(); renderNav(); return;
+      }
+      // someone else saved in between: merge again with their newer copy
+    }
+    throw new Error('Could not save after several tries; another tablet keeps saving at the same moment.');
+  }catch(e){ setSync('err','Build not saved'); logErr('Build progress did not save. Your ticks are kept here and will retry',e); clearTimeout(_bsT); _bsT=setTimeout(saveBuild,10000); }
+}
+function openStartBuild(){
+  var n=S.builds.length+1;
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:480px">'+
+    '<div class="modal-title">Start a build</div>'+
+    '<div class="form-row"><div class="form-group"><label class="form-label">Build name</label><input class="form-input" id="bLabel" value="'+esc((S.cur.customer?S.cur.customer+' ':'')+'#'+n)+'" placeholder="e.g. Order 10452, or VIN / car"></div></div>'+
+    '<div class="note">Builds use rev '+esc(S.cur.rev||'A')+' of this harness. Each one keeps its own checklist, so you can build several at once.</div>'+
+    '<div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="bGo" onclick="startBuild()">Start build</button></div></div></div>';
+  var e=$('bLabel'); if(e){ e.focus(); e.select(); }
+}
+async function startBuild(){
+  var label=$('bLabel').value.trim()||('Build '+(S.builds.length+1)), btn=$('bGo'); btn.disabled=true;
+  var now=new Date().toISOString();
+  var row={id:uid('b'),harness_id:S.cur.id,rev:S.cur.rev||'A',label:label,status:'In progress',data:{items:{},design:{rev:S.cur.rev||'A',updated:S.curVer,name:S.cur.name}},created_by:userEmail(),updated_by:userEmail(),created_at:now,updated_at:now};
+  try{
+    var out=await api('POST','harness_builds?select=id,harness_id,rev,label,status,data,created_by,updated_by,created_at,updated_at',row,'return=representation');
+    S.builds.unshift(out[0]); S.buildId=out[0].id; S.buildSec='cut'; closeModal(); S.view='build'; render();
+  }catch(e){ btn.disabled=false; if(e.code==='missing'){ S.buildsMissing=true; closeModal(); renderView(); } else logErr('Could not start the build',e); }
+}
+var HB_BUILD_SQL=[
+"create table if not exists public.harness_builds (",
+"  id text primary key,",
+"  harness_id text not null,",
+"  rev text not null default 'A',",
+"  label text not null default '',",
+"  status text not null default 'In progress',",
+"  data jsonb not null default '{}',",
+"  created_by text, updated_by text,",
+"  created_at timestamptz not null default now(),",
+"  updated_at timestamptz not null default now()",
+");",
+"create index if not exists harness_builds_harness_idx on public.harness_builds (harness_id);",
+"alter table public.harness_builds enable row level security;",
+"drop policy if exists hb_builds_auth on public.harness_builds;",
+"create policy hb_builds_auth on public.harness_builds for all to authenticated using (true) with check (true);"
+].join('\n');
+
+// ---------- paper traveler
+function printTraveler(){
+  var b=curBuild(); if(!b) return; var secs=buildPlan(), pr=buildProgress(b,secs);
+  var h='<div class="tb"><div><h1>'+esc(S.cur.name)+'</h1><div>Build: '+esc(b.label||'')+'</div></div><div style="text-align:right">Rev '+esc(b.rev||S.cur.rev||'A')+'<br>'+new Date().toLocaleDateString()+'<br>'+pr.done+' of '+pr.tot+' steps done</div></div>';
+  secs.forEach(function(s){
+    h+='<h2>'+esc(s.name)+'</h2><table><tr><th style="width:24px"></th><th>Step</th><th>Details</th><th>Value</th><th style="width:90px">Initials</th></tr>';
+    s.items.forEach(function(it){ var st=itemState(b,it.key); h+='<tr><td style="font-size:14px">'+(st?'&#9745;':'&#9744;')+'</td><td>'+esc(it.title)+'</td><td>'+esc(it.sub||'')+'</td><td>'+esc(it.meta||'')+'</td><td>'+(st?esc((st.by||'').split('@')[0]):'')+'</td></tr>'; });
+    h+='</table>';
+  });
+  $('print').innerHTML=h; setTimeout(function(){ window.print(); },50);
+}
+
+// ---------- wire labels
+function labelList(){
+  var out=[];
+  P().wires.forEach(function(w){
+    var A=comp(w.a.c), B=comp(w.b.c), ra=pinRef(A,w.a.p), rb=pinRef(B,w.b.p), no=wireNo(w);
+    out.push({wire:no,signal:w.signal||'',end:'A',here:ra,there:rb,gauge:w.gauge,color:w.color,len:wireLen(w)});
+    out.push({wire:no,signal:w.signal||'',end:'B',here:rb,there:ra,gauge:w.gauge,color:w.color,len:wireLen(w)});
+  });
+  return out;
+}
+function openLabels(){
+  var s=settings(); if(!s.label) s.label={w:38,h:13,both:true};
+  var L=s.label, n=labelList().length/(L.both?1:2);
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:560px">'+
+    '<div class="modal-title">Wire labels</div>'+
+    '<div class="form-row cols-2"><div class="form-group"><label class="form-label">Label width (mm)</label><input class="form-input mono" id="lW" type="number" min="15" value="'+L.w+'"></div><div class="form-group"><label class="form-label">Label height (mm)</label><input class="form-input mono" id="lH" type="number" min="8" value="'+L.h+'"></div></div>'+
+    '<label class="checkbox-row" style="margin:0 0 10px"><input type="checkbox" id="lBoth" '+(L.both?'checked':'')+'> One label at each end of every wire (each says where the other end goes)</label>'+
+    '<div class="form-label" style="margin-bottom:6px">Preview</div><div class="lbl-prev">'+labelHTML(labelList()[0]||{wire:'W1',signal:'SIGNAL',here:'A.1',there:'B.2'},L.w,L.h,2.6)+'</div>'+
+    '<div class="note">Prints one label per page at this size, which suits roll label and heat-shrink printers (pick the label size in the print dialog). For Brady or BarTender, download the CSV and import it instead.</div>'+
+    '<div class="modal-footer"><button class="btn" style="margin-right:auto" onclick="labelsCSV()">Download CSV</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="printLabels()">Print labels</button></div></div></div>';
+}
+function labelHTML(l,wmm,hmm,scale){
+  scale=scale||1;
+  // size the text so the longer line fits the label width (monospace: about 0.6 em per character)
+  var l1=(l.wire+' '+l.signal).length, l2=(l.here+' > '+l.there).length*0.8, need=Math.max(l1,l2,4)*0.61;
+  var fs=Math.min(hmm*0.36,(wmm-2.6)/need);
+  return '<div class="lbl" style="width:'+(wmm*scale)+'mm;height:'+(hmm*scale)+'mm;font-size:'+(fs*scale).toFixed(2)+'mm"><b>'+esc(l.wire)+' '+esc(l.signal)+'</b><span>'+esc(l.here)+' &gt; '+esc(l.there)+'</span></div>';
+}
+function readLabelSettings(){ var s=settings(); s.label={w:Math.max(15,num($('lW').value,38)),h:Math.max(8,num($('lH').value,13)),both:$('lBoth').checked}; return s.label; }
+function printLabels(){
+  var L=readLabelSettings(); var list=labelList().filter(function(l){ return L.both||l.end==='A'; });
+  var st=document.createElement('style'); st.id='lblPage';
+  st.textContent='@media print{@page{size:'+L.w+'mm '+L.h+'mm;margin:0}#print .lbl{page-break-after:always;border:0}#print .tb,#print h2{display:none}}';
+  document.head.appendChild(st);
+  $('print').innerHTML=list.map(function(l){ return labelHTML(l,L.w,L.h,1); }).join('');
+  closeModal(); scheduleSave();
+  setTimeout(function(){ window.print(); setTimeout(function(){ var x=$('lblPage'); if(x) x.remove(); },500); },60);
+}
+function labelsCSV(){
+  var L=readLabelSettings(), rows=[['Label line 1','Label line 2','Wire','Signal','End','This end','Other end','Gauge','Color','Length (mm)'].join(',')];
+  labelList().filter(function(l){ return L.both||l.end==='A'; }).forEach(function(l){ rows.push([l.wire+' '+l.signal,l.here+' > '+l.there,l.wire,l.signal,l.end,l.here,l.there,l.gauge,l.color,l.len==null?'':Math.round(l.len)].map(csvCell).join(',')); });
+  download(fileBase()+'_labels.csv',rows.join('\n'),'text/csv');
 }
 
 // ===== boot =====
