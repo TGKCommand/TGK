@@ -605,6 +605,8 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 .lbl{display:flex;flex-direction:column;justify-content:center;gap:.15em;padding:0 1.2mm;box-sizing:border-box;background:#fff;border:1px dashed #9ca3af;font-family:var(--mono);line-height:1.15;overflow:hidden;white-space:nowrap;color:#000}
 .lbl b{font-weight:700}
 .lbl span{font-size:.8em}
+.etable td{font-size:var(--t-sm)}
+.etable td.dk{width:104px}
 #print{display:none}
 @media print{
   @page{size:landscape;margin:10mm}
@@ -671,7 +673,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.3.0';
+var HB_VERSION = '2.4.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -1387,8 +1389,9 @@ function addWire(a,b){
   var existing=P().wires.filter(function(w){ var n=netOfWire(w); return n===netOfPin(a.c,a.p)||n===netOfPin(b.c,b.p); })[0];
   pushUndo();
   var pa=A.pins[a.p]||{}, pb=B.pins[b.p]||{};
-  var hc=pa.wc||pb.wc, hg=pa.wg||pb.wg;
+  var hc=pa.wc||pb.wc, hg=pa.wg||pb.wg, ha=pa.wa||pb.wa;
   var w={id:uid('w'),a:a,b:b,signal:sig,color:hc||(existing?existing.color:guessColor(sig,P().wires.length)),gauge:hg||(existing?existing.gauge:settings().gauge),wtype:settings().wtype,lenOverride:'',notes:''};
+  if(ha) w.amps=ha;
   P().wires.push(w);
   S.sel={kind:'wire',id:w.id}; S.hiNet=null; commit();
 }
@@ -1506,6 +1509,9 @@ function inspProject(){
     '<div class="f"><label>Wire waste</label><div class="row2"><input class="inp mono" type="number" min="0" step="1" value="'+s.waste+'" onchange="setSetting(\'waste\',num(this.value,0))"><span class="muted" style="align-self:center">% on BOM</span></div></div>'+
     '<div class="f"><label>Show lengths in</label><select class="sel" onchange="setSetting(\'units\',this.value)">'+opt('mm','Millimeters',s.units)+opt('in','Inches',s.units)+'</select></div>'+
     '<div class="f"><label>Drawing scale</label><div class="row2"><input class="inp mono" type="number" min="0.1" step="0.5" value="'+s.mmPerPx+'" onchange="setSetting(\'mmPerPx\',num(this.value,2))"><span class="muted" style="align-self:center">mm per px</span></div></div>'+
+    '<div class="f"><label>System voltage</label><div class="row2"><input class="inp mono" type="number" min="1" step="0.1" value="'+eset().sysV+'" onchange="setSetting(\'sysV\',num(this.value,12))"><span class="muted">V</span></div></div>'+
+    '<div class="f"><label>Max drop</label><div class="row2"><input class="inp mono" type="number" min="0.5" step="0.5" value="'+eset().maxDrop+'" onchange="setSetting(\'maxDrop\',num(this.value,3))"><span class="muted">% per wire</span></div></div>'+
+    '<div class="f"><label>Wire temp</label><select class="sel" onchange="setSetting(\'tempC\',num(this.value,60))">'+TEMP_OPTS.map(function(t){return opt(t[0],t[1],eset().tempC);}).join('')+'</select></div>'+
     '<p class="note">Wire length is the shortest route through the bundles in Layout, plus the extra per end. Drawing scale only sets the starting length of new bundles.</p></div>'+
   
   '<div class="is"><div class="acts"><button class="btn btn-sm" onclick="duplicateProject()">Duplicate harness</button><button class="btn btn-sm" onclick="archiveHarness('+(p.status==='Archived'?'false':'true')+')">'+(p.status==='Archived'?'Restore from archive':'Archive')+'</button><button class="btn btn-sm btn-danger" onclick="deleteHarnessForever()">Delete harness</button></div></div>';
@@ -1552,7 +1558,7 @@ function inspWire(w){
     '<div class="f"><label>Color</label>'+colorSelect(w.color,'setWireField.bind(null,\''+w.id+'\',\'color\')')+'</div>'+
     '<div class="f"><label>Gauge</label><select class="sel" onchange="setWireField(\''+w.id+'\',\'gauge\',this.value)">'+GAUGES.map(function(g){return opt(g,g+' AWG ('+AWG_MM2[g]+' mm2)',w.gauge);}).join('')+'</select></div>'+
     '<div class="f"><label>Type</label><select class="sel" onchange="setWireField(\''+w.id+'\',\'wtype\',this.value)">'+WIRE_TYPES.map(function(g){return opt(g,g,w.wtype);}).join('')+'</select></div>'+
-    '<p class="muted" style="margin:0 0 0 100px">About '+amps+' A max in a bundle at this gauge.</p></div>'+
+    '</div>'+elecSectionHTML(w)+
     '<div class="is"><div class="is-t">Length</div>'+
     '<div class="f"><label>Routed</label><span class="mono" style="font:600 13px var(--mono);color:'+(sp?'inherit':'var(--red)')+'">'+(sp?fmtLen(sp.dist+2*num(settings().extra,0)):'No route in Layout')+'</span></div>'+
     '<div class="f"><label>Override</label><div class="row2"><input class="inp mono" type="number" min="0" placeholder="auto" value="'+esc(w.lenOverride||'')+'" onchange="setWireField(\''+w.id+'\',\'lenOverride\',this.value)"><span class="muted" style="align-self:center">mm</span></div></div>'+
@@ -1601,7 +1607,7 @@ function wiresHTML(){
   function th(k,l,cls){ var a=S.wireSort.k===k?(S.wireSort.d>0?' ^':' v'):''; return '<th data-sort="1" class="'+(cls||'')+'" onclick="sortWires(\''+k+'\')">'+l+a+'</th>'; }
   var h='<div class="doc-in"><div class="doc-h"><h2>Wire list</h2><span class="muted">'+rows.length+' wires. Click a row to edit it on the right.</span><div class="spacer"></div><button class="btn btn-sm" onclick="exportWireCSV()">Download CSV</button></div>';
   if(!rows.length) return h+'<p class="muted">No wires yet. Draw them in the Schematic tab.</p></div>';
-  h+='<div class="tbl-wrap"><table class="dt"><thead><tr>'+th('idx','#')+th('sig','Signal')+th('from','From')+th('to','To')+th('color','Color')+th('gauge','Gauge')+'<th>Type</th>'+th('len','Length','num')+'<th>Twist / cable</th><th>Contacts</th></tr></thead><tbody>';
+  h+='<div class="tbl-wrap"><table class="dt"><thead><tr>'+th('idx','#')+th('sig','Signal')+th('from','From')+th('to','To')+th('color','Color')+th('gauge','Gauge')+'<th>Type</th>'+th('len','Length','num')+'<th class="num" style="text-align:right">Amps</th><th class="num" style="text-align:right">Drop</th><th>Twist / cable</th><th>Contacts</th></tr></thead><tbody>';
   rows.forEach(function(r){
     var w=r.w, A=comp(w.a.c), B=comp(w.b.c), ca=chooseContact(A&&partByPn(A.partPn),w.gauge), cb=chooseContact(B&&partByPn(B.partPn),w.gauge);
     h+='<tr class="'+(sel===w.id?'sel':'')+'" onclick="if(event.target.tagName!==\'SELECT\'&&event.target.tagName!==\'INPUT\')selectWire(\''+w.id+'\')">'+
@@ -1612,6 +1618,8 @@ function wiresHTML(){
       '<td><select class="sel" onchange="setWireField(\''+w.id+'\',\'gauge\',this.value)">'+GAUGES.map(function(g){return opt(g,g,w.gauge);}).join('')+'</select></td>'+
       '<td class="muted">'+esc(w.wtype||'')+'</td>'+
       '<td class="num" style="color:'+(r.len==null?'var(--red)':'inherit')+'">'+fmtLen(r.len)+(w.lenOverride?' *':'')+'</td>'+
+      (function(){ var I=wireAmps(w), d=voltDrop(w), over=I!=null&&I>wireRating(w), hi=d&&d.pct>num(eset().maxDrop,3);
+        return '<td class="num" style="color:'+(over?'var(--red)':'inherit')+'" title="'+esc(ampsWhy(w))+'">'+(I==null?'<span class="muted">--</span>':(ampsWhy(w)==='set'?'':'~')+I)+'</td><td class="num" style="color:'+(hi?'var(--yellow)':'inherit')+'">'+(d?d.pct.toFixed(1)+'%':'<span class="muted">--</span>')+'</td>'; })()+
       '<td>'+groupChipsHTML(w)+'</td>'+
       '<td class="mono" style="font-size:11px">'+(ca?esc(ca.pn):'--')+' / '+(cb?esc(cb.pn):'--')+'</td></tr>';
   });
@@ -1718,10 +1726,10 @@ function download(name,text,type){
 function fileBase(){ return (P().name||'harness').replace(/[^A-Za-z0-9_-]+/g,'_')+'_rev'+(P().rev||'A'); }
 function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportWireCSV(){
-  var lines=[['Wire','Signal','From','To','Color','Gauge (AWG)','Type','Length (mm)','Length (in)','Twisted with','Cable','Contact From','Contact To','Notes'].join(',')];
+  var lines=[['Wire','Signal','From','To','Color','Gauge (AWG)','Type','Length (mm)','Length (in)','Twisted with','Cable','Current (A)','Voltage drop (V)','Contact From','Contact To','Notes'].join(',')];
   P().wires.forEach(function(w,i){
     var A=comp(w.a.c), B=comp(w.b.c), L=wireLen(w), ca=chooseContact(A&&partByPn(A.partPn),w.gauge), cb=chooseContact(B&&partByPn(B.partPn),w.gauge);
-    lines.push([ 'W'+(i+1),w.signal,pinRef(A,w.a.p),pinRef(B,w.b.p),w.color,w.gauge,w.wtype,L==null?'':Math.round(L),L==null?'':(L/25.4).toFixed(1),twistOf(w)?groupLabel(twistOf(w)):'',cableOf(w)?groupLabel(cableOf(w)):'',ca?ca.pn:'',cb?cb.pn:'',w.notes ].map(csvCell).join(','));
+    lines.push([ 'W'+(i+1),w.signal,pinRef(A,w.a.p),pinRef(B,w.b.p),w.color,w.gauge,w.wtype,L==null?'':Math.round(L),L==null?'':(L/25.4).toFixed(1),twistOf(w)?groupLabel(twistOf(w)):'',cableOf(w)?groupLabel(cableOf(w)):'',wireAmps(w)==null?'':wireAmps(w),voltDrop(w)?voltDrop(w).v.toFixed(3):'',ca?ca.pn:'',cb?cb.pn:'',w.notes ].map(csvCell).join(','));
   });
   download(fileBase()+'_wirelist.csv',lines.join('\n'),'text/csv');
 }
@@ -1902,8 +1910,8 @@ var TPL_BASE = [
     note:'Injectors are not polarized. Pin 1 as +12V is a convention, not a requirement.',
     comps:[{type:'connector',name:'Injector',partPn:'USCAR-2F',desig:'num',pins:[P_('+12V INJ','red','18'),P_('INJ','orange','18')]}]},
   {id:'fuel-pump',cat:'Fuel',name:'Fuel pump, 2-pin',verify:false,
-    note:'Size the wire for the pump current and the run length. Check the Wire inspector for the current rating.',
-    comps:[{type:'connector',name:'Fuel Pump',partPn:'DTP06-2S',desig:'num',pins:[P_('+12V PUMP','red','12'),P_('GND','black','12')]}]},
+    note:'Wires drawn from this pump start at 10 A, a typical in-tank pump at full pressure. Set your pump\'s real draw on the wire; the gauge, voltage drop and fuse checks use it.',
+    comps:[{type:'connector',name:'Fuel Pump',partPn:'DTP06-2S',desig:'num',pins:[Object.assign(P_('+12V PUMP','red','12'),{wa:10}),Object.assign(P_('GND','black','12'),{wa:10})]}]},
   {id:'lsu49',cat:'Sensors',name:'Bosch LSU 4.9 wideband, 6-pin',verify:true,
     note:'Sensor-side pinout as commonly published (1 IP, 2 VM, 3 H-, 4 H+, 5 IA, 6 UN). Wire colors here are the sensor lead colors.',
     comps:[{type:'connector',name:'Wideband',partPn:'LSU49-6F',desig:'num',pins:[P_('IP','red','20'),P_('VM','yellow','20'),P_('HTR -','white','18'),P_('HTR +','gray','18'),P_('IA','green','20'),P_('UN','black','20')]}]},
@@ -1985,7 +1993,7 @@ function addTemplate(id){
   t.comps.forEach(function(spec,k){
     var c=makeComp(spec.type,{name:nextName(spec.name),partPn:spec.partPn||'',kind:spec.kind||'ring',cav:spec.pins.length});
     if(spec.type==='connector'){ setPinCount(c,spec.pins.length); c.desig=spec.desig||'num'; }
-    spec.pins.forEach(function(p,i){ if(!c.pins[i]) return; c.pins[i].signal=p.s||''; if(p.l) c.pins[i].label=p.l; if(p.wc) c.pins[i].wc=p.wc; if(p.wg) c.pins[i].wg=p.wg; });
+    spec.pins.forEach(function(p,i){ if(!c.pins[i]) return; c.pins[i].signal=p.s||''; if(p.l) c.pins[i].label=p.l; if(p.wc) c.pins[i].wc=p.wc; if(p.wg) c.pins[i].wg=p.wg; if(p.wa) c.pins[i].wa=p.wa; });
     if(spec.notes) c.notes=spec.notes;
     if(!base){ placeNew(c); base=c; }
     else { c.sx=base.sx+(spec.dx||0); c.sy=base.sy+(spec.dy!=null?spec.dy:(spec.dx?0:HDR+base.pins.length*ROW+60)); c.lx=base.lx+(spec.dx||0)/2; c.ly=base.ly+(spec.dx?0:70); }
@@ -2074,7 +2082,7 @@ function openSaveTemplate(cid){
 function compToSpec(c){
   return {type:c.type,name:c.name.replace(/\s+\d+$/,'')||c.name,partPn:c.partPn||'',desig:c.desig||'num',kind:c.kind,
     pins:c.pins.map(function(p,i){ var ws=wiresAt(c.id,i), o={s:p.signal||''}; if(p.label) o.l=p.label;
-      var wc=p.wc||(ws[0]&&ws[0].color), wg=p.wg||(ws[0]&&ws[0].gauge); if(wc) o.wc=wc; if(wg) o.wg=wg; return o; })};
+      var wc=p.wc||(ws[0]&&ws[0].color), wg=p.wg||(ws[0]&&ws[0].gauge); if(wc) o.wc=wc; if(wg) o.wg=wg; var wa=p.wa||(ws[0]&&ws[0].amps); if(wa) o.wa=wa; return o; })};
 }
 function saveTemplate(cid){
   var c=comp(cid); if(!c) return;
@@ -2211,6 +2219,7 @@ function runChecks(){
     var A=comp(w.a.c), B=comp(w.b.c), need=12*2+20;
     if(L<need) out.push({sev:'warn',msg:'Wire '+pinRef(A,w.a.p)+' to '+pinRef(B,w.b.p)+' is only '+fmtLen(L)+' long, too short to strip and terminate both ends. Check the bundle lengths, or set an extra length per end in harness settings.',sel:{kind:'wire',id:w.id},fix:{label:'Show',js:"fixShowWire('"+w.id+"')"}});
   });
+  elecChecks(out);
   groupChecks(out);
   var rank={error:0,warn:1,info:2}; out.sort(function(a,b){ return rank[a.sev]-rank[b.sev]; });
   return out;
@@ -3899,6 +3908,106 @@ function labelsCSV(){
   var L=readLabelSettings(), rows=[['Label line 1','Label line 2','Wire','Signal','End','This end','Other end','Gauge','Color','Length (mm)'].join(',')];
   labelList().filter(function(l){ return L.both||l.end==='A'; }).forEach(function(l){ rows.push([l.wire+' '+l.signal,l.here+' > '+l.there,l.wire,l.signal,l.end,l.here,l.there,l.gauge,l.color,l.len==null?'':Math.round(l.len)].map(csvCell).join(',')); });
   download(fileBase()+'_labels.csv',rows.join('\n'),'text/csv');
+}
+
+
+// =====================================================================
+// ELECTRICAL: current, wire rating, voltage drop, fuse size
+// Current is set per wire (or for a whole circuit at once). Where a splice
+// has every wire's current but one, the missing one is the feed and carries
+// the sum. Mated bulkhead pins pass current straight through.
+// =====================================================================
+// copper resistance at 20 C, ohms per meter
+var AWG_OHM_M={'4':0.000815,'6':0.0013,'8':0.00206,'10':0.00328,'12':0.00521,'14':0.00828,'16':0.0132,'18':0.021,'20':0.0333,'22':0.053,'24':0.0842,'26':0.134};
+var FUSES=[1,2,3,4,5,7.5,10,15,20,25,30,35,40,50,60,70,80,100,125,150];
+var TEMP_OPTS=[[20,'20 C, cabin'],[60,'60 C, warm'],[80,'80 C, engine bay'],[105,'105 C, near exhaust']];
+function eset(){ var s=settings(); if(s.sysV==null) s.sysV=12; if(s.maxDrop==null) s.maxDrop=3; if(s.tempC==null) s.tempC=60; return s; }
+function tempFactor(){ return 1+0.00393*(num(eset().tempC,60)-20); }
+var _ampCache=null, _ampStamp=-1;
+function ampsMap(){
+  if(_ampCache && _ampStamp===_stamp) return _ampCache;
+  var m={}, why={};
+  P().wires.forEach(function(w){ if(w.amps!=null && w.amps!=='') { m[w.id]=num(w.amps,0); why[w.id]='set'; } });
+  for(var pass=0;pass<12;pass++){
+    var changed=false;
+    // splices: one unknown wire among known ones is the feed, carrying the sum
+    P().comps.forEach(function(c){
+      if(c.type!=='splice') return;
+      var ws=wiresAt(c.id,0), unk=ws.filter(function(w){return m[w.id]==null;});
+      if(unk.length===1 && ws.length>1){ var sum=0; ws.forEach(function(w){ if(w!==unk[0]) sum+=m[w.id]; }); m[unk[0].id]=Math.round(sum*100)/100; why[unk[0].id]='sum at '+c.name; changed=true; }
+    });
+    // mated connectors: the wire on the other side of the same cavity carries the same current
+    P().comps.forEach(function(c){
+      if(c.type!=='connector'||!c.mate) return; var mc=comp(c.mate); if(!mc) return;
+      for(var i=0;i<Math.min(c.pins.length,mc.pins.length);i++){
+        var a=wiresAt(c.id,i), b=wiresAt(mc.id,i);
+        if(a.length===1 && b.length===1){
+          if(m[a[0].id]!=null && m[b[0].id]==null){ m[b[0].id]=m[a[0].id]; why[b[0].id]='through '+mc.name; changed=true; }
+          else if(m[b[0].id]!=null && m[a[0].id]==null){ m[a[0].id]=m[b[0].id]; why[a[0].id]='through '+c.name; changed=true; }
+        }
+      }
+    });
+    if(!changed) break;
+  }
+  _ampCache={m:m,why:why}; _ampStamp=_stamp; return _ampCache;
+}
+function wireAmps(w){ var a=ampsMap().m[w.id]; return a==null?null:a; }
+function ampsWhy(w){ return ampsMap().why[w.id]||''; }
+function wireRating(w,gauge){ var r=AWG_AMPS[gauge||w.gauge]||0; return w.duty==='int'?r*1.5:r; }
+function voltDrop(w,gauge){
+  var I=wireAmps(w), L=wireLen(w); if(I==null||L==null) return null;
+  var V=I*(AWG_OHM_M[gauge||w.gauge]||0.02)*tempFactor()*(L/1000);
+  return {v:V,pct:V/num(eset().sysV,12)*100};
+}
+function fuseFor(I){ if(!I) return null; var need=I*1.25; for(var i=0;i<FUSES.length;i++) if(FUSES[i]>=need) return FUSES[i]; return null; }
+// smallest wire (largest AWG number) that carries the current and keeps the drop in limits
+function minGauge(w){
+  var I=wireAmps(w); if(I==null) return null;
+  var gs=GAUGES.slice().sort(function(a,b){return (+b)-(+a);}); // 26 .. 4
+  var f=fuseFor(I);
+  // it must carry the current, keep the drop in limits, and be protected by the fuse the circuit needs
+  for(var i=0;i<gs.length;i++){ var g=gs[i], d=voltDrop(w,g), r=wireRating(w,g); if(I<=r && (!f || f<=r || w.duty==='int') && (!d || d.pct<=num(eset().maxDrop,3))) return g; }
+  return null;
+}
+function elecChecks(out){
+  P().wires.forEach(function(w){
+    var I=wireAmps(w); if(I==null||!I) return;
+    var A=comp(w.a.c), B=comp(w.b.c), nm=(w.signal?w.signal+' ':'')+'('+pinRef(A,w.a.p)+' to '+pinRef(B,w.b.p)+')';
+    var r=wireRating(w), g=minGauge(w), d=voltDrop(w);
+    var fix=g&&g!==String(w.gauge)?{label:'Use '+g+' AWG',js:"fixGauge('"+w.id+"','"+g+"')"}:{label:'Show',js:"fixShowWire('"+w.id+"')"};
+    if(I>r*1.5) out.push({sev:'error',msg:'Wire '+nm+' carries '+I+' A but '+w.gauge+' AWG is rated about '+r+' A in a bundle. It will overheat.',sel:{kind:'wire',id:w.id},fix:fix});
+    else if(I>r) out.push({sev:'warn',msg:'Wire '+nm+' carries '+I+' A, over the '+r+' A bundle rating for '+w.gauge+' AWG.',sel:{kind:'wire',id:w.id},fix:fix});
+    if(d && d.pct>num(eset().maxDrop,3)) out.push({sev:'warn',msg:'Wire '+nm+' loses '+d.v.toFixed(2)+' V ('+d.pct.toFixed(1)+'%) at '+I+' A over '+fmtLen(wireLen(w))+'. Your limit is '+eset().maxDrop+'%.',sel:{kind:'wire',id:w.id},fix:fix});
+    var f=fuseFor(I); if(f && f>r && I<=r) out.push({sev:'info',msg:'Wire '+nm+': the fuse this circuit needs ('+f+' A) is bigger than the wire can take ('+r+' A). Go up a gauge so the fuse protects the wire.',sel:{kind:'wire',id:w.id},fix:fix});
+  });
+}
+function setWireAmps(id,v,circuit){
+  var w=wire(id); if(!w) return; pushUndo();
+  var val=(v===''||v==null)?null:Math.max(0,num(v,0));
+  var targets=circuit?P().wires.filter(function(x){return netOfWire(x)===netOfWire(w);}):[w];
+  targets.forEach(function(x){ if(val==null) delete x.amps; else x.amps=val; });
+  commit();
+  if(circuit) toast('Set '+(val==null?'no current':val+' A')+' on '+targets.length+' wire'+(targets.length===1?'':'s')+' in this circuit.','ok');
+}
+function elecSectionHTML(w){
+  var I=wireAmps(w), why=ampsWhy(w), r=wireRating(w), d=voltDrop(w), f=fuseFor(I), g=minGauge(w), L=wireLen(w);
+  var h='<div class="is"><div class="is-t">Electrical</div>'+
+    '<div class="f"><label>Current</label><div class="row2"><input class="inp mono" type="number" min="0" step="0.1" placeholder="'+(I!=null&&why!=='set'?I:'amps')+'" value="'+(w.amps!=null?esc(w.amps):'')+'" onchange="setWireAmps(\''+w.id+'\',this.value,false)"><span class="muted">A</span></div></div>'+
+    (why&&why!=='set'?'<p class="note" style="margin:-4px 0 6px 104px">'+I+' A worked out: '+esc(why)+'.</p>':'')+
+    '<div class="f"><label>Duty</label><select class="sel" onchange="setWireField(\''+w.id+'\',\'duty\',this.value)">'+opt('cont','Continuous',w.duty||'cont')+opt('int','Short bursts (starter, horn)',w.duty||'cont')+'</select></div>'+
+    '<div class="acts" style="margin:0 0 10px 104px"><button class="btn btn-sm" onclick="var v=this.parentNode.parentNode.querySelector(\'input[type=number]\').value;setWireAmps(\''+w.id+'\',v,true)" title="Give every wire in this circuit the same current">Apply to whole circuit</button></div>';
+  if(I==null){
+    h+='<p class="muted" style="margin:0">Enter the current to check the gauge, voltage drop, and fuse size. For a splice that feeds several loads, set the branches and the feed is worked out.</p></div>';
+    return h;
+  }
+  var ok=I<=r, dok=!d||d.pct<=num(eset().maxDrop,3);
+  h+='<table class="dtable etable">'+
+    '<tr><td class="dk">Wire rating</td><td><b style="color:'+(ok?'var(--green)':'var(--red)')+'">'+r+' A</b> <span class="muted">'+w.gauge+' AWG in a bundle'+(w.duty==='int'?', short bursts':'')+'</span></td></tr>'+
+    '<tr><td class="dk">Voltage drop</td><td>'+(d?'<b style="color:'+(dok?'var(--green)':'var(--yellow)')+'">'+d.v.toFixed(2)+' V</b> <span class="muted">'+d.pct.toFixed(1)+'% of '+eset().sysV+' V over '+fmtLen(L)+'</span>':'<span class="muted">needs a route for length</span>')+'</td></tr>'+
+    '<tr><td class="dk">Fuse</td><td>'+(f?'<b>'+f+' A</b> <span class="muted">'+(f>r?'bigger than the wire can take; upsize the wire':'protects this wire')+'</span>':'--')+'</td></tr>'+
+    '<tr><td class="dk">Smallest that passes</td><td>'+(g?'<b>'+g+' AWG</b>'+(g!==String(w.gauge)?' <button class="btn btn-sm btn-teal" style="margin-left:6px" onclick="fixGauge(\''+w.id+'\',\''+g+'\')">Use '+g+' AWG</button>':' <span class="muted">current choice</span>'):'<span style="color:var(--red)">nothing in the list carries this</span>')+'</td></tr>'+
+    '</table><p class="note">Ratings are conservative for wires bundled together. Voltage drop is this wire only; the ground return adds its own.</p></div>';
+  return h;
 }
 
 // ===== boot =====
