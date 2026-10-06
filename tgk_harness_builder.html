@@ -607,6 +607,20 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 .lbl span{font-size:.8em}
 .etable td{font-size:var(--t-sm)}
 .etable td.dk{width:104px}
+.blab{font-family:var(--font);font-size:10.5px;font-style:italic;font-weight:600;fill:#78350f}
+.blab-bg{fill:#fffbeb;stroke:#fcd34d}
+.ai-box{border:1px dashed rgba(13,148,136,.45);background:#f0fdfa;border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px}
+
+/* live presence */
+.peers{display:flex;align-items:center;gap:4px;margin-right:4px}
+.peer-txt{font-size:var(--t-sm);color:var(--text2);margin-left:4px;white-space:nowrap}
+.av{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.02em;box-shadow:0 0 0 2px #fff;margin-left:-6px}
+.av:first-child{margin-left:0}
+.av.more{background:var(--bg4);color:var(--text2)}
+.avs{display:inline-flex;vertical-align:middle;margin-left:6px}
+.avs .av{width:20px;height:20px;font-size:9px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#6b7280;flex:none;margin-left:-4px;box-shadow:0 0 0 2px rgba(255,255,255,.15)}
+.live-dot.on{background:#22d3ee;box-shadow:0 0 0 2px rgba(34,211,238,.25)}
 #print{display:none}
 @media print{
   @page{size:landscape;margin:10mm}
@@ -644,7 +658,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
       <button class="nav-item" onclick="openCatalog()"><span class="nav-dot"></span>Parts catalog</button>
       <button class="nav-item" onclick="openSettings()"><span class="nav-dot"></span>Settings</button>
       <div class="sidebar-footer">
-        <div class="sync-pill"><span class="sync-dot" id="syncDot"></span><div style="flex:1;min-width:0"><div class="sync-label" id="syncText">Local only</div><div class="sync-sub" id="syncSub">Harness Builder</div></div></div>
+        <div class="sync-pill"><span class="sync-dot" id="syncDot"></span><span class="live-dot" id="liveDot"></span><div style="flex:1;min-width:0"><div class="sync-label" id="syncText">Local only</div><div class="sync-sub" id="syncSub">Harness Builder</div></div></div>
       </div>
     </div>
   </div>
@@ -652,6 +666,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
     <div class="topbar">
       <div class="topbar-title"><span class="tb-eb" id="tbEb">SEC 10</span><input class="tb-tt tb-name" id="pname" spellcheck="false" title="Rename this harness" onchange="renameProject(this.value)"></div>
       <div class="topbar-actions">
+        <span id="peers" class="peers"></span>
         <span id="stepPill"></span>
         <span id="editActs" style="display:flex;gap:7px"><button class="btn" onclick="undo()" title="Undo (Ctrl+Z)">Undo</button>
         <button class="btn" onclick="redo()" title="Redo (Ctrl+Shift+Z)">Redo</button></span>
@@ -673,7 +688,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.4.0';
+var HB_VERSION = '2.8.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -687,7 +702,7 @@ function toast(msg,kind){
   while(box.children.length>3) box.removeChild(box.firstChild);
   setTimeout(function(){ t.remove(); }, kind==='err'?7000:3200);
 }
-function logErr(where,e){ console.error('[harness] '+where, e); toast(where+': '+(e && e.message ? e.message : e),'err'); }
+function logErr(where,e){ console.error('[harness] '+where, e); toast(where+': '+(e && e.message ? e.message : e),'err'); if(typeof logError==='function') logError(where+': '+(e && e.message ? e.message : e),e&&e.stack?e.stack:''); }
 
 // ---------- wire colors / gauges
 var WCOL = {black:'#1f2937',white:'#ffffff',red:'#dc2626',orange:'#ea580c',yellow:'#eab308',green:'#16a34a',blue:'#2563eb',violet:'#7c3aed',gray:'#9ca3af',brown:'#8a4b16',pink:'#ec4899',tan:'#d2b48c',lightblue:'#60a5fa',lightgreen:'#86efac'};
@@ -932,6 +947,8 @@ function render(){
   $('editActs').style.display=S.cur?'':'none'; $('exportBtn').style.display=S.cur?'':'none';
   renderPalette(); renderProjects(); renderNav(); renderView(); renderInsp();
   var sp=$('stepPill'); if(sp) sp.innerHTML=S.cur?stepPill():'';
+  var pk=(S.cur?S.cur.id:'')+'|'+S.view; if(pk!==RT.lastKey){ RT.lastKey=pk; rtTrackSoon(); }
+  rtPeersChanged(); liveBadge();
 }
 function renderProjects(){
   var h='<button class="nav-item'+(S.view==='browse'?' active':'')+'" onclick="closeHarness()"><span class="nav-dot"></span>All harnesses<span class="nav-badge">'+S.list.filter(function(r){return r.status!=='Archived';}).length+'</span></button>';
@@ -1363,7 +1380,7 @@ function addCompUI(type,kind){
   closeCtx(true); pushUndo();
   var c=makeComp(type,{kind:kind||'ring'});
   if(type==='terminal' && kind) c.name=nextName(TERM_KINDS[kind].split(' ')[0]);
-  placeNew(c); P().comps.push(c);
+  placeNew(c); P().comps.push(c); autoPlaceCard(c);
   S.sel={kind:'comp',id:c.id}; commit();
 }
 function addBulkheadUI(){
@@ -1545,6 +1562,7 @@ function inspComp(c){
   } else {
     h+='<div class="is"><div class="f"><label>Signal</label><input class="inp" value="'+esc(c.pins[0].signal)+'" placeholder="'+esc(netName(netOfPin(c.id,0))||'e.g. GND')+'" onchange="setPinSignal(\''+c.id+'\',0,this.value)"></div></div>';
   }
+  h+='<div class="is"><label class="checkbox-row" style="margin:0"><input type="checkbox" '+(c.noBom?'':'checked')+' onchange="toggleNoBom(\'comp\',\''+c.id+'\')"> Buy this part (include in the BOM)</label>'+(c.from?'<p class="note">Embedded from '+esc(c.from.name||'another harness')+', rev '+esc(c.from.rev||'A')+'.</p>':'')+'</div>';
   h+='<div class="is"><div class="f" style="grid-template-columns:1fr"><textarea class="inp" placeholder="Notes (location, orientation, build notes)" onchange="setCompField(\''+c.id+'\',\'notes\',this.value)">'+esc(c.notes||'')+'</textarea></div>'+
     '<div class="acts"><button class="btn btn-sm" onclick="duplicateComp(\''+c.id+'\')">Duplicate</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete '+typeLabel.toLowerCase()+'</button></div></div>';
   return h;
@@ -1581,9 +1599,11 @@ function inspSeg(s){
   return '<div class="ih"><div class="k">Bundle</div><h2>'+esc(a)+' to '+esc(b)+'</h2></div><div class="is">'+
     '<div class="f"><label>Length</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+num(s.len,0)+'" onchange="setSegField(\''+s.id+'\',\'len\',this.value)"><span class="muted" style="align-self:center">mm</span></div></div>'+
     '<div class="f"><label>Covering</label><select class="sel" onchange="setSegField(\''+s.id+'\',\'covering\',this.value)">'+opt('','None',s.covering)+covs.map(function(p){return opt(p.pn,p.pn,s.covering);}).join('')+'</select></div>'+
+    '<div class="f"><label>Label</label><input class="inp" value="'+esc(s.label||'')+'" placeholder="e.g. To ECU, Firewall pass-through" onchange="setSegLabel(\''+s.id+'\',this.value)"></div>'+
+    (s.covering?'<div class="f"><label>BOM</label><label class="checkbox-row" style="margin:0;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" '+(s.noBom?'':'checked')+' onchange="toggleNoBom(\'seg\',\''+s.id+'\')"> Buy this covering</label></div>':'')+
     (s.est?'<div class="est-note">Estimated from the drawing. Measure on the car and type the real length.</div>':'')+
     '<p class="muted" style="margin:0">'+through.length+' wire'+(through.length===1?'':'s')+' run through here. Estimated bundle diameter '+(through.length?dia.toFixed(1)+' mm':'--')+'.</p></div>'+
-    '<div class="is"><div class="acts"><button class="btn btn-sm" onclick="var s=seg(\''+s.id+'\'),a=nodePos(s.a),b=nodePos(s.b);splitSeg(s.id,{x:(a.x+b.x)/2,y:(a.y+b.y)/2})">Split in half</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete bundle</button></div></div>';
+    '<div class="is"><div class="acts"><button class="btn btn-sm btn-teal" onclick="S.placeAt=null;addInlineAt(\''+s.id+'\')" title="Split this bundle with a mated connector pair and pass its wires through">Add inline connectors</button><button class="btn btn-sm" onclick="var s=seg(\''+s.id+'\'),a=nodePos(s.a),b=nodePos(s.b);splitSeg(s.id,{x:(a.x+b.x)/2,y:(a.y+b.y)/2})">Split in half</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete bundle</button></div></div>';
 }
 function inspNode(n){
   var k='n:'+n.id, c=P().segs.filter(function(s){return s.a===k||s.b===k;}).length;
@@ -1632,6 +1652,7 @@ function computeBOM(){
   function add(cat,pn,desc,qty,unit){ var k=cat+'|'+pn; if(!rows[k]) rows[k]={cat:cat,pn:pn,desc:desc,qty:0,unit:unit}; rows[k].qty+=qty; }
   p.comps.forEach(function(c){
     var part=partByPn(c.partPn), cat={connector:'Connectors',terminal:'Terminals',splice:'Splices'}[c.type];
+    if(c.noBom) return;
     if(c.type==='terminal' && c.kind==='loose' && !c.partPn) return;
     add(cat, c.partPn||('(unassigned) '+c.name), part?part.desc:'No part chosen', 1,'ea');
     if(c.type==='connector' && part){
@@ -1653,7 +1674,7 @@ function computeBOM(){
     add('Cable',g.partPn||('(unassigned) cable '+groupLabel(g)),(cp?cp.desc:'Cable')+' for '+groupLabel(g)+' (includes '+settings().waste+'% waste)',L*waste,'len');
   });
   p.wires.forEach(function(w){ if(cableOf(w)) return; var L=wireLen(w); if(L==null) return; add('Wire',(w.wtype||'Wire')+' '+w.gauge+' AWG '+w.color,w.gauge+' AWG, '+w.color+' (includes '+settings().waste+'% waste)',L*waste,'len'); });
-  p.segs.forEach(function(s){ if(!s.covering) return; var part=partByPn(s.covering); add('Covering',s.covering,part?part.desc:'',num(s.len,0)*1.05,'len'); });
+  p.segs.forEach(function(s){ if(!s.covering || s.noBom) return; var part=partByPn(s.covering); add('Covering',s.covering,part?part.desc:'',num(s.len,0)*1.05,'len'); });
   var out=Object.keys(rows).map(function(k){ return rows[k]; });
   out.sort(function(a,b){ return order.indexOf(a.cat)-order.indexOf(b.cat) || (a.pn>b.pn?1:-1); });
   return out;
@@ -1669,7 +1690,8 @@ function bomHTML(){
     var bp=partByPn(r.pn);
     h+='<tr style="cursor:default"><td style="padding:3px 6px">'+(bp&&bp.type!=='contact'?'<div class="thumb">'+partImgHTML(bp,38)+'</div>':'')+'</td><td class="mono" style="color:'+(r.pn.indexOf('(unassigned)')===0?'var(--yellow)':'inherit')+'">'+esc(r.pn)+'</td><td>'+esc(r.desc)+'</td><td class="num">'+bomQty(r)+'</td></tr>';
   });
-  return h+'</tbody></table></div><p class="note">Contacts are picked from each connector part by wire gauge. Unused cavities get a sealing plug. Verify part numbers against the manufacturer datasheet before ordering.</p></div>';
+  var ex=P().comps.filter(function(c){return c.noBom;}).map(function(c){return c.name;}).concat(P().segs.filter(function(x){return x.noBom&&x.covering;}).map(function(x){return 'a '+x.covering+' covering';}));
+  return h+'</tbody></table></div>'+(ex.length?'<p class="note"><b>Left out on purpose:</b> '+esc(ex.join(', '))+'.</p>':'')+'<p class="note">Contacts are picked from each connector part by wire gauge. Unused cavities get a sealing plug. Verify part numbers against the manufacturer datasheet before ordering.</p></div>';
 }
 
 // ===== checks =====
@@ -1763,7 +1785,7 @@ function exportSVGString(){
   p.comps.forEach(function(c){ x0=Math.min(x0,c.lx-80); y0=Math.min(y0,c.ly-40); x1=Math.max(x1,c.lx+80); y1=Math.max(y1,c.ly+40); });
   p.nodes.forEach(function(n){ x0=Math.min(x0,n.x-20); y0=Math.min(y0,n.y-20); x1=Math.max(x1,n.x+20); y1=Math.max(y1,n.y+20); });
   if(!isFinite(x0)){ x0=0;y0=0;x1=400;y1=300; }
-  var css='text{font-family:DM Sans,Arial,sans-serif}.seg{fill:none;stroke:#cdd2d8;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.seg-edge{fill:none;stroke:#9aa1aa;stroke-width:11;stroke-linecap:round;stroke-linejoin:round}.seg-hit{display:none}.leader{display:none}.slen{font:500 10.5px monospace;fill:#374151}.slen-bg{fill:#fff}.ltag{font:500 9.5px monospace;fill:#374151}.ltag-bg{fill:#fff;stroke:#d1d5db}.lnode{fill:#6b7280}.lcon{stroke:#9ca3af}.lname{font-size:12px;font-weight:600;fill:#111827}.mate{stroke:#9ca3af;stroke-width:1.3;stroke-dasharray:4 4;fill:none}';
+  var css='text{font-family:DM Sans,Arial,sans-serif}.seg{fill:none;stroke:#cdd2d8;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.seg-edge{fill:none;stroke:#9aa1aa;stroke-width:11;stroke-linecap:round;stroke-linejoin:round}.seg-hit{display:none}.leader{display:none}.slen{font:500 10.5px monospace;fill:#374151}.slen-bg{fill:#fff}.ltag{font:500 9.5px monospace;fill:#374151}.ltag-bg{fill:#fff;stroke:#d1d5db}.lnode{fill:#6b7280}.lcon{stroke:#9ca3af}.lname{font-size:12px;font-weight:600;fill:#111827}.mate{stroke:#9ca3af;stroke-width:1.3;stroke-dasharray:4 4;fill:none}.blab{font-size:10.5px;font-style:italic;fill:#374151}.blab-bg{fill:#fffbeb;stroke:#fcd34d}';
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+x0+' '+y0+' '+(x1-x0)+' '+(y1-y0)+'" width="'+(x1-x0)+'" height="'+(y1-y0)+'"><style>'+css+'</style><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1L9 5L0 9" fill="none" stroke="#9ca3af" stroke-width="1.5"/></marker></defs><rect x="'+x0+'" y="'+y0+'" width="'+(x1-x0)+'" height="'+(y1-y0)+'" fill="#fff"/>'+inner+'</svg>';
 }
 function exportSVG(){ download(fileBase()+'_layout.svg',exportSVGString(),'image/svg+xml'); }
@@ -1798,8 +1820,11 @@ function openSettings(){
   '<div style="font-size:var(--t-sm);color:var(--text3);margin-bottom:10px;line-height:1.6">Harnesses, custom parts and templates save to Supabase project <code>piamamighqiielfztgic</code> about a second after each change, and are shared with everyone signed in. If a save fails, the change is kept on this computer and retried.</div>'+
   '<textarea class="form-input" readonly rows="8" style="font-family:var(--mono);font-size:var(--t-sm);line-height:1.5;resize:vertical" onclick="this.select()">'+esc(HB_SQL)+'</textarea>'+
   '<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-sm" onclick="navigator.clipboard.writeText(HB_SQL).then(function(){toast(\'SQL copied to clipboard\',\'ok\')},function(){toast(\'Copy failed - select the text and copy manually\',\'err\')})">Copy setup SQL</button><button class="btn btn-sm" onclick="loadList().then(loadLibrary)">Reload from database</button></div>'+
+  '<div class="panel-title" style="margin-top:20px">Errors <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">shared error_log table</span></div><div id="errPanel"><div class="muted">Loading...</div></div>'+
+  '<div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-sm" onclick="refreshErrorPanel()">Refresh</button><button class="btn btn-sm" onclick="testErrorLog()">Log a test error</button></div>'+
   '<div class="panel-title" style="margin-top:20px">Shortcuts</div><div style="font-size:var(--t-sm);color:var(--text3);line-height:1.7">Right-click or double-click the canvas to add a part there. Ctrl+Z undo, Ctrl+Shift+Z redo. Delete removes the selection. Ctrl+D duplicates a component. F fits the view. In Layout: V select, S draw bundle, B branch point.</div>'+
   '<div class="modal-footer"><span class="muted" style="margin-right:auto;align-self:center">Harness Builder v'+HB_VERSION+'</span><button class="btn" onclick="closeModal()">Close</button></div></div></div>';
+  refreshErrorPanel();
 }
 function inspBrowse(){
   var act=S.list.filter(function(r){return r.status!=='Archived';});
@@ -1997,7 +2022,7 @@ function addTemplate(id){
     if(spec.notes) c.notes=spec.notes;
     if(!base){ placeNew(c); base=c; }
     else { c.sx=base.sx+(spec.dx||0); c.sy=base.sy+(spec.dy!=null?spec.dy:(spec.dx?0:HDR+base.pins.length*ROW+60)); c.lx=base.lx+(spec.dx||0)/2; c.ly=base.ly+(spec.dx?0:70); }
-    P().comps.push(c); made.push(c);
+    P().comps.push(c); made.push(c); autoPlaceCard(c);
   });
   t.comps.forEach(function(spec,k){ if(spec.mate!=null && made[spec.mate]){ made[k].mate=made[spec.mate].id; made[spec.mate].mate=made[k].id; } });
   S.sel={kind:'comp',id:made[0].id}; S.hiNet=null;
@@ -2009,7 +2034,7 @@ function addTemplate(id){
 S.libCat='all'; S.libQuery=''; S.libSel=null;
 function openLibrary(){
   $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal wide" style="width:960px">'+
-    '<div class="mh"><div class="modal-title">Component library</div><span class="muted">Pick a part to drop it in with its pins already named.</span><div class="spacer"></div><button class="btn btn-sm" onclick="openPastePinout(null)">Paste a pinout</button></div>'+
+    '<div class="mh"><div class="modal-title">Component library</div><span class="muted">Pick a part to drop it in with its pins already named.</span><div class="spacer"></div><button class="btn btn-sm" onclick="openPastePinout(null)">Paste or read a pinout</button></div>'+
     '<div class="mb"><div class="search-wrap" style="max-width:none"><span class="search-icon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg></span><input id="libQ" placeholder="Search, e.g. coil, wideband, relay, MaxxECU" value="'+esc(S.libQuery)+'" oninput="S.libQuery=this.value;renderLibList()"></div>'+
     '<div class="tabs-row" id="libCats" style="margin:12px 0"></div>'+
     '<div class="lib-grid"><div class="tbl-wrap cat-scroll" id="libList"></div><div id="libPrev" class="lib-prev"></div></div></div>'+
@@ -2137,6 +2162,7 @@ function openPastePinout(cid){
     '<div class="mh"><div class="modal-title">'+(c?'Paste pinout into '+esc(c.name):'New connector from a pinout')+'</div></div>'+
     '<div class="mb"><div class="paste-grid"><div>'+
       (c?'':'<div class="form-row cols-2"><div class="form-group"><label class="form-label">Connector name</label><input class="form-input" id="ppName" placeholder="e.g. ECU A"></div><div class="form-group"><label class="form-label">Part number (optional)</label><input class="form-input mono" id="ppPn" placeholder="e.g. DTM06-12SA"></div></div>')+
+      aiPasteBlockHTML()+
       '<div class="form-group"><label class="form-label">Pinout, one pin per line</label><textarea class="form-input" id="ppText" rows="16" style="font-family:var(--mono);font-size:var(--t-sm);line-height:1.5" placeholder="1  Injector 1\n2  Injector 2\n3  Ignition 1, green, 20\nA4 CAN H\n\nCopy from a manual, PDF, or spreadsheet. Pin, then name. Optional color and gauge columns." oninput="renderPastePreview()"></textarea></div>'+
       '<div class="note">Works with tabs, commas, or spaces between columns. If only some numbered pins are listed, the gaps are added as unused cavities.</div>'+
     '</div><div><div class="form-label" style="margin-bottom:4px">Preview</div><div class="tbl-wrap cat-scroll" id="ppPrev"><div class="empty">Paste on the left to see the pins here.</div></div></div></div></div>'+
@@ -2161,7 +2187,7 @@ function applyPastePinout(){
   if(!c){
     var nm=($('ppName').value||'').trim(), pn=($('ppPn').value||'').trim();
     c=makeComp('connector',{name:nm||nextName('Connector'),partPn:pn,cav:r.rows.length});
-    placeNew(c); P().comps.push(c);
+    placeNew(c); P().comps.push(c); autoPlaceCard(c);
   }
   setPinCount(c,r.rows.length); c.desig=r.desig;
   r.rows.forEach(function(x,i){ var p=c.pins[i]; p.signal=x.s; if(r.desig==='custom') p.label=x.d; else delete p.label; if(x.wc) p.wc=x.wc; else delete p.wc; if(x.wg) p.wg=x.wg; else delete p.wg; });
@@ -2182,8 +2208,8 @@ function runChecks(){
     names[c.name]=1;
     if(c.type==='connector'){
       var part=partByPn(c.partPn);
-      if(!c.partPn) out.push({sev:'info',msg:c.name+' has no part number.',sel:{kind:'comp',id:c.id},fix:{label:'Choose part',js:'fixChoosePart('+q(c.id)+')'}});
-      else if(part && part.mfr==='Generic') out.push({sev:'info',msg:c.name+' uses a placeholder housing ('+part.pn+'). Assign the real part number before ordering.',sel:{kind:'comp',id:c.id},fix:{label:'Choose part',js:'fixChoosePart('+q(c.id)+')'}});
+      if(!c.partPn && !c.noBom) out.push({sev:'info',msg:c.name+' has no part number.',sel:{kind:'comp',id:c.id},fix:{label:'Choose part',js:'fixChoosePart('+q(c.id)+')'}});
+      else if(part && part.mfr==='Generic' && !c.noBom) out.push({sev:'info',msg:c.name+' uses a placeholder housing ('+part.pn+'). Assign the real part number before ordering.',sel:{kind:'comp',id:c.id},fix:{label:'Choose part',js:'fixChoosePart('+q(c.id)+')'}});
       if(part && part.cav && part.cav!==c.pins.length) out.push({sev:'warn',msg:c.name+' has '+c.pins.length+' pins but '+part.pn+' has '+part.cav+' cavities.',sel:{kind:'comp',id:c.id},fix:{label:'Use '+part.cav+' pins',js:'fixPinCount('+q(c.id)+','+part.cav+')'}});
       for(var i=0;i<c.pins.length;i++){
         var ws=wiresAt(c.id,i);
@@ -2198,7 +2224,7 @@ function runChecks(){
       }
       if(c.mate){ var m=comp(c.mate); if(m && m.pins.length!==c.pins.length && c.id<m.id) out.push({sev:'warn',msg:c.name+' ('+c.pins.length+' pins) mates with '+m.name+' ('+m.pins.length+' pins).',sel:{kind:'comp',id:c.id},fix:{label:'Match to '+Math.max(c.pins.length,m.pins.length),js:'fixMatePins('+q(c.id)+')'}}); }
     } else if(!wiresAt(c.id,0).length) out.push({sev:'warn',msg:c.name+' has no wire connected.',sel:{kind:'comp',id:c.id},fix:{label:'Show',js:'fixShowComp('+q(c.id)+')'}});
-    if(c.type==='terminal' && c.kind!=='loose' && !c.partPn) out.push({sev:'info',msg:c.name+' has no terminal part number.',sel:{kind:'comp',id:c.id},fix:{label:'Choose part',js:'fixChoosePart('+q(c.id)+')'}});
+    if(c.type==='terminal' && c.kind!=='loose' && !c.partPn && !c.noBom) out.push({sev:'info',msg:c.name+' has no terminal part number.',sel:{kind:'comp',id:c.id},fix:{label:'Choose part',js:'fixChoosePart('+q(c.id)+')'}});
     if(c.type==='splice' && wiresAt(c.id,0).length===1) out.push({sev:'warn',msg:'Splice '+c.name+' only has one wire.',sel:{kind:'comp',id:c.id},fix:{label:'Show',js:'fixShowComp('+q(c.id)+')'}});
   });
   var unrouted=0;
@@ -2410,6 +2436,7 @@ function openCtx(x,y,items,title){
   function build(list,sub){
     var h='<div class="menu'+(sub?' sub':'')+'">'+(title&&!sub?'<div class="mh-t">'+esc(title)+'</div>':'');
     list.forEach(function(it,ix){
+      if(!it) return;
       if(it==='-'){ h+='<div class="msep"></div>'; return; }
       if(it.sub){ h+='<div class="mi has-sub" tabindex="0"><span class="mi-i">'+(it.i||'')+'</span><span class="mi-l">'+esc(it.l)+'</span><span class="mi-k">&rsaquo;</span>'+build(it.sub,true)+'</div>'; return; }
       h+='<button class="mi'+(it.danger?' danger':'')+'" onclick="closeCtx(true);'+it.js+'"><span class="mi-i">'+(it.i||'')+'</span><span class="mi-l">'+esc(it.l)+'</span>'+(it.k?'<span class="mi-k">'+esc(it.k)+'</span>':'')+'</button>';
@@ -2442,7 +2469,9 @@ function addMenuItems(which){
     ctxItem('Note',ICON2.note,'addNote()'),
     '-',
     ctxItem('From library...',ICON.lib,'openLibrary()'),
-    ctxItem('Paste a pinout...',ICON2.paste,'openPastePinout(null)')
+    ctxItem('Paste a pinout...',ICON2.paste,'openPastePinout(null)'),
+    '-',
+    ctxItem('Embed harness...',ICON2.copy,'openEmbed()')
   ];
   if(which==='lay') items.push('-',ctxItem('Branch point here',ICON2.branch,'addBranchHere()'));
   items.push('-',ctxItem('Fit to screen',ICON2.fit,'fitView()',{k:'F'}));
@@ -2453,7 +2482,7 @@ function compMenuItems(c,pin){
   if(pin!=null){ items.push(ctxItem('Trace '+pinRef(c,pin)+' circuit',ICON2.trace,'S.hiNet=netOfPin(\''+id+'\','+pin+');S.sel={kind:\'comp\',id:\''+id+'\'};render()')); items.push('-'); }
   items.push(ctxItem(c.partPn?'Change part...':'Choose part...',ICON2.part,'fixChoosePart(\''+id+'\')'));
   if(c.type==='connector'){
-    items.push(ctxItem('Paste pinout...',ICON2.paste,'openPastePinout(\''+id+'\')'));
+    items.push(ctxItem('Paste or read pinout...',ICON2.paste,'openPastePinout(\''+id+'\')'));
     items.push(ctxItem('Save as template...',ICON2.save,'openSaveTemplate(\''+id+'\')'));
   }
   if(c.type==='connector'){
@@ -2463,6 +2492,7 @@ function compMenuItems(c,pin){
         ctxItem((cardShow(c,'table')?'Hide':'Show')+' wiring table',ICON2.part,'toggleCard(\''+id+'\',\'table\')'),'-');
     } else items.push(ctxItem(isV(c)?'Show pins in rows':'Show pins in columns',ICON2.split,'setOrient(\''+id+'\',\''+(isV(c)?'h':'v')+'\')'));
   }
+  items.push(ctxItem(c.noBom?'Include in BOM':'Exclude from BOM',ICON2.part,'toggleNoBom(\'comp\',\''+id+'\')'));
   items.push(ctxItem('Duplicate',ICON2.copy,'duplicateComp(\''+id+'\')',{k:'Ctrl+D'}));
   items.push('-',ctxItem('Delete',ICON2.trash,'S.sel={kind:\'comp\',id:\''+id+'\'};deleteSel()',{danger:true,k:'Del'}));
   return items;
@@ -2484,6 +2514,9 @@ function segMenuItems(s){
     ctxItem('Split here',ICON2.split,'splitSeg(\''+id+'\',{x:S.placeAt.x,y:S.placeAt.y})'),
     ctxItem(s.covering?'Change covering...':'Add covering...',ICON2.cover,'S.sel={kind:\'seg\',id:\''+id+'\'};render();openCatalog(\'covering\')'),
     ctxItem('Type length...',ICON2.part,'fixShowSeg(\''+id+'\')'),
+    ctxItem(s.label?'Change label...':'Label...',ICON2.note,'promptSegLabel(\''+id+'\')'),
+    ctxItem('Add inline connectors here',ICON.bulk,'addInlineAt(\''+id+'\')'),
+    s.covering?ctxItem(s.noBom?'Include covering in BOM':'Exclude covering from BOM',ICON2.part,'toggleNoBom(\'seg\',\''+id+'\')'):null,
     '-',ctxItem('Delete bundle',ICON2.trash,'S.sel={kind:\'seg\',id:\''+id+'\'};deleteSel()',{danger:true,k:'Del'})
   ];
 }
@@ -2730,6 +2763,7 @@ async function createHarness(p){
   var row=Object.assign({id:p.id,data:p,stats:projStats(p),created_by:userEmail(),updated_by:userEmail(),created_at:now,updated_at:now},projMeta(p));
   var out=await api('POST','harness_projects?select='+LIST_COLS,row,'return=representation');
   upsertListRow(out[0]);
+  rtBroadcast('saved',{id:out[0].id,updated_at:out[0].updated_at,by:userEmail(),row:out[0]});
   return out[0];
 }
 var _saveT=null;
@@ -2755,7 +2789,8 @@ async function saveNow(force){
       if(!chk.length){ out=[await createHarness(p)]; }
       else { S.conflict={by:chk[0].updated_by,at:chk[0].updated_at}; S.saving=false; setSync('err','Not saved: someone else edited this'); render(); return; }
     }
-    S.curVer=out[0].updated_at; upsertListRow(out[0]);
+    S.curVer=out[0].updated_at; upsertListRow(out[0]); S.remoteNewer=null;
+    rtBroadcast('saved',{id:p.id,updated_at:S.curVer,by:userEmail(),row:out[0]});
     if(S.cur===p){ S.dirty=false; try{ localStorage.removeItem(LS_DRAFT+p.id); }catch(e){} }
     S.saving=false; setSync('ok','Saved '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}));
     if(S.cur && S.dirty) scheduleSave(); // edits made while saving
@@ -2826,6 +2861,7 @@ async function gateSignIn(){
 }
 function signOutLocal(msg){
   if(S.dirty) writeDraft();
+  rtClose();
   if(S.auth && S.auth.src==='own'){ try{ localStorage.removeItem(HB_SESSION_KEY); }catch(e){} }
   S.auth=null; S.cur=null; S.list=[]; S.listLoaded=false; S.dirty=false; S.view='browse';
   render(); showGate('login',msg||'');
@@ -2837,6 +2873,7 @@ function signOutUI(){
 }
 async function afterSignIn(){
   setSync('busy','Loading...');
+  rtConnect();
   render();
   await loadList();
   await loadLibrary();
@@ -2936,7 +2973,7 @@ function browseBodyHTML(){
     groups[k].forEach(function(r){
       var s=r.stats||{}, on=st.indexOf(r.id)>=0, open=S.cur&&S.cur.id===r.id;
       h+='<tr class="'+(open?'sel':'')+'" onclick="openHarness(\''+r.id+'\')"><td><button class="star'+(on?' on':'')+'" title="'+(on?'Unstar':'Star')+'" onclick="toggleStar(\''+r.id+'\',event)">'+(on?'&#9733;':'&#9734;')+'</button></td>'+
-        '<td class="main-col">'+esc(r.name)+((r.tags||[]).length?' '+(r.tags||[]).map(function(t){return '<span class="chip">'+esc(t)+'</span>';}).join(' '):'')+(S.browse.group?'':'<div class="muted">'+esc(r.platform||'')+'</div>')+'</td>'+
+        '<td class="main-col">'+esc(r.name)+(peersIn(r.id).length?' <span class="avs">'+avatarsHTML(peersIn(r.id),3)+'</span>':'')+((r.tags||[]).length?' '+(r.tags||[]).map(function(t){return '<span class="chip">'+esc(t)+'</span>';}).join(' '):'')+(S.browse.group?'':'<div class="muted">'+esc(r.platform||'')+'</div>')+'</td>'+
         '<td>'+esc(r.kind||'')+'</td><td><span class="pill '+(STATUS_PILL[r.status]||'pill-muted')+'">'+esc(r.status||'Draft')+'</span></td><td class="mono">'+esc(r.rev||'A')+'</td>'+
         '<td class="num">'+(s.wires||0)+'</td><td>'+esc(r.customer||'')+'</td><td class="muted" title="'+esc(new Date(r.updated_at).toLocaleString())+'">'+ago(r.updated_at)+(r.updated_by?' by '+esc(r.updated_by.split('@')[0]):'')+'</td></tr>';
     });
@@ -3034,12 +3071,12 @@ async function deleteHarnessForever(){
   if(!confirm('Permanently delete "'+p.name+'" for everyone? This cannot be undone. Archive it instead if you might need it again.')) return;
   try{
     await api('DELETE','harness_projects?id=eq.'+enc(p.id));
-    S.list=S.list.filter(function(r){return r.id!==p.id;}); S.dirty=false; try{ localStorage.removeItem(LS_DRAFT+p.id); }catch(e){}
+    S.list=S.list.filter(function(r){return r.id!==p.id;}); S.dirty=false; rtBroadcast('deleted',{id:p.id,by:userEmail()}); try{ localStorage.removeItem(LS_DRAFT+p.id); }catch(e){}
     S.cur=null; S.view='browse'; render(); toast('Deleted "'+p.name+'".','ok');
   }catch(e){ logErr('Delete failed',e); }
 }
 function bannerHTML(){
-  var h='';
+  var h=remoteBannerHTML();
   if(S.conflict) h+='<div class="banner err"><b>Not saved.</b> '+esc((S.conflict.by||'Someone').split('@')[0])+' saved this harness '+ago(S.conflict.at)+', after you opened it.<div class="spacer"></div><button class="btn btn-sm" onclick="resolveConflict(false)">Load their version</button><button class="btn btn-sm btn-danger" onclick="if(confirm(\'Overwrite their changes with yours?\'))resolveConflict(true)">Keep mine</button></div>';
   if(S.draftOffer) h+='<div class="banner warn"><b>Unsaved changes found</b> on this computer from '+new Date(S.draftOffer.saved_at).toLocaleString()+'.<div class="spacer"></div><button class="btn btn-sm btn-primary" onclick="restoreDraft(true)">Restore them</button><button class="btn btn-sm" onclick="restoreDraft(false)">Discard</button></div>';
   if(S.cur && S.cur.status==='Released') h+='<div class="banner ok"><b>Released, rev '+esc(S.cur.rev||'A')+'.</b> Builds use this version. To change it, start a new revision so the released one stays on record.<div class="spacer"></div><button class="btn btn-sm btn-teal" onclick="newRevision()">Start rev '+nextRev(S.cur.rev)+'</button></div>';
@@ -3268,7 +3305,7 @@ function cardRect(c){
 }
 function cardFO(c,an){
   var R=cardRect(c), part=partByPn(c.partPn), rows=cardRows(c);
-  var h='<div xmlns="http://www.w3.org/1999/xhtml" class="ccard"><div class="fh" data-k="ftable" data-id="'+c.id+'"><span>'+esc(c.name)+'</span><span>'+esc(c.partPn||'no part')+'</span></div>';
+  var h='<div xmlns="http://www.w3.org/1999/xhtml" class="ccard"><div class="fh" data-k="ftable" data-id="'+c.id+'"><span>'+esc(c.name)+'</span><span>'+(c.noBom?'NOT IN BOM  ':'')+esc(c.partPn||'no part')+'</span></div>';
   if(cardShow(c,'img')||cardShow(c,'face')){
     h+='<div class="ctiles">';
     if(cardShow(c,'img')) h+='<div class="ctile img" data-k="ftable" data-id="'+c.id+'" title="'+esc(part?part.pn+' - '+part.desc:'No part assigned')+'">'+partImgHTML(part,70,'connector')+'</div>';
@@ -3382,6 +3419,7 @@ function layWorld(){
   }
   p.segs.forEach(function(s){
     var pts=cache[s.id]; if(!pts) return;
+    out+=segLabelSVG(s,pts);
     if(!num(s.len,0) && !s.covering) return;
     var bi=1, bl=0; for(var i=1;i<pts.length;i++){ var l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); if(l>bl){ bl=l; bi=i; } }
     var a=pts[bi-1], b=pts[bi], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
@@ -3424,6 +3462,18 @@ function fitView(){
   var r=svg.getBoundingClientRect(), pad=60;
   var k=Math.min((r.width-pad*2)/(x1-x0||1),(r.height-pad*2-30)/(y1-y0||1)); k=Math.max(0.2,Math.min(1.4,k));
   t.k=k; t.tx=(r.width-(x1-x0)*k)/2-x0*k; t.ty=(r.height-(y1-y0)*k)/2-y0*k+15; syncTransform(which);
+}
+// put a new connector's card where it does not cover another card
+function autoPlaceCard(c){
+  if(!c || c.type!=='connector') return;
+  c.tdx=null; c.tdy=null;
+  var R0=cardRect(c), W=R0.w, H=R0.h, gap=10;
+  var others=P().comps.filter(function(o){return o!==c && o.type==='connector';}).map(cardRect);
+  function free(dx,dy){ var r={x:c.lx+dx,y:c.ly+dy,w:W,h:H}; return others.every(function(o){ return r.x+r.w+gap<o.x || o.x+o.w+gap<r.x || r.y+r.h+gap<o.y || o.y+o.h+gap<r.y; }); }
+  for(var k=0;k<6;k++){
+    var d=k*90, cands=[[-W/2,-(H+64+d)],[70+d,-H/2],[-W-70-d,-H/2],[-W/2,70+d],[70+d,-(H+40+d)],[-W-70-d,-(H+40+d)],[70+d,40+d],[-W-70-d,40+d]];
+    for(var i=0;i<cands.length;i++) if(free(cands[i][0],cands[i][1])){ c.tdx=Math.round(cands[i][0]); c.tdy=Math.round(cands[i][1]); return; }
+  }
 }
 function toggleCard(cid,k){ var c=comp(cid); if(!c) return; pushUndo(); c['hide_'+k]=cardShow(c,k)?true:false; if(!c['hide_'+k]) delete c['hide_'+k]; commit(); }
 function setOrient(cid,v){ var c=comp(cid); if(!c) return; pushUndo(); if(v==='v') c.orient='v'; else delete c.orient; commit(); }
@@ -3809,7 +3859,7 @@ async function saveBuild(){
       var out=await api('PATCH','harness_builds?id=eq.'+enc(b.id)+'&updated_at=eq.'+enc(srv.updated_at)+'&select=id,data,updated_at,status,label,created_by,created_at,updated_by,rev,harness_id',{data:data,status:status,updated_by:userEmail(),updated_at:new Date().toISOString()},'return=representation');
       if(out && out.length){
         var i=S.builds.findIndex(function(x){return x.id===b.id;}); if(i>=0) S.builds[i]=out[0];
-        S.buildDirty=false; setSync('ok','Build saved');
+        S.buildDirty=false; setSync('ok','Build saved'); rtBroadcast('build',{harness:b.harness_id,id:b.id});
         if(status==='Complete' && srv.status!=='Complete') toast('Build complete. Every step is ticked.','ok');
         if(S.view==='build') renderView(); renderNav(); return;
       }
@@ -4009,6 +4059,357 @@ function elecSectionHTML(w){
     '</table><p class="note">Ratings are conservative for wires bundled together. Voltage drop is this wire only; the ground return adds its own.</p></div>';
   return h;
 }
+
+
+// =====================================================================
+// EXTRAS from the reference menus: exclude from BOM, inline connectors on a
+// bundle, labels on bundles, and embedding one saved harness in another.
+// =====================================================================
+function toggleNoBom(kind,id){
+  var o=kind==='seg'?seg(id):comp(id); if(!o) return; pushUndo();
+  if(o.noBom) delete o.noBom; else o.noBom=true; commit();
+  toast(o.noBom?'Left out of the BOM. It still shows on the drawing and in the build steps.':'Back in the BOM.','ok');
+}
+function noBomChip(o){ return o&&o.noBom?' <span class="pill pill-muted" title="Not bought for this harness">not in BOM</span>':''; }
+
+// ---------- inline connector pair dropped onto a bundle
+var INLINE_SIZES=[2,3,4,6,8,12];
+function addInlineAt(sid){
+  var s=seg(sid), pa=S.placeAt; if(!s) return; var pts=segPts(s); if(!pts) return;
+  var pr=projectOnPoly(pts,pa?{x:pa.x,y:pa.y}:polyMid(pts)), t=Math.max(0.05,Math.min(0.95,pr.frac));
+  // wires whose route uses this bundle, and which of their ends is on the s.a side
+  var thru=[];
+  P().wires.forEach(function(w){
+    var sp=wirePath(w); if(!sp) return; var k=sp.segs.indexOf(s.id); if(k<0) return;
+    var aSideFirst=sp.nodes[k]===s.a; // walking from w.a, we reach s.a before s.b
+    thru.push({w:w,aSide:aSideFirst});
+  });
+  var n=Math.max(thru.length,1), cav=INLINE_SIZES.filter(function(x){return x>=n;})[0]||n;
+  if(thru.length>12 && !confirm(thru.length+' wires run through this bundle. That is more than a 12-way DT. Add a '+thru.length+'-way pair with no part number?')) return;
+  pushUndo();
+  var base=nextName('Inline').replace(/^Inline /,'');
+  var ca=makeComp('connector',{name:'Inline '+base+'A',partPn:cav<=12?'DT06-'+cav+'S':'',cav:cav});
+  var cb=makeComp('connector',{name:'Inline '+base+'B',partPn:cav<=12?'DT04-'+cav+'P':'',cav:cav});
+  setPinCount(ca,cav); setPinCount(cb,cav); ca.mate=cb.id; cb.mate=ca.id; ca.orient='v'; cb.orient='v';
+  // layout: the pair sits on the bundle, a few mm apart along it
+  var a=pts[0], b=pts[pts.length-1], dx=b.x-a.x, dy=b.y-a.y, l=Math.hypot(dx,dy)||1;
+  ca.lx=snap10(pr.x-dx/l*14); ca.ly=snap10(pr.y-dy/l*14); cb.lx=snap10(pr.x+dx/l*14); cb.ly=snap10(pr.y+dy/l*14);
+  if(ca.lx===cb.lx&&ca.ly===cb.ly){ cb.lx+=20; }
+  // schematic: next to each other near the middle of the parts they join
+  S.placeAt=null; placeNew(ca); cb.sx=ca.sx; cb.sy=ca.sy+VH+50;
+  P().comps.push(ca,cb);
+  var L=num(s.len,0), l1=Math.round(L*t/5)*5, oldB=s.b;
+  s.b='c:'+ca.id; s.len=l1;
+  P().segs.push({id:uid('s'),a:'c:'+cb.id,b:oldB,len:L-l1,covering:s.covering,est:s.est});
+  // cut each wire at the pair: the s.a side ends at A, the s.b side starts at B, same cavity
+  thru.forEach(function(it,i){
+    var w=it.w, far=it.aSide?w.b:w.a;
+    var w2={id:uid('w'),a:{c:cb.id,p:i},b:far,signal:w.signal,color:w.color,gauge:w.gauge,wtype:w.wtype,lenOverride:'',notes:''};
+    if(w.amps!=null) w2.amps=w.amps; if(w.duty) w2.duty=w.duty;
+    if(it.aSide) w.b={c:ca.id,p:i}; else w.a={c:ca.id,p:i};
+    w.lenOverride='';
+    ca.pins[i].signal=w.signal||''; cb.pins[i].signal=w.signal||'';
+    P().wires.push(w2);
+    groupsArr().forEach(function(g){ if(g.wires.indexOf(w.id)>=0) g.wires.push(w2.id); });
+  });
+  autoPlaceCard(ca); autoPlaceCard(cb);
+  S.sel={kind:'comp',id:ca.id}; commit();
+  toast('Added inline pair '+ca.name+' / '+cb.name+(thru.length?' and passed '+thru.length+' wire'+(thru.length===1?'':'s')+' through it, same cavity on both sides.':'. No wires run through this bundle yet.'),'ok');
+}
+
+// ---------- labels on bundles
+function setSegLabel(id,v){ var s=seg(id); if(!s) return; pushUndo(); v=String(v||'').trim(); if(v) s.label=v; else delete s.label; commit(); }
+function segLabelSVG(s,pts){
+  if(!s.label) return '';
+  var bi=1, bl=0; for(var i=1;i<pts.length;i++){ var l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); if(l>bl){ bl=l; bi=i; } }
+  var a=pts[bi-1], b=pts[bi], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
+  var tw=s.label.length*6.2+14;
+  if(vert) return '<g transform="translate('+(mx+15)+','+my+') rotate(-90)" style="pointer-events:none"><rect class="blab-bg" x="'+(-tw/2)+'" y="-1" width="'+tw+'" height="15" rx="3"/><text class="blab" x="0" y="10" text-anchor="middle">'+esc(s.label)+'</text></g>';
+  return '<g style="pointer-events:none"><rect class="blab-bg" x="'+(mx-tw/2)+'" y="'+(my+(s.covering?27:9))+'" width="'+tw+'" height="15" rx="3"/><text class="blab" x="'+mx+'" y="'+(my+(s.covering?38:20))+'" text-anchor="middle">'+esc(s.label)+'</text></g>';
+}
+function promptSegLabel(id){ var s=seg(id); if(!s) return; var v=prompt('Label for this bundle (for example: To ECU, Firewall pass-through). Leave empty to remove.',s.label||''); if(v===null) return; setSegLabel(id,v); }
+
+// ---------- embed another saved harness
+function openEmbed(){
+  var pa=S.placeAt;
+  var opts=S.list.filter(function(r){ return !S.cur || r.id!==S.cur.id; });
+  if(!opts.length){ toast('There are no other harnesses to embed yet.'); return; }
+  S._embedAt=pa;
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:560px">'+
+    '<div class="modal-title">Embed a harness</div>'+
+    '<p style="color:var(--text2);font-size:var(--t-md);margin-bottom:12px">Copies every part, wire, bundle and twist from a saved harness into this one, for example a standard injector sub-harness. After that it is part of this harness and can be edited here; the original is not changed.</p>'+
+    '<div class="form-row"><div class="form-group"><label class="form-label">Harness to embed</label><select class="form-input" id="emSel">'+opts.map(function(r){ return opt(r.id,r.name+' (rev '+(r.rev||'A')+(r.platform?', '+r.platform:'')+', '+((r.stats&&r.stats.wires)||0)+' wires)',''); }).join('')+'</select></div></div>'+
+    '<div class="form-row"><div class="form-group"><label class="form-label">Name prefix (optional)</label><input class="form-input" id="emPre" placeholder="e.g. Cyl 1-2  (parts become Cyl 1-2 Injector 1 ...)"></div></div>'+
+    '<div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="emGo" onclick="doEmbed()">Embed</button></div></div></div>';
+}
+async function doEmbed(){
+  var id=$('emSel').value, pre=$('emPre').value.trim(), btn=$('emGo'); btn.disabled=true; btn.textContent='Embedding...';
+  try{
+    var rows=await api('GET','harness_projects?select=data,rev&id=eq.'+enc(id)); if(!rows.length) throw new Error('That harness no longer exists.');
+    var src=normalizeProject(clone(rows[0].data),id), p=P(), map={};
+    pushUndo();
+    // where to put it: at the clicked spot, otherwise to the right of everything already here
+    function extent(list,fx,fy){ var x0=Infinity,y0=Infinity,x1=-Infinity; list.forEach(function(o){ x0=Math.min(x0,fx(o).x); y0=Math.min(y0,fx(o).y); x1=Math.max(x1,fx(o).x); }); return {x0:x0,y0:y0,x1:x1}; }
+    var es=extent(src.comps,function(c){return {x:c.sx,y:c.sy};}), el=extent(src.comps.concat(src.nodes.map(function(n){return {lx:n.x,ly:n.y};})),function(c){return {x:c.lx,y:c.ly};});
+    var hs=extent(p.comps,function(c){return {x:c.sx+260,y:c.sy};}), hl=extent(p.comps.concat(p.nodes.map(function(n){return {lx:n.x,ly:n.y};})),function(c){return {x:c.lx+200,y:c.ly};});
+    var pa=S._embedAt, dsx=0,dsy=0,dlx=0,dly=0;
+    if(isFinite(es.x0)){ dsx=(pa&&pa.v==='sch'?pa.x:(isFinite(hs.x1)?hs.x1+80:60))-es.x0; dsy=(pa&&pa.v==='sch'?pa.y:(isFinite(hs.y0)?hs.y0:60))-es.y0; }
+    if(isFinite(el.x0)){ dlx=(pa&&pa.v==='lay'?pa.x:(isFinite(hl.x1)?hl.x1+120:100))-el.x0; dly=(pa&&pa.v==='lay'?pa.y:(isFinite(hl.y0)?hl.y0:100))-el.y0; }
+    var names={}; p.comps.forEach(function(c){ names[c.name]=1; });
+    src.comps.forEach(function(c){
+      var n=clone(c); n.id=uid('c'); map['c:'+c.id]='c:'+n.id; map[c.id]=n.id;
+      n.sx+=dsx; n.sy+=dsy; n.lx+=dlx; n.ly+=dly;
+      var nm=(pre?pre+' ':'')+c.name, k=2; while(names[nm]) nm=(pre?pre+' ':'')+c.name+' ('+(k++)+')'; n.name=nm; names[nm]=1;
+      n.from={id:id,rev:rows[0].rev||'A',name:src.name};
+      p.comps.push(n);
+    });
+    src.comps.forEach(function(c){ if(c.mate){ var n=comp(map[c.id]); if(n) n.mate=map[c.mate]||null; } });
+    src.nodes.forEach(function(nd){ var n={id:uid('n'),x:nd.x+dlx,y:nd.y+dly}; map['n:'+nd.id]='n:'+n.id; p.nodes.push(n); });
+    src.segs.forEach(function(s){ var n=clone(s); n.id=uid('s'); n.a=map[s.a]; n.b=map[s.b]; if(n.a&&n.b) p.segs.push(n); });
+    var wmap={};
+    src.wires.forEach(function(w){ var n=clone(w); n.id=uid('w'); wmap[w.id]=n.id; n.a={c:map[w.a.c],p:w.a.p}; n.b={c:map[w.b.c],p:w.b.p}; if(n.a.c&&n.b.c) p.wires.push(n); });
+    (src.groups||[]).forEach(function(g){ var n=clone(g); n.id=uid('g'); n.wires=g.wires.map(function(x){return wmap[x];}).filter(Boolean); n.name=(pre?pre+' ':'')+g.name; groupsArr().push(n); });
+    (src.notes||[]).forEach(function(o){ var n=clone(o); n.id=uid('o'); if(n.v==='lay'){ n.x+=dlx; n.y+=dly; } else { n.x+=dsx; n.y+=dsy; } notesArr().push(n); });
+    S._embedAt=null; closeModal(); S.sel=null; commit(); setTimeout(fitView,40);
+    toast('Embedded '+src.name+': '+src.comps.length+' parts and '+src.wires.length+' wires. Draw a bundle from it to the rest of this harness to route it.','ok');
+  }catch(e){ btn.disabled=false; btn.textContent='Embed'; logErr('Could not embed that harness',e); }
+}
+
+
+// =====================================================================
+// READ A PINOUT FROM A PHOTO OR PDF
+// Goes through the same anthropic-proxy edge function as the Command Center, with the
+// signed-in user's token. The result only fills the paste box: nothing is applied until
+// the person has checked the preview and clicked the button.
+// =====================================================================
+var AI_MODEL='claude-sonnet-4-6';
+async function aiFetch(body){
+  if(!(await ensureToken(false))) throw new Error('Your sign-in expired. Sign in again to use the pinout reader.');
+  var ctl=new AbortController(), timer=setTimeout(function(){ ctl.abort(); },150000), r;
+  try{
+    r=await fetch(SB_URL+'/functions/v1/anthropic-proxy',{method:'POST',signal:ctl.signal,
+      headers:{'Content-Type':'application/json',apikey:SB_JWT,Authorization:'Bearer '+S.auth.access_token},body:JSON.stringify(body)});
+  }catch(e){
+    clearTimeout(timer);
+    throw new Error(e&&e.name==='AbortError'?'The AI service did not answer within 150 seconds.':'Could not reach the AI service (anthropic-proxy). Check the connection.');
+  }
+  clearTimeout(timer);
+  var txt=await r.text(), j=null; try{ j=JSON.parse(txt); }catch(e){}
+  if(!r.ok) throw new Error('anthropic-proxy answered HTTP '+r.status+(txt?': '+txt.slice(0,240):''));
+  if(!j) throw new Error('anthropic-proxy returned an empty or unreadable answer.');
+  if(j.error) throw new Error((j.error.type?j.error.type+': ':'')+(j.error.message||'AI error'));
+  return (j.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
+}
+function fileToB64(file){
+  return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(String(r.result).split(',')[1]); }; r.onerror=function(){ rej(new Error('Could not read that file.')); }; r.readAsDataURL(file); });
+}
+// photos are shrunk so the request stays small; 1800 px on the long edge keeps pin text readable
+function imageToJpegB64(file){
+  return new Promise(function(res,rej){
+    var url=URL.createObjectURL(file), img=new Image();
+    img.onload=function(){
+      var max=1800, k=Math.min(1,max/Math.max(img.width,img.height)), cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
+      var g=cv.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,cv.width,cv.height); g.drawImage(img,0,0,cv.width,cv.height);
+      URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg',0.88).split(',')[1]);
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); rej(new Error('That image could not be opened. Use a JPG, PNG or WebP.')); };
+    img.src=url;
+  });
+}
+var AI_PINOUT_PROMPT=[
+'You are reading a wiring pinout from an automotive document (ECU manual page, connector drawing, or a photo of a pin table).',
+'Transcribe the pin table for ONE connector exactly as printed. Do not invent, renumber, or guess.',
+'Rules:',
+'- "pin" is the cavity designation exactly as printed (examples: 1, 12, A, B3, A12, 87a).',
+'- "signal" is the function or signal name as printed, shortened only by removing filler words. Max 40 characters.',
+'- If a pin is listed as not used, unused, NC, or blank, give signal "".',
+'- If text for a pin is unreadable, give signal "" and add a warning naming that pin.',
+'- "color" only if the document states a wire color for that pin, as one plain English color word (red, black, white, green, blue, yellow, orange, violet, gray, brown, pink, tan) or two joined by "/" for a stripe. Otherwise "".',
+'- "gauge" only if the document states an AWG size for that pin, as a number. Otherwise "".',
+'- If the page shows more than one connector, use the one the user asked for; if they did not say, use the first or largest and list the others in "other_connectors".',
+'Answer with JSON only, no markdown, in this shape:',
+'{"connector":"name as printed","pins":[{"pin":"1","signal":"Injector 1","color":"","gauge":""}],"other_connectors":[],"warnings":[]}'
+].join('\n');
+async function readPinoutAI(){
+  var f=$('ppFile')&&$('ppFile').files[0]; if(!f){ toast('Choose a photo or PDF of the pinout first.','err'); return; }
+  var hint=($('ppHint').value||'').trim(), btn=$('ppAI'), st=$('ppAIstate');
+  var isPdf=/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name), isImg=/^image\//.test(f.type);
+  if(!isPdf && !isImg){ toast('Use a photo (JPG, PNG, WebP) or a PDF.','err'); return; }
+  if(isPdf && f.size>12*1024*1024){ toast('That PDF is over 12 MB. Print just the pinout page to PDF and try that.','err'); return; }
+  btn.disabled=true; st.innerHTML='<span class="spin" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:-3px"></span> Reading the pinout... this can take up to a minute.';
+  try{
+    var block=isPdf ? {type:'document',source:{type:'base64',media_type:'application/pdf',data:await fileToB64(f)}}
+                    : {type:'image',source:{type:'base64',media_type:'image/jpeg',data:await imageToJpegB64(f)}};
+    var ask='Read the pinout'+(hint?' for this connector: '+hint:'')+'.';
+    var out=await aiFetch({model:AI_MODEL,max_tokens:8000,system:AI_PINOUT_PROMPT,messages:[{role:'user',content:[block,{type:'text',text:ask}]}]});
+    var clean=out.replace(/```json|```/g,'').trim(), i0=clean.indexOf('{'), i1=clean.lastIndexOf('}');
+    var j; try{ j=JSON.parse(clean.slice(i0,i1+1)); }catch(e){ throw new Error('The answer was not a pin table. Try a sharper photo, or crop to just the table.'); }
+    var pins=(j.pins||[]).filter(function(p){ return p && String(p.pin||'').trim(); });
+    if(!pins.length) throw new Error('No pins were found on that page'+(hint?' for "'+hint+'"':'')+'.');
+    $('ppText').value=pins.map(function(p){ return [String(p.pin).trim(),String(p.signal||'').trim(),String(p.color||'').trim(),String(p.gauge||'').trim()].filter(function(x,i){return i<2||x;}).join('\t'); }).join('\n');
+    if($('ppName') && !$('ppName').value.trim() && j.connector) $('ppName').value=String(j.connector).slice(0,40);
+    renderPastePreview();
+    var msg='<b>Read '+pins.length+' pins'+(j.connector?' from '+esc(j.connector):'')+'.</b> Check every pin against the document before you apply it.';
+    if((j.warnings||[]).length) msg+='<br><span style="color:var(--yellow)">'+esc(j.warnings.join(' '))+'</span>';
+    if((j.other_connectors||[]).length) msg+='<br>Also on this page: '+esc(j.other_connectors.join(', '))+'. Type one in the box above and read again for it.';
+    st.innerHTML='<div class="banner warn" style="margin:6px 0 0">'+msg+'</div>';
+  }catch(e){
+    st.innerHTML='<span style="color:var(--red)">'+esc(e.message||String(e))+'</span>';
+    console.error('[harness] pinout reader',e);
+  }finally{ btn.disabled=false; }
+}
+function aiPasteBlockHTML(){
+  return '<div class="ai-box"><div class="form-label" style="margin-bottom:6px">Read it from a photo or PDF</div>'+
+    '<div class="row2" style="flex-wrap:wrap;gap:6px"><input type="file" id="ppFile" accept="image/*,application/pdf" class="form-input" style="flex:1;min-width:200px;padding:5px">'+
+    '<input class="form-input" id="ppHint" placeholder="Which connector? e.g. Connector A" style="flex:1;min-width:160px"><button class="btn btn-teal" id="ppAI" onclick="readPinoutAI()">Read pinout</button></div>'+
+    '<div id="ppAIstate" class="note" style="margin-top:6px">A photo of the manual page or the PDF itself. The pins land in the box below for you to check.</div></div>';
+}
+
+
+// =====================================================================
+// LIVE: who has which harness open, and instant refresh when someone saves.
+// Uses Supabase Realtime presence + broadcast on one shared channel. No table
+// changes or publication setup needed. If Realtime is unreachable everything
+// still works; saves are still protected by the "someone else saved" check.
+// =====================================================================
+var RT={ws:null,ref:0,joinRef:null,open:false,joined:false,hb:null,retry:0,peers:{},topic:'realtime:tgk-harness',tab:Math.random().toString(36).slice(2,8),lastTok:''};
+function rtSend(topic,event,payload){
+  if(!RT.ws || RT.ws.readyState!==1) return false;
+  RT.ref++; RT.ws.send(JSON.stringify({topic:topic,event:event,payload:payload,ref:String(RT.ref),join_ref:topic===RT.topic?RT.joinRef:undefined}));
+  return true;
+}
+function rtConnect(){
+  if(!S.auth || (RT.ws && RT.ws.readyState<2)) return;
+  var url=SB_URL.replace(/^http/,'ws')+'/realtime/v1/websocket?apikey='+encodeURIComponent(SB_JWT)+'&vsn=1.0.0';
+  var ws; try{ ws=new WebSocket(url); }catch(e){ console.warn('[harness] live updates unavailable',e); return; }
+  RT.ws=ws; RT.joined=false;
+  ws.onopen=function(){
+    RT.open=true; RT.retry=0; RT.ref++; RT.joinRef=String(RT.ref); RT.lastTok=S.auth.access_token;
+    ws.send(JSON.stringify({topic:RT.topic,event:'phx_join',ref:RT.joinRef,join_ref:RT.joinRef,
+      payload:{config:{broadcast:{self:false,ack:false},presence:{key:userEmail()+'#'+RT.tab},postgres_changes:[],private:false},access_token:S.auth.access_token}}));
+    clearInterval(RT.hb); RT.hb=setInterval(function(){
+      rtSend('phoenix','heartbeat',{});
+      if(S.auth && S.auth.access_token!==RT.lastTok){ RT.lastTok=S.auth.access_token; rtSend(RT.topic,'access_token',{access_token:RT.lastTok}); }
+    },25000);
+  };
+  ws.onmessage=function(ev){
+    var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+    if(m.topic!==RT.topic) return;
+    if(m.event==='phx_reply' && m.ref===RT.joinRef){
+      if(m.payload && m.payload.status==='ok'){ RT.joined=true; rtTrack(); liveBadge(); }
+      else console.warn('[harness] live channel join refused',m.payload);
+      return;
+    }
+    if(m.event==='presence_state'){ RT.peers={}; rtApplyJoins(m.payload); rtPeersChanged(); return; }
+    if(m.event==='presence_diff'){ rtApplyJoins(m.payload.joins||{}); Object.keys(m.payload.leaves||{}).forEach(function(k){ delete RT.peers[k]; }); rtPeersChanged(); return; }
+    if(m.event==='broadcast' && m.payload) rtOnBroadcast(m.payload.event,m.payload.payload||{});
+  };
+  ws.onclose=function(){
+    RT.open=false; RT.joined=false; clearInterval(RT.hb); RT.peers={}; rtPeersChanged(); liveBadge();
+    if(!S.auth) return;
+    var wait=Math.min(30000,1000*Math.pow(2,RT.retry++));
+    setTimeout(rtConnect,wait);
+  };
+  ws.onerror=function(){ /* onclose follows and retries */ };
+}
+function rtClose(){ if(RT.ws){ try{ RT.ws.onclose=null; RT.ws.close(); }catch(e){} } RT.ws=null; RT.open=false; RT.joined=false; RT.peers={}; clearInterval(RT.hb); liveBadge(); }
+function rtApplyJoins(map){ Object.keys(map||{}).forEach(function(k){ var metas=(map[k]&&map[k].metas)||[]; if(metas.length) RT.peers[k]=metas[metas.length-1]; }); }
+function rtTrack(){
+  if(!RT.joined) return;
+  rtSend(RT.topic,'presence',{type:'presence',event:'track',payload:{email:userEmail(),harness:S.cur?S.cur.id:null,view:S.view,at:Date.now()}});
+}
+var _rtTrackT=null; function rtTrackSoon(){ clearTimeout(_rtTrackT); _rtTrackT=setTimeout(rtTrack,300); }
+function rtBroadcast(event,payload){ if(RT.joined) rtSend(RT.topic,'broadcast',{type:'broadcast',event:event,payload:payload}); }
+// everyone else (not this tab), optionally only those in one harness
+function peersIn(hid){
+  var out=[], mine=userEmail()+'#'+RT.tab;
+  Object.keys(RT.peers).forEach(function(k){ if(k===mine) return; var p=RT.peers[k]; if(hid===undefined || p.harness===hid) out.push(p); });
+  return out;
+}
+function peerColor(email){ var h=0; String(email).split('').forEach(function(ch){ h=(h*31+ch.charCodeAt(0))%360; }); return 'hsl('+h+',55%,42%)'; }
+function initials(email){ var n=String(email||'?').split('@')[0].replace(/[^A-Za-z0-9]+/g,' ').trim().split(' '); return ((n[0]||'?')[0]+((n[1]||'')[0]||'')).toUpperCase(); }
+function avatarsHTML(list,max){
+  var seen={}, uniq=list.filter(function(p){ if(seen[p.email]) return false; seen[p.email]=1; return true; });
+  max=max||4;
+  return uniq.slice(0,max).map(function(p){ var nm=String(p.email).split('@')[0]; return '<span class="av" style="background:'+peerColor(p.email)+'" title="'+esc(nm)+(p.view?' is on '+esc(viewName(p.view)):'')+'">'+esc(initials(p.email))+'</span>'; }).join('')+(uniq.length>max?'<span class="av more">+'+(uniq.length-max)+'</span>':'');
+}
+function viewName(v){ var t=TABS.filter(function(x){return x[0]===v;})[0]; return t?t[1]:'the library'; }
+function rtPeersChanged(){
+  var el=$('peers'); if(el){ var ps=S.cur?peersIn(S.cur.id):[]; el.innerHTML=ps.length?avatarsHTML(ps)+'<span class="peer-txt">'+(ps.length===1?esc(String(ps[0].email).split('@')[0])+' is here too':ps.length+' others here')+'</span>':''; }
+  if(S.view==='browse' && $('bBody')) renderBrowseBody();
+}
+function liveBadge(){ var d=$('liveDot'); if(d){ d.className='live-dot'+(RT.joined?' on':''); d.title=RT.joined?'Live: you see other people and their saves as they happen':'Live updates are not connected; saving still works'; } }
+// ---------- what other people's actions mean here
+var _rtListT=null;
+function rtOnBroadcast(event,p){
+  if(event==='saved'){
+    var r=S.list.findIndex(function(x){return x.id===p.id;});
+    if(p.row){ if(r>=0) S.list[r]=p.row; else S.list.unshift(p.row); }
+    else { clearTimeout(_rtListT); _rtListT=setTimeout(loadList,800); }
+    if(S.cur && S.cur.id===p.id && p.updated_at && p.updated_at!==S.curVer){
+      var who=String(p.by||'someone').split('@')[0];
+      if(!S.dirty && !S.saving){ refreshOpenHarness(who); }
+      else { S.remoteNewer={by:p.by,at:p.updated_at}; renderView(); toast(who+' just saved this harness while you were editing it.','err'); }
+    } else if(S.view==='browse' && $('bBody')) renderBrowseBody();
+  }
+  if(event==='deleted'){
+    S.list=S.list.filter(function(x){return x.id!==p.id;});
+    if(S.cur && S.cur.id===p.id){ S.dirty=false; S.cur=null; S.view='browse'; toast(String(p.by||'Someone').split('@')[0]+' deleted the harness you had open.','err'); }
+    render();
+  }
+  if(event==='build' && S.cur && p.harness===S.cur.id && !S.buildDirty){ loadBuilds(true); }
+}
+// reload the open harness in place, keeping where you are
+async function refreshOpenHarness(who){
+  var keep={view:S.view,sel:S.sel,sch:clone(S.sch),lay:clone(S.lay),hi:S.hiNet};
+  try{
+    var rows=await api('GET','harness_projects?select=id,data,updated_at&id=eq.'+enc(S.cur.id));
+    if(!rows.length) return;
+    if(S.dirty){ S.remoteNewer={by:who,at:rows[0].updated_at}; renderView(); return; }
+    S.cur=normalizeProject(rows[0].data,S.cur.id); S.curVer=rows[0].updated_at; S.remoteNewer=null; touch();
+    S.view=keep.view; S.sch=keep.sch; S.lay=keep.lay; S.hiNet=keep.hi;
+    if(keep.sel && !((keep.sel.kind==='comp'&&comp(keep.sel.id))||(keep.sel.kind==='wire'&&wire(keep.sel.id))||(keep.sel.kind==='seg'&&seg(keep.sel.id))||(keep.sel.kind==='node'&&lnode(keep.sel.id)))) S.sel=null; else S.sel=keep.sel;
+    S.undo=[]; S.redo=[];
+    render(); toast('Loaded '+who+'\'s changes.','ok');
+  }catch(e){ logErr('Could not load the newer version',e); }
+}
+function remoteBannerHTML(){
+  if(!S.remoteNewer || !S.cur) return '';
+  return '<div class="banner warn"><b>'+esc(String(S.remoteNewer.by||'Someone').split('@')[0])+' saved a newer version</b> while you were editing. Your next save will ask which one to keep.<div class="spacer"></div><button class="btn btn-sm" onclick="S.dirty=false;S.remoteNewer=null;refreshOpenHarness(\'their\')">Load theirs (drop mine)</button><button class="btn btn-sm" onclick="S.remoteNewer=null;renderView()">Keep editing</button></div>';
+}
+
+// =====================================================================
+// ERROR LOG: failures go to the shared error_log table (same one the Support
+// Center and ERP use), so they show up without anyone taking a screenshot.
+// Logging never throws and never shows its own errors to the user.
+// =====================================================================
+var _errSeen={};
+async function logError(message,detail){
+  try{
+    message=String(message||'Error').slice(0,500); detail=detail==null?'':String(detail).slice(0,4000);
+    var key=message+'|'+detail.slice(0,120), now=Date.now();
+    if(_errSeen[key] && now-_errSeen[key]<60000) return; // same error at most once a minute
+    _errSeen[key]=now;
+    var tok=(S.auth&&S.auth.access_token)||SB_JWT;
+    await fetch(SB_URL+'/rest/v1/error_log',{method:'POST',headers:{apikey:SB_JWT,Authorization:'Bearer '+tok,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({user_email:userEmail()||null,page:'Harness Builder'+(S.view?' / '+viewName(S.view):'')+(S.cur?' / '+S.cur.name:''),message:message,detail:detail,url:location.href,user_agent:navigator.userAgent,app_version:'HB v'+HB_VERSION})});
+  }catch(e){ try{ console.warn('[harness] could not write to error_log',e); }catch(x){} }
+}
+window.logError=logError;
+window.addEventListener('error',function(e){ logError('Uncaught: '+(e.message||'error'),(e.filename||'')+':'+(e.lineno||'')+':'+(e.colno||'')+(e.error&&e.error.stack?'\n'+e.error.stack:'')); });
+window.addEventListener('unhandledrejection',function(e){ var r=e.reason; logError('Unhandled promise: '+(r&&r.message?r.message:String(r)),r&&r.stack?r.stack:''); });
+async function errorLogHTML(){
+  try{
+    var rows=await api('GET','error_log?select=created_at,user_email,page,message,detail,app_version&page='+enc('like.Harness Builder*')+'&order=created_at.desc&limit=25');
+    if(!rows.length) return '<div class="muted">No errors logged from the Harness Builder.</div>';
+    return '<div class="tbl-wrap" style="max-height:260px;overflow:auto"><table class="dt"><thead><tr><th>When</th><th>Who</th><th>Message</th></tr></thead><tbody>'+rows.map(function(r){
+      return '<tr style="cursor:default"><td class="mono" style="white-space:nowrap">'+ago(r.created_at)+'</td><td>'+esc(String(r.user_email||'').split('@')[0])+'</td><td style="color:var(--red)">'+esc(r.message||'')+'<div class="muted" style="white-space:pre-wrap">'+esc(String(r.detail||'').slice(0,240))+'</div><div class="muted">'+esc(r.page||'')+' &middot; '+esc(r.app_version||'')+'</div></td></tr>';
+    }).join('')+'</tbody></table></div>';
+  }catch(e){ return '<div class="muted">Could not read error_log ('+esc(e.message)+'). It is created by error_log_schema.sql from the Support Center.</div>'; }
+}
+async function refreshErrorPanel(){ var el=$('errPanel'); if(el){ el.innerHTML='<div class="muted">Loading...</div>'; el.innerHTML=await errorLogHTML(); } }
+async function testErrorLog(){ _errSeen={}; await logError('Test error from the Harness Builder','manual check from Settings'); toast('Test error sent to error_log.','ok'); refreshErrorPanel(); }
 
 // ===== boot =====
 (function boot(){
