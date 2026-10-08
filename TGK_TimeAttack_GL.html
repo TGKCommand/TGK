@@ -504,10 +504,15 @@ body{
    renderer field is what tells them apart.
    ------------------------------------------------------------------------ */
 var TA_BUILD = {
-  version: '5.6.0',
-  date: '2026-08-26',
+  version: '5.7.0',
+  date: '2026-10-08',
   renderer: 'WebGL',
   notes: [
+    'wheels: GLBs rigged offline - TGK_WHEEL hub pivots, calipers steer but do not spin',
+    'x5: 274 SketchUp edge-line primitives removed (static wire mesh on rims, dark seams on panels)',
+    'light: calibrated linear sky probe ON; clearcoat paint, real glass/chrome/rubber response',
+    'world: lighter aged asphalt, contact shadow under the car, foliage clumps, articulated people',
+    'audio: 4-speed x 2-load crossfaded exhaust, tuned pipe resonance, outdoor reflections',
     'probe rebuilt on fromEquirectangular; ghost/rival pivots no longer driven by player state',    'probe defaults OFF - restores pre-probe lighting; taLight({env:0.35}) to test it',    'light budget is a live knob: taLight({env,hemi,sun,exposure}) - fixes washed-out world',    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
     'wheels: cylindrical membership - fixes torn tyre shoulders',
     'wheels: Ackermann steering geometry on the front axle',
@@ -549,7 +554,7 @@ if (typeof document !== 'undefined') {
    Self-contained: declares every global it uses. Safe standalone or in an
    iframe inside Command Center.
    ========================================================================== */
-var TA_VER = 'v5.00';
+var TA_VER = 'v' + TA_BUILD.version;   /* was a frozen 'v5.00' that overwrote the stamp */
 /* daily weather, derived from the course seed in taApplySun */
 var TA_WX = 'sun', TA_WX_LABEL = 'clear', WX_GRIP = 1, SH_K = 1, WX_SUN = 1;
 
@@ -2753,7 +2758,9 @@ var MODEL_TWEAK = {
      hideRx   - node names to remove (spare parts / duplicate wheel sets)
      spin     - whether the model exposes per-wheel nodes we can rotate       */
   s6:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
-             paintRx: /^rs6c8$/i,
+             /* Material.006 is the replacement bonnet: it shipped black, which
+                read as a missing panel on a white car */
+             paintRx: /^rs6c8$|^Material\.006$/i,
              hideRx: /Manta Spoiler/i,   /* ONLY the bolt-on wing: the 'stock2' and
                 CivicTypeR nodes are the car's actual four wheels, and the old
                 pattern was deleting them */ shadowMin: 0.5 },
@@ -3712,6 +3719,15 @@ function glAddHubCompanions(root, wheels) {
 }
 
 function glFindSpinners(root) {
+  /* PRE-RIGGED MODELS (v5.7). The shipped GLBs are rigged offline: every
+     corner carries one TGK_WHEEL_<id> node whose ORIGIN IS THE HUB and which
+     holds everything that turns with the road - tyre, rim, rotor, centre cap,
+     lug nuts - plus a TGK_BRAKE_<id> node for the caliper, which steers and
+     rides the suspension but never spins. Nothing is guessed at load time,
+     so nothing can be left behind turning (or not turning) on its own. */
+  var rigged = [];
+  root.traverse(function (n) { if (n.name && /^TGK_WHEEL_[NP]{2}$/.test(n.name)) rigged.push(n); });
+  if (rigged.length === 4) return rigged;
   /* Models that already expose one mesh per wheel need no surgery, and the
      clustering sweep costs a few hundred milliseconds - so look first. This
      returns non-empty only when it has found all four corners, which is
@@ -3826,6 +3842,57 @@ function _modelBases() {
   var seen = {}, out = [];
   for (var i = 0; i < list.length; i++) if (!seen[list[i]]) { seen[list[i]] = 1; out.push(list[i]); }
   return out;
+}
+/* ---- v5.7 MATERIAL PASS ---------------------------------------------------
+   GLTF hands back MeshStandardMaterial for everything, and Standard has no
+   clearcoat - so the paint pass that set clearcoat was writing to a property
+   that does not exist. Paint becomes MeshPhysicalMaterial: a basecoat with a
+   little flake under a hard, near-mirror clear layer, which is how a real
+   panel reflects the sky. Glass, chrome and rubber each get the response of
+   the actual material. Shared materials are converted once. */
+function glPhysFrom(mm) {
+  var p = new THREE.MeshPhysicalMaterial();
+  THREE.MeshStandardMaterial.prototype.copy.call(p, mm);
+  p.defines = { STANDARD: '', PHYSICAL: '' };
+  p.name = mm.name;
+  return p;
+}
+function glUpgradeCarMaterials(root, tw) {
+  var done = new Map();
+  root.traverse(function (n) {
+    if (!n.isMesh) return;
+    var arr = Array.isArray(n.material) ? n.material : [n.material];
+    var out = arr.map(function (mm) {
+      if (!mm || !mm.isMeshStandardMaterial) return mm;
+      if (done.has(mm)) return done.get(mm);
+      var nm = mm.name || '', r = mm;
+      if (tw.repaint !== false && tw.paintRx && tw.paintRx.test(nm)) {
+        r = glPhysFrom(mm);
+        var c = r.color, lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+        r.metalness = lum > 0.45 ? 0.04 : 0.32;   /* solid white vs metallic */
+        r.roughness = lum > 0.45 ? 0.30 : 0.38;
+        r.clearcoat = 1.0;
+        r.clearcoatRoughness = 0.035;
+        r.envMapIntensity = 1.0;
+        r.vertexColors = false;
+      } else if (/glass|window|windshield|screen/i.test(nm)) {
+        r.metalness = 0; r.roughness = 0.04; r.envMapIntensity = 1.6;
+        if (r.color) r.color.multiplyScalar(0.55);
+      } else if (/chrome|^alu|_alu$|mirror|exhaust|badge/i.test(nm)) {
+        r.metalness = 1.0; r.roughness = Math.min(r.roughness, 0.14); r.envMapIntensity = 1.0;
+      } else if (/tire|tyre|rubber/i.test(nm)) {
+        r.metalness = 0; r.roughness = 0.86; r.envMapIntensity = 0.5;
+      } else if (/rim|wheel|Type2017|brakedis|rotor/i.test(nm)) {
+        r.metalness = Math.max(r.metalness, 0.75); r.roughness = Math.min(Math.max(r.roughness, 0.24), 0.42);
+      } else if (/carbon/i.test(nm)) {
+        r.metalness = 0.2; r.roughness = 0.28;
+      }
+      r.needsUpdate = true;
+      done.set(mm, r);
+      return r;
+    });
+    n.material = Array.isArray(n.material) ? out : out[0];
+  });
 }
 function loadCarModel(S, key, onDone) {
   if (!_gltfLoader) { onDone(null); return; }
@@ -3959,6 +4026,7 @@ function loadCarModel(S, key, onDone) {
       });
       if (!n.material.transparent && diag * diag > bestArea) { bestArea = diag * diag; bestN = n; }
     });
+    glUpgradeCarMaterials(root, tw);
     if (tw.repaint !== false && painted === 0 && bestN && bestN.material && bestN.material.color) {
       bestN.material.color.setRGB(S.paint[0] / 255, S.paint[1] / 255, S.paint[2] / 255);
     }
@@ -4107,7 +4175,12 @@ var SUN = [-0.42, 0.80, 0.43];
 var _glReady = false, _orbitA = 0.42;
 
 /* ---------- weather + sun: identical seeding rules to the canvas build ---- */
+var _taSunSeed = 1;
 function taApplySun(seed) {
+  /* taLight() re-applies the light budget by calling this with NO seed, which
+     made every sun maths term NaN and threw inside the sky painter - the
+     live light knob could never have worked. Reuse the day's seed instead. */
+  if (seed === undefined || seed === null || isNaN(seed)) seed = _taSunSeed; else _taSunSeed = seed;
   var az = ((seed % 113) / 113 - 0.5) * 2.4;
   var el = 0.30 + ((seed % 47) / 47) * 0.65;
   var wxRoll = seed % 10;
@@ -4212,10 +4285,12 @@ function taResize() {
 function glMakeAsphalt() {
   var c = document.createElement('canvas'); c.width = c.height = 512;
   var g = c.getContext('2d');
-  g.fillStyle = '#35373b'; g.fillRect(0, 0, 512, 512);
-  /* aggregate speckle: the coarse stone in the mix */
-  for (var i = 0; i < 26000; i++) {
-    var v = 28 + Math.random() * 44;
+  /* Aged lot asphalt has an albedo around 0.12-0.15, not the 0.04 of fresh
+     blacktop - which is what made the ground a black void that swallowed the
+     car's shadow and tyres. Weathered binder plus exposed light aggregate. */
+  g.fillStyle = '#4f5155'; g.fillRect(0, 0, 512, 512);
+  for (var i = 0; i < 34000; i++) {
+    var v = 44 + Math.random() * 64;
     g.fillStyle = 'rgba(' + (v | 0) + ',' + ((v + 2) | 0) + ',' + ((v + 5) | 0) + ',' + (0.25 + Math.random() * 0.5) + ')';
     g.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 1.6, 1 + Math.random() * 1.6);
   }
@@ -4678,7 +4753,60 @@ var _envRT = null;
 
    These defaults reproduce pre-probe lighting exactly: hemi and exposure are
    multipliers of 1.0 against their original values. */
-var TA_LIGHT = { env: 0.00, hemi: 1.00, sun: 1.00, exposure: 1.05 };
+/* v5.7: the probe is ON. It is no longer derived from the display-encoded
+   sky painting (which is what turned every material white) but built from
+   calibrated LINEAR radiance - see glMakeProbeTex. With a real sky light
+   present the hemisphere fill drops to a quarter, or the two double-count. */
+var TA_LIGHT = { env: 1.00, hemi: 0.28, sun: 1.00, exposure: 1.00 };
+/* Radiance probe in physical units relative to the sun light. Clear-sky
+   diffuse is ~20% of direct sun; overcast inverts that. Values were chosen so
+   a white panel facing the sky lands where the old hemisphere light put it,
+   then the sun and the reflections are added on top instead of replacing it. */
+function glMakeProbeTex() {
+  var W = 128, H = 64, Pl = glSkyPalette(), d = new Float32Array(W * H * 4);
+  function lin(c) { var x = c / 255; return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }
+  var wx = (typeof TA_WX !== 'undefined') ? TA_WX : 'sun';
+  var K = wx === 'overcast' ? 0.40 : (wx === 'rain' ? 0.33 : (wx === 'golden' ? 0.26 : 0.24));
+  var zen = Pl.zen.map(lin), mid = Pl.mid.map(lin), hor = Pl.hor.map(lin), sc = Pl.sun.map(lin);
+  var sd = [-SUN[0], SUN[1], SUN[2]];
+  var sunOn = (typeof WX_SUN !== 'undefined' && WX_SUN) ? 1 : 0;
+  var gnd = sunOn ? 0.050 : 0.030, tree = [0.018, 0.026, 0.016];
+  for (var y = 0; y < H; y++) {
+    var el = ((y + 0.5) / H - 0.5) * Math.PI;
+    for (var x = 0; x < W; x++) {
+      var ph = ((x + 0.5) / W - 0.5) * 2 * Math.PI;
+      var dx = Math.cos(el) * Math.cos(ph), dy = Math.sin(el), dz = Math.cos(el) * Math.sin(ph);
+      var r, g, b;
+      if (el > 0) {
+        var t = el / (Math.PI / 2);
+        var a1 = Math.min(1, t / 0.30), a2 = Math.max(0, (t - 0.30) / 0.70);
+        r = (hor[0] + (mid[0] - hor[0]) * a1) * (1 - a2) + zen[0] * a2;
+        g = (hor[1] + (mid[1] - hor[1]) * a1) * (1 - a2) + zen[1] * a2;
+        b = (hor[2] + (mid[2] - hor[2]) * a1) * (1 - a2) + zen[2] * a2;
+        r *= K; g *= K; b *= K;
+        var ca = dx * sd[0] + dy * sd[1] + dz * sd[2];
+        if (ca > 0) {
+          var glow = Pl.glow * K * 2.2 * Math.pow(ca, 10) + Pl.glow * K * 0.6 * Math.pow(ca, 3);
+          r += sc[0] * glow; g += sc[1] * glow; b += sc[2] * glow;
+          if (sunOn && ca > 0.9990) { r += sc[0] * 24; g += sc[1] * 24; b += sc[2] * 24; }
+        }
+        if (el < 0.035) { var tl = 1 - el / 0.035; r = r * (1 - tl * 0.7) + tree[0] * tl * 0.7; g = g * (1 - tl * 0.7) + tree[1] * tl * 0.7; b = b * (1 - tl * 0.7) + tree[2] * tl * 0.7; }
+      } else {
+        /* the lot and the field: grey near, green toward the horizon */
+        var gt = Math.min(1, -el / 0.6);
+        r = (0.030 * (1 - gt) + gnd * gt); g = (0.040 * (1 - gt) + gnd * gt); b = (0.026 * (1 - gt) + gnd * 1.04 * gt);
+      }
+      var o = (y * W + x) * 4; d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 1;
+    }
+  }
+  var tex = new THREE.DataTexture(d, W, H, THREE.RGBAFormat, THREE.FloatType);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  var lf = renderer && renderer.extensions && renderer.extensions.get('OES_texture_float_linear');
+  tex.minFilter = tex.magFilter = lf ? THREE.LinearFilter : THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+}
 function taLight(o) {
   if (!o) { console.info('[TGK] light', JSON.stringify(TA_LIGHT)); return TA_LIGHT; }
   for (var k in o) if (TA_LIGHT[k] !== undefined) TA_LIGHT[k] = o[k];
@@ -4712,7 +4840,9 @@ function glRefreshEnvironment() {
        still darkens downward the way a real one does. */
     var pm = new THREE.PMREMGenerator(renderer);
     pm.compileEquirectangularShader();
-    var rt = pm.fromEquirectangular(_skyMesh.material.map);
+    var _probe = glMakeProbeTex();
+    var rt = pm.fromEquirectangular(_probe);
+    _probe.dispose();
     if (_envRT && _envRT.dispose) _envRT.dispose();
     _envRT = rt;
     scene.environment = rt.texture;
@@ -4828,7 +4958,9 @@ function glBuildWorld() {
   }
   var lotMat = new THREE.MeshStandardMaterial({
     map: _asphaltTex, color: 0xffffff, roughness: 0.93, metalness: 0.0,
-    envMapIntensity: 0.35
+    /* full sky light: at 0.35 the lot received a third of the light the
+       cars did, which is why it read as a black void under a bright sky */
+    envMapIntensity: 1.0
   });
   if (_asphaltNrm) {
     _asphaltNrm.repeat.copy(_asphaltTex.repeat);
@@ -5029,14 +5161,62 @@ function glBuildWorld() {
   var M_TENTR = new THREE.MeshStandardMaterial({ color: 0x1f6f66, roughness: 0.85 });
   var M_TRL   = new THREE.MeshStandardMaterial({ color: 0xc6cace, roughness: 0.6, metalness: 0.3 });
   var G_TRUNK = new THREE.CylinderGeometry(0.16, 0.24, 1, 6);
-  var G_LEAF  = new THREE.SphereGeometry(1, 7, 6);
+  /* canopy clumps: a lumpy icosphere, not a ball - the faceting and the
+     uneven outline are what read as foliage at any distance */
+  var G_LEAF = (function () {
+    var g = new THREE.IcosahedronGeometry(1, 2), pa = g.attributes.position;
+    for (var i = 0; i < pa.count; i++) {
+      var x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i);
+      var k = 0.86 + 0.13 * Math.sin(x * 5.3 + y * 3.1) * Math.cos(z * 4.7 - y * 2.3) + 0.06 * Math.sin(x * 12.1 + z * 9.7);
+      pa.setXYZ(i, x * k, y * k * 0.92, z * k);
+    }
+    g.computeVertexNormals();
+    return g;
+  })();
   var G_BOX   = new THREE.BoxGeometry(1, 1, 1);
   var G_ROOF  = new THREE.ConeGeometry(1, 1, 4);
   var G_CONE_S = new THREE.CylinderGeometry(0.26, 1.0, 1, 4);
   G_CONE_S.rotateY(Math.PI / 4);
   var M_CONE_S = new THREE.MeshStandardMaterial({ color: 0xe8601a, roughness: 0.6 });
-  var G_HEAD  = new THREE.SphereGeometry(1, 6, 5);
-  var M_SKIN  = new THREE.MeshStandardMaterial({ color: 0x8d6a52, roughness: 0.9 });
+  /* PEOPLE (v5.7). Each part is authored in the same unit box the batcher
+     scales, so the instancing path is unchanged - but a figure now has two
+     legs, shoulders, hanging arms, a neck and a head instead of three boxes. */
+  function glMerge(list) {
+    var pos = [], nor = [];
+    for (var i = 0; i < list.length; i++) {
+      var g = list[i].index ? list[i].toNonIndexed() : list[i];
+      pos.push.apply(pos, g.attributes.position.array);
+      nor.push.apply(nor, g.attributes.normal.array);
+    }
+    var o = new THREE.BufferGeometry();
+    o.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    o.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    return o;
+  }
+  var G_LEGS = (function () {
+    var a = new THREE.CylinderGeometry(0.27, 0.19, 0.96, 7); a.translate(-0.24, 0.02, 0);
+    var b = new THREE.CylinderGeometry(0.27, 0.19, 0.96, 7); b.translate(0.24, 0.02, 0);
+    var s1 = new THREE.BoxGeometry(0.32, 0.045, 0.50); s1.translate(-0.24, -0.477, 0.12);
+    var s2 = new THREE.BoxGeometry(0.32, 0.045, 0.50); s2.translate(0.24, -0.477, 0.12);
+    return glMerge([a, b, s1, s2]);
+  })();
+  var G_TORSO = (function () {
+    var t = new THREE.CylinderGeometry(0.46, 0.40, 1.0, 9); t.scale(1, 1, 0.92);
+    var sh = new THREE.SphereGeometry(0.44, 9, 5, 0, Math.PI * 2, 0, Math.PI / 2); sh.scale(1.05, 0.30, 0.86); sh.translate(0, 0.48, 0);
+    var la = new THREE.CylinderGeometry(0.14, 0.11, 0.98, 6); la.rotateZ(0.10); la.translate(-0.58, -0.02, 0);
+    var ra = new THREE.CylinderGeometry(0.14, 0.11, 0.98, 6); ra.rotateZ(-0.10); ra.translate(0.58, -0.02, 0);
+    return glMerge([t, sh, la, ra]);
+  })();
+  var G_HEAD = (function () {
+    var h = new THREE.SphereGeometry(1, 10, 8); h.scale(0.92, 1, 1);
+    var n = new THREE.CylinderGeometry(0.42, 0.48, 0.7, 7); n.translate(0, -1.05, 0);
+    return glMerge([h, n]);
+  })();
+  var G_BOX_P = G_BOX;
+  /* white base so per-instance skin tones and denim shades can multiply in */
+  var M_SKIN  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75 });
+  var SKIN_TONES = [0xe6c0a0, 0xc99a78, 0x9c6b4c, 0x6e4a34, 0xf0cfb4, 0xb88563, 0x4f3527];
+  var LEG_TONES  = [0x2c3138, 0x3b4c66, 0x5a5f66, 0x1f2226, 0x6b5f4e, 0x2e3e57];
   var M_LEGS  = new THREE.MeshStandardMaterial({ color: 0x2c3138, roughness: 0.95 });
   var M_HIVIZ = new THREE.MeshStandardMaterial({ color: 0xd8e83a, roughness: 0.75,
                                                  emissive: 0x2a3006, emissiveIntensity: 0.5 });
@@ -5084,12 +5264,22 @@ function glBuildWorld() {
       }
       im.instanceMatrix.needsUpdate = true;
       sg.add(im);
+      return im;
     }
-    batch(_batLeg, G_BOX, M_LEGS, true);
+    M_LEGS.color.setHex(0xffffff);
+    var _legIM = batch(_batLeg, G_LEGS, M_LEGS, true);
     for (var t = 0; t < _batTorso.length; t++) {
-      batch(_batTorso[t], G_BOX, t < PERSON_COL.length ? PERSON_COL[t] : M_HIVIZ, true);
+      batch(_batTorso[t], G_TORSO, t < PERSON_COL.length ? PERSON_COL[t] : M_HIVIZ, true);
     }
-    batch(_batHead, G_HEAD, M_SKIN, false);
+    var _headIM = batch(_batHead, G_HEAD, M_SKIN, false);
+    function tint(im, tones) {
+      if (!im || !im.setColorAt) return;
+      var c = new THREE.Color();
+      for (var i = 0; i < im.count; i++) { c.setHex(tones[(i * 7 + (i >> 2)) % tones.length]); im.setColorAt(i, c); }
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    }
+    tint(_headIM, SKIN_TONES);
+    tint(_legIM, LEG_TONES);
     batch(_batCone, G_CONE_S, M_CONE_S, true);
   }
   for (var o = 0; o < course.scenery.length; o++) {
@@ -6004,6 +6194,19 @@ function buildCarInto(grp, S, tint) {
     }
     grp.add(model);
     if (!isGhost) {
+      /* contact shadow: the darkening right under the floorpan that a
+         directional shadow map cannot resolve - without it the car floats */
+      try {
+        var _cb = new THREE.Box3().setFromObject(model), _cs = _cb.getSize(new THREE.Vector3());
+        if (!_aoTex) _aoTex = glMakeAO();
+        var _ao = new THREE.Mesh(new THREE.PlaneGeometry(_cs.x * 1.18, _cs.z * 1.08),
+          new THREE.MeshBasicMaterial({ map: _aoTex, transparent: true, depthWrite: false,
+            opacity: 0.92, polygonOffset: true, polygonOffsetFactor: -4 }));
+        _ao.rotation.x = -Math.PI / 2;
+        _ao.position.set((_cb.max.x + _cb.min.x) / 2, 0.006, (_cb.max.z + _cb.min.z) / 2);
+        _ao.renderOrder = 1;
+        grp.add(_ao);
+      } catch (eAO) {}
       /* Rig wheels ONLY from nodes the model itself declares, and only when
          they resolve to four genuine corners. A partial set is what produced
          the floating tyre on the Tiguan: five named nodes belonging to ONE
@@ -6074,6 +6277,12 @@ function buildCarInto(grp, S, tint) {
         var c = (CC.bestD > 0)
           ? new THREE.Vector3(CC.bx, CC.by, CC.bz)
           : new THREE.Vector3(CC.sx / CC.n, CC.sy / CC.n, CC.sz / CC.n);
+        /* a rigged node's origin IS the hub - better than any bounding box,
+           which an inboard rotor or a dished rim face pulls off the axle */
+        if (CC.nodes.length === 1 && /^TGK_WHEEL_/.test(CC.nodes[0].name || '')) {
+          CC.nodes[0].updateMatrixWorld(true);
+          c = new THREE.Vector3().setFromMatrixPosition(CC.nodes[0].matrixWorld);
+        }
         var steerP = new THREE.Group(), spinP = new THREE.Group();
         steerP.add(spinP);
         model.add(steerP);
@@ -6095,6 +6304,18 @@ function buildCarInto(grp, S, tint) {
         steerP.userData.isLeft = c.x < midX;
         steerP.userData.baseY = steerP.position.y;
         steerP.userData.spin = spinP;
+        /* the caliper for this corner rides the STEER pivot: it turns with
+           the knuckle and moves with the suspension, but does not spin */
+        if (CC.nodes.length === 1 && /^TGK_WHEEL_/.test(CC.nodes[0].name || '')) {
+          var brk = model.getObjectByName(CC.nodes[0].name.replace('WHEEL', 'BRAKE'));
+          if (brk) {
+            brk.updateMatrixWorld(true);
+            var bInv = new THREE.Matrix4().copy(steerP.matrixWorld).invert();
+            brk.matrix.copy(bInv.multiply(brk.matrixWorld.clone()));
+            brk.matrix.decompose(brk.position, brk.quaternion, brk.scale);
+            steerP.add(brk);
+          }
+        }
         wheelPivots.push(steerP);
       }
       model.traverse(function (n) {
@@ -6214,11 +6435,153 @@ function taBuildEngineBuffer(V) {
   return buf;
 }
 
-function taEngineChain(V) {
-  /* looping pulse train -> pipe resonances -> load lowpass -> gain */
-  var src = AC.createBufferSource();
-  src.buffer = taBuildEngineBuffer(V);
-  src.loop = true;
+/* ===== v5.7 EXHAUST SYNTHESIS ===============================================
+   The old voice was ONE short pulse loop, pitched by playbackRate across the
+   whole rev range. That is the sound of a sample being sped up: at 6500 rpm
+   every pulse was 2.2x shorter and its ring 2.2x higher, so the engine went
+   thin and chipmunky exactly where it should get loud and hard.
+
+   Now each car is rendered at FOUR reference speeds and in TWO load states,
+   and the player crossfades between the two nearest speeds. Playback rate
+   never leaves roughly 0.75-1.35, so the pulse shape - which is set by the
+   pipe, not the crank - stays the shape it really is. On throttle the pulses
+   are sharp and dense; off throttle they soften, stretch and go irregular,
+   which is the over-run burble. A tuned feedback delay stands in for the
+   exhaust pipe itself (a quarter-wave tube rings at a fixed pitch while the
+   firing frequency sweeps through it), and a short generated impulse response
+   puts the car outdoors on a lot rather than inside the listener's head. */
+var ENGINE_REFS = [1100, 2500, 4300, 6300];
+var _engBufCache = {};
+var ENGINE_PIPE = { s6: 86, x5: 74, cc: 122, tiguan: 110 };
+function taBuildEngineBufferAt(V, refRpm, onLoad) {
+  var sr = AC.sampleRate;
+  var cycleT = 120 / refRpm;
+  var cycles = Math.max(8, Math.min(40, Math.round(16 * refRpm / 3000)));
+  var len = Math.floor(sr * cycleT * cycles);
+  var buf = AC.createBuffer(1, len, sr);
+  var ch = buf.getChannelData(0);
+  var banks;
+  if (V.cyl >= 8) banks = [[0, 90, 270, 450], [180, 360, 540, 630]];
+  else if (V.cyl === 6) banks = [[0, 240, 480], [120, 360, 600]];
+  else if (V.cyl === 5) banks = [[0, 144, 288, 432, 576]];
+  else banks = [[0, 180, 360, 540]];
+  /* pulse width is a property of the pipe: it does NOT shrink with rpm, so
+     at high revs neighbouring pulses overlap and the note thickens into a
+     continuous rasp - the opposite of what a sped-up sample does */
+  var tau = V.tau * (onLoad ? 1.0 : 1.45);
+  var nzK = V.nz * (onLoad ? (0.85 + refRpm / 9000) : 0.55);
+  var revK = Math.min(1, refRpm / 6300);
+  var pu = 0;
+  for (var cy = 0; cy < cycles; cy++) {
+    for (var bk = 0; bk < banks.length; bk++) {
+      var bTune = banks.length > 1 ? (bk === 0 ? 0.965 : 1.035) : 1.0;
+      var bAmp = banks.length > 1 ? (bk === 0 ? 1.00 : 0.93) : 1.0;
+      for (var bi = 0; bi < banks[bk].length; bi++) {
+        var A = V.amps[pu % V.amps.length] * bAmp;
+        pu++;
+        /* combustion is never identical twice: more spread off-load, where
+           lean, partly-burnt cycles give the over-run its stutter */
+        A *= onLoad ? (0.93 + Math.random() * 0.14) : (0.55 + Math.random() * 0.75);
+        if (!onLoad && Math.random() < 0.07) A *= 1.9;      /* late burn */
+        var frac = banks[bk][bi] / 720;
+        var t0 = cy * cycleT + frac * cycleT + (Math.random() - 0.5) * (onLoad ? 0.0004 : 0.0012);
+        var i0 = Math.floor(t0 * sr);
+        var nT = Math.floor(tau * 4.0 * sr);
+        var ph = Math.random() * 6.2832;
+        var fT = V.thump * bTune * (1 + revK * 0.18);
+        for (var k = 0; k < nT; k++) {
+          var idx = (i0 + k) % len;              /* wrap so the loop is seamless */
+          var tt = k / sr;
+          var env = Math.exp(-tt / tau);
+          var attack = 1 - Math.exp(-tt / 0.00035);
+          var thump = Math.sin(6.2832 * fT * tt + ph) * env * attack;
+          var ring2 = Math.sin(6.2832 * fT * 2.03 * tt + ph * 1.7) * env * env * 0.35;
+          var burst = (Math.random() * 2 - 1) * Math.exp(-tt / (tau * 0.40)) * nzK;
+          ch[idx] += A * (thump * 0.80 + ring2 + burst);
+        }
+      }
+    }
+  }
+  /* DC and rumble removal: the summed pulses carry an offset that would
+     otherwise pump the waveshaper downstream */
+  var mean = 0; for (var m = 0; m < len; m++) mean += ch[m]; mean /= len;
+  var mx = 0;
+  for (var n = 0; n < len; n++) { ch[n] -= mean; if (Math.abs(ch[n]) > mx) mx = Math.abs(ch[n]); }
+  if (mx > 0) for (var n2 = 0; n2 < len; n2++) ch[n2] *= 0.9 / mx;
+  return buf;
+}
+function taMakeOutdoorIR() {
+  /* an open lot: a ground bounce at a few ms, a sparse scatter off parked
+     cars and the timing trailer, then a short, quickly-dying tail */
+  var sr = AC.sampleRate, len = Math.floor(sr * 0.9);
+  var ir = AC.createBuffer(2, len, sr);
+  for (var c = 0; c < 2; c++) {
+    var d = ir.getChannelData(c);
+    var taps = [[0.0034, 0.55], [0.011, 0.30], [0.019, 0.22], [0.031, 0.18], [0.047, 0.12], [0.068, 0.09]];
+    for (var i = 0; i < taps.length; i++) {
+      var p = Math.floor((taps[i][0] * (1 + (c ? 0.07 : -0.05) * i)) * sr);
+      if (p < len) d[p] += taps[i][1] * (Math.random() < 0.5 ? -1 : 1);
+    }
+    for (var j = Math.floor(0.02 * sr); j < len; j++) {
+      d[j] += (Math.random() * 2 - 1) * 0.11 * Math.exp(-(j / sr) / 0.16);
+    }
+  }
+  return ir;
+}
+function taEngineMix(rpm, thr, t) {
+  var E = _aud && _aud.eng; if (!E || !E.layers) return;
+  var lr = Math.log(Math.max(400, rpm));
+  var refs = E.refs, w = [];
+  for (var i = 0; i < refs.length; i++) w.push(0);
+  if (rpm <= refs[0]) w[0] = 1;
+  else if (rpm >= refs[refs.length - 1]) w[refs.length - 1] = 1;
+  else {
+    for (var j = 0; j < refs.length - 1; j++) {
+      if (rpm >= refs[j] && rpm <= refs[j + 1]) {
+        var x = (lr - Math.log(refs[j])) / (Math.log(refs[j + 1]) - Math.log(refs[j]));
+        w[j] = Math.cos(x * 1.5708); w[j + 1] = Math.sin(x * 1.5708);
+      }
+    }
+  }
+  var on = Math.pow(Math.max(0, Math.min(1, thr)), 0.6), off = Math.sqrt(1 - on * on);
+  for (var r = 0; r < refs.length; r++) {
+    var rate = Math.max(0.35, Math.min(2.2, rpm / refs[r]));
+    for (var L = 0; L < 2; L++) {
+      var lay = E.layers[r * 2 + L];
+      lay.src.playbackRate.setTargetAtTime(rate, t, 0.025);
+      lay.g.gain.setTargetAtTime(w[r] * (L === 0 ? on : off * 0.82), t, 0.04);
+    }
+  }
+}
+function taEngineChain(V, key) {
+  /* eight looping pulse trains (4 speeds x on/off load) -> pipe -> formants
+     -> saturation -> body -> load lowpass */
+  var mixIn = AC.createGain(); mixIn.gain.value = 1;
+  var layers = [];
+  for (var ri = 0; ri < ENGINE_REFS.length; ri++) {
+    for (var li = 0; li < 2; li++) {
+      var s0 = AC.createBufferSource();
+      /* rendered once per car per session: rebuilding eight buffers on every
+         car switch is a few hundred ms of main-thread hitch */
+      var _bk = (key || 'x') + ':' + ri + ':' + li;
+      if (!_engBufCache[_bk]) _engBufCache[_bk] = taBuildEngineBufferAt(V, ENGINE_REFS[ri], li === 0);
+      s0.buffer = _engBufCache[_bk];
+      s0.loop = true;
+      var g0 = AC.createGain(); g0.gain.value = 0;
+      s0.connect(g0); g0.connect(mixIn);
+      s0.start(AC.currentTime + Math.random() * 0.02);
+      layers.push({ src: s0, g: g0 });
+    }
+  }
+  /* the pipe: a fixed-pitch feedback delay, damped so it rings, not howls */
+  var pipeHz = ENGINE_PIPE[key] || ((V.cyl >= 8) ? 80 : 115);
+  var pDel = AC.createDelay(0.1); pDel.delayTime.value = 1 / pipeHz;
+  var pFb = AC.createGain(); pFb.gain.value = 0.46;
+  var pDamp = AC.createBiquadFilter(); pDamp.type = 'lowpass'; pDamp.frequency.value = 1600;
+  var pOut = AC.createGain(); pOut.gain.value = 0.9;
+  mixIn.connect(pOut); mixIn.connect(pDel);
+  pDel.connect(pDamp); pDamp.connect(pFb); pFb.connect(pDel); pDamp.connect(pOut);
+  var src = layers[0].src;
   var pk1 = AC.createBiquadFilter(); pk1.type = 'peaking'; pk1.frequency.value = V.f1; pk1.Q.value = V.q1; pk1.gain.value = V.g1;
   var pk2 = AC.createBiquadFilter(); pk2.type = 'peaking'; pk2.frequency.value = V.f2; pk2.Q.value = V.q2; pk2.gain.value = V.g2;
   var lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = V.lpB; lp.Q.value = 0.8;
@@ -6251,9 +6614,8 @@ function taEngineChain(V) {
   body.frequency.value = (V.cyl >= 8) ? 330 : 470;
   body.Q.value = 2.2; body.gain.value = 4.5;
   /* pulses -> formants -> saturation -> pipe body -> brightness */
-  src.connect(pk1); pk1.connect(pk2); pk2.connect(shaper); shaper.connect(body); body.connect(lp);
-  src.start();
-  return { src: src, lp: lp, tail: lp };
+  pOut.connect(pk1); pk1.connect(pk2); pk2.connect(shaper); shaper.connect(body); body.connect(lp);
+  return { src: src, layers: layers, refs: ENGINE_REFS, lp: lp, tail: lp };
 }
 
 function taAudioInit() {
@@ -6265,6 +6627,12 @@ function taAudioInit() {
     var out = AC.createGain();
     out.gain.value = 0.0;
     out.connect(AC.destination);
+    /* outdoor space: a little of everything goes through the lot's IR */
+    try {
+      var _cv = AC.createConvolver(); _cv.buffer = taMakeOutdoorIR();
+      var _wet = AC.createGain(); _wet.gain.value = 0.22;
+      out.connect(_cv); _cv.connect(_wet); _wet.connect(AC.destination);
+    } catch (eIR) {}
 
     var eg = AC.createGain(); eg.gain.value = 0.0;
     eg.connect(out);
@@ -6311,8 +6679,12 @@ function taAudioInit() {
 
 function taSetVoice(key) {
   var V = ENGINE_VOICE[key] || ENGINE_VOICE.s6;
-  if (_aud.eng) { try { _aud.eng.src.stop(); } catch (e) {} _aud.eng.tail.disconnect(); }
-  _aud.eng = taEngineChain(V);
+  if (_aud.eng) {
+    var _ls = _aud.eng.layers || [{ src: _aud.eng.src }];
+    for (var _li = 0; _li < _ls.length; _li++) { try { _ls[_li].src.stop(); } catch (e) {} }
+    _aud.eng.tail.disconnect();
+  }
+  _aud.eng = taEngineChain(V, key);
   _aud.eng.tail.connect(_aud.eg);
   _aud.voiceKey = key;
 }
@@ -6369,7 +6741,7 @@ function taAudioFrame() {
 
   /* the pulse train IS the engine: rate follows rpm exactly */
   var rate = clamp(car.rpm / REF_RPM, 0.22, 2.6);
-  _aud.eng.src.playbackRate.setTargetAtTime(rate, t, 0.03);
+  taEngineMix(car.rpm, car.thr, t);
   _aud.sub.frequency.setTargetAtTime(clamp(car.rpm / 60 * (V.cyl / 2) * 0.5, 24, 140), t, 0.05);
 
   var load = clamp(car.thr, 0, 1);
