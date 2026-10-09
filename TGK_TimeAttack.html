@@ -502,10 +502,11 @@ body{
    renderer field is what tells them apart.
    ------------------------------------------------------------------------ */
 var TA_BUILD = {
-  version: '5.12.0',
+  version: '5.13.0',
   date: '2026-10-09',
   renderer: 'Canvas 2D',
   notes: [
+    'physics: body leans/dives with the springs not a double lag; terrain under every wheel (lot edge drop, gravel, bumpy grass) drives the suspension; off-line lot grip 0.94/0.90 not 0.74/0.60',
     'course: SCCA coning - outside walls on corners, sparse lane markers, offset-gate section, 17-20 ft gates, 52-66 ft slaloms',
     'suspension: CC and Tiguan springs softened to real roll gradients; camera no longer shakes off-track',
     'version aligned with GL build',
@@ -1813,11 +1814,31 @@ function taRpmFor(v, gear) {
   return clamp(wheelRps * 60 * S.gears[gear - 1] * S.fin, RPM_IDLE, S.rpmLim + 500);
 }
 
+/* GROUND PROFILE (m) under a point, given its distance from the centreline.
+   The pad has tiny seams and ripples; at the lot edge the tarmac drops ~3.5 cm
+   onto a gravel apron; beyond it is a field with long undulations and short
+   lumps. The suspension is driven by this per wheel, so going off actually
+   throws the car around on its springs. */
+function taGroundH(wx, wz, al) {
+  if (al <= LOT_HALF) return 0.0018 * Math.sin(wx * 1.9 + wz * 0.7) * Math.sin(wz * 2.3 - wx * 0.9);
+  var e = clamp((al - LOT_HALF) / 0.5, 0, 1);
+  var h = -0.035 * e;
+  if (al > LOT_HALF + 2.2) {
+    h += 0.032 * Math.sin(wx * 0.73 + 1.3) * Math.cos(wz * 0.61 - 0.7)
+       + 0.018 * Math.sin(wx * 1.9 + wz * 1.3)
+       + 0.011 * Math.sin(wx * 4.7 + 0.4) * Math.sin(wz * 5.3);
+  } else {
+    h += 0.007 * Math.sin(wx * 6.1) * Math.sin(wz * 5.7);
+  }
+  return h;
+}
 function taSurfaceMu(absLat) {
   var wxg = (typeof WX_GRIP !== 'undefined') ? WX_GRIP : 1;   /* rain soaks every surface */
   if (absLat <= COURSE_HALF + 1.0) return car.mu * wxg;          /* swept, rubbered in */
-  if (absLat <= COURSE_HALF + 6.0) return car.mu * 0.74 * wxg;   /* dusty off line */
-  if (absLat <= LOT_HALF) return car.mu * 0.60 * wxg;            /* unswept lot */
+  /* Outside the cones it is the SAME asphalt. 0.74 and 0.60 turned a metre
+     off line into ice; a real lot loses a few percent to dust and grit. */
+  if (absLat <= COURSE_HALF + 6.0) return car.mu * 0.94 * wxg;   /* dusty off line */
+  if (absLat <= LOT_HALF) return car.mu * 0.90 * wxg;            /* unswept lot */
   return MU_GRASS;                                          /* off the tarmac */
 }
 
@@ -1904,6 +1925,7 @@ function taStep(dt) {
   var mu = taSurfaceMu(absLat);
   car.offLine = absLat > COURSE_HALF + 1.0;
   var offLot = absLat > LOT_HALF;
+  if (offLot) mu *= 0.86 + 0.28 * (0.5 + 0.5 * Math.sin(car.x * 0.21 + 0.6) * Math.cos(car.z * 0.17));
 
   /* ---- aero ---- */
   var q = 0.5 * RHO * absV * absV;
@@ -2093,31 +2115,74 @@ function taStep(dt) {
      (~1.3 Hz on the S6) and a damping ratio (~0.44), so it compresses, settles
      once, and stops - which is what a damper is for. */
   var M_CORNER = M / 4;
-  function susSolve(nm, Fz, Fz0, k, c) {
+  /* BODY RESPONSE. The tyre loads above use a 0.22 s lateral filter - a
+     deliberate handling choice. Feeding that SAME filtered value into the
+     springs put a second lag in series with the spring-damper's own, so the
+     body only reached its lean ~0.8 s after the car turned: the car turned and
+     the body just sat there. The springs now see a near-instant load (50 ms)
+     and the lag comes from the suspension's natural frequency alone, which is
+     what a real body does. Handling (the tyre loads) is untouched. */
+  car.ayB = (car.ayB || 0) + (car.ay - (car.ayB || 0)) * clamp(dt / 0.05, 0, 1);
+  car.axB = (car.axB || 0) + (car.ax - (car.axB || 0)) * clamp(dt / 0.05, 0, 1);
+  var latWb = -M * car.ayB * H_CG / TRACK, dLb = M * (car.axB - car.axS) * H_CG / WB;
+  var dWfb = latWb * RS_FRONT, dWrb = latWb * (1 - RS_FRONT);
+  var sF0 = (FzF - dLb) / 2, sR0 = (FzR + dLb) / 2;
+  var SFL = Math.max(0, sF0 - dWfb / 2), SFR = Math.max(0, sF0 + dWfb / 2);
+  var SRL = Math.max(0, sR0 - dWrb / 2), SRR = Math.max(0, sR0 + dWrb / 2);
+  /* ground height under each tyre */
+  var cyw = Math.cos(car.yaw), syw = Math.sin(car.yaw);
+  var segT = (typeof course !== 'undefined' && course && course.segs[car.seg]) ? course.segs[car.seg].th : car.yaw;
+  var nX = Math.cos(segT), nZ = -Math.sin(segT);
+  function gAt(lx, lz) {
+    var ox = cyw * lx + syw * lz, oz = -syw * lx + cyw * lz;
+    return taGroundH(car.x + ox, car.z + oz, Math.abs(loc.lat + ox * nX + oz * nZ));
+  }
+  var hTr = TRACK / 2, hWb = WB / 2;
+  car.hFL = gAt(-hTr, hWb); car.hFR = gAt(hTr, hWb); car.hRL = gAt(-hTr, -hWb); car.hRR = gAt(hTr, -hWb);
+  function susSolve(nm, Fz, Fz0, k, c, hG) {
     var lim = TRV;
+    hG = hG || 0;
     var xEq = (Fz - Fz0) / k;
     if (xEq > lim * 0.85) {                  /* bump stop: progressive, not a wall */
       var over = xEq - lim * 0.85;
       xEq = lim * 0.85 + over / (1 + over / (lim * 0.15) * 4);
     }
     xEq = clamp(xEq, -lim, lim);
-    var x = car[nm] || 0, v = car[nm + 'V'] || 0;
-    var a = (k * (xEq - x) - c * v) / M_CORNER;
+    /* xb is how far the BODY corner has sunk; deflection = xb + ground.
+       A bump compresses the spring at once and the body follows through the
+       spring - exactly the order it happens in a real car. */
+    var xb = (car[nm + 'B'] !== undefined) ? car[nm + 'B'] : (car[nm] || 0), v = car[nm + 'V'] || 0;
+    var hPrev = (car[nm + 'H'] !== undefined) ? car[nm + 'H'] : hG;
+    var hv = (hG - hPrev) / Math.max(dt, 1e-4);
+    var d = xb + hG;
+    var a = (k * (xEq - d) - c * (v + hv)) / M_CORNER;
     v += a * dt;
-    x += v * dt;
-    if (x > lim) { x = lim; if (v > 0) v = 0; }        /* hit the stop, kill motion */
-    if (x < -lim) { x = -lim; if (v < 0) v = 0; }
-    car[nm + 'V'] = v;
-    return x;
+    xb += v * dt;
+    d = xb + hG;
+    if (d > lim) { d = lim; xb = d - hG; if (v > 0) v = 0; }        /* hit the stop, kill motion */
+    if (d < -lim) { d = -lim; xb = d - hG; if (v < 0) v = 0; }
+    car[nm + 'V'] = v; car[nm + 'B'] = xb; car[nm + 'H'] = hG; car[nm + 'E'] = xEq;
+    return d;
   }
   /* The spring datum is the STATIC corner load - not the current axle load.
      Referencing the live axle load cancelled the longitudinal term out, so
      the car had no dive under braking and no squat under power. */
   var f0s = M * G * B_CG / WB / 2, r0s = M * G * A_CG / WB / 2;
-  car.susFL = susSolve('susFL', FzFL, f0s, KSF, CSF);
-  car.susFR = susSolve('susFR', FzFR, f0s, KSF, CSF);
-  car.susRL = susSolve('susRL', FzRL, r0s, KSR, CSR);
-  car.susRR = susSolve('susRR', FzRR, r0s, KSR, CSR);
+  car.susFL = susSolve('susFL', SFL, f0s, KSF, CSF, car.hFL);
+  car.susFR = susSolve('susFR', SFR, f0s, KSF, CSF, car.hFR);
+  car.susRL = susSolve('susRL', SRL, r0s, KSR, CSR, car.hRL);
+  car.susRR = susSolve('susRR', SRR, r0s, KSR, CSR, car.hRR);
+  /* body heave (m, up positive) - the whole body riding up and down */
+  car.heave = -(car.susFLB + car.susFRB + car.susRLB + car.susRRB) / 4;
+  /* On broken ground the springs transmit the bumps into the tyres: a wheel
+     coming off a lump goes light and loses grip, which is what makes a car
+     skittish on grass. On the pad this term is ~0, so handling is unchanged. */
+  if (offLot || Math.abs(loc.lat) > LOT_HALF - 2.5) {
+    FzFL = Math.max(0, FzFL + KSF * (car.susFL - car.susFLE));
+    FzFR = Math.max(0, FzFR + KSF * (car.susFR - car.susFRE));
+    FzRL = Math.max(0, FzRL + KSR * (car.susRL - car.susRLE));
+    FzRR = Math.max(0, FzRR + KSR * (car.susRR - car.susRRE));
+  }
   /* camber: static plus gain with compression. A compressed outside wheel
      gains negative camber, which is exactly what keeps the contact patch flat
      as the body rolls. */
@@ -2139,14 +2204,14 @@ function taStep(dt) {
      compressed side subtracts. Getting this backwards made the body lean the
      wrong way AND made the wheel compensation double the error instead of
      cancelling it - which is what showed up as violent wheel wobble. */
-  car.rollGeo = ((car.susFL + car.susRL) - (car.susFR + car.susRR)) / (2 * TRACK);
+  car.rollGeo = ((car.susFLB + car.susRLB) - (car.susFRB + car.susRRB)) / (2 * TRACK);
   /* SIGN: taDrawMesh's positive pitch rotates the NOSE DOWN (a point at +z
      moves to y - z*sin(pitch)). So dive must be POSITIVE and squat NEGATIVE.
      This had the terms the other way round, which is why the car leaned
      forward under power and lifted its nose under braking - the loads and the
      suspension travel were correct all along, only the attitude they were
      reported as was inverted. */
-  car.pitchGeo = ((car.susFL + car.susFR) - (car.susRL + car.susRR)) / (2 * WB);
+  car.pitchGeo = ((car.susFLB + car.susFRB) - (car.susRLB + car.susRRB)) / (2 * WB);
 
   function cornerCap(Fz, Fz0) {
     if (Fz <= 0) return 0;                        /* airborne wheel makes nothing */
