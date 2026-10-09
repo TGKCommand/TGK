@@ -504,10 +504,15 @@ body{
    renderer field is what tells them apart.
    ------------------------------------------------------------------------ */
 var TA_BUILD = {
-  version: '5.9.0',
-  date: '2026-10-08',
+  version: '5.12.0',
+  date: '2026-10-09',
   renderer: 'WebGL',
   notes: [
+    'cars reflect the real surroundings (live cube probe); rain soaks the pad with puddles and falls as streaks; rain ambience',
+    'course: SCCA coning - outside walls on corners, sparse lane markers, offset-gate section, 17-20 ft gates, 52-66 ft slaloms',
+    'suspension: CC and Tiguan springs softened to real roll gradients; camera no longer shakes off-track',
+    'plates: TGK plates on the CC and X5 (vendor watermarks removed)',
+    'body: S6 GT wing removed (hide filter never matched), Honda centre caps removed, glass double-sided, X5 rotor winding fixed',
     'audio: wind over the body, crowd voices, cheer swells as you pass spectators',
     'brakes: rotors glow with heat under hard repeated stops',
     'post: HDR target + MSAA, bloom, ACES, vignette, grain, edge speed blur (?post=0 to disable)',
@@ -874,6 +879,16 @@ function taCourseBuild(seed) {
     });
     return cones[cones.length - 1];
   }
+  /* a gate whose centre sits OFF the centreline - offset-gate sections */
+  function addGateAt(idx, centre, halfGap) {
+    var l = addCone(idx, centre - halfGap, 'gate');
+    var r = addCone(idx, centre + halfGap, 'gate');
+    var s = segAt(idx), w = worldAt(idx, centre);
+    gates.push({
+      n: gates.length, seg: s.i, x: w.x, z: w.z, th: s.th, half: halfGap,
+      L: l, R: r, done: false, missed: false, flash: 0, label: ''
+    });
+  }
   function addGate(idx, halfGap, label) {
     var l = addCone(idx, -halfGap, 'gate');
     var r = addCone(idx, halfGap, 'gate');
@@ -911,6 +926,7 @@ function taCourseBuild(seed) {
     }
   }
   var slalomPlan = [];
+  var offsetPlan = [];
 
   /* ======================= LAYOUT =======================
      Roughly 1.3 km, about 60-70 s for a clean run. Built as
@@ -945,7 +961,9 @@ function taCourseBuild(seed) {
     straight(pick(58, 88));
     bendR(55, 85, 34, 48);
     straight(pick(20, 30));
-    slalom(6 + Math.floor(rnd() * 3), pick(20, 24), rnd() > 0.5 ? 1 : -1);
+    /* SCCA slaloms run 45-70 ft (14-21 m) cone to cone; 20-24 m was a
+       lazy wiggle you could take nearly flat */
+    slalom(6 + Math.floor(rnd() * 3), pick(16, 20), rnd() > 0.5 ? 1 : -1);
     straight(pick(120, 165));
     bendR(45, 65, 26, 34);
     secMark.push(segs.length);
@@ -965,7 +983,12 @@ function taCourseBuild(seed) {
     bendR(60, 80, 30, 38);
     straight(pick(28, 44));
     bendR(90, 110, 16, 20);
-    straight(pick(40, 60));
+    /* OFFSET GATES - the staple autocross element this layout never had: three
+       gates stepped left-right-left down a straight, so the car has to be
+       placed and transitioned rather than simply aimed */
+    var offStart = segs.length;
+    straight(pick(58, 70));
+    offsetPlan.push({ idx: offStart + 6, n: 3, step: 9 });
     secMark.push(segs.length);
     /* Sector 4: technical box, tight hairpin, run to the lights */
     bendR(50, 70, 18, 24);
@@ -990,7 +1013,7 @@ function taCourseBuild(seed) {
   }
   var attempt = 0;
   for (attempt = 0; attempt < 60; attempt++) {
-    segs.length = 0; slalomPlan.length = 0; secMark.length = 0;
+    segs.length = 0; slalomPlan.length = 0; offsetPlan.length = 0; secMark.length = 0;
     x = 0; z = 0; th = 0;
     rnd = taRand((seed + attempt * 7919) >>> 0);
     genLayout();
@@ -1050,23 +1073,39 @@ function taCourseBuild(seed) {
 
   /* gates through the interesting bits, plus start/finish */
   addGate(6, 5.0, 'START');
-  addGate(Math.round(secMark[0] * 0.55), 3.2);
-  addGate(secMark[0] - 6, 3.6);
-  addGate(Math.round((secMark[0] + secMark[1]) / 2), 3.0);
-  addGate(secMark[1] - 8, 3.4);
-  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.35), 3.6);
-  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.75), 3.0);
-  addGate(secMark[2] - 10, 3.2);
+  /* intermediate gates at 17-20 ft, where SCCA courses actually set them */
+  addGate(Math.round(secMark[0] * 0.55), 2.75);
+  addGate(secMark[0] - 6, 3.10);
+  addGate(Math.round((secMark[0] + secMark[1]) / 2), 2.58);
+  addGate(secMark[1] - 8, 2.92);
+  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.35), 3.10);
+  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.75), 2.58);
+  addGate(secMark[2] - 10, 2.75);
   addGate(Math.round(secMark[2] + (secMark[3] - secMark[2]) * 0.4), 2.9);
-  addGate(Math.round(secMark[3] - 60), 3.4);
+  addGate(Math.round(secMark[3] - 60), 2.92);
   addGate(segs.length - 8, 5.0, 'FINISH');
+  for (var op = 0; op < offsetPlan.length; op++) {
+    var OP = offsetPlan[op], oside = rnd() > 0.5 ? 1 : -1;
+    for (var oj = 0; oj < OP.n; oj++) {
+      addGateAt(OP.idx + oj * OP.step, ((oj % 2 === 0) ? 1 : -1) * oside * 2.1, 2.45);
+    }
+  }
   gates.sort(function (a, b) { return a.seg - b.seg; });
   for (var g = 0; g < gates.length; g++) gates[g].n = g;
 
-  /* boundary cones every 14 m so the course edge reads at a glance */
-  for (var b = 8; b < segs.length - 4; b += 7) {
-    addCone(b, -COURSE_HALF, 'edge');
-    addCone(b, COURSE_HALF, 'edge');
+  /* COURSE EDGE, the way an SCCA course is actually coned. A road-course
+     style double row of cones down both sides is not autocross. Corners get a
+     WALL on the outside only - a cone every 4 m that you read as a curve - and
+     the inside is defined by the apex pointers above. Straights get sparse
+     paired markers every 24 m, enough to frame the lane at speed. */
+  for (var b = 8; b < segs.length - 4; b++) {
+    var kk2 = segs[b].k;
+    if (Math.abs(kk2) > 1 / 70) {
+      if (b % 2 === 0) addCone(b, (kk2 > 0 ? -1 : 1) * COURSE_HALF, 'edge');
+    } else if (b % 12 === 0) {
+      addCone(b, -COURSE_HALF, 'edge');
+      addCone(b, COURSE_HALF, 'edge');
+    }
   }
 
   /* ---- parking lot decals: faded stall lines give real speed cues ---- */
@@ -1690,14 +1729,14 @@ var CAR_SPEC = {
   cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [34, 36, 40], /* deep black pearl - true 22,23,26 swallowed every highlight */ face: 'bars', exh: 2, wing: 'lip', mirror: [34, 36, 40], rails: 0, shiftT: 0.16, shiftCut: 0.12,
     rackS: 3.2, oF: 0.95, oR: 1.14, sill: 0.14, belt: 0.93, roof: 1.417, bz: 0.95, peak: 0.05, beltRise: 0.055, rdrop: 0.11, clad: 0,
     bw: 1.855, tw: 0.235,
-    m: 1542, iz: 2450, wb: 2.711, acg: 1.14, hcg: 0.50, track: 1.549, awdF: 1.0, rearGrip: 1.06, rsF: 0.625, lsdR: 0.00, kSF: 30000, kSR: 26000, cSF: 3100, cSR: 2700, camF: -0.0175, camR: -0.0227, camGain: 0.232, travel: 0.090, lsdF: 0.15,
+    m: 1542, iz: 2450, wb: 2.711, acg: 1.14, hcg: 0.50, track: 1.549, awdF: 1.0, rearGrip: 1.06, rsF: 0.625, lsdR: 0.00, kSF: 24500, kSR: 21300, cSF: 2800, cSR: 2450, camF: -0.0175, camR: -0.0227, camGain: 0.232, travel: 0.090, lsdF: 0.15,
     flame: 0.10, box: '6-spd DSG', hp: 200, tq: 280, rpmTq: 1700, rpmTq2: 5000, tqFall: 0.28, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94, /* DQ250 6sp DSG */
     cda: 0.66, cla: 0.28, brake: 25500, rw: 0.325,
     hint: '2.0T, FWD, the momentum car. Brakes deep, carries speed, hates greed.' },
   tiguan: { name: 'VW Tiguan', short: 'TIGUAN', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.26, shiftCut: 0.35,
     rackS: 2.8, oF: 0.92, oR: 0.99, sill: 0.30, belt: 1.10, roof: 1.673, bz: 1.10, peak: 0.38, beltRise: 0.022, rdrop: 0.0, clad: 1,
     bw: 1.839, tw: 0.235,
-    m: 1750, iz: 3300, wb: 2.791, acg: 1.33, hcg: 0.60, track: 1.571, awdF: 0.58, rearGrip: 1.02, rsF: 0.580, lsdR: 0.15, kSF: 31000, kSR: 33000, cSF: 3300, cSR: 3500, camF: -0.0140, camR: -0.0192, camGain: 0.190, travel: 0.110, lsdF: 0.15,
+    m: 1750, iz: 3300, wb: 2.791, acg: 1.33, hcg: 0.60, track: 1.571, awdF: 0.58, rearGrip: 1.02, rsF: 0.580, lsdR: 0.15, kSF: 25000, kSR: 26600, cSF: 2950, cSR: 3150, camF: -0.0140, camR: -0.0192, camGain: 0.190, travel: 0.110, lsdF: 0.15,
     flame: 0.30, box: '8-spd Aisin auto', hp: 315, tq: 420, rpmTq: 2000, rpmTq2: 5000, tqFall: 0.20, rpmLim: 6500, gears: [5.25, 3.03, 1.95, 1.46, 1.22, 1.00, 0.81, 0.67], fin: 3.33, /* Aisin AWF8F35 8sp */
     cda: 0.94, cla: 0.08, brake: 31500, rw: 0.353,
     hint: '2.0T 4Motion, tuned. Light on its feet for an SUV - lean on the front end.' },
@@ -2766,7 +2805,10 @@ var MODEL_TWEAK = {
              /* Material.006 is the replacement bonnet: it shipped black, which
                 read as a missing panel on a white car */
              paintRx: /^rs6c8$|^Material\.006$/i,
-             hideRx: /Manta Spoiler/i,   /* ONLY the bolt-on wing: the 'stock2' and
+             /* THREE's GLTFLoader sanitises node names - spaces become '_' - so
+                the old /Manta Spoiler/ never matched and the bolt-on GT wing stayed
+                on a car whose spec sheet says 'stock body'. */
+             hideRx: /Manta.?Spoiler/i,   /* ONLY the bolt-on wing: the 'stock2' and
                 CivicTypeR nodes are the car's actual four wheels, and the old
                 pattern was deleting them */ shadowMin: 0.5 },
   cc:      { rotY: 0, y: 0, scaleMul: 1.0, repaint: true, spin: true,
@@ -3982,7 +4024,9 @@ function loadCarModel(S, key, onDone) {
           mm.transparent = true;
           mm.opacity = Math.min(mm.opacity !== undefined ? mm.opacity : 1, 0.62);
           mm.depthWrite = false;
-          mm.side = THREE.FrontSide;
+          /* double-sided: several exporters wind one pane of a window pair
+             inward, and single-sided glass then simply vanishes from outside */
+          mm.side = THREE.DoubleSide;
         }
         mm.needsUpdate = true;
         /* RECOLOUR TABLE: paintRx handles the body, but a car scheme needs
@@ -4217,6 +4261,8 @@ function taApplySun(seed) {
   hemi.intensity = (WX_SUN ? 0.62 : 1.15) * TA_LIGHT.hemi;
   sunLight.castShadow = !!WX_SUN;
   glRefreshSky();
+  glApplyWet();
+  if (_carProbe && !_carProbe.failed) _carProbe.t = 0, _carProbe.lx = 1e9;   /* re-shoot under the new sky */
 }
 
 /* ---------- boot ---------------------------------------------------------- */
@@ -4972,11 +5018,13 @@ function glBuildWorld() {
     lotMat.normalMap = _asphaltNrm;
     lotMat.normalScale = new THREE.Vector2(0.55, 0.55);
   }
+  _lotMat = lotMat;
   var lot = new THREE.Mesh(new THREE.PlaneGeometry(padW, padD), lotMat);
   lot.rotation.x = -Math.PI / 2;
   lot.position.set(padCX, 0, padCZ);
   lot.receiveShadow = true;
   worldGroup.add(lot);
+  glApplyWet();
 
   /* the crumbling lip where the pavement gives up - a thin gravel apron all
      the way round, which is what actually reads as "edge" at speed */
@@ -5806,10 +5854,12 @@ function taCamUpdate(dt) {
      rises with speed and again with wheelspin and lock-up, because that is
      when a real car is genuinely shaking. Kept small enough to be felt rather
      than seen. */
-  var rough = Math.min(1, spd / 42) * 0.004
-            + Math.min(0.6, (car.wheelspin || 0)) * 0.005
-            + Math.min(0.6, (car.locked || 0)) * 0.004
-            + (car.offLine ? 0.012 : 0);
+  /* Off-track no longer triples the shake: grass is soft, and a camera that
+     judders the moment two wheels drop off reads as a crash, not a surface.
+     The suspension already shows the bumps through the body. */
+  var rough = Math.min(1, spd / 42) * 0.0022
+            + Math.min(0.6, (car.wheelspin || 0)) * 0.003
+            + Math.min(0.6, (car.locked || 0)) * 0.0025;
   var tsh = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
   var shx = (Math.sin(tsh * 41.3) + Math.sin(tsh * 27.1)) * 0.5 * rough;
   var shy = (Math.sin(tsh * 33.7) + Math.sin(tsh * 19.9)) * 0.5 * rough;
@@ -6004,6 +6054,130 @@ function glCrowdMat(m) {
   };
   m.needsUpdate = true;
 }
+/* ===== v5.12 WEATHER YOU CAN SEE, AND REFLECTIONS OF THE REAL WORLD =========
+   Rain used to be a grip number and a label: the road stayed bone dry and
+   nothing fell. A wet day now soaks the pad - darker, glossy asphalt with
+   standing water in the low spots that mirrors the sky - and rain falls
+   through the camera's volume as streaks that slant with the car's speed.
+
+   The cars used to reflect a painted sky gradient: correct light, wrong
+   world. A cube camera now photographs the actual surroundings from the car
+   (cones, tents, trees, the pad, the other buildings) a couple of times a
+   second, and the paint, glass and chrome reflect THAT - the single biggest
+   thing that makes a car read as sitting in a place rather than pasted on. */
+var _lotMat = null, _puddleTex = null, _rain = null, _carProbe = null;
+function glProbeK() {
+  var wx = (typeof TA_WX !== 'undefined') ? TA_WX : 'sun';
+  return wx === 'overcast' ? 0.40 : (wx === 'rain' ? 0.33 : (wx === 'golden' ? 0.26 : 0.24));
+}
+function glMakePuddles() {
+  /* roughness map: white = dry tarmac, dark = standing water (mirror-smooth) */
+  var c = document.createElement('canvas'); c.width = c.height = 256;
+  var g = c.getContext('2d');
+  g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, 256, 256);
+  for (var i = 0; i < 70; i++) {
+    var x = Math.random() * 256, y = Math.random() * 256, r = 6 + Math.random() * 26;
+    var gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(18,18,18,0.95)'); gr.addColorStop(0.65, 'rgba(40,40,40,0.75)'); gr.addColorStop(1, 'rgba(200,200,200,0)');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, r, r * (0.45 + Math.random() * 0.5), Math.random() * 3.1, 0, 6.2832); g.fill();
+  }
+  var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function glApplyWet() {
+  if (!_lotMat) return;
+  var wet = (typeof TA_WX !== 'undefined' && TA_WX === 'rain');
+  if (wet) {
+    if (!_puddleTex) _puddleTex = glMakePuddles();
+    if (_asphaltTex) _puddleTex.repeat.set(_asphaltTex.repeat.x / 3.2, _asphaltTex.repeat.y / 3.2);
+    _lotMat.roughness = 0.62;           /* multiplied by the map: 0.08 in puddles */
+    _lotMat.roughnessMap = _puddleTex;
+    _lotMat.color.setRGB(0.62, 0.62, 0.64);   /* soaked binder goes dark */
+    if (_lotMat.normalScale) _lotMat.normalScale.set(0.30, 0.30);
+  } else {
+    _lotMat.roughness = 0.93; _lotMat.roughnessMap = null;
+    _lotMat.color.setRGB(1, 1, 1);
+    if (_lotMat.normalScale) _lotMat.normalScale.set(0.55, 0.55);
+  }
+  _lotMat.needsUpdate = true;
+  if (_rain) _rain.mesh.visible = wet;
+}
+function glRainInit() {
+  var N = 2600, pos = new Float32Array(N * 6), seed = new Float32Array(N * 3);
+  for (var i = 0; i < N; i++) {
+    seed[i * 3] = Math.random(); seed[i * 3 + 1] = Math.random(); seed[i * 3 + 2] = Math.random();
+  }
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  var mat = new THREE.LineBasicMaterial({ color: 0xc9d2dc, transparent: true, opacity: 0.20, depthWrite: false });
+  var mesh = new THREE.LineSegments(geo, mat);
+  mesh.frustumCulled = false; mesh.visible = false;
+  scene.add(mesh);
+  _rain = { N: N, pos: pos, seed: seed, geo: geo, mesh: mesh, t: 0 };
+}
+function glRainFrame() {
+  if (!_rain || !_rain.mesh.visible) return;
+  var R = _rain, now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+  var BOX = 26, H = 14, FALL = 9.5;
+  var cx = camera.position.x, cy = camera.position.y, cz = camera.position.z;
+  /* relative wind from the car's own speed slants the streaks toward the lens */
+  var sp = (typeof car !== 'undefined' && car) ? car.v || 0 : 0;
+  var fx = Math.sin(car.yaw) * sp, fz = Math.cos(car.yaw) * sp;
+  for (var i = 0; i < R.N; i++) {
+    var a = R.seed[i * 3], b = R.seed[i * 3 + 1], c = R.seed[i * 3 + 2];
+    var y = H - ((now * FALL + c * H) % H);
+    var x = cx + (a - 0.5) * BOX, z = cz + (b - 0.5) * BOX;
+    var o = i * 6, len = 0.032;
+    R.pos[o] = x; R.pos[o + 1] = cy - 3 + y; R.pos[o + 2] = z;
+    R.pos[o + 3] = x + fx * len; R.pos[o + 4] = cy - 3 + y - FALL * len * 1.6; R.pos[o + 5] = z - fz * len;
+  }
+  R.geo.attributes.position.needsUpdate = true;
+}
+function glCarProbe(force) {
+  if (!carGroup || !renderer || typeof THREE.CubeCamera === 'undefined') return;
+  if (_carProbe && _carProbe.failed) return;
+  if (!_carProbe) {
+    var rt = new THREE.WebGLCubeRenderTarget(128, { type: THREE.HalfFloatType, generateMipmaps: false,
+      minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    _carProbe = { rt: rt, cam: new THREE.CubeCamera(0.4, 600, rt), pm: new THREE.PMREMGenerator(renderer),
+                  env: null, lx: 1e9, lz: 1e9, t: 0, mats: [] };
+    scene.add(_carProbe.cam);
+  }
+  var P = _carProbe, now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  var px = -car.x, pz = car.z;
+  var moved = Math.hypot(px - P.lx, pz - P.lz);
+  if (!force && P.env && (now - P.t < 450 || moved < 3) && moved < 12) return;
+  P.t = now; P.lx = px; P.lz = pz;
+  var gv = ghostGroup ? ghostGroup.visible : false, rv = rivalGroup ? rivalGroup.visible : false;
+  carGroup.visible = false; if (ghostGroup) ghostGroup.visible = false; if (rivalGroup) rivalGroup.visible = false;
+  var rainV = _rain ? _rain.mesh.visible : false; if (_rain) _rain.mesh.visible = false;
+  P.cam.position.set(px, 0.85, pz);
+  var tm = renderer.toneMapping; renderer.toneMapping = THREE.NoToneMapping;
+  var prevRT = renderer.getRenderTarget();
+  P.cam.update(renderer, scene);
+  renderer.setRenderTarget(prevRT);
+  renderer.toneMapping = tm;
+  carGroup.visible = true; if (ghostGroup) ghostGroup.visible = gv; if (rivalGroup) rivalGroup.visible = rv;
+  if (_rain) _rain.mesh.visible = rainV;
+  var fresh = P.pm.fromCubemap(P.rt.texture);
+  var old = P.env; P.env = fresh;
+  /* the capture is raw scene radiance; scale it by the same factor the sky
+     probe uses so the car's light level stays calibrated */
+  var K = glProbeK();
+  carGroup.traverse(function (n) {
+    if (!n.isMesh || !n.material) return;
+    var arr = Array.isArray(n.material) ? n.material : [n.material];
+    for (var i = 0; i < arr.length; i++) {
+      var m = arr[i]; if (!m.isMeshStandardMaterial) continue;
+      if (m.userData.envBase === undefined) m.userData.envBase = (m.envMapIntensity !== undefined ? m.envMapIntensity : 1);
+      var first = !m.envMap;
+      m.envMap = fresh.texture;
+      m.envMapIntensity = m.userData.envBase * K;
+      if (first) m.needsUpdate = true;
+    }
+  });
+  if (old) old.dispose();
+}
 function taRenderFrame(ghostPose, rivalPose) {
   if (!_glReady || !glEnsureWorld()) return;
   /* Both domes ride with the camera. At 2.6 km across, a fixed dome lets the
@@ -6159,6 +6333,9 @@ function taRenderFrame(ghostPose, rivalPose) {
   sunLight.position.set(-car.x + SUN[0] * -110, 130 * SUN[1] + 40, car.z + SUN[2] * 110);
   sunLight.target.position.set(-car.x, 0, car.z);
   sunLight.target.updateMatrixWorld();
+  if (!_rain) glRainInit();
+  glRainFrame();
+  try { glCarProbe(false); } catch (eProbe) { _carProbe = { failed: true }; }
   if (_crowdU.uCar.value) {
     _crowdU.uCar.value.set(-car.x, car.z);
     _crowdU.uTime.value = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
@@ -6925,7 +7102,7 @@ function taAudioInit() {
 
     _aud = { out: out, eg: eg, sub: sub, subG: subG, tw: tw, twG: twG,
              induct: induct, squeal: squeal, surface: surface, bov: bov,
-             wind: wind, crowd: crowd, cheer: cheer,
+             wind: wind, crowd: crowd, cheer: cheer, rainA: noiseNode('bandpass', 5200, 0.35, 0), rainB: noiseNode('lowpass', 900, 0.5, 0),
              eng: null, voiceKey: '', noise: buf, prevThr: 0, popT: 0 };
     return true;
   } catch (e) { _aud = null; return false; }
@@ -7022,6 +7199,13 @@ function taAudioFrame() {
   }
   _aud.prevThr = car.thr;
 
+  /* rain: a hiss of drops on the body plus the low wash of spray off the
+     tyres, which grows with speed */
+  if (_aud.rainA) {
+    var wetA = (typeof TA_WX !== 'undefined' && TA_WX === 'rain') ? 1 : 0;
+    _aud.rainA.g.gain.setTargetAtTime(0.030 * wetA, t, 0.5);
+    _aud.rainB.g.gain.setTargetAtTime(wetA * Math.min(0.09, Math.abs(car.v || 0) * 0.0035), t, 0.3);
+  }
   /* ---- ambience: wind, crowd, cheer ------------------------------------ */
   var vAbs2 = Math.abs(car.v || 0);
   if (_aud.wind) {

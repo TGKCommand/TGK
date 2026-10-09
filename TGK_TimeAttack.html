@@ -502,10 +502,13 @@ body{
    renderer field is what tells them apart.
    ------------------------------------------------------------------------ */
 var TA_BUILD = {
-  version: '5.9.0',
-  date: '2026-10-08',
+  version: '5.12.0',
+  date: '2026-10-09',
   renderer: 'Canvas 2D',
   notes: [
+    'course: SCCA coning - outside walls on corners, sparse lane markers, offset-gate section, 17-20 ft gates, 52-66 ft slaloms',
+    'suspension: CC and Tiguan springs softened to real roll gradients; camera no longer shakes off-track',
+    'version aligned with GL build',
     'audio: wind over the body, crowd voices, cheer swells as you pass spectators',
     'audio: 4-speed x 2-load crossfaded exhaust, tuned pipe resonance, outdoor reflections',    'wheels: geometric detection + merged-mesh splitting; all 4 cars rig',
     'wheels: cylindrical membership - fixes torn tyre shoulders',
@@ -863,6 +866,16 @@ function taCourseBuild(seed) {
     });
     return cones[cones.length - 1];
   }
+  /* a gate whose centre sits OFF the centreline - offset-gate sections */
+  function addGateAt(idx, centre, halfGap) {
+    var l = addCone(idx, centre - halfGap, 'gate');
+    var r = addCone(idx, centre + halfGap, 'gate');
+    var s = segAt(idx), w = worldAt(idx, centre);
+    gates.push({
+      n: gates.length, seg: s.i, x: w.x, z: w.z, th: s.th, half: halfGap,
+      L: l, R: r, done: false, missed: false, flash: 0, label: ''
+    });
+  }
   function addGate(idx, halfGap, label) {
     var l = addCone(idx, -halfGap, 'gate');
     var r = addCone(idx, halfGap, 'gate');
@@ -900,6 +913,7 @@ function taCourseBuild(seed) {
     }
   }
   var slalomPlan = [];
+  var offsetPlan = [];
 
   /* ======================= LAYOUT =======================
      Roughly 1.3 km, about 60-70 s for a clean run. Built as
@@ -934,7 +948,9 @@ function taCourseBuild(seed) {
     straight(pick(58, 88));
     bendR(55, 85, 34, 48);
     straight(pick(20, 30));
-    slalom(6 + Math.floor(rnd() * 3), pick(20, 24), rnd() > 0.5 ? 1 : -1);
+    /* SCCA slaloms run 45-70 ft (14-21 m) cone to cone; 20-24 m was a
+       lazy wiggle you could take nearly flat */
+    slalom(6 + Math.floor(rnd() * 3), pick(16, 20), rnd() > 0.5 ? 1 : -1);
     straight(pick(120, 165));
     bendR(45, 65, 26, 34);
     secMark.push(segs.length);
@@ -954,7 +970,12 @@ function taCourseBuild(seed) {
     bendR(60, 80, 30, 38);
     straight(pick(28, 44));
     bendR(90, 110, 16, 20);
-    straight(pick(40, 60));
+    /* OFFSET GATES - the staple autocross element this layout never had: three
+       gates stepped left-right-left down a straight, so the car has to be
+       placed and transitioned rather than simply aimed */
+    var offStart = segs.length;
+    straight(pick(58, 70));
+    offsetPlan.push({ idx: offStart + 6, n: 3, step: 9 });
     secMark.push(segs.length);
     /* Sector 4: technical box, tight hairpin, run to the lights */
     bendR(50, 70, 18, 24);
@@ -979,7 +1000,7 @@ function taCourseBuild(seed) {
   }
   var attempt = 0;
   for (attempt = 0; attempt < 60; attempt++) {
-    segs.length = 0; slalomPlan.length = 0; secMark.length = 0;
+    segs.length = 0; slalomPlan.length = 0; offsetPlan.length = 0; secMark.length = 0;
     x = 0; z = 0; th = 0;
     rnd = taRand((seed + attempt * 7919) >>> 0);
     genLayout();
@@ -1039,23 +1060,39 @@ function taCourseBuild(seed) {
 
   /* gates through the interesting bits, plus start/finish */
   addGate(6, 5.0, 'START');
-  addGate(Math.round(secMark[0] * 0.55), 3.2);
-  addGate(secMark[0] - 6, 3.6);
-  addGate(Math.round((secMark[0] + secMark[1]) / 2), 3.0);
-  addGate(secMark[1] - 8, 3.4);
-  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.35), 3.6);
-  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.75), 3.0);
-  addGate(secMark[2] - 10, 3.2);
+  /* intermediate gates at 17-20 ft, where SCCA courses actually set them */
+  addGate(Math.round(secMark[0] * 0.55), 2.75);
+  addGate(secMark[0] - 6, 3.10);
+  addGate(Math.round((secMark[0] + secMark[1]) / 2), 2.58);
+  addGate(secMark[1] - 8, 2.92);
+  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.35), 3.10);
+  addGate(Math.round(secMark[1] + (secMark[2] - secMark[1]) * 0.75), 2.58);
+  addGate(secMark[2] - 10, 2.75);
   addGate(Math.round(secMark[2] + (secMark[3] - secMark[2]) * 0.4), 2.9);
-  addGate(Math.round(secMark[3] - 60), 3.4);
+  addGate(Math.round(secMark[3] - 60), 2.92);
   addGate(segs.length - 8, 5.0, 'FINISH');
+  for (var op = 0; op < offsetPlan.length; op++) {
+    var OP = offsetPlan[op], oside = rnd() > 0.5 ? 1 : -1;
+    for (var oj = 0; oj < OP.n; oj++) {
+      addGateAt(OP.idx + oj * OP.step, ((oj % 2 === 0) ? 1 : -1) * oside * 2.1, 2.45);
+    }
+  }
   gates.sort(function (a, b) { return a.seg - b.seg; });
   for (var g = 0; g < gates.length; g++) gates[g].n = g;
 
-  /* boundary cones every 14 m so the course edge reads at a glance */
-  for (var b = 8; b < segs.length - 4; b += 7) {
-    addCone(b, -COURSE_HALF, 'edge');
-    addCone(b, COURSE_HALF, 'edge');
+  /* COURSE EDGE, the way an SCCA course is actually coned. A road-course
+     style double row of cones down both sides is not autocross. Corners get a
+     WALL on the outside only - a cone every 4 m that you read as a curve - and
+     the inside is defined by the apex pointers above. Straights get sparse
+     paired markers every 24 m, enough to frame the lane at speed. */
+  for (var b = 8; b < segs.length - 4; b++) {
+    var kk2 = segs[b].k;
+    if (Math.abs(kk2) > 1 / 70) {
+      if (b % 2 === 0) addCone(b, (kk2 > 0 ? -1 : 1) * COURSE_HALF, 'edge');
+    } else if (b % 12 === 0) {
+      addCone(b, -COURSE_HALF, 'edge');
+      addCone(b, COURSE_HALF, 'edge');
+    }
   }
 
   /* ---- parking lot decals: faded stall lines give real speed cues ---- */
@@ -1679,14 +1716,14 @@ var CAR_SPEC = {
   cc: { name: 'VW CC', short: 'CC', style: 'cc', paint: [34, 36, 40], /* deep black pearl - true 22,23,26 swallowed every highlight */ face: 'bars', exh: 2, wing: 'lip', mirror: [34, 36, 40], rails: 0, shiftT: 0.16, shiftCut: 0.12,
     rackS: 3.2, oF: 0.95, oR: 1.14, sill: 0.14, belt: 0.93, roof: 1.417, bz: 0.95, peak: 0.05, beltRise: 0.055, rdrop: 0.11, clad: 0,
     bw: 1.855, tw: 0.235,
-    m: 1542, iz: 2450, wb: 2.711, acg: 1.14, hcg: 0.50, track: 1.549, awdF: 1.0, rearGrip: 1.06, rsF: 0.625, lsdR: 0.00, kSF: 30000, kSR: 26000, cSF: 3100, cSR: 2700, camF: -0.0175, camR: -0.0227, camGain: 0.232, travel: 0.090, lsdF: 0.15,
+    m: 1542, iz: 2450, wb: 2.711, acg: 1.14, hcg: 0.50, track: 1.549, awdF: 1.0, rearGrip: 1.06, rsF: 0.625, lsdR: 0.00, kSF: 24500, kSR: 21300, cSF: 2800, cSR: 2450, camF: -0.0175, camR: -0.0227, camGain: 0.232, travel: 0.090, lsdF: 0.15,
     flame: 0.10, box: '6-spd DSG', hp: 200, tq: 280, rpmTq: 1700, rpmTq2: 5000, tqFall: 0.28, rpmLim: 6500, gears: [3.36, 2.09, 1.47, 1.10, 0.91, 0.76], fin: 3.94, /* DQ250 6sp DSG */
     cda: 0.66, cla: 0.28, brake: 25500, rw: 0.325,
     hint: '2.0T, FWD, the momentum car. Brakes deep, carries speed, hates greed.' },
   tiguan: { name: 'VW Tiguan', short: 'TIGUAN', style: 'suv', paint: [104, 108, 113], face: 'tg', exh: 2, wing: 'roof', mirror: [104, 108, 113], rails: 1, shiftT: 0.26, shiftCut: 0.35,
     rackS: 2.8, oF: 0.92, oR: 0.99, sill: 0.30, belt: 1.10, roof: 1.673, bz: 1.10, peak: 0.38, beltRise: 0.022, rdrop: 0.0, clad: 1,
     bw: 1.839, tw: 0.235,
-    m: 1750, iz: 3300, wb: 2.791, acg: 1.33, hcg: 0.60, track: 1.571, awdF: 0.58, rearGrip: 1.02, rsF: 0.580, lsdR: 0.15, kSF: 31000, kSR: 33000, cSF: 3300, cSR: 3500, camF: -0.0140, camR: -0.0192, camGain: 0.190, travel: 0.110, lsdF: 0.15,
+    m: 1750, iz: 3300, wb: 2.791, acg: 1.33, hcg: 0.60, track: 1.571, awdF: 0.58, rearGrip: 1.02, rsF: 0.580, lsdR: 0.15, kSF: 25000, kSR: 26600, cSF: 2950, cSR: 3150, camF: -0.0140, camR: -0.0192, camGain: 0.190, travel: 0.110, lsdF: 0.15,
     flame: 0.30, box: '8-spd Aisin auto', hp: 315, tq: 420, rpmTq: 2000, rpmTq2: 5000, tqFall: 0.20, rpmLim: 6500, gears: [5.25, 3.03, 1.95, 1.46, 1.22, 1.00, 0.81, 0.67], fin: 3.33, /* Aisin AWF8F35 8sp */
     cda: 0.94, cla: 0.08, brake: 31500, rw: 0.353,
     hint: '2.0T 4Motion, tuned. Light on its feet for an SUV - lean on the front end.' },
@@ -2767,7 +2804,7 @@ function taCamUpdate(dt) {
   var fov = camFovBase + sp * 15;
   camDepth = 1 / Math.tan(fov * Math.PI / 360);
 
-  var rough = (car.offLine ? 1.1 : 0.30) * sp + car.gripUse * 0.6 + car.locked * 1.2;
+  var rough = 0.22 * sp + car.gripUse * 0.30 + car.locked * 0.7;   /* no off-track judder */
   shakeX = (Math.random() - 0.5) * rough * 1.7;
   shakeY = (Math.random() - 0.5) * rough * 1.7;
 
@@ -4948,7 +4985,7 @@ function taAudioInit() {
 
     _aud = { out: out, eg: eg, sub: sub, subG: subG, tw: tw, twG: twG,
              induct: induct, squeal: squeal, surface: surface, bov: bov,
-             wind: wind, crowd: crowd, cheer: cheer,
+             wind: wind, crowd: crowd, cheer: cheer, rainA: noiseNode('bandpass', 5200, 0.35, 0), rainB: noiseNode('lowpass', 900, 0.5, 0),
              eng: null, voiceKey: '', noise: buf, prevThr: 0, popT: 0 };
     return true;
   } catch (e) { _aud = null; return false; }
@@ -5045,6 +5082,13 @@ function taAudioFrame() {
   }
   _aud.prevThr = car.thr;
 
+  /* rain: a hiss of drops on the body plus the low wash of spray off the
+     tyres, which grows with speed */
+  if (_aud.rainA) {
+    var wetA = (typeof TA_WX !== 'undefined' && TA_WX === 'rain') ? 1 : 0;
+    _aud.rainA.g.gain.setTargetAtTime(0.030 * wetA, t, 0.5);
+    _aud.rainB.g.gain.setTargetAtTime(wetA * Math.min(0.09, Math.abs(car.v || 0) * 0.0035), t, 0.3);
+  }
   /* ---- ambience: wind, crowd, cheer ------------------------------------ */
   var vAbs2 = Math.abs(car.v || 0);
   if (_aud.wind) {
