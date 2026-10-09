@@ -504,10 +504,12 @@ body{
    renderer field is what tells them apart.
    ------------------------------------------------------------------------ */
 var TA_BUILD = {
-  version: '5.8.0',
+  version: '5.9.0',
   date: '2026-10-08',
   renderer: 'WebGL',
   notes: [
+    'audio: wind over the body, crowd voices, cheer swells as you pass spectators',
+    'brakes: rotors glow with heat under hard repeated stops',
     'post: HDR target + MSAA, bloom, ACES, vignette, grain, edge speed blur (?post=0 to disable)',
     'crowd: idle sway, spectators hop as the car comes past',
     'props: light poles (were obelisks), open EZ-up tents, trailers on wheels',
@@ -4160,7 +4162,7 @@ var coneDown = null, gateGroup = null, lineGroup = null;
 var _asphaltTex = null, _skyMesh = null, _smokeTex = null, _skidTex = null, _aoTex = null;
 var _cloudMesh = null, _skyFor = null, _grassTex = null, _asphaltNrm = null;
 var _flameSprites = null, _flameTex = null;
-var tailMats = [], skidGroup = null, smokeGroup = null;
+var tailMats = [], skidGroup = null, smokeGroup = null, _rotorMats = [];
 var camX = 0, camZ = 0, camYaw = 0;
 var _camFov, _camVPrev, _camAx, _camRoll, _camAim;
 /* SAME SHAPE as the canvas renderer: 60_game.js reads CAM_MODES[camMode].back
@@ -6091,6 +6093,20 @@ function taRenderFrame(ghostPose, rivalPose) {
     if (U.spin) U.spin.rotation.x = spin;
   }
   for (var t = 0; t < tailMats.length; t++) tailMats[t].emissiveIntensity = car.brk > 0.1 ? 1.7 : 0.12;
+  if (_rotorMats.length) {
+    var _nowB = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    var _dtB = clamp((_nowB - (car._bhT || _nowB)) / 1000, 0, 0.1); car._bhT = _nowB;
+    /* heat in ~ brake power, out ~ convective cooling that grows with speed */
+    car._bh = clamp((car._bh || 0) + ((car.brk || 0) * Math.abs(car.v) * 0.010
+              - (car._bh || 0) * (0.10 + Math.abs(car.v) * 0.004)) * _dtB, 0, 1.4);
+    var _glow = clamp((car._bh - 0.45) / 0.6, 0, 1);
+    for (var rm = 0; rm < _rotorMats.length; rm++) {
+      /* hot iron is a deep cherry red, only shading toward orange at the
+         very top - never the yellow-white of a lamp */
+      _rotorMats[rm].emissiveIntensity = _glow * _glow * 0.50;
+      _rotorMats[rm].emissive.setRGB(1, 0.04 + 0.10 * _glow, 0.01);
+    }
+  }
 
   /* exhaust flame: a brief additive flash at each tailpipe on an ignition-cut
      downshift. Additive blending and no depth write so it reads as light, not
@@ -6528,6 +6544,20 @@ function buildCarInto(grp, S, tint) {
           if (mm && mm.name && /tail|rear.?light|stop/i.test(mm.name) && mm.emissive) tailMats.push(mm);
         });
       });
+      /* BRAKE HEAT. Rotor materials inside the wheel rig are cloned (so a
+         shared material never lights up bodywork) and glow from dull red to
+         orange as kinetic energy goes into them under hard, repeated stops. */
+      _rotorMats = [];
+      model.traverse(function (n) {
+        if (!n.isMesh) return;
+        var inWheel = /^TGK_WHEEL_/.test(n.name || '') || (n.parent && /^TGK_WHEEL_/.test(n.parent.name || ''));
+        if (!inWheel) return;
+        var mm = n.material;
+        if (!mm || Array.isArray(mm) || !/brake.?dis|rotor|etk800/i.test(mm.name || '')) return;
+        var c = mm.clone();
+        c.emissive = new THREE.Color(0xff3a0c); c.emissiveIntensity = 0;
+        n.material = c; _rotorMats.push(c);
+      });
       var badge = document.getElementById('ta-glb-tag');
       if (badge) badge.textContent = 'GLB ' + key.toUpperCase() + ' | ' +
         ((model.userData && model.userData.painted) || 0) + ' mats painted | ' + sp.length + ' wheel nodes';
@@ -6872,9 +6902,30 @@ function taAudioInit() {
     var squeal = noiseNode('bandpass', 1150, 9.0, 0);
     var surface = noiseNode('lowpass', 700, 0.9, 0);
     var bov = noiseNode('highpass', 2400, 0.8, 0);   /* blow-off psst */
+    /* v5.9 AMBIENCE. Wind over the body rises with the square of speed and
+       brightens as it does. The crowd is vowel-formant noise with a slow
+       syllabic flutter, so it reads as voices rather than surf; the cheer is
+       the same voice pitched up and swelled when the car passes a group. */
+    var wind = noiseNode('bandpass', 500, 0.6, 0);
+    function voices(f1, f2, gain, rate) {
+      var src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+      var a = AC.createBiquadFilter(); a.type = 'bandpass'; a.frequency.value = f1; a.Q.value = 1.6;
+      var b = AC.createBiquadFilter(); b.type = 'peaking'; b.frequency.value = f2; b.Q.value = 2.0; b.gain.value = 9;
+      var am = AC.createGain(); am.gain.value = 0.7;
+      var lfo = AC.createOscillator(); lfo.frequency.value = rate;
+      var lfoG = AC.createGain(); lfoG.gain.value = 0.3;
+      lfo.connect(lfoG); lfoG.connect(am.gain); lfo.start();
+      var g = AC.createGain(); g.gain.value = gain;
+      src.connect(a); a.connect(b); b.connect(am); am.connect(g); g.connect(out);
+      src.start(AC.currentTime + Math.random() * 0.5);
+      return { g: g, f: a };
+    }
+    var crowd = voices(620, 1450, 0, 3.7);
+    var cheer = voices(950, 2300, 0, 5.3);
 
     _aud = { out: out, eg: eg, sub: sub, subG: subG, tw: tw, twG: twG,
              induct: induct, squeal: squeal, surface: surface, bov: bov,
+             wind: wind, crowd: crowd, cheer: cheer,
              eng: null, voiceKey: '', noise: buf, prevThr: 0, popT: 0 };
     return true;
   } catch (e) { _aud = null; return false; }
@@ -6970,6 +7021,33 @@ function taAudioFrame() {
     _aud.bov.g.gain.setTargetAtTime(0, t + 0.03, 0.06);
   }
   _aud.prevThr = car.thr;
+
+  /* ---- ambience: wind, crowd, cheer ------------------------------------ */
+  var vAbs2 = Math.abs(car.v || 0);
+  if (_aud.wind) {
+    var wq = Math.min(1, vAbs2 / 45);
+    _aud.wind.g.gain.setTargetAtTime(0.10 * wq * wq, t, 0.25);
+    _aud.wind.f.frequency.setTargetAtTime(380 + vAbs2 * 26, t, 0.3);
+  }
+  if (_aud.crowd && typeof course !== 'undefined' && course && course.scenery) {
+    if (_aud.crowdFor !== course) {
+      _aud.crowdFor = course; _aud.crowdPts = [];
+      for (var ci3 = 0; ci3 < course.scenery.length; ci3++) {
+        var so = course.scenery[ci3];
+        if (so.t === 'crowd' || so.t === 'tent') _aud.crowdPts.push(so.x, so.z);
+      }
+    }
+    var dMin = 1e9, P3 = _aud.crowdPts;
+    for (var cj = 0; cj < P3.length; cj += 2) {
+      var ddx = P3[cj] - car.x, ddz = P3[cj + 1] - car.z, dd = ddx * ddx + ddz * ddz;
+      if (dd < dMin) dMin = dd;
+    }
+    dMin = Math.sqrt(dMin);
+    var near3 = clamp(1 - dMin / 140, 0, 1);
+    _aud.crowd.g.gain.setTargetAtTime(0.006 + 0.030 * near3 * near3, t, 0.6);
+    var pass = clamp(1 - (dMin - 8) / 34, 0, 1) * clamp((vAbs2 - 8) / 14, 0, 1);
+    _aud.cheer.g.gain.setTargetAtTime(0.055 * pass, t, pass > 0.05 ? 0.35 : 1.4);
+  }
 
   /* overrun pops: closed throttle at revs, unburnt fuel in hot pipes */
   if (load < 0.08 && rev > 0.32) {
