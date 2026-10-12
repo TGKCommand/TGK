@@ -17307,7 +17307,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.49';
+var TGK_CC_VERSION='v3.50';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -24105,9 +24105,13 @@ function fmRenderVehicles(){
 }
 // an old ERP-only row is "covered" when the imported website data has the same SKU + make + model with overlapping years
 function fmLegacyCovered(legacy){
-  var idx={};FM.fits.forEach(function(f){if(!f.handle)return;var k=[String(f.pn||'').toUpperCase(),String(f.make||'').toLowerCase(),String(f.model||'').toLowerCase()].join('|');(idx[k]=idx[k]||[]).push(f);});
-  return legacy.filter(function(l){var k=[String(l.pn||'').toUpperCase(),String(l.make||'').toLowerCase(),String(l.model||'').toLowerCase()].join('|');
-    return (idx[k]||[]).some(function(f){return !(f.year_to<l.year_from||f.year_from>l.year_to);});});
+  // An old ERP row (no website page) is "covered" when imported/website data has the same part - legacy and new
+  // SKU count as the same part - with the same make + model and years that include the old row's years.
+  // a website row counts for its own SKU AND for its page's SKU (an option row like TGK-0312-05 on the TGK-0312-03 page)
+  var idx={};FM.fits.forEach(function(f){if(!f.handle)return;var pr=fmProd(f.handle),ks={};ks[String(fmCanonPn(f.pn)||'').toUpperCase()]=1;if(pr&&pr.sku)ks[String(fmCanonPn(pr.sku)).toUpperCase()]=1;
+    Object.keys(ks).forEach(function(sk){var k=[sk,String(f.make||'').toLowerCase(),String(f.model||'').toLowerCase()].join('|');(idx[k]=idx[k]||[]).push(f);});});
+  return legacy.filter(function(l){var k=[String(fmCanonPn(l.pn)||'').toUpperCase(),String(l.make||'').toLowerCase(),String(l.model||'').toLowerCase()].join('|');
+    return (idx[k]||[]).some(function(f){return +f.year_from<=+l.year_from&&+f.year_to>=+l.year_to;});});
 }
 function fmCleanLegacy(){
   var cov=fmLegacyCovered(FM.fits.filter(function(f){return !f.handle;}));if(!cov.length)return;
