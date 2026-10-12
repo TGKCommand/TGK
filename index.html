@@ -1996,6 +1996,18 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 @media (max-width:1100px){.fm-twocol{grid-template-columns:1fr}}
 [data-theme="dark"] .fm-issues{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35)}
 .fm-field .fm-in{flex:none!important;height:auto}.fm-row2{align-items:start}
+/* bulk delete + undo */
+.fm-selbar{display:flex;align-items:center;gap:12px;min-height:38px;padding:4px 2px 10px;font-size:13px}
+.fm-selbar.on{background:#fff6f5;border:1px solid #f5c2c0;border-radius:8px;padding:6px 12px;margin-bottom:10px}
+.fm-trsel td{background:#fff6f5!important}
+.fm-notice{background:var(--blue-light,#E6F1FB);color:var(--blue-text,#0c3d6e);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:10px}
+.fm-toast--act{pointer-events:auto;display:flex;align-items:center;gap:14px}
+.fm-undo{background:#2ABFAA;color:#0b0c0d;border:0;border-radius:6px;padding:5px 12px;font:700 13px var(--font);cursor:pointer}
+[data-theme="dark"] .fm-selbar.on,[data-theme="dark"] .fm-trsel td{background:rgba(220,38,38,.12)!important}
+/* delete SKUs + add from Shopify */
+.fm-danger{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--border2);font-size:12.5px}
+.fm-addpanel{border:2px solid var(--teal);margin:4px 0 12px}
+.fm-addpanel .fm-in{width:100%;margin-bottom:8px}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17281,7 +17293,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.43';
+var TGK_CC_VERSION='v3.46';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23349,6 +23361,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 var FM={bmode:'make',bq:'',open:{},pick:{},cq:'',more:false,loaded:false,loading:false,err:null,products:[],vehicles:[],fits:[],erp:null,tab:'products',q:'',filter:'all',sel:null,mk:'',md:'',plat:'',copyQ:'',vq:'',vmk:''};
 function fmEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmJs(s){return "'"+String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'";}
+function fmToastUndo(msg,undo){
+  var t=document.getElementById('fm-toast');if(!t){t=document.createElement('div');t.id='fm-toast';document.body.appendChild(t);}
+  t.innerHTML='<span>'+fmEsc(msg)+'</span> <button type="button" class="fm-undo">Undo</button>';t.className='fm-toast show fm-toast--act';
+  t.querySelector('.fm-undo').onclick=function(){t.className='fm-toast';undo();};
+  clearTimeout(fmToast._t);fmToast._t=setTimeout(function(){t.className='fm-toast';},9000);
+}
 function fmToast(msg,bad){
   var t=document.getElementById('fm-toast');
   if(!t){t=document.createElement('div');t.id='fm-toast';document.body.appendChild(t);}
@@ -23461,6 +23479,7 @@ async function fmAddVehicles(handle,vehicles,vskus){
 }
 async function fmRemove(ids){
   if(!ids.length)return;
+  FM.lastDeleted=FM.fits.filter(function(f){return ids.indexOf(f.id)>=0;}).map(function(f){var c=Object.assign({},f);return c;});
   await fmReq('fitments?id=in.('+ids.map(encodeURIComponent).join(',')+')',{method:'DELETE'});
   var gone={};ids.forEach(function(i){gone[i]=1;});
   FM.fits=FM.fits.filter(function(f){return !gone[f.id];});
@@ -23482,11 +23501,38 @@ function fmAddPlatform(){
   var vs=fmPlatforms()[FM.plat]||[];if(!vs.length)return;
   fmDo(async function(){var n=await fmAddVehicles(FM.sel,vs);fmToast(n?('Added '+n+' vehicle'+(n!==1?'s':'')+' from '+FM.plat):'All of '+FM.plat+' is already listed');});
 }
-function fmRemoveOne(id){fmDo(async function(){await fmRemove([id]);fmToast('Removed');});}
+async function fmDeleteIds(ids,label){
+  if(!ids.length)return;
+  var gone=[];
+  try{for(var i=0;i<ids.length;i+=100)gone=gone.concat(await fmAll('fitments?select=*&id=in.('+ids.slice(i,i+100).join(',')+')'));}
+  catch(e){fmToast('Could not read the rows before deleting - nothing was changed ('+(e.message||e)+')',true);return;}
+  fmDo(async function(){
+    for(var i=0;i<ids.length;i+=100)await fmRemove(ids.slice(i,i+100));
+    FM.fsel={};
+    setTimeout(function(){fmToastUndo(label||('Deleted '+ids.length+' fitment'+(ids.length!==1?'s':'')),function(){fmRestore(gone);});},0);
+  });
+}
+async function fmRestore(rows){ // put deleted rows back exactly as they were (same ids, every column)
+  if(!rows||!rows.length)return;
+  try{
+    var haveF={};FM.fits.forEach(function(f){haveF[f.id]=1;});var todo=rows.filter(function(r){return !haveF[r.id];});
+    for(var i=0;i<todo.length;i+=200){var ins=await fmReq('fitments',{method:'POST',body:JSON.stringify(todo.slice(i,i+200))});FM.fits=FM.fits.concat(ins||[]);}
+    fmRender();fmToast('Restored '+rows.length+' fitment'+(rows.length!==1?'s':''));
+  }catch(e){fmRender();fmToastUndo('Undo did not finish ('+(e.message||e)+') - try again',function(){fmRestore(rows);});}
+}
+function fmRemoveOne(id){fmDeleteIds([id],'Deleted 1 fitment');}
+function fmDeleteSelected(){
+  var ids=Object.keys(FM.fsel||{}).filter(function(k){return FM.fsel[k];});if(!ids.length)return;
+  if(ids.length>5&&!confirm('Delete '+ids.length+' fitments from this product?'))return;
+  fmDeleteIds(ids);
+}
+function fmFselToggle(id,on){FM.fsel=FM.fsel||{};if(on)FM.fsel[id]=1;else delete FM.fsel[id];fmRefreshCur();}
+function fmFselAll(on){FM.fsel={};if(on)fmFitsOf(FM.sel).forEach(function(f){FM.fsel[f.id]=1;});fmRefreshCur();}
+window.fmDeleteSelected=fmDeleteSelected;window.fmFselToggle=fmFselToggle;window.fmFselAll=fmFselAll;window.fmRestore=fmRestore;
 function fmRemoveAll(){
   var f=fmFitsOf(FM.sel);if(!f.length)return;
-  if(!confirm('Remove all '+f.length+' vehicles from this product?'))return;
-  fmDo(async function(){await fmRemove(f.map(function(x){return x.id;}));fmToast('Removed '+f.length);});
+  if(!confirm('Delete all '+f.length+' fitments from this product?\n\nYou can undo this straight after.'))return;
+  fmDeleteIds(f.map(function(x){return x.id;}),'Deleted all '+f.length+' fitments');
 }
 function fmCopyFrom(src){
   var vs=fmFitsOf(src);if(!vs.length){fmToast('That product has no fitment',true);return;}
@@ -23499,13 +23545,82 @@ function fmApplyToSameSku(){
   if(!confirm('Add this product\'s '+src.length+' vehicles to '+others.length+' other page'+(others.length!==1?'s':'')+' with SKU '+p.sku+'?'))return;
   fmDo(async function(){var n=0;for(var i=0;i<others.length;i++)n+=await fmAddVehicles(others[i].handle,src.map(function(f){return {id:f.vehicle_id,make:f.make,model:f.model,year_from:f.year_from,year_to:f.year_to,engine:f.engine,chassis:f.chassis};}));fmToast('Added '+n+' rows across '+others.length+' page'+(others.length!==1?'s':''));});
 }
-function fmNewProduct(){
-  var handle=(prompt('Shopify product handle (the end of its web address, e.g. tgk-motorsport-audi-4-0t-hpfp-rebuild-kit):')||'').trim().toLowerCase();
-  if(!handle)return;
-  if(fmProd(handle)){fmPick(handle);return;}
-  var sku=(prompt('SKU for this product:')||'').trim(),title=(prompt('Product title:')||'').trim();
-  fmDo(async function(){var r=await fmReq('fit_products',{method:'POST',body:JSON.stringify({handle:handle,sku:sku||null,title:title||handle,fit_type:'none'})});FM.products=FM.products.concat(r||[]);FM.sel=handle;fmToast('Product added');});
+function fmInList(handles){return 'in.('+handles.map(function(h){return '"'+encodeURIComponent(String(h).replace(/"/g,''))+'"';}).join(',')+')';}
+function fmInShopify(h){return !!(FM.vinfo&&(FM.vinfo[h]||(FM.nosku&&FM.nosku[h])));}
+async function fmDeleteProducts(handles){
+  handles=handles.filter(function(h){return fmProd(h);});if(!handles.length)return;
+  // Backup for Undo comes straight from the database (every column, current), not from this screen's copy
+  var prods=[],rows=[];
+  try{
+    for(var i=0;i<handles.length;i+=40){var part=handles.slice(i,i+40);
+      prods=prods.concat(await fmAll('fit_products?select=*&handle='+fmInList(part)));
+      rows=rows.concat(await fmAll('fitments?select=*&handle='+fmInList(part)));}
+  }catch(e){fmToast('Could not read the SKU before deleting - nothing was changed ('+(e.message||e)+')',true);return;}
+  var live=handles.filter(fmInShopify).length;
+  var what=handles.length===1?('SKU '+((prods[0]||{}).sku||'(no SKU)')+' - '+((prods[0]||{}).title||handles[0])):(handles.length+' SKUs');
+  var msg='Delete '+what+'?\n\nThis removes '+(handles.length===1?'it':'them')+' from the Fitment tool and deletes '+rows.length+' fitment row'+(rows.length!==1?'s':'')+' - from the website vehicle search, the ERP and the dealer price lists.'
+    +(live?'\n\n'+(handles.length===1?'It is':live+' of them are')+' still a product in Shopify: the page stays on your website, just without fitment, and will be listed under Checks as "not in the Fitment tool".':'')
+    +'\n\nShopify itself is not changed. You can undo this straight after.';
+  if(!confirm(msg))return;
+  fmDo(async function(){
+    for(var i=0;i<handles.length;i+=40){var part=handles.slice(i,i+40);await fmReq('fitments?handle='+fmInList(part),{method:'DELETE'});}
+    try{for(var j=0;j<handles.length;j+=40)await fmReq('fit_products?handle='+fmInList(handles.slice(j,j+40)),{method:'DELETE'});}
+    catch(e){ // could not remove the product rows - put the fitment back so nothing is half-deleted
+      if(rows.length)await fmReq('fitments',{method:'POST',body:JSON.stringify(rows)}).catch(function(){});throw e;}
+    FM.fits=FM.fits.filter(function(f){return handles.indexOf(f.handle)<0;});
+    FM.products=FM.products.filter(function(p){return handles.indexOf(p.handle)<0;});
+    FM.psel={};if(handles.indexOf(FM.sel)>=0)FM.sel=null;
+    setTimeout(function(){fmToastUndo('Deleted '+what,function(){fmRestoreProducts(prods,rows,what);});},0);
+  });
 }
+function fmCleanRows(rows){return rows.map(function(r){var c={};Object.keys(r).forEach(function(k){if(r[k]!==undefined)c[k]=r[k];});if(FM.noVarCol)delete c.variant_sku;if(!c.submodel)c.submodel=((c.chassis||'')+' '+(c.engine||'')).trim()||null;return c;});}
+async function fmRestoreProducts(prods,rows,what){
+  try{
+    var have={};FM.products.forEach(function(p){have[p.handle]=1;});
+    var todo=prods.filter(function(p){return !have[p.handle];}); // a retry must not double-insert what already came back
+    if(todo.length){var pr=await fmReq('fit_products',{method:'POST',body:JSON.stringify(todo)});FM.products=FM.products.concat(pr||[]);}
+    var haveF={};FM.fits.forEach(function(f){haveF[f.id]=1;});var rtodo=rows.filter(function(r){return !haveF[r.id];});
+    for(var i=0;i<rtodo.length;i+=200){var ins=await fmReq('fitments',{method:'POST',body:JSON.stringify(rtodo.slice(i,i+200))});FM.fits=FM.fits.concat(ins||[]);}
+    fmRender();fmToast('Restored '+prods.length+' SKU'+(prods.length!==1?'s':'')+' and '+rows.length+' fitment row'+(rows.length!==1?'s':''));
+  }catch(e){
+    fmRender();fmToastUndo('Undo did not finish ('+(e.message||e)+') - nothing is lost yet, try again',function(){fmRestoreProducts(prods,rows,what);});
+  }
+}
+function fmDeleteOrphans(){
+  var have={};FM.products.forEach(function(p){have[p.handle]=1;});
+  var orph=FM.fits.filter(function(f){return f.handle&&!have[f.handle];});if(!orph.length)return;
+  if(!confirm('Delete '+orph.length+' fitment rows that belong to no product in the Fitment tool?'))return;
+  fmDeleteIds(orph.map(function(f){return f.id;}),'Deleted '+orph.length+' orphaned rows');
+}
+function fmPselToggle(h,on,ev){if(ev)ev.stopPropagation();FM.psel=FM.psel||{};if(on)FM.psel[h]=1;else delete FM.psel[h];fmRefreshList();}
+function fmPselAll(on){FM.psel={};if(on)fmListRows().slice(0,400).forEach(function(p){FM.psel[p.handle]=1;});fmRefreshList();}
+function fmRefreshList(){var b=document.getElementById('fm-tbody');if(b)b.innerHTML=fmListBody();var bar=document.getElementById('fm-pbar');if(bar)bar.outerHTML=fmPbarHtml();var ha=document.getElementById('fm-pall');if(ha){var n=Object.keys(FM.psel||{}).length,v=Math.min(fmListRows().length,400);ha.checked=n&&n===v;}}
+function fmPbarHtml(){var n=Object.keys(FM.psel||{}).length;return '<div id="fm-pbar" class="fm-selbar'+(n?' on':'')+'">'+(n?'<b>'+n+' SKU'+(n!==1?'s':'')+' selected</b><button class="fm-del" onclick="fmDeleteProducts(Object.keys(FM.psel))">Delete selected</button><button class="fm-link" onclick="fmPselAll(false)">Clear selection</button>':'<span class="fm-tdim">Tick SKUs to delete several at once. Click a row to open it.</span>')+'</div>';}
+// ---------------- add a product: pick it from Shopify (no typing handles)
+function fmNewProduct(){FM.addOpen=!FM.addOpen;FM.addQ='';fmRender();if(FM.addOpen&&!FM.vinfo&&!FM.varsLoading)fmLoadVariants(true);setTimeout(function(){var e=document.getElementById('fm-addq');if(e)e.focus();},50);}
+function fmAddPanelHtml(){
+  if(!FM.addOpen)return '';
+  var have={};FM.products.forEach(function(p){have[p.handle]=1;});
+  var q=(FM.addQ||'').toLowerCase().trim(),list=[];
+  if(FM.vinfo)Object.keys(FM.vinfo).forEach(function(h){if(have[h])return;var vs=FM.vinfo[h],t=vs[0].title||h;
+    if(!q||[t,h].concat(vs.map(function(v){return v.sku;})).join(' ').toLowerCase().indexOf(q)>=0)list.push({h:h,t:t,vs:vs});});
+  list.sort(function(a,b){return a.t.localeCompare(b.t);});
+  return '<div class="fm-card fm-addpanel"><div class="fm-cardh"><b>Add a product from Shopify</b><button class="fm-link" onclick="fmNewProduct()">Close</button></div>'
+    +(!FM.vinfo?'<div class="fm-colhint">'+(FM.varsErr?'Could not read Shopify: '+fmEsc(FM.varsErr):'Loading your Shopify products...')+'</div>'
+    :'<input class="fm-in" id="fm-addq" placeholder="Search Shopify products not in the Fitment tool yet (name or SKU)" value="'+fmEsc(FM.addQ||'')+'" oninput="FM.addQ=this.value;var r=document.getElementById(\'fm-addlist\');if(r)r.innerHTML=fmAddListHtml();">'
+      +'<div id="fm-addlist">'+fmAddListHtml()+'</div>')+'</div>';
+}
+function fmAddListHtml(){
+  var have={};FM.products.forEach(function(p){have[p.handle]=1;});var q=(FM.addQ||'').toLowerCase().trim(),list=[];
+  Object.keys(FM.vinfo||{}).forEach(function(h){if(have[h])return;var vs=FM.vinfo[h],t=vs[0].title||h;
+    if(!q||[t,h].concat(vs.map(function(v){return v.sku;})).join(' ').toLowerCase().indexOf(q)>=0)list.push({h:h,t:t,vs:vs});});
+  list.sort(function(a,b){return a.t.localeCompare(b.t);});
+  if(!list.length)return '<div class="fm-colhint">'+(q?'No Shopify product matches "'+fmEsc(q)+'" that is not already in the tool.':'Every Shopify product is already in the Fitment tool.')+'</div>';
+  return '<table class="fm-table"><tbody>'+list.slice(0,50).map(function(x){return '<tr><td class="fm-tsku">'+fmEsc(x.vs[0].sku)+(x.vs.length>1?' <span class="fm-tdim">+'+(x.vs.length-1)+' variant'+(x.vs.length>2?'s':'')+'</span>':'')+'</td><td>'+fmEsc(x.t)+'</td><td style="text-align:right"><button class="fm-btn primary" onclick="fmAddFromShopify('+fmJs(x.h)+')">Add</button></td></tr>';}).join('')+'</tbody></table>'
+    +(list.length>50?'<div class="fm-colhint">Showing 50 of '+list.length+' - search to narrow.</div>':'');
+}
+window.fmDeleteProducts=fmDeleteProducts;window.fmDeleteOrphans=fmDeleteOrphans;window.fmPselToggle=fmPselToggle;window.fmPselAll=fmPselAll;window.fmAddListHtml=fmAddListHtml;
+
 function fmNewVehicle(){
   var g=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
   var v={make:g('fmv-make'),model:g('fmv-model'),year_from:parseInt(g('fmv-yf'),10),year_to:parseInt(g('fmv-yt')||g('fmv-yf'),10),engine:g('fmv-eng'),chassis:g('fmv-ch'),platform:g('fmv-plat')||((g('fmv-ch')+' '+g('fmv-eng')).trim()||null)};
@@ -23561,19 +23676,20 @@ function fmListRows(){
 }
 function fmListBody(){
   var c=fmCounts(),rows=fmListRows();
-  if(!rows.length)return '<tr><td colspan="5" class="fm-empty">No products match.</td></tr>';
+  if(!rows.length)return '<tr><td colspan="6" class="fm-empty">No products match.</td></tr>';
   return rows.slice(0,400).map(function(p){var n=c[p.handle]||0;
-    return '<tr class="fm-trow" onclick="fmPick('+fmJs(p.handle)+')"><td class="fm-tsku">'+fmEsc(p.sku||'(no SKU)')+'</td><td>'+fmEsc(p.title||p.handle)+'</td><td class="fm-tdim">'+fmEsc(p.vendor||'')+'</td>'
+    var on=!!(FM.psel&&FM.psel[p.handle]);
+    return '<tr class="fm-trow'+(on?' fm-trsel':'')+'" onclick="fmPick('+fmJs(p.handle)+')"><td onclick="event.stopPropagation()"><input type="checkbox"'+(on?' checked':'')+' onchange="fmPselToggle('+fmJs(p.handle)+',this.checked,event)"></td><td class="fm-tsku">'+fmEsc(p.sku||'(no SKU)')+'</td><td>'+fmEsc(p.title||p.handle)+'</td><td class="fm-tdim">'+fmEsc(p.vendor||'')+'</td>'
       +'<td>'+fmTypeLabel(p.fit_type)+'</td><td class="fm-tnum">'+(p.fit_type==='vehicle'?(n?n:'<span class="fm-bad">0 - needs fitment</span>'):'&ndash;')+'</td></tr>';}).join('')
-    +(rows.length>400?'<tr><td colspan="5" class="fm-tdim">Showing 400 of '+rows.length+' - search to narrow</td></tr>':'');
+    +(rows.length>400?'<tr><td colspan="6" class="fm-tdim">Showing 400 of '+rows.length+' - search to narrow</td></tr>':'');
 }
 function fmListPage(){
   var c=fmCounts(),needs=FM.products.filter(function(p){return p.fit_type==='vehicle'&&!c[p.handle];}).length;
   var opt=function(v,l){return '<option value="'+v+'"'+(FM.filter===v?' selected':'')+'>'+l+'</option>';};
-  return '<div class="fm-page"><div class="fm-card"><div class="fm-toolbar"><input class="fm-in fm-grow" id="fm-q" placeholder="Search by SKU, product name or brand" value="'+fmEsc(FM.q)+'" oninput="FM.q=this.value;var b=document.getElementById(\'fm-tbody\');if(b)b.innerHTML=fmListBody();">'
+  return '<div class="fm-page"><div class="fm-card"><div class="fm-toolbar"><input class="fm-in fm-grow" id="fm-q" placeholder="Search by SKU, product name or brand" value="'+fmEsc(FM.q)+'" oninput="FM.q=this.value;FM.psel={};fmRefreshList();">'
     +'<select class="fm-in fm-sel" onchange="FM.filter=this.value;fmRender()">'+opt('all','All products')+opt('needs','Needs fitment ('+needs+')')+opt('vehicle','Vehicle specific')+opt('universal','Universal fit')+opt('none','Non-vehicle')+'</select>'
-    +'<button class="fm-btn" onclick="fmNewProduct()">+ Add product</button></div>'
-    +'<div class="fm-tablewrap"><table class="fm-table"><thead><tr><th>SKU</th><th>Product</th><th>Brand</th><th>Fitment type</th><th class="fm-tnum">Fitments</th></tr></thead><tbody id="fm-tbody">'+fmListBody()+'</tbody></table></div></div></div>';
+    +'<button class="fm-btn" onclick="fmNewProduct()">'+(FM.addOpen?'Close':'+ Add product')+'</button></div>'+fmAddPanelHtml()+fmPbarHtml()
+    +'<div class="fm-tablewrap"><table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" id="fm-pall" title="Select all shown" onchange="fmPselAll(this.checked)"></th><th>SKU</th><th>Product</th><th>Brand</th><th>Fitment type</th><th class="fm-tnum">Fitments</th></tr></thead><tbody id="fm-tbody">'+fmListBody()+'</tbody></table></div></div></div>';
 }
 // ---------- product page
 function fmProductPage(){
@@ -23595,13 +23711,16 @@ function fmDetailsHtml(){
   return '<div class="fm-cardh"><b>Details</b><button class="fm-btn primary" onclick="fmSaveDetails()">Save</button></div>'
     +f('fmd-sku','Parent SKU',p.sku,'What the ERP and dealer price lists match this product on. Variant-specific fitment uses the child SKUs on the right.')
     +f('fmd-title','Product name',p.title)+'<div class="fm-row2">'+f('fmd-vendor','Brand',p.vendor)+f('fmd-cat','Category',p.category,'Used for website filters when no Storefront token is set.')+'</div>'
-    +'<div class="fm-tdim" style="font-size:12px">Website page: '+fmEsc(p.handle)+'</div>';
+    +'<div class="fm-tdim" style="font-size:12px">Website page: '+fmEsc(p.handle)+'</div>'
+    +'<div class="fm-danger"><button class="fm-link danger" onclick="fmDeleteProducts(['+fmJs(p.handle)+'])">Delete this SKU from the Fitment tool</button><span class="fm-tdim">removes it and all its fitment (undo available)</span></div>';
 }
 function fmSaveDetails(){
   var p=fmProd(FM.sel),g=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
   var upd={sku:g('fmd-sku')||null,title:g('fmd-title')||p.handle,vendor:g('fmd-vendor')||null,category:g('fmd-cat')||null,updated_at:new Date().toISOString()};
   var oldSku=p.sku,skuChanged=(upd.sku||'')!==(oldSku||'');
   var n=fmFitsOf(p.handle).filter(function(f){return !f.variant_sku;}).length;
+  var dup=skuChanged&&upd.sku?FM.products.filter(function(x){return x.handle!==p.handle&&String(x.sku||'').toUpperCase()===upd.sku.toUpperCase();}):[];
+  if(dup.length&&!confirm('SKU '+upd.sku+' is already used by '+dup.length+' other product page'+(dup.length!==1?'s':'')+' ('+dup.slice(0,3).map(function(x){return x.title||x.handle;}).join(', ')+').\n\nThat is fine when one part is listed on several pages. Use it here too?'))return;
   if(skuChanged&&!confirm('Change the parent SKU from '+(oldSku||'(none)')+' to '+(upd.sku||'(none)')+'?\n\n'+n+' "all variants" fitment row'+(n!==1?'s':'')+' will move to the new SKU, so the ERP and dealer lists keep matching.\n\nThis does not change Shopify - change the SKU there too if needed (Open in Shopify).'))return;
   fmDo(async function(){
     await fmReq('fit_products?handle=eq.'+encodeURIComponent(p.handle),{method:'PATCH',body:JSON.stringify(upd)});
@@ -23647,7 +23766,9 @@ function fmShopHtml(){
 }
 // Store-wide Shopify problems for the Checks tab
 function fmShopIssues(){
-  var out={nosku:[],mismatch:[],missing:[],dupes:[]};if(!FM.vinfo)return out;
+  var out={nosku:[],mismatch:[],missing:[],dupes:[],gone:[],staleVar:[]};if(!FM.vinfo)return out;
+  if(!FM.varsErr&&Object.keys(FM.vinfo).length)FM.products.forEach(function(p){if(!fmInShopify(p.handle))out.gone.push(p);});
+  FM.fits.forEach(function(f){if(!f.variant_sku||!f.handle)return;var vs=FM.vinfo[f.handle];if(vs&&!vs.some(function(v){return String(v.sku).toUpperCase()===String(f.variant_sku).toUpperCase();}))out.staleVar.push(f);});
   Object.keys(FM.nosku||{}).forEach(function(h){(FM.nosku[h]||[]).forEach(function(v){out.nosku.push(v);});});
   FM.products.forEach(function(p){var vs=FM.vinfo[p.handle]||[];if(vs.length===1&&String(p.sku||'').toUpperCase()!==String(vs[0].sku).toUpperCase())out.mismatch.push({p:p,shop:vs[0].sku});});
   var have={};FM.products.forEach(function(p){have[p.handle]=1;});
@@ -23657,7 +23778,7 @@ function fmShopIssues(){
 }
 function fmAddFromShopify(handle){
   var v=(FM.vinfo[handle]||[])[0];if(!v)return;
-  fmDo(async function(){var r=await fmReq('fit_products',{method:'POST',body:JSON.stringify({handle:handle,shopify_product_id:String(v.product_id||''),sku:v.sku,title:v.title,fit_type:'vehicle'})});FM.products=FM.products.concat(r||[]);fmToast('Added '+v.sku);});
+  fmDo(async function(){var r=await fmReq('fit_products',{method:'POST',body:JSON.stringify({handle:handle,shopify_product_id:String(v.product_id||''),sku:v.sku,title:v.title,vendor:null,fit_type:'vehicle'})});FM.products=FM.products.concat(r||[]);FM.addOpen=false;if(FM.tab==='products')FM.sel=handle;fmToast('Added '+v.sku+' - now add its fitment');});
 }
 window.fmSaveDetails=fmSaveDetails;window.fmUseShopify=fmUseShopify;window.fmAddFromShopify=fmAddFromShopify;
 // ---------- add new fitment: Year / Make / Model / Engine / Chassis checkbox columns, each narrows the next
@@ -23764,11 +23885,17 @@ function fmCopyHtml(){
 function fmFitTableHtml(){
   var p=fmProd(FM.sel),fits=fmFitsOf(p.handle).slice().sort(function(a,b){return (a.make+a.model).localeCompare(b.make+b.model,undefined,{numeric:true})||(a.year_from-b.year_from)||String(a.variant_sku||'').localeCompare(String(b.variant_sku||''));});
   var showV=fmVarsOf(p.handle).length>0||fits.some(function(f){return f.variant_sku;});
-  if(p.fit_type!=='vehicle')return '<div class="fm-cardh"><b>Fitment</b></div><div class="fm-empty">'+(p.fit_type==='universal'?'Universal fit - this product shows for every vehicle on the website. No list needed.':'Non-vehicle product - not shown in vehicle search.')+(fits.length?'<br>'+fits.length+' older fitment rows are kept but not used.':'')+'</div>';
-  return '<div class="fm-cardh"><b>'+fits.length+' fitment'+(fits.length!==1?'s':'')+'</b>'+(fits.length?'<button class="fm-link danger" onclick="fmRemoveAll()">Delete all</button>':'')+'</div>'
-    +(fits.length?'<table class="fm-table"><thead><tr><th>Year</th><th>Make</th><th>Model</th><th>Engine</th><th>Chassis</th>'+(showV?'<th>Variant</th>':'')+'<th>Source</th><th></th></tr></thead><tbody>'
-      +fits.map(function(f){return '<tr><td><span class="fm-yr">'+fmYears(f)+'</span></td><td>'+fmEsc(f.make)+'</td><td>'+fmEsc(f.model)+'</td><td>'+fmEsc(f.engine||'')+'</td><td>'+fmEsc(f.chassis||'')+'</td>'+(showV?'<td>'+(f.variant_sku?'<span class="fm-vtag">'+fmEsc(f.variant_sku)+'</span>':'<span class="fm-tdim">All variants</span>')+'</td>':'')+'<td class="fm-tdim">'+(f.source==='convermax'?'imported':f.source==='fitment-editor'?'custom':fmEsc(f.source||''))+'</td><td style="text-align:right"><button class="fm-del" onclick="fmRemoveOne('+fmJs(f.id)+')">Delete</button></td></tr>';}).join('')+'</tbody></table>'
-      :'<div class="fm-empty">No fitment yet - pick years, makes and models above and press <b>Add fitment</b>.</div>');
+  FM.fsel=FM.fsel||{};var ids={};fits.forEach(function(f){ids[f.id]=1;});Object.keys(FM.fsel).forEach(function(k){if(!ids[k])delete FM.fsel[k];});
+  var nSel=Object.keys(FM.fsel).length,allOn=fits.length&&nSel===fits.length;
+  var note=p.fit_type==='universal'?'<div class="fm-notice">Set to <b>Universal fit</b> - it shows for every vehicle, so the rows below are not used.'+(fits.length?' You can delete them.':'')+'</div>'
+    :p.fit_type==='none'?'<div class="fm-notice">Set to <b>Non-vehicle product</b> - not in vehicle search, so the rows below are not used.'+(fits.length?' You can delete them.':'')+'</div>':'';
+  var h='<div class="fm-cardh"><b>'+fits.length+' fitment'+(fits.length!==1?'s':'')+'</b>'+(fits.length?'<button class="fm-link danger" onclick="fmRemoveAll()">Delete all</button>':'')+'</div>'+note;
+  if(!fits.length)return h+(p.fit_type==='vehicle'?'<div class="fm-empty">No fitment yet - pick a make and model above and press <b>Add fitment</b>.</div>':'');
+  h+='<div class="fm-selbar'+(nSel?' on':'')+'">'+(nSel?'<b>'+nSel+' selected</b><button class="fm-del" onclick="fmDeleteSelected()">Delete selected</button><button class="fm-link" onclick="fmFselAll(false)">Clear selection</button>':'<span class="fm-tdim">Tick rows to delete several at once.</span>')+'</div>';
+  return h+'<table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" title="Select all"'+(allOn?' checked':'')+' onchange="fmFselAll(this.checked)"></th><th>Year</th><th>Make</th><th>Model</th><th>Engine</th><th>Chassis</th>'+(showV?'<th>Variant</th>':'')+'<th>Source</th><th></th></tr></thead><tbody>'
+    +fits.map(function(f){var on=!!FM.fsel[f.id];return '<tr'+(on?' class="fm-trsel"':'')+'><td><input type="checkbox"'+(on?' checked':'')+' onchange="fmFselToggle('+fmJs(f.id)+',this.checked)"></td><td><span class="fm-yr">'+fmYears(f)+'</span></td><td>'+fmEsc(f.make)+'</td><td>'+fmEsc(f.model)+'</td><td>'+fmEsc(f.engine||'')+'</td><td>'+fmEsc(f.chassis||'')+'</td>'
+      +(showV?'<td>'+(f.variant_sku?'<span class="fm-vtag">'+fmEsc(f.variant_sku)+'</span>':'<span class="fm-tdim">All variants</span>')+'</td>':'')
+      +'<td class="fm-tdim">'+(f.source==='convermax'?'imported':f.source==='fitment-editor'?'custom':fmEsc(f.source||''))+'</td><td style="text-align:right"><button class="fm-del" onclick="fmRemoveOne('+fmJs(f.id)+')">Delete</button></td></tr>';}).join('')+'</tbody></table>';
 }
 function fmPick(handle){FM.sel=handle;FM.copyQ='';fmCsReset();FM.addTab='add';fmRender();var r=document.querySelector('.fm-pad,.fm-page');if(r&&r.parentNode)r.parentNode.scrollTop=0;}
 window.fmPick=fmPick;window.fmColPick=fmColPick;window.fmColAll=fmColAll;window.fmAddSelected=fmAddSelected;window.fmRefreshAdd=fmRefreshAdd;window.fmListBody=fmListBody;window.fmCsReset=fmCsReset;
@@ -23811,7 +23938,10 @@ function fmChecks(){
   var legacy=FM.fits.filter(function(f){return !f.handle;});
   var spell=fmSpellings();
   var cov=fmLegacyCovered(legacy);
-  return {needs:needs,notset:notset,unlinked:unlinked,noErp:noErp,legacy:legacy,covered:cov,spell:spell,total:needs.length+unlinked.length+spell.length+cov.length};
+  var si=fmShopIssues(),have={};FM.products.forEach(function(p){have[p.handle]=1;});
+  var orph=FM.fits.filter(function(f){return f.handle&&!have[f.handle];}).length;
+  return {needs:needs,notset:notset,unlinked:unlinked,noErp:noErp,legacy:legacy,covered:cov,spell:spell,
+    total:needs.length+unlinked.length+spell.length+cov.length+si.gone.length+si.nosku.length+si.staleVar.length+orph};
 }
 function fmRenderChecks(){
   var k=fmChecks();
@@ -23822,8 +23952,12 @@ function fmRenderChecks(){
   return '<div class="fm-pad">'+shopNote
     +(FM.vinfo?sec('Shopify variants with no SKU','the ERP and dealer price lists cannot match a variant without a SKU - add one in Shopify',si.nosku,function(v){return '<div class="fm-vrow"><b>'+fmEsc(v.title)+'</b> &middot; option <b>'+fmEsc(v.variant_title||'Default')+'</b> <a class="fm-link" target="_blank" rel="noopener" href="https://'+FM_SHOP+'/admin/products/'+v.product_id+'">Open in Shopify</a></div>';})
       +sec('Parent SKU does not match Shopify','single-variant products whose SKU here differs from the SKU in Shopify',si.mismatch,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.p.sku||'(none)')+'</span> here, <span class="fm-mono">'+fmEsc(x.shop)+'</span> in Shopify &middot; <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(x.p.handle)+');return false">open</a></div>';})
+      +sec('SKUs in the Fitment tool but no longer in Shopify','their website page was deleted or renamed in Shopify - delete them here, or fix the page',si.gone,function(p){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(p.sku||'(no SKU)')+'</span> '+fmEsc(p.title||p.handle)+' <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(p.handle)+');return false">open</a> <button class="fm-btn" onclick="fmDeleteProducts(['+fmJs(p.handle)+'])">Delete</button></div>';},si.gone.length>1?'<button class="fm-btn" onclick="fmDeleteProducts(fmShopIssues().gone.map(function(p){return p.handle;}))">Delete all '+si.gone.length+'</button>':'')
+      +sec('Variant fitment for SKUs no longer on the page','these rows point at a child SKU that is not on that Shopify page any more - the website cannot use them',si.staleVar,function(f){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(f.variant_sku)+'</span> '+fmEsc(f.make+' '+f.model+' '+fmYears(f))+' <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(f.handle)+');return false">open product</a></div>';})
       +sec('Shopify products not in the Fitment tool','new products added in Shopify since the import - add them so they can get fitment',si.missing,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.sku)+'</span> '+fmEsc(x.title)+(x.n>1?' <span class="fm-tdim">('+x.n+' variants)</span>':'')+' <button class="fm-btn" onclick="fmAddFromShopify('+fmJs(x.handle)+')">Add</button></div>';})
       +sec('SKU used on more than one website page','fine when one part is listed on several pages - but each page then needs its own fitment',si.dupes,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.sku)+'</span> <span class="fm-tdim">on '+x.pages.length+' pages</span></div>';}):'')
+    +(function(){var have={};FM.products.forEach(function(p){have[p.handle]=1;});var orph=FM.fits.filter(function(f){return f.handle&&!have[f.handle];});
+      return sec('Fitment rows with no product','left behind when a product record was removed - nothing on the website uses them',orph,function(f){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(f.pn||'')+'</span> '+fmEsc(f.make+' '+f.model+' '+fmYears(f))+'</div>';},orph.length?'<button class="fm-btn" onclick="fmDeleteOrphans()">Delete all</button>':'');})()
     +sec('Makes or models spelled more than one way','the website picker shows each spelling separately, so shoppers miss parts listed under the other',k.spell,function(x){
       var cnt=function(n){return FM.vehicles.filter(function(v){return v[x.field]===n&&(x.field!=='model'||v.make===x.make);}).length;};
       return '<div class="fm-vrow"><b>'+(x.field==='model'?fmEsc(x.make)+' ':'')+x.names.map(function(n){return fmEsc(n)+' <span class="fm-note">('+cnt(n)+')</span>';}).join(' &middot; ')+'</b>'
