@@ -2018,6 +2018,10 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-samepages{border-left:4px solid #185FA5;font-size:14px}
 .fm-samepages a{color:var(--teal-dark);font-weight:600}
 [data-theme="dark"] .fm-pages{background:rgba(24,95,165,.3);color:#9cc7f3}
+/* undo / redo */
+.fm-hist{display:inline-flex;gap:6px;margin-right:6px}
+.fm-hbtn{min-width:78px}
+.fm-hbtn:disabled{opacity:.4;cursor:default}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17303,7 +17307,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.48';
+var TGK_CC_VERSION='v3.49';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23372,12 +23376,14 @@ var FM={bmode:'make',bq:'',open:{},pick:{},cq:'',more:false,loaded:false,loading
 function fmEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmJs(s){return "'"+String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'";}
 function fmToastUndo(msg,undo){
+  var last=FM.hist.undo[FM.hist.undo.length-1];if(last&&msg)last.label=msg;
   var t=document.getElementById('fm-toast');if(!t){t=document.createElement('div');t.id='fm-toast';document.body.appendChild(t);}
   t.innerHTML='<span>'+fmEsc(msg)+'</span> <button type="button" class="fm-undo">Undo</button>';t.className='fm-toast show fm-toast--act';
   t.querySelector('.fm-undo').onclick=function(){t.className='fm-toast';undo();};
   clearTimeout(fmToast._t);fmToast._t=setTimeout(function(){t.className='fm-toast';},9000);
 }
 function fmToast(msg,bad){
+  if(FM._tx&&!bad&&msg)FM._tx.label=msg;
   var t=document.getElementById('fm-toast');
   if(!t){t=document.createElement('div');t.id='fm-toast';document.body.appendChild(t);}
   t.textContent=msg;t.className='fm-toast show'+(bad?' bad':'');clearTimeout(fmToast._t);fmToast._t=setTimeout(function(){t.className='fm-toast';},bad?7000:3000);
@@ -23393,6 +23399,81 @@ async function fmReq(path,opts){
   if(!r.ok){var m=txt;try{var j=JSON.parse(txt);m=j.message||txt;}catch(_){}var e=new Error(m||('HTTP '+r.status));e.status=r.status;throw e;}
   return txt?JSON.parse(txt):null;
 }
+// ===================== Undo / Redo =====================
+// Every change in this tool is saved through fmReq, and every user action runs inside fmDo. So history is
+// recorded here, once: before an edit/delete the affected rows are read in full, and the saved result is kept.
+// Each user action = one step. Undo writes the 'before' rows back (same ids, every column); Redo the 'after'.
+var FM_PK={fitments:'id',fit_products:'handle',fit_vehicles:'id'};
+FM.hist={undo:[],redo:[]};
+var _fmRawReq=fmReq;
+fmReq=async function(path,opts){
+  opts=opts||{};var m=String(opts.method||'GET').toUpperCase(),table=path.split('?')[0],pk=FM_PK[table];
+  if(m==='GET'||!pk||FM._applying||!FM._tx)return _fmRawReq(path,opts);
+  var q=path.indexOf('?')>=0?path.slice(path.indexOf('?')+1):'';
+  if(m==='POST'){var r=await _fmRawReq(path,opts);if(r&&r.length)FM._tx.ch.push({t:table,add:r});return r;}
+  var before=await fmAll(table+'?select=*'+(q?'&'+q:''));
+  var res=await _fmRawReq(path,opts);
+  if(m==='DELETE'){if(before.length)FM._tx.ch.push({t:table,del:before});}
+  else if(m==='PATCH'){var aft={};(res||[]).forEach(function(x){aft[x[pk]]=x;});var pp=before.map(function(b){return {b:b,a:aft[b[pk]]||null};}).filter(function(x){return x.a;});if(pp.length)FM._tx.ch.push({t:table,patch:pp});}
+  return res;
+};
+function fmLocal(t){return t==='fitments'?'fits':t==='fit_products'?'products':'vehicles';}
+function fmKeyList(keys){return 'in.('+keys.map(function(k){return '"'+encodeURIComponent(String(k).replace(/"/g,''))+'"';}).join(',')+')';}
+async function fmApplyTx(tx,dir){
+  FM._applying=true;
+  try{
+    var list=dir==='undo'?tx.ch.slice().reverse():tx.ch;
+    for(var i=0;i<list.length;i++){
+      var c=list[i],pk=FM_PK[c.t],arr=fmLocal(c.t);
+      var ins=(dir==='undo'?c.del:c.add)||null,rem=(dir==='undo'?c.add:c.del)||null;
+      if(rem&&rem.length){var keys=rem.map(function(r){return r[pk];});
+        for(var j=0;j<keys.length;j+=100)await _fmRawReq(c.t+'?'+pk+'='+fmKeyList(keys.slice(j,j+100)),{method:'DELETE'});
+        var ks={};keys.forEach(function(k){ks[k]=1;});FM[arr]=FM[arr].filter(function(x){return !ks[x[pk]];});}
+      if(ins&&ins.length){
+        for(var j2=0;j2<ins.length;j2+=200)await _fmRawReq(c.t,{method:'POST',headers:{'Prefer':'return=representation,resolution=ignore-duplicates'},body:JSON.stringify(ins.slice(j2,j2+200))});
+        var have={};FM[arr].forEach(function(x){have[x[pk]]=1;});FM[arr]=FM[arr].concat(ins.filter(function(x){return !have[x[pk]];}).map(function(x){return Object.assign({},x);}));}
+      if(c.patch&&c.patch.length){
+        var groups={};
+        c.patch.forEach(function(pp){var from=dir==='undo'?pp.a:pp.b,to=dir==='undo'?pp.b:pp.a,d={};
+          Object.keys(to).forEach(function(k){if(k!==pk&&JSON.stringify(to[k])!==JSON.stringify(from[k]))d[k]=to[k];});
+          if(!Object.keys(d).length)return;var g=JSON.stringify(d);(groups[g]=groups[g]||{d:d,keys:[]}).keys.push(to[pk]);});
+        for(var g in groups){var G=groups[g];
+          for(var j3=0;j3<G.keys.length;j3+=100)await _fmRawReq(c.t+'?'+pk+'='+fmKeyList(G.keys.slice(j3,j3+100)),{method:'PATCH',body:JSON.stringify(G.d)});
+          var kk={};G.keys.forEach(function(k){kk[k]=1;});FM[arr].forEach(function(x){if(kk[x[pk]])Object.assign(x,G.d);});}
+      }
+    }
+  }finally{FM._applying=false;}
+}
+async function fmUndo(){
+  if(FM._histBusy||!FM.hist.undo.length)return;FM._histBusy=true;var tx=FM.hist.undo.pop();
+  try{await fmApplyTx(tx,'undo');FM.hist.redo.push(tx);fmRender();fmToastAct('Undone: '+tx.label,'Redo',fmRedo);}
+  catch(e){FM.hist.undo.push(tx);fmRender();fmToastAct('Undo did not finish ('+(e.message||e)+') - nothing is lost, try again','Try again',fmUndo);}
+  FM._histBusy=false;
+}
+async function fmRedo(){
+  if(FM._histBusy||!FM.hist.redo.length)return;FM._histBusy=true;var tx=FM.hist.redo.pop();
+  try{await fmApplyTx(tx,'redo');FM.hist.undo.push(tx);fmRender();fmToastAct('Redone: '+tx.label,'Undo',fmUndo);}
+  catch(e){FM.hist.redo.push(tx);fmRender();fmToastAct('Redo did not finish ('+(e.message||e)+') - try again','Try again',fmRedo);}
+  FM._histBusy=false;
+}
+function fmToastAct(msg,btn,fn){
+  var t=document.getElementById('fm-toast');if(!t){t=document.createElement('div');t.id='fm-toast';document.body.appendChild(t);}
+  t.innerHTML='<span>'+fmEsc(msg)+'</span> <button type="button" class="fm-undo">'+fmEsc(btn)+'</button>';t.className='fm-toast show fm-toast--act';
+  t.querySelector('.fm-undo').onclick=function(){t.className='fm-toast';fn();};
+  clearTimeout(fmToast._t);fmToast._t=setTimeout(function(){t.className='fm-toast';},9000);
+}
+function fmHistBtns(){
+  var u=FM.hist.undo[FM.hist.undo.length-1],r=FM.hist.redo[FM.hist.redo.length-1];
+  return '<button class="fm-btn fm-hbtn" '+(u?'title="Undo: '+fmEsc(u.label)+' (Ctrl+Z)"':'disabled title="Nothing to undo"')+' onclick="fmUndo()">&#8630; Undo</button>'
+    +'<button class="fm-btn fm-hbtn" '+(r?'title="Redo: '+fmEsc(r.label)+' (Ctrl+Shift+Z)"':'disabled title="Nothing to redo"')+' onclick="fmRedo()">&#8631; Redo</button>';
+}
+document.addEventListener('keydown',function(e){
+  if(!(e.ctrlKey||e.metaKey)||e.altKey)return;var k=String(e.key).toLowerCase();if(k!=='z'&&k!=='y')return;
+  var root=document.getElementById('fm-root');if(!root||!root.offsetParent)return;           // Fitment tool not on screen
+  var t=e.target,tag=t&&t.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return; // typing: let the box undo its text
+  e.preventDefault();if(k==='y'||e.shiftKey)fmRedo();else fmUndo();
+});
+window.fmUndo=fmUndo;window.fmRedo=fmRedo;
 async function fmAll(path){ // page until an empty page: the server may cap a page below what is asked for
   var out=[],from=0;
   for(var guard=0;guard<400;guard++){
@@ -23505,7 +23586,12 @@ async function fmSetType(handle,t,quiet){
   if(!quiet){fmToast('Saved');fmRender();}
 }
 // ---------- actions (UI) ----------
-async function fmDo(fn){try{await fn();}catch(e){fmToast('Not saved: '+(e.message||e),true);}fmRender();}
+async function fmDo(fn){
+  var tx=FM._tx?null:(FM._tx={ch:[],label:''});
+  try{await fn();}catch(e){fmToast('Not saved: '+(e.message||e),true);}
+  if(tx){FM._tx=null;if(tx.ch.length){tx.label=tx.label||'last change';FM.hist.undo.push(tx);if(FM.hist.undo.length>50)FM.hist.undo.shift();FM.hist.redo=[];}}
+  fmRender();
+}
 function fmAddChecked(){
   var ids=[].slice.call(document.querySelectorAll('.fm-vchk:checked')).map(function(c){return c.value;});
   var vs=FM.vehicles.filter(function(v){return ids.indexOf(v.id)>=0;});
@@ -23524,7 +23610,7 @@ async function fmDeleteIds(ids,label){
   fmDo(async function(){
     for(var i=0;i<ids.length;i+=100)await fmRemove(ids.slice(i,i+100));
     FM.fsel={};
-    setTimeout(function(){fmToastUndo(label||('Deleted '+ids.length+' fitment'+(ids.length!==1?'s':'')),function(){fmRestore(gone);});},0);
+    setTimeout(function(){fmToastUndo(label||('Deleted '+ids.length+' fitment'+(ids.length!==1?'s':'')),fmUndo);},0);
   });
 }
 async function fmRestore(rows){ // put deleted rows back exactly as they were (same ids, every column)
@@ -23569,7 +23655,7 @@ function fmSetRowsVariant(ids,vsku){
     await fmReq('fitments?id=in.('+todo.map(function(f){return f.id;}).join(',')+')',{method:'PATCH',body:JSON.stringify({variant_sku:vsku,pn:pn})});
     todo.forEach(function(f){f.variant_sku=vsku;f.pn=pn;});FM.fsel={};
     var label=(todo.length===1?'1 fitment':todo.length+' fitments')+' now fit'+(todo.length===1?'s ':' ')+(vsku?vsku:'all variants')+(skipped?' ('+skipped+' already listed, skipped)':'');
-    setTimeout(function(){fmToastUndo(label,function(){fmUndoVariant(before);});},0);
+    setTimeout(function(){fmToastUndo(label,fmUndo);},0);
   });
 }
 function fmUndoVariant(before){
@@ -23621,7 +23707,7 @@ async function fmDeleteProducts(handles){
     FM.fits=FM.fits.filter(function(f){return handles.indexOf(f.handle)<0;});
     FM.products=FM.products.filter(function(p){return handles.indexOf(p.handle)<0;});
     FM.psel={};if(handles.indexOf(FM.sel)>=0)FM.sel=null;
-    setTimeout(function(){fmToastUndo('Deleted '+what,function(){fmRestoreProducts(prods,rows,what);});},0);
+    setTimeout(function(){fmToastUndo('Deleted '+what,fmUndo);},0);
   });
 }
 function fmCleanRows(rows){return rows.map(function(r){var c={};Object.keys(r).forEach(function(k){if(r[k]!==undefined)c[k]=r[k];});if(FM.noVarCol)delete c.variant_sku;if(!c.submodel)c.submodel=((c.chassis||'')+' '+(c.engine||'')).trim()||null;return c;});}
@@ -23736,7 +23822,7 @@ fmRender._inner=function(){
   var tabs=[['products','Products ('+FM.products.length+')'],['vehicles','Vehicle catalog ('+FM.vehicles.length+')'],['checks','Checks'+(fmChecks().total?' ('+fmChecks().total+')':'')]];
   root.innerHTML='<div class="fm-top"><div class="fm-tabs">'+tabs.map(function(t){return '<button class="fm-tab'+(FM.tab===t[0]?' on':'')+'" onclick="FM.tab=\''+t[0]+'\';fmRender()">'+t[1]+'</button>';}).join('')+'</div>'
     +'<div class="fm-note">Saved changes show in the ERP and on the dealer price list right away.</div>'
-    +'<button class="fm-btn" onclick="fmLoad(true)">Reload</button></div>'
+    +'<span class="fm-hist">'+fmHistBtns()+'</span><button class="fm-btn" onclick="fmLoad(true)">Reload</button></div>'
     +(FM.tab==='products'?fmRenderProducts():FM.tab==='vehicles'?fmRenderVehicles():fmRenderChecks());
   root.querySelectorAll('input[data-ind="1"]').forEach(function(i){i.indeterminate=true;});
 };
