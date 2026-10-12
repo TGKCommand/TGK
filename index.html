@@ -1984,6 +1984,18 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-vtag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:8px;background:#fef0e4;color:#7a3a0a}
 [data-theme="dark"] .fm-vchip.on{background:#2ABFAA;border-color:#2ABFAA;color:#0b0c0d}
 [data-theme="dark"] .fm-vtag{background:rgba(224,123,40,.2);color:#f5b17a}
+/* details + Shopify cards */
+.fm-twocol{display:grid;grid-template-columns:minmax(300px,1fr) minmax(380px,1.3fr);gap:16px}
+.fm-twocol .fm-card{margin-bottom:16px}
+.fm-field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-size:13px;font-weight:600;color:var(--text2)}
+.fm-field .fm-in{font-size:14px;font-weight:500;color:var(--text)}
+.fm-field em{font-style:normal;font-weight:400;font-size:12px;color:var(--text3)}
+.fm-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fm-issues{background:#fff8eb;border:1px solid #f5d38f;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7}
+.fm-okline{color:#16794a;font-weight:600;font-size:13px;margin-bottom:10px}
+@media (max-width:1100px){.fm-twocol{grid-template-columns:1fr}}
+[data-theme="dark"] .fm-issues{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.35)}
+.fm-field .fm-in{flex:none!important;height:auto}.fm-row2{align-items:start}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17269,7 +17281,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.42';
+var TGK_CC_VERSION='v3.43';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23383,20 +23395,23 @@ async function fmLoad(force){
 function fmOpen(){fmLoad(false);fmRender();}
 // Every product's variant (child) SKUs, straight from Shopify via the shopify-orders function (list_products,
 // the same action the ERP uses). Loaded in the background; products with one variant need nothing.
-async function fmLoadVariants(){
-  if(FM.vars||FM.varsLoading)return;FM.varsLoading=true;
+async function fmLoadVariants(force){
+  if((FM.vars&&!force)||FM.varsLoading)return;FM.varsLoading=true;FM.varsErr=null;
   try{
-    var s=(typeof _ccFreshSession==='function')?await _ccFreshSession():null,tok=s&&s.access_token,map={},pi='',guard=0;
+    var s=(typeof _ccFreshSession==='function')?await _ccFreshSession():null,tok=s&&s.access_token,map={},info={},nosku={},pi='',guard=0;
     do{
       var r=await fetch(TGK_SB_URL+'/functions/v1/shopify-orders',{method:'POST',headers:{'Content-Type':'application/json',apikey:TGK_SB_KEY,Authorization:'Bearer '+(tok||TGK_SB_KEY)},body:JSON.stringify({action:'list_products',page_info:pi})});
       var j=await r.json();if(!r.ok||j.error)throw new Error(j.error||('HTTP '+r.status));
-      (j.skus||[]).forEach(function(v){if(!v.handle||!v.sku)return;var a=map[v.handle]=map[v.handle]||[];if(a.indexOf(v.sku)<0)a.push(v.sku);});
+      (j.skus||[]).forEach(function(v){if(!v.handle||!v.sku)return;var a=map[v.handle]=map[v.handle]||[];if(a.indexOf(v.sku)<0)a.push(v.sku);(info[v.handle]=info[v.handle]||[]).push(v);});
+      (j.no_sku||[]).forEach(function(v){(nosku[v.handle]=nosku[v.handle]||[]).push(v);});
       pi=j.next_page_info||'';
     }while(pi&&++guard<40);
-    FM.vars=map;
+    FM.vars=map;FM.vinfo=info;FM.nosku=nosku;FM.varsAt=new Date();
   }catch(e){FM.varsErr=e.message||String(e);console.warn('[fitment] variant list',e);}
   FM.varsLoading=false;
   if(FM.sel&&document.getElementById('fm-add'))fmRefreshAdd();if(FM.sel&&document.getElementById('fm-cur'))fmRefreshCur();
+  var sp=document.getElementById('fm-shop');if(sp)sp.innerHTML=fmShopHtml();
+  if(FM.tab==='checks')fmRender();
 }
 function fmVarsOf(handle){var v=FM.vars&&FM.vars[handle];return v&&v.length>1?v:[];}
 window.fmLoadVariants=fmLoadVariants;
@@ -23569,9 +23584,82 @@ function fmProductPage(){
     +'<div class="fm-card fm-phead"><div class="fm-phead-l"><div class="fm-head-sku">'+fmEsc(p.sku||'(no SKU)')+'</div><div class="fm-head-desc">'+fmEsc(p.title||p.handle)+'</div><div class="fm-tdim">'+fmEsc(p.vendor||'')+'</div>'
     +'<div class="fm-wheres">'+chip('Website',w.web,'https://tgkmotorsport.com/products/'+encodeURIComponent(p.handle))+chip('Dealer price lists',w.dealer)+chip('ERP',w.erp)+'</div></div>'
     +'<div class="fm-phead-r">'+radio('vehicle','Vehicle specific','fits the vehicles listed below')+radio('universal','Universal fit','shows for every vehicle')+radio('none','Non-vehicle product','apparel, tools - not in vehicle search')+'</div></div>'
+    +'<div class="fm-twocol"><div class="fm-card" id="fm-det">'+fmDetailsHtml()+'</div><div class="fm-card" id="fm-shop">'+fmShopHtml()+'</div></div>'
     +(p.fit_type==='vehicle'?'<div class="fm-card" id="fm-add">'+fmAddHtml()+'</div>':'')
     +'<div class="fm-card" id="fm-cur">'+fmFitTableHtml()+'</div></div>';
 }
+// ---------- details (what the ERP + dealer lists match on) and the live Shopify view of the same product
+var FM_SHOP='tgk-motorsport.myshopify.com';
+function fmDetailsHtml(){
+  var p=fmProd(FM.sel),f=function(id,label,val,hint){return '<label class="fm-field"><span>'+label+'</span><input class="fm-in" id="'+id+'" value="'+fmEsc(val||'')+'">'+(hint?'<em>'+hint+'</em>':'')+'</label>';};
+  return '<div class="fm-cardh"><b>Details</b><button class="fm-btn primary" onclick="fmSaveDetails()">Save</button></div>'
+    +f('fmd-sku','Parent SKU',p.sku,'What the ERP and dealer price lists match this product on. Variant-specific fitment uses the child SKUs on the right.')
+    +f('fmd-title','Product name',p.title)+'<div class="fm-row2">'+f('fmd-vendor','Brand',p.vendor)+f('fmd-cat','Category',p.category,'Used for website filters when no Storefront token is set.')+'</div>'
+    +'<div class="fm-tdim" style="font-size:12px">Website page: '+fmEsc(p.handle)+'</div>';
+}
+function fmSaveDetails(){
+  var p=fmProd(FM.sel),g=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
+  var upd={sku:g('fmd-sku')||null,title:g('fmd-title')||p.handle,vendor:g('fmd-vendor')||null,category:g('fmd-cat')||null,updated_at:new Date().toISOString()};
+  var oldSku=p.sku,skuChanged=(upd.sku||'')!==(oldSku||'');
+  var n=fmFitsOf(p.handle).filter(function(f){return !f.variant_sku;}).length;
+  if(skuChanged&&!confirm('Change the parent SKU from '+(oldSku||'(none)')+' to '+(upd.sku||'(none)')+'?\n\n'+n+' "all variants" fitment row'+(n!==1?'s':'')+' will move to the new SKU, so the ERP and dealer lists keep matching.\n\nThis does not change Shopify - change the SKU there too if needed (Open in Shopify).'))return;
+  fmDo(async function(){
+    await fmReq('fit_products?handle=eq.'+encodeURIComponent(p.handle),{method:'PATCH',body:JSON.stringify(upd)});
+    Object.assign(p,upd);
+    if(skuChanged){
+      await fmReq('fitments?handle=eq.'+encodeURIComponent(p.handle)+'&variant_sku=is.null',{method:'PATCH',body:JSON.stringify({pn:upd.sku})}).catch(function(e){if(!FM.noVarCol)throw e;return fmReq('fitments?handle=eq.'+encodeURIComponent(p.handle),{method:'PATCH',body:JSON.stringify({pn:upd.sku})});});
+      FM.fits.forEach(function(f){if(f.handle===p.handle&&!f.variant_sku)f.pn=upd.sku;});
+    }
+    fmToast('Saved');
+  });
+}
+function fmUseShopify(field,val){var e=document.getElementById(field);if(e){e.value=val;e.focus();}fmToast('Filled in - press Save');}
+function fmSkuOwners(){ // SKU -> website pages that use it, across the whole store
+  var o={};Object.keys(FM.vinfo||{}).forEach(function(h){(FM.vinfo[h]||[]).forEach(function(v){var k=String(v.sku).toUpperCase();(o[k]=o[k]||[]).indexOf(h)<0&&(o[k]=o[k]||[]).push(h);});});return o;
+}
+function fmShopHtml(){
+  var p=fmProd(FM.sel);
+  var head='<div class="fm-cardh"><b>Shopify</b><span style="display:flex;gap:6px">'
+    +(FM.vinfo&&FM.vinfo[p.handle]&&FM.vinfo[p.handle][0]&&FM.vinfo[p.handle][0].product_id?'<a class="fm-btn" target="_blank" rel="noopener" href="https://'+FM_SHOP+'/admin/products/'+FM.vinfo[p.handle][0].product_id+'">Open in Shopify</a>':'')
+    +'<button class="fm-btn" onclick="fmLoadVariants(true);this.textContent=\'Checking...\'">Refresh from Shopify</button></span></div>';
+  if(FM.varsLoading&&!FM.vinfo)return head+'<div class="fm-colhint">Loading from Shopify...</div>';
+  if(FM.varsErr)return head+'<div class="fm-bad">Could not read Shopify: '+fmEsc(FM.varsErr)+'</div>';
+  if(!FM.vinfo)return head+'<div class="fm-colhint">Not loaded yet.</div>';
+  var vs=FM.vinfo[p.handle]||[],ns=(FM.nosku&&FM.nosku[p.handle])||[];
+  if(!vs.length&&!ns.length)return head+'<div class="fm-bad">This website page was not found in Shopify. It may have been renamed or deleted.</div>';
+  var own=fmSkuOwners(),cnt={};fmFitsOf(p.handle).forEach(function(f){if(f.variant_sku){var k=String(f.variant_sku).toUpperCase();cnt[k]=(cnt[k]||0)+1;}});
+  var allRows=fmFitsOf(p.handle).filter(function(f){return !f.variant_sku;}).length;
+  var shopTitle=(vs[0]||ns[0]||{}).title||'',issues=[];
+  var skus=vs.map(function(v){return String(v.sku).toUpperCase();});
+  if(shopTitle&&shopTitle!==p.title)issues.push('Product name differs from Shopify ("'+fmEsc(shopTitle)+'") <button class="fm-link" onclick="fmUseShopify(\'fmd-title\','+fmJs(shopTitle)+')">Use Shopify\'s</button>');
+  if(vs.length===1&&String(p.sku||'').toUpperCase()!==skus[0])issues.push('Parent SKU differs from Shopify\'s SKU <b>'+fmEsc(vs[0].sku)+'</b> <button class="fm-link" onclick="fmUseShopify(\'fmd-sku\','+fmJs(vs[0].sku)+')">Use Shopify\'s</button>');
+  if(vs.length>1&&p.sku&&skus.indexOf(String(p.sku).toUpperCase())<0)issues.push('<span class="fm-tdim">Parent SKU <b>'+fmEsc(p.sku)+'</b> is not one of the Shopify variant SKUs - fine if it is the ERP parent of these variants.</span>');
+  if(ns.length)issues.push('<span class="fm-bad">'+ns.length+' variant'+(ns.length!==1?'s have':' has')+' no SKU in Shopify</span> - the ERP and dealer lists cannot match '+(ns.length!==1?'them':'it'));
+  var rows=vs.map(function(v){var k=String(v.sku).toUpperCase(),inErp=FM.erp?!!FM.erp[k]:null,others=(own[k]||[]).filter(function(h){return h!==p.handle;});
+    return '<tr><td><b>'+fmEsc(v.variant_title||'Default')+'</b></td><td class="fm-tsku">'+fmEsc(v.sku)+'</td>'
+      +'<td>'+(inErp===false?'<span class="fm-bad">not in ERP</span>':inErp?'<span class="fm-ok">in ERP</span>':'')+'</td>'
+      +'<td class="fm-tnum">'+(cnt[k]||0)+(allRows?' <span class="fm-tdim">+ '+allRows+' all</span>':'')+'</td>'
+      +'<td class="fm-tdim">'+(others.length?'also on '+others.length+' other page'+(others.length!==1?'s':''):'')+'</td></tr>';}).join('')
+    +ns.map(function(v){return '<tr><td><b>'+fmEsc(v.variant_title||'Default')+'</b></td><td><span class="fm-bad">no SKU</span></td><td></td><td></td><td></td></tr>';}).join('');
+  return head+(issues.length?'<div class="fm-issues">'+issues.map(function(x){return '<div>'+x+'</div>';}).join('')+'</div>':'<div class="fm-okline">&#10003; SKUs and name match Shopify</div>')
+    +'<table class="fm-table"><thead><tr><th>Option</th><th>Child SKU</th><th>ERP</th><th class="fm-tnum">Fitments</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +(FM.varsAt?'<div class="fm-tdim" style="font-size:12px;margin-top:6px">Read from Shopify at '+FM.varsAt.toLocaleTimeString()+'. Change SKUs or names in Shopify, then Refresh.</div>':'');
+}
+// Store-wide Shopify problems for the Checks tab
+function fmShopIssues(){
+  var out={nosku:[],mismatch:[],missing:[],dupes:[]};if(!FM.vinfo)return out;
+  Object.keys(FM.nosku||{}).forEach(function(h){(FM.nosku[h]||[]).forEach(function(v){out.nosku.push(v);});});
+  FM.products.forEach(function(p){var vs=FM.vinfo[p.handle]||[];if(vs.length===1&&String(p.sku||'').toUpperCase()!==String(vs[0].sku).toUpperCase())out.mismatch.push({p:p,shop:vs[0].sku});});
+  var have={};FM.products.forEach(function(p){have[p.handle]=1;});
+  Object.keys(FM.vinfo).forEach(function(h){if(!have[h]){var v=FM.vinfo[h][0];out.missing.push({handle:h,title:v.title,sku:v.sku,n:FM.vinfo[h].length});}});
+  var own=fmSkuOwners();Object.keys(own).forEach(function(k){if(own[k].length>1)out.dupes.push({sku:k,pages:own[k]});});
+  return out;
+}
+function fmAddFromShopify(handle){
+  var v=(FM.vinfo[handle]||[])[0];if(!v)return;
+  fmDo(async function(){var r=await fmReq('fit_products',{method:'POST',body:JSON.stringify({handle:handle,shopify_product_id:String(v.product_id||''),sku:v.sku,title:v.title,fit_type:'vehicle'})});FM.products=FM.products.concat(r||[]);fmToast('Added '+v.sku);});
+}
+window.fmSaveDetails=fmSaveDetails;window.fmUseShopify=fmUseShopify;window.fmAddFromShopify=fmAddFromShopify;
 // ---------- add new fitment: Year / Make / Model / Engine / Chassis checkbox columns, each narrows the next
 function fmActive(){return FM.vehicles.filter(function(v){return v.active!==false;});}
 function fmPass(v,skip){
@@ -23730,7 +23818,12 @@ function fmRenderChecks(){
   var sec=function(title,why,items,fn,action){return '<div class="fm-card"><div class="fm-card-h">'+title+' ('+items.length+') <span class="fm-note">'+why+'</span>'+(items.length&&action?' '+action:'')+'</div>'
     +(items.length?items.slice(0,60).map(fn).join('')+(items.length>60?'<div class="fm-note">+'+(items.length-60)+' more</div>':''):'<div class="fm-msg small">None - all good.</div>')+'</div>';};
   var prod=function(p){return '<div class="fm-vrow"><a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(p.handle)+');return false">'+fmEsc(p.title||p.handle)+'</a> <span class="fm-mono">'+fmEsc(p.sku||'')+'</span></div>';};
-  return '<div class="fm-pad">'
+  var si=fmShopIssues(),shopNote=!FM.vinfo?'<div class="fm-card"><div class="fm-card-h">Shopify SKUs</div><div class="fm-msg small">'+(FM.varsErr?'Could not read Shopify: '+fmEsc(FM.varsErr):'Loading from Shopify...')+'</div></div>':'';
+  return '<div class="fm-pad">'+shopNote
+    +(FM.vinfo?sec('Shopify variants with no SKU','the ERP and dealer price lists cannot match a variant without a SKU - add one in Shopify',si.nosku,function(v){return '<div class="fm-vrow"><b>'+fmEsc(v.title)+'</b> &middot; option <b>'+fmEsc(v.variant_title||'Default')+'</b> <a class="fm-link" target="_blank" rel="noopener" href="https://'+FM_SHOP+'/admin/products/'+v.product_id+'">Open in Shopify</a></div>';})
+      +sec('Parent SKU does not match Shopify','single-variant products whose SKU here differs from the SKU in Shopify',si.mismatch,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.p.sku||'(none)')+'</span> here, <span class="fm-mono">'+fmEsc(x.shop)+'</span> in Shopify &middot; <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(x.p.handle)+');return false">open</a></div>';})
+      +sec('Shopify products not in the Fitment tool','new products added in Shopify since the import - add them so they can get fitment',si.missing,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.sku)+'</span> '+fmEsc(x.title)+(x.n>1?' <span class="fm-tdim">('+x.n+' variants)</span>':'')+' <button class="fm-btn" onclick="fmAddFromShopify('+fmJs(x.handle)+')">Add</button></div>';})
+      +sec('SKU used on more than one website page','fine when one part is listed on several pages - but each page then needs its own fitment',si.dupes,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.sku)+'</span> <span class="fm-tdim">on '+x.pages.length+' pages</span></div>';}):'')
     +sec('Makes or models spelled more than one way','the website picker shows each spelling separately, so shoppers miss parts listed under the other',k.spell,function(x){
       var cnt=function(n){return FM.vehicles.filter(function(v){return v[x.field]===n&&(x.field!=='model'||v.make===x.make);}).length;};
       return '<div class="fm-vrow"><b>'+(x.field==='model'?fmEsc(x.make)+' ':'')+x.names.map(function(n){return fmEsc(n)+' <span class="fm-note">('+cnt(n)+')</span>';}).join(' &middot; ')+'</b>'
