@@ -2008,6 +2008,11 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-danger{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px dashed var(--border2);font-size:12.5px}
 .fm-addpanel{border:2px solid var(--teal);margin:4px 0 12px}
 .fm-addpanel .fm-in{width:100%;margin-bottom:8px}
+/* variant per row */
+.fm-vsel{width:auto!important;min-width:150px;max-width:260px;padding:4px 6px!important;font-size:12.5px!important;flex:none!important}
+.fm-vsel.on{border-color:#e07b28;background:#fef6ee;color:#7a3a0a;font-weight:600}
+.fm-setv{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+[data-theme="dark"] .fm-vsel.on{background:rgba(224,123,40,.15);color:#f5b17a}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17293,7 +17298,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.46';
+var TGK_CC_VERSION='v3.47';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23399,12 +23404,13 @@ async function fmLoad(force){
       fmAll('fit_products?select=*&order=title'),
       fmAll('fit_vehicles?select=*&order=make,model,year_from'),
       fmAll('fitments?select=id,pn,handle,make,model,year_from,year_to,engine,chassis,vehicle_id,source,variant_sku&order=make,model,year_from').then(function(r){FM.noVarCol=false;return r;},function(){FM.noVarCol=true;return fmAll('fitments?select=id,pn,handle,make,model,year_from,year_to,engine,chassis,vehicle_id,source&order=make,model,year_from');}),
-      fmAll('assemblies?select=pn,new_sku,description,category,msrp,discontinued,stage,status,pl_active').catch(function(){return fmAll('assemblies?select=pn,new_sku').catch(function(){return null;});}),
+      fmAll('assemblies?select=pn,new_sku,use_new_sku,description,category,msrp,discontinued,stage,status,pl_active').catch(function(){return fmAll('assemblies?select=pn,new_sku').catch(function(){return null;});}),
       fmAll('parts?select=pn,new_sku').catch(function(){return null;})
     ]);
     FM.products=r[0];FM.vehicles=r[1];FM.fits=r[2];
     if(r[3]&&r[4]){var e={},info={};r[3].forEach(function(x){[x.pn,x.new_sku].forEach(function(k){if(k){e[String(k).toUpperCase()]=1;info[String(k).toUpperCase()]={kind:'assembly',rec:x};}});});
-      r[4].forEach(function(x){[x.pn,x.new_sku].forEach(function(k){if(k){e[String(k).toUpperCase()]=1;if(!info[String(k).toUpperCase()])info[String(k).toUpperCase()]={kind:'part',rec:x};}});});FM.erp=e;FM.erpInfo=info;}
+      r[4].forEach(function(x){[x.pn,x.new_sku].forEach(function(k){if(k){e[String(k).toUpperCase()]=1;if(!info[String(k).toUpperCase()])info[String(k).toUpperCase()]={kind:'part',rec:x};}});});FM.erp=e;FM.erpInfo=info;
+      var cn={};r[3].forEach(function(x){if(x.pn){cn[String(x.pn).trim().toUpperCase()]=x.pn;if(x.new_sku)cn[String(x.new_sku).trim().toUpperCase()]=x.pn;}});FM.canon=cn;}
     FM.loaded=true;
     fmLoadVariants();
   }catch(e){FM.err=e;}
@@ -23431,6 +23437,10 @@ async function fmLoadVariants(force){
   var sp=document.getElementById('fm-shop');if(sp)sp.innerHTML=fmShopHtml();
   if(FM.tab==='checks')fmRender();
 }
+// The ERP's rule: fitment is stored under the assembly's stable LEGACY pn, never the new/display SKU.
+function fmCanonPn(sku){if(!sku)return sku;var c=FM.canon&&FM.canon[String(sku).trim().toUpperCase()];return c||sku;}
+function fmSkuSame(a,b){if(!a||!b)return false;return String(fmCanonPn(a)).toUpperCase()===String(fmCanonPn(b)).toUpperCase();}
+window.fmCanonPn=fmCanonPn;
 function fmVarsOf(handle){var v=FM.vars&&FM.vars[handle];return v&&v.length>1?v:[];}
 window.fmLoadVariants=fmLoadVariants;
 // ---------- derived data ----------
@@ -23468,7 +23478,7 @@ async function fmAddVehicles(handle,vehicles,vskus){
   var rows=[];
   scopes.forEach(function(vs){vehicles.forEach(function(v){
     if(have[fmVKey(v)+'|'+(vs||'')])return;
-    var r={pn:vs||p.sku||null,handle:handle,make:v.make,model:v.model,year_from:v.year_from,year_to:v.year_to,engine:v.engine||'',chassis:v.chassis||'',
+    var r={pn:fmCanonPn(vs||p.sku)||null,handle:handle,make:v.make,model:v.model,year_from:v.year_from,year_to:v.year_to,engine:v.engine||'',chassis:v.chassis||'',
       submodel:((v.chassis||'')+' '+(v.engine||'')).trim()||null,vehicle_id:v.id||null,source:'fitment-editor'};
     if(vs)r.variant_sku=vs;rows.push(r);});});
   if(!rows.length)return 0;
@@ -23526,6 +23536,42 @@ function fmDeleteSelected(){
   if(ids.length>5&&!confirm('Delete '+ids.length+' fitments from this product?'))return;
   fmDeleteIds(ids);
 }
+function fmVarOptions(vars,cur,stale){
+  return '<option value=""'+(!cur?' selected':'')+'>All variants</option>'
+    +vars.map(function(v){var t=fmVarTitle(v);return '<option value="'+fmEsc(v)+'"'+(cur&&String(cur).toUpperCase()===String(v).toUpperCase()?' selected':'')+'>'+fmEsc(v)+(t?' - '+fmEsc(t):'')+'</option>';}).join('')
+    +(stale?'<option value="'+fmEsc(stale)+'" selected>'+fmEsc(stale)+' (not on this page)</option>':'');
+}
+function fmVarTitle(sku){var vs=(FM.vinfo&&FM.vinfo[FM.sel])||[];var v=vs.find(function(x){return String(x.sku).toUpperCase()===String(sku).toUpperCase();});return v&&v.variant_title&&v.variant_title!=='Default Title'?v.variant_title:'';}
+function fmVarCell(f,vars){
+  if(!vars.length)return f.variant_sku?'<span class="fm-vtag">'+fmEsc(f.variant_sku)+'</span>':'<span class="fm-tdim">All variants</span>';
+  var stale=f.variant_sku&&!vars.some(function(v){return String(v).toUpperCase()===String(f.variant_sku).toUpperCase();})?f.variant_sku:null;
+  return '<select class="fm-in fm-vsel'+(f.variant_sku?' on':'')+'" title="Which variant this vehicle fits" onchange="fmSetRowsVariant(['+fmJs(f.id)+'],this.value)">'+fmVarOptions(vars,f.variant_sku,stale)+'</select>';
+}
+// Change which variant one or more rows fit. Never creates a duplicate (same vehicle + same variant on this product); undoable.
+function fmSetRowsVariant(ids,vsku){
+  var p=fmProd(FM.sel);vsku=vsku||null;
+  var rows=FM.fits.filter(function(f){return ids.indexOf(f.id)>=0;});if(!rows.length)return;
+  if(vsku&&FM.noVarCol){fmToast('Run fitment_3_variants.sql in Supabase first, then reload',true);fmRefreshCur();return;}
+  var todo=[],skipped=0,taken={};
+  FM.fits.forEach(function(x){if(x.handle===p.handle&&ids.indexOf(x.id)<0)taken[fmVKey(x)+'|'+String(x.variant_sku||'').toUpperCase()]=1;});
+  rows.forEach(function(f){var k=fmVKey(f)+'|'+String(vsku||'').toUpperCase();
+    if(String(f.variant_sku||'').toUpperCase()===String(vsku||'').toUpperCase())return;
+    if(taken[k]){skipped++;return;}taken[k]=1;todo.push(f);});
+  if(!todo.length){fmToast(skipped?'Already listed for that variant - nothing changed':'No change');fmRefreshCur();return;}
+  var before=todo.map(function(f){return {id:f.id,variant_sku:f.variant_sku||null,pn:f.pn};});
+  var pn=fmCanonPn(vsku||p.sku)||null;
+  fmDo(async function(){
+    await fmReq('fitments?id=in.('+todo.map(function(f){return f.id;}).join(',')+')',{method:'PATCH',body:JSON.stringify({variant_sku:vsku,pn:pn})});
+    todo.forEach(function(f){f.variant_sku=vsku;f.pn=pn;});FM.fsel={};
+    var label=(todo.length===1?'1 fitment':todo.length+' fitments')+' now fit'+(todo.length===1?'s ':' ')+(vsku?vsku:'all variants')+(skipped?' ('+skipped+' already listed, skipped)':'');
+    setTimeout(function(){fmToastUndo(label,function(){fmUndoVariant(before);});},0);
+  });
+}
+function fmUndoVariant(before){
+  fmDo(async function(){for(var i=0;i<before.length;i++){var b=before[i];await fmReq('fitments?id=eq.'+b.id,{method:'PATCH',body:JSON.stringify({variant_sku:b.variant_sku,pn:b.pn})});
+    var f=FM.fits.find(function(x){return x.id===b.id;});if(f){f.variant_sku=b.variant_sku;f.pn=b.pn;}}fmToast('Undone');});
+}
+window.fmSetRowsVariant=fmSetRowsVariant;
 function fmFselToggle(id,on){FM.fsel=FM.fsel||{};if(on)FM.fsel[id]=1;else delete FM.fsel[id];fmRefreshCur();}
 function fmFselAll(on){FM.fsel={};if(on)fmFitsOf(FM.sel).forEach(function(f){FM.fsel[f.id]=1;});fmRefreshCur();}
 window.fmDeleteSelected=fmDeleteSelected;window.fmFselToggle=fmFselToggle;window.fmFselAll=fmFselAll;window.fmRestore=fmRestore;
@@ -23619,6 +23665,19 @@ function fmAddListHtml(){
   return '<table class="fm-table"><tbody>'+list.slice(0,50).map(function(x){return '<tr><td class="fm-tsku">'+fmEsc(x.vs[0].sku)+(x.vs.length>1?' <span class="fm-tdim">+'+(x.vs.length-1)+' variant'+(x.vs.length>2?'s':'')+'</span>':'')+'</td><td>'+fmEsc(x.t)+'</td><td style="text-align:right"><button class="fm-btn primary" onclick="fmAddFromShopify('+fmJs(x.h)+')">Add</button></td></tr>';}).join('')+'</tbody></table>'
     +(list.length>50?'<div class="fm-colhint">Showing 50 of '+list.length+' - search to narrow.</div>':'');
 }
+function fmFixLegacyPn(){
+  var bad=FM.fits.filter(function(f){return f.pn&&fmCanonPn(f.pn)!==f.pn;});if(!bad.length)return;
+  var by={};bad.forEach(function(f){(by[f.pn]=by[f.pn]||[]).push(f);});
+  fmDo(async function(){var n=0;for(var k in by){await fmReq('fitments?pn=eq.'+encodeURIComponent(k),{method:'PATCH',body:JSON.stringify({pn:fmCanonPn(k)})});by[k].forEach(function(f){f.pn=fmCanonPn(k);});n+=by[k].length;}fmToast('Re-filed '+n+' rows under their legacy part number');});
+}
+function fmMoveStaleVariants(){
+  var rows=fmShopIssues().staleVar.filter(function(f){return f._moveTo;});if(!rows.length)return;
+  fmDo(async function(){for(var i=0;i<rows.length;i++){var f=rows[i];var dup=FM.fits.some(function(x){return x.id!==f.id&&x.handle===f.handle&&fmVKey(x)===fmVKey(f)&&String(x.variant_sku||'').toUpperCase()===String(f._moveTo).toUpperCase();});
+    if(dup){await fmReq('fitments?id=eq.'+f.id,{method:'DELETE'});FM.fits=FM.fits.filter(function(x){return x.id!==f.id;});continue;}
+    await fmReq('fitments?id=eq.'+f.id,{method:'PATCH',body:JSON.stringify({variant_sku:f._moveTo,pn:fmCanonPn(f._moveTo)})});f.variant_sku=f._moveTo;f.pn=fmCanonPn(f._moveTo);}
+    fmToast('Moved '+rows.length+' variant row'+(rows.length!==1?'s':''));});
+}
+window.fmFixLegacyPn=fmFixLegacyPn;window.fmMoveStaleVariants=fmMoveStaleVariants;
 window.fmDeleteProducts=fmDeleteProducts;window.fmDeleteOrphans=fmDeleteOrphans;window.fmPselToggle=fmPselToggle;window.fmPselAll=fmPselAll;window.fmAddListHtml=fmAddListHtml;
 
 function fmNewVehicle(){
@@ -23648,7 +23707,21 @@ function fmLinkUnlinked(){
   });
 }
 // ---------- rendering ----------
+function fmSaveScroll(){
+  var out=[],r=document.getElementById('fm-root');if(!r)return out;
+  r.querySelectorAll('.fm-page,.fm-pad,.fm-tablewrap,.fm-list,.fm-colbody[data-col],.fm-preview').forEach(function(e){
+    if(e.scrollTop)out.push([e.className.split(' ')[0]+'|'+(e.getAttribute('data-col')||''),e.scrollTop]);});
+  out.win=window.scrollY;return out;
+}
+function fmRestoreScroll(keep){
+  var r=document.getElementById('fm-root');if(!r||!keep)return;
+  keep.forEach(function(k){var parts=k[0].split('|'),sel='.'+parts[0]+(parts[1]?'[data-col="'+parts[1]+'"]':'');var e=r.querySelector(sel);if(e)e.scrollTop=k[1];});
+  if(keep.win)window.scrollTo(0,keep.win);
+}
 function fmRender(){
+  var keep=fmSaveScroll();fmRender._inner();fmRestoreScroll(keep);
+}
+fmRender._inner=function(){
   var root=document.getElementById('fm-root');if(!root)return;
   if(FM.err){
     var missing=/fit_products|fit_vehicles|does not exist|relation|schema cache/i.test(String(FM.err.message||''));
@@ -23661,7 +23734,7 @@ function fmRender(){
     +'<button class="fm-btn" onclick="fmLoad(true)">Reload</button></div>'
     +(FM.tab==='products'?fmRenderProducts():FM.tab==='vehicles'?fmRenderVehicles():fmRenderChecks());
   root.querySelectorAll('input[data-ind="1"]').forEach(function(i){i.indeterminate=true;});
-}
+};
 // ===================== v4 product screens (Convermax-style) =====================
 var FM_COLS=[['make','Make'],['model','Model'],['year','Year'],['engine','Engine'],['chassis','Chassis']];
 function fmCsReset(){FM.cs={yearAll:true,year:{},make:{},model:{},engine:{},chassis:{},vsel:{}};FM.preview=false;FM.newV=false;FM.addTab=FM.addTab||'add';}
@@ -23726,8 +23799,8 @@ function fmSaveDetails(){
     await fmReq('fit_products?handle=eq.'+encodeURIComponent(p.handle),{method:'PATCH',body:JSON.stringify(upd)});
     Object.assign(p,upd);
     if(skuChanged){
-      await fmReq('fitments?handle=eq.'+encodeURIComponent(p.handle)+'&variant_sku=is.null',{method:'PATCH',body:JSON.stringify({pn:upd.sku})}).catch(function(e){if(!FM.noVarCol)throw e;return fmReq('fitments?handle=eq.'+encodeURIComponent(p.handle),{method:'PATCH',body:JSON.stringify({pn:upd.sku})});});
-      FM.fits.forEach(function(f){if(f.handle===p.handle&&!f.variant_sku)f.pn=upd.sku;});
+      await fmReq('fitments?handle=eq.'+encodeURIComponent(p.handle)+'&variant_sku=is.null',{method:'PATCH',body:JSON.stringify({pn:fmCanonPn(upd.sku)})}).catch(function(e){if(!FM.noVarCol)throw e;return fmReq('fitments?handle=eq.'+encodeURIComponent(p.handle),{method:'PATCH',body:JSON.stringify({pn:fmCanonPn(upd.sku)})});});
+      FM.fits.forEach(function(f){if(f.handle===p.handle&&!f.variant_sku)f.pn=fmCanonPn(upd.sku);});
     }
     fmToast('Saved');
   });
@@ -23751,8 +23824,9 @@ function fmShopHtml(){
   var shopTitle=(vs[0]||ns[0]||{}).title||'',issues=[];
   var skus=vs.map(function(v){return String(v.sku).toUpperCase();});
   if(shopTitle&&shopTitle!==p.title)issues.push('Product name differs from Shopify ("'+fmEsc(shopTitle)+'") <button class="fm-link" onclick="fmUseShopify(\'fmd-title\','+fmJs(shopTitle)+')">Use Shopify\'s</button>');
-  if(vs.length===1&&String(p.sku||'').toUpperCase()!==skus[0])issues.push('Parent SKU differs from Shopify\'s SKU <b>'+fmEsc(vs[0].sku)+'</b> <button class="fm-link" onclick="fmUseShopify(\'fmd-sku\','+fmJs(vs[0].sku)+')">Use Shopify\'s</button>');
-  if(vs.length>1&&p.sku&&skus.indexOf(String(p.sku).toUpperCase())<0)issues.push('<span class="fm-tdim">Parent SKU <b>'+fmEsc(p.sku)+'</b> is not one of the Shopify variant SKUs - fine if it is the ERP parent of these variants.</span>');
+  if(vs.length===1&&String(p.sku||'').toUpperCase()!==skus[0]&&fmSkuSame(p.sku,vs[0].sku))issues.push('<span class="fm-tdim">Shopify shows the new SKU <b>'+fmEsc(vs[0].sku)+'</b>; the ERP links it to <b>'+fmEsc(fmCanonPn(vs[0].sku))+'</b>, so everything still matches.</span> <button class="fm-link" onclick="fmUseShopify(\'fmd-sku\','+fmJs(vs[0].sku)+')">Show the new SKU here</button>');
+  else if(vs.length===1&&String(p.sku||'').toUpperCase()!==skus[0])issues.push('Parent SKU differs from Shopify\'s SKU <b>'+fmEsc(vs[0].sku)+'</b> <button class="fm-link" onclick="fmUseShopify(\'fmd-sku\','+fmJs(vs[0].sku)+')">Use Shopify\'s</button>');
+  if(vs.length>1&&p.sku&&!vs.some(function(v){return fmSkuSame(v.sku,p.sku);}))issues.push('<span class="fm-tdim">Parent SKU <b>'+fmEsc(p.sku)+'</b> is not one of the Shopify variant SKUs - fine if it is the ERP parent of these variants.</span>');
   if(ns.length)issues.push('<span class="fm-bad">'+ns.length+' variant'+(ns.length!==1?'s have':' has')+' no SKU in Shopify</span> - the ERP and dealer lists cannot match '+(ns.length!==1?'them':'it'));
   var rows=vs.map(function(v){var k=String(v.sku).toUpperCase(),inErp=FM.erp?!!FM.erp[k]:null,others=(own[k]||[]).filter(function(h){return h!==p.handle;});
     return '<tr><td><b>'+fmEsc(v.variant_title||'Default')+'</b></td><td class="fm-tsku">'+fmEsc(v.sku)+'</td>'
@@ -23768,9 +23842,10 @@ function fmShopHtml(){
 function fmShopIssues(){
   var out={nosku:[],mismatch:[],missing:[],dupes:[],gone:[],staleVar:[]};if(!FM.vinfo)return out;
   if(!FM.varsErr&&Object.keys(FM.vinfo).length)FM.products.forEach(function(p){if(!fmInShopify(p.handle))out.gone.push(p);});
-  FM.fits.forEach(function(f){if(!f.variant_sku||!f.handle)return;var vs=FM.vinfo[f.handle];if(vs&&!vs.some(function(v){return String(v.sku).toUpperCase()===String(f.variant_sku).toUpperCase();}))out.staleVar.push(f);});
+  FM.fits.forEach(function(f){if(!f.variant_sku||!f.handle)return;var vs=FM.vinfo[f.handle];if(!vs||vs.some(function(v){return String(v.sku).toUpperCase()===String(f.variant_sku).toUpperCase();}))return;
+    var now=vs.find(function(v){return fmSkuSame(v.sku,f.variant_sku);});f._moveTo=now?now.sku:null;out.staleVar.push(f);});
   Object.keys(FM.nosku||{}).forEach(function(h){(FM.nosku[h]||[]).forEach(function(v){out.nosku.push(v);});});
-  FM.products.forEach(function(p){var vs=FM.vinfo[p.handle]||[];if(vs.length===1&&String(p.sku||'').toUpperCase()!==String(vs[0].sku).toUpperCase())out.mismatch.push({p:p,shop:vs[0].sku});});
+  FM.products.forEach(function(p){var vs=FM.vinfo[p.handle]||[];if(vs.length===1&&!fmSkuSame(p.sku,vs[0].sku))out.mismatch.push({p:p,shop:vs[0].sku});});
   var have={};FM.products.forEach(function(p){have[p.handle]=1;});
   Object.keys(FM.vinfo).forEach(function(h){if(!have[h]){var v=FM.vinfo[h][0];out.missing.push({handle:h,title:v.title,sku:v.sku,n:FM.vinfo[h].length});}});
   var own=fmSkuOwners();Object.keys(own).forEach(function(k){if(own[k].length>1)out.dupes.push({sku:k,pages:own[k]});});
@@ -23843,19 +23918,25 @@ function fmAddHtml(){
   return h;
 }
 function fmAllOn(f,opts){if(f==='year')return FM.cs.yearAll||(opts.length&&opts.every(function(o){return FM.cs.year[o];}));return opts.length&&opts.every(function(o){return FM.cs[f][o];});}
+function fmAutoReset(){
+  var cs=FM.cs;
+  if(!Object.keys(cs.make).length){var vs=cs.vsel;fmCsReset();FM.cs.vsel=vs;return;}
+  if(!Object.keys(cs.model).length){cs.yearAll=true;cs.year={};cs.engine={};cs.chassis={};FM.preview=false;}
+}
 function fmColPick(f,o,on){
   if(f==='year'&&FM.cs.yearAll){ // switching from "All years" to specific years: start from every year that applies
     FM.cs.yearAll=false;FM.cs.year={};fmColOpts('year').forEach(function(y){FM.cs.year[y]=1;});
   }
   var s=FM.cs[f];if(on)s[o]=1;else delete s[o];
-  if(f==='year'){var opts=fmColOpts('year');if(opts.length&&opts.every(function(y){return FM.cs.year[y];})){FM.cs.yearAll=true;FM.cs.year={};}}
-  fmPrune();fmRefreshAdd();
+  if(f==='year'){var opts=fmColOpts('year');if(opts.length&&opts.every(function(y){return FM.cs.year[y];})){FM.cs.yearAll=true;FM.cs.year={};}
+    if(!FM.cs.yearAll&&!Object.keys(FM.cs.year).length){FM.cs.yearAll=true;} }
+  fmPrune();fmAutoReset();fmRefreshAdd();
 }
 function fmColAll(f){
   var opts=fmColOpts(f),all=fmAllOn(f,opts);
   if(f==='year'){FM.cs.yearAll=!all;FM.cs.year={};}
   else opts.forEach(function(o){if(all)delete FM.cs[f][o];else FM.cs[f][o]=1;});
-  fmPrune();fmRefreshAdd();
+  fmPrune();fmAutoReset();fmRefreshAdd();
 }
 function fmRefreshAdd(){
   var el=document.getElementById('fm-add');if(!el)return;
@@ -23884,20 +23965,23 @@ function fmCopyHtml(){
 // ---------- current fitment table
 function fmFitTableHtml(){
   var p=fmProd(FM.sel),fits=fmFitsOf(p.handle).slice().sort(function(a,b){return (a.make+a.model).localeCompare(b.make+b.model,undefined,{numeric:true})||(a.year_from-b.year_from)||String(a.variant_sku||'').localeCompare(String(b.variant_sku||''));});
-  var showV=fmVarsOf(p.handle).length>0||fits.some(function(f){return f.variant_sku;});
+  var vars=fmVarsOf(p.handle),showV=vars.length>0||fits.some(function(f){return f.variant_sku;});
   FM.fsel=FM.fsel||{};var ids={};fits.forEach(function(f){ids[f.id]=1;});Object.keys(FM.fsel).forEach(function(k){if(!ids[k])delete FM.fsel[k];});
   var nSel=Object.keys(FM.fsel).length,allOn=fits.length&&nSel===fits.length;
   var note=p.fit_type==='universal'?'<div class="fm-notice">Set to <b>Universal fit</b> - it shows for every vehicle, so the rows below are not used.'+(fits.length?' You can delete them.':'')+'</div>'
     :p.fit_type==='none'?'<div class="fm-notice">Set to <b>Non-vehicle product</b> - not in vehicle search, so the rows below are not used.'+(fits.length?' You can delete them.':'')+'</div>':'';
   var h='<div class="fm-cardh"><b>'+fits.length+' fitment'+(fits.length!==1?'s':'')+'</b>'+(fits.length?'<button class="fm-link danger" onclick="fmRemoveAll()">Delete all</button>':'')+'</div>'+note;
   if(!fits.length)return h+(p.fit_type==='vehicle'?'<div class="fm-empty">No fitment yet - pick a make and model above and press <b>Add fitment</b>.</div>':'');
-  h+='<div class="fm-selbar'+(nSel?' on':'')+'">'+(nSel?'<b>'+nSel+' selected</b><button class="fm-del" onclick="fmDeleteSelected()">Delete selected</button><button class="fm-link" onclick="fmFselAll(false)">Clear selection</button>':'<span class="fm-tdim">Tick rows to delete several at once.</span>')+'</div>';
+  h+='<div class="fm-selbar'+(nSel?' on':'')+'">'+(nSel?'<b>'+nSel+' selected</b>'
+      +(vars.length?'<span class="fm-setv">Fits variant <select class="fm-in fm-vsel" id="fm-bulkv">'+fmVarOptions(vars,'',null)+'</select><button class="fm-btn primary" onclick="fmSetRowsVariant(Object.keys(FM.fsel),document.getElementById(\'fm-bulkv\').value)">Set</button></span>':'')
+      +'<button class="fm-del" onclick="fmDeleteSelected()">Delete selected</button><button class="fm-link" onclick="fmFselAll(false)">Clear selection</button>'
+      :'<span class="fm-tdim">Tick rows to '+(vars.length?'change which variant they fit, or to ':'')+'delete several at once.</span>')+'</div>';
   return h+'<table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" title="Select all"'+(allOn?' checked':'')+' onchange="fmFselAll(this.checked)"></th><th>Year</th><th>Make</th><th>Model</th><th>Engine</th><th>Chassis</th>'+(showV?'<th>Variant</th>':'')+'<th>Source</th><th></th></tr></thead><tbody>'
     +fits.map(function(f){var on=!!FM.fsel[f.id];return '<tr'+(on?' class="fm-trsel"':'')+'><td><input type="checkbox"'+(on?' checked':'')+' onchange="fmFselToggle('+fmJs(f.id)+',this.checked)"></td><td><span class="fm-yr">'+fmYears(f)+'</span></td><td>'+fmEsc(f.make)+'</td><td>'+fmEsc(f.model)+'</td><td>'+fmEsc(f.engine||'')+'</td><td>'+fmEsc(f.chassis||'')+'</td>'
-      +(showV?'<td>'+(f.variant_sku?'<span class="fm-vtag">'+fmEsc(f.variant_sku)+'</span>':'<span class="fm-tdim">All variants</span>')+'</td>':'')
+      +(showV?'<td>'+fmVarCell(f,vars)+'</td>':'')
       +'<td class="fm-tdim">'+(f.source==='convermax'?'imported':f.source==='fitment-editor'?'custom':fmEsc(f.source||''))+'</td><td style="text-align:right"><button class="fm-del" onclick="fmRemoveOne('+fmJs(f.id)+')">Delete</button></td></tr>';}).join('')+'</tbody></table>';
 }
-function fmPick(handle){FM.sel=handle;FM.copyQ='';fmCsReset();FM.addTab='add';fmRender();var r=document.querySelector('.fm-pad,.fm-page');if(r&&r.parentNode)r.parentNode.scrollTop=0;}
+function fmPick(handle){FM.sel=handle;FM.copyQ='';fmCsReset();FM.addTab='add';FM.fsel={};fmRender._inner();var r=document.querySelector('#fm-root .fm-page');if(r)r.scrollTop=0;}
 window.fmPick=fmPick;window.fmColPick=fmColPick;window.fmColAll=fmColAll;window.fmAddSelected=fmAddSelected;window.fmRefreshAdd=fmRefreshAdd;window.fmListBody=fmListBody;window.fmCsReset=fmCsReset;
 
 function fmRenderVehicles(){
@@ -23953,9 +24037,11 @@ function fmRenderChecks(){
     +(FM.vinfo?sec('Shopify variants with no SKU','the ERP and dealer price lists cannot match a variant without a SKU - add one in Shopify',si.nosku,function(v){return '<div class="fm-vrow"><b>'+fmEsc(v.title)+'</b> &middot; option <b>'+fmEsc(v.variant_title||'Default')+'</b> <a class="fm-link" target="_blank" rel="noopener" href="https://'+FM_SHOP+'/admin/products/'+v.product_id+'">Open in Shopify</a></div>';})
       +sec('Parent SKU does not match Shopify','single-variant products whose SKU here differs from the SKU in Shopify',si.mismatch,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.p.sku||'(none)')+'</span> here, <span class="fm-mono">'+fmEsc(x.shop)+'</span> in Shopify &middot; <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(x.p.handle)+');return false">open</a></div>';})
       +sec('SKUs in the Fitment tool but no longer in Shopify','their website page was deleted or renamed in Shopify - delete them here, or fix the page',si.gone,function(p){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(p.sku||'(no SKU)')+'</span> '+fmEsc(p.title||p.handle)+' <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(p.handle)+');return false">open</a> <button class="fm-btn" onclick="fmDeleteProducts(['+fmJs(p.handle)+'])">Delete</button></div>';},si.gone.length>1?'<button class="fm-btn" onclick="fmDeleteProducts(fmShopIssues().gone.map(function(p){return p.handle;}))">Delete all '+si.gone.length+'</button>':'')
-      +sec('Variant fitment for SKUs no longer on the page','these rows point at a child SKU that is not on that Shopify page any more - the website cannot use them',si.staleVar,function(f){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(f.variant_sku)+'</span> '+fmEsc(f.make+' '+f.model+' '+fmYears(f))+' <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(f.handle)+');return false">open product</a></div>';})
+      +sec('Variant fitment for SKUs no longer on the page','these rows point at a child SKU that is not on that Shopify page any more',si.staleVar,function(f){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(f.variant_sku)+'</span> '+fmEsc(f.make+' '+f.model+' '+fmYears(f))+(f._moveTo?' <span class="fm-tdim">now <b>'+fmEsc(f._moveTo)+'</b> (same ERP part)</span>':'')+' <a href="#" onclick="FM.tab=\'products\';fmPick('+fmJs(f.handle)+');return false">open product</a></div>';},si.staleVar.some(function(f){return f._moveTo;})?'<button class="fm-btn primary" onclick="fmMoveStaleVariants()">Move them to the new SKU</button>':'')
       +sec('Shopify products not in the Fitment tool','new products added in Shopify since the import - add them so they can get fitment',si.missing,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.sku)+'</span> '+fmEsc(x.title)+(x.n>1?' <span class="fm-tdim">('+x.n+' variants)</span>':'')+' <button class="fm-btn" onclick="fmAddFromShopify('+fmJs(x.handle)+')">Add</button></div>';})
       +sec('SKU used on more than one website page','fine when one part is listed on several pages - but each page then needs its own fitment',si.dupes,function(x){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(x.sku)+'</span> <span class="fm-tdim">on '+x.pages.length+' pages</span></div>';}):'')
+    +(function(){var bad=FM.canon?FM.fits.filter(function(f){return f.pn&&fmCanonPn(f.pn)!==f.pn;}):[];
+      return sec('Fitment filed under a new SKU','the ERP files fitment under the stable legacy part number, so these will not show in the ERP / dealer lists if the new SKU changes again',bad,function(f){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(f.pn)+'</span> &rarr; <span class="fm-mono">'+fmEsc(fmCanonPn(f.pn))+'</span> '+fmEsc(f.make+' '+f.model+' '+fmYears(f))+'</div>';},bad.length?'<button class="fm-btn primary" onclick="fmFixLegacyPn()">Fix all</button>':'');})()
     +(function(){var have={};FM.products.forEach(function(p){have[p.handle]=1;});var orph=FM.fits.filter(function(f){return f.handle&&!have[f.handle];});
       return sec('Fitment rows with no product','left behind when a product record was removed - nothing on the website uses them',orph,function(f){return '<div class="fm-vrow"><span class="fm-mono">'+fmEsc(f.pn||'')+'</span> '+fmEsc(f.make+' '+f.model+' '+fmYears(f))+'</div>';},orph.length?'<button class="fm-btn" onclick="fmDeleteOrphans()">Delete all</button>':'');})()
     +sec('Makes or models spelled more than one way','the website picker shows each spelling separately, so shoppers miss parts listed under the other',k.spell,function(x){
