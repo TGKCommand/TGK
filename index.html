@@ -2013,6 +2013,11 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-vsel.on{border-color:#e07b28;background:#fef6ee;color:#7a3a0a;font-weight:600}
 .fm-setv{display:inline-flex;align-items:center;gap:6px;font-weight:600}
 [data-theme="dark"] .fm-vsel.on{background:rgba(224,123,40,.15);color:#f5b17a}
+/* same SKU on several pages */
+.fm-pages{display:inline-block;font-family:var(--font);font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--blue-light,#E6F1FB);color:var(--blue-text,#0c3d6e);margin-left:4px;vertical-align:1px}
+.fm-samepages{border-left:4px solid #185FA5;font-size:14px}
+.fm-samepages a{color:var(--teal-dark);font-weight:600}
+[data-theme="dark"] .fm-pages{background:rgba(24,95,165,.3);color:#9cc7f3}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17298,7 +17303,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.47';
+var TGK_CC_VERSION='v3.48';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23747,12 +23752,14 @@ function fmListRows(){
     if(f==='vehicle'&&p.fit_type!=='vehicle')return false;if(f==='universal'&&p.fit_type!=='universal')return false;if(f==='none'&&p.fit_type!=='none')return false;
     return !q||[p.sku,p.title,p.vendor].join(' ').toLowerCase().indexOf(q)>=0;}).sort(fmSkuCmp);
 }
+function fmSkuPages(){var m={};FM.products.forEach(function(p){if(!p.sku)return;var k=String(fmCanonPn(p.sku)).toUpperCase();(m[k]=m[k]||[]).push(p);});return m;}
+function fmOtherPages(p){if(!p.sku)return [];var g=fmSkuPages()[String(fmCanonPn(p.sku)).toUpperCase()]||[];return g.filter(function(x){return x.handle!==p.handle;});}
 function fmListBody(){
-  var c=fmCounts(),rows=fmListRows();
+  var c=fmCounts(),rows=fmListRows(),sp=fmSkuPages();
   if(!rows.length)return '<tr><td colspan="6" class="fm-empty">No products match.</td></tr>';
   return rows.slice(0,400).map(function(p){var n=c[p.handle]||0;
     var on=!!(FM.psel&&FM.psel[p.handle]);
-    return '<tr class="fm-trow'+(on?' fm-trsel':'')+'" onclick="fmPick('+fmJs(p.handle)+')"><td onclick="event.stopPropagation()"><input type="checkbox"'+(on?' checked':'')+' onchange="fmPselToggle('+fmJs(p.handle)+',this.checked,event)"></td><td class="fm-tsku">'+fmEsc(p.sku||'(no SKU)')+'</td><td>'+fmEsc(p.title||p.handle)+'</td><td class="fm-tdim">'+fmEsc(p.vendor||'')+'</td>'
+    return '<tr class="fm-trow'+(on?' fm-trsel':'')+'" onclick="fmPick('+fmJs(p.handle)+')"><td onclick="event.stopPropagation()"><input type="checkbox"'+(on?' checked':'')+' onchange="fmPselToggle('+fmJs(p.handle)+',this.checked,event)"></td><td class="fm-tsku">'+fmEsc(p.sku||'(no SKU)')+((sp[String(fmCanonPn(p.sku)).toUpperCase()]||[]).length>1?' <span class="fm-pages" title="This SKU is listed on more than one website page">'+sp[String(fmCanonPn(p.sku)).toUpperCase()].length+' pages</span>':'')+'</td><td>'+fmEsc(p.title||p.handle)+'</td><td class="fm-tdim">'+fmEsc(p.vendor||'')+'</td>'
       +'<td>'+fmTypeLabel(p.fit_type)+'</td><td class="fm-tnum">'+(p.fit_type==='vehicle'?(n?n:'<span class="fm-bad">0 - needs fitment</span>'):'&ndash;')+'</td></tr>';}).join('')
     +(rows.length>400?'<tr><td colspan="6" class="fm-tdim">Showing 400 of '+rows.length+' - search to narrow</td></tr>':'');
 }
@@ -23773,12 +23780,21 @@ function fmProductPage(){
     +'<div class="fm-card fm-phead"><div class="fm-phead-l"><div class="fm-head-sku">'+fmEsc(p.sku||'(no SKU)')+'</div><div class="fm-head-desc">'+fmEsc(p.title||p.handle)+'</div><div class="fm-tdim">'+fmEsc(p.vendor||'')+'</div>'
     +'<div class="fm-wheres">'+chip('Website',w.web,'https://tgkmotorsport.com/products/'+encodeURIComponent(p.handle))+chip('Dealer price lists',w.dealer)+chip('ERP',w.erp)+'</div></div>'
     +'<div class="fm-phead-r">'+radio('vehicle','Vehicle specific','fits the vehicles listed below')+radio('universal','Universal fit','shows for every vehicle')+radio('none','Non-vehicle product','apparel, tools - not in vehicle search')+'</div></div>'
+    +fmSamePagesHtml(p)
     +'<div class="fm-twocol"><div class="fm-card" id="fm-det">'+fmDetailsHtml()+'</div><div class="fm-card" id="fm-shop">'+fmShopHtml()+'</div></div>'
     +(p.fit_type==='vehicle'?'<div class="fm-card" id="fm-add">'+fmAddHtml()+'</div>':'')
     +'<div class="fm-card" id="fm-cur">'+fmFitTableHtml()+'</div></div>';
 }
 // ---------- details (what the ERP + dealer lists match on) and the live Shopify view of the same product
 var FM_SHOP='tgk-motorsport.myshopify.com';
+function fmSamePagesHtml(p){
+  var others=fmOtherPages(p);if(!others.length)return '';
+  var mine={};fmFitsOf(p.handle).forEach(function(f){mine[fmVKey(f)]=1;});
+  return '<div class="fm-card fm-samepages"><b>Same SKU on '+(others.length===1?'another website page':others.length+' other website pages')+'</b>'
+    +others.map(function(o){var theirs=fmFitsOf(o.handle),shared=theirs.filter(function(f){return mine[fmVKey(f)];}).length;
+      return '<div class="fm-vrow"><a href="#" onclick="fmPick('+fmJs(o.handle)+');return false">'+fmEsc(o.title||o.handle)+'</a> <span class="fm-tdim">'+theirs.length+' vehicle'+(theirs.length!==1?'s':'')+(shared?', '+shared+' also on this page':'')+'</span></div>';}).join('')
+    +'<div class="fm-tdim" style="font-size:12.5px;margin-top:4px">Each page keeps its own fitment list. Dealer price lists and the ERP combine them under the one SKU (each vehicle once). In website vehicle search, if both pages fit a car, shoppers see only the page with the fewest vehicles - the one made most specifically for that car.</div></div>';
+}
 function fmDetailsHtml(){
   var p=fmProd(FM.sel),f=function(id,label,val,hint){return '<label class="fm-field"><span>'+label+'</span><input class="fm-in" id="'+id+'" value="'+fmEsc(val||'')+'">'+(hint?'<em>'+hint+'</em>':'')+'</label>';};
   return '<div class="fm-cardh"><b>Details</b><button class="fm-btn primary" onclick="fmSaveDetails()">Save</button></div>'
