@@ -17261,7 +17261,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v3.40';
+var TGK_CC_VERSION='v3.41';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23322,7 +23322,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
 <script>
 /* ==================================================================================================
-   FITMENT (v3.40) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
+   FITMENT (v3.41) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
    and the dealer price list read (fitments + fit_products + fit_vehicles), so a change here shows there
    immediately. Saves use the signed-in user's login (_ccFreshSession), never the public key.
    ================================================================================================== */
@@ -23463,7 +23463,7 @@ function fmNewVehicle(){
   var v={make:g('fmv-make'),model:g('fmv-model'),year_from:parseInt(g('fmv-yf'),10),year_to:parseInt(g('fmv-yt')||g('fmv-yf'),10),engine:g('fmv-eng'),chassis:g('fmv-ch'),platform:g('fmv-plat')||((g('fmv-ch')+' '+g('fmv-eng')).trim()||null)};
   if(!v.make||!v.model||!(v.year_from>1949)||!(v.year_to>=v.year_from)){fmToast('Make, model and a valid year range are required',true);return;}
   if(FM.vehicles.some(function(x){return fmVKey(x)===fmVKey(v);})){fmToast('That vehicle is already in the catalog',true);return;}
-  fmDo(async function(){var r=await fmReq('fit_vehicles',{method:'POST',body:JSON.stringify(v)});FM.vehicles=FM.vehicles.concat(r||[]).sort(function(a,b){return (a.make+a.model+a.year_from).localeCompare(b.make+b.model+b.year_from);});if(FM.cs&&FM.sel){fmCsReset();FM.cs.year[String(v.year_from)]=1;FM.cs.make[v.make]=1;FM.cs.model[v.model]=1;if(v.engine)FM.cs.engine[v.engine]=1;if(v.chassis)FM.cs.chassis[v.chassis]=1;}fmToast('Vehicle added to the catalog'+(FM.sel?' - press Add fitment':''));});
+  fmDo(async function(){var r=await fmReq('fit_vehicles',{method:'POST',body:JSON.stringify(v)});FM.vehicles=FM.vehicles.concat(r||[]).sort(function(a,b){return (a.make+a.model+a.year_from).localeCompare(b.make+b.model+b.year_from);});if(FM.cs&&FM.sel){fmCsReset();FM.cs.make[v.make]=1;FM.cs.model[v.model]=1;if(v.engine)FM.cs.engine[v.engine]=1;if(v.chassis)FM.cs.chassis[v.chassis]=1;}fmToast('Vehicle added to the catalog'+(FM.sel?' - press Add fitment':''));});
 }
 function fmSetPlatform(id,val){
   fmDo(async function(){await fmReq('fit_vehicles?id=eq.'+id,{method:'PATCH',body:JSON.stringify({platform:val.trim()||null})});var v=FM.vehicles.find(function(x){return x.id===id;});if(v)v.platform=val.trim()||null;fmToast('Saved');});
@@ -23500,8 +23500,8 @@ function fmRender(){
   root.querySelectorAll('input[data-ind="1"]').forEach(function(i){i.indeterminate=true;});
 }
 // ===================== v4 product screens (Convermax-style) =====================
-var FM_COLS=[['year','Year'],['make','Make'],['model','Model'],['engine','Engine'],['chassis','Chassis']];
-function fmCsReset(){FM.cs={yearAll:false,year:{},make:{},model:{},engine:{},chassis:{}};FM.preview=false;FM.newV=false;FM.addTab=FM.addTab||'add';}
+var FM_COLS=[['make','Make'],['model','Model'],['year','Year'],['engine','Engine'],['chassis','Chassis']];
+function fmCsReset(){FM.cs={yearAll:true,year:{},make:{},model:{},engine:{},chassis:{}};FM.preview=false;FM.newV=false;FM.addTab=FM.addTab||'add';}
 function fmRenderProducts(){if(!FM.cs)fmCsReset();return FM.sel&&fmProd(FM.sel)?fmProductPage():fmListPage();}
 function fmTypeLabel(t){return t==='universal'?'Universal fit':t==='none'?'Non-vehicle':'Vehicle specific';}
 function fmListRows(){
@@ -23541,46 +23541,48 @@ function fmProductPage(){
 }
 // ---------- add new fitment: Year / Make / Model / Engine / Chassis checkbox columns, each narrows the next
 function fmActive(){return FM.vehicles.filter(function(v){return v.active!==false;});}
-function fmPass(v,upto){
-  var cs=FM.cs,i,f;
-  for(i=0;i<upto;i++){f=FM_COLS[i][0];
+function fmPass(v,skip){
+  var cs=FM.cs;
+  for(var i=0;i<FM_COLS.length;i++){var f=FM_COLS[i][0];if(f===skip)continue;
     if(f==='year'){if(cs.yearAll)continue;var ys=Object.keys(cs.year);if(!ys.length)continue;if(!ys.some(function(y){return v.year_from<=+y&&+y<=v.year_to;}))return false;continue;}
     var sel=Object.keys(cs[f]);if(sel.length&&sel.indexOf(v[f]||'')<0)return false;}
   return true;
 }
 function fmColOpts(f){
-  var idx=FM_COLS.findIndex(function(c){return c[0]===f;}),A=fmActive().filter(function(v){return fmPass(v,idx);}),set={};
+  var A=fmActive().filter(function(v){return fmPass(v,f);}),set={};
   if(f==='year')A.forEach(function(v){for(var y=v.year_from;y<=v.year_to;y++)set[y]=1;});
   else A.forEach(function(v){set[v[f]||'']=1;});
   var o=Object.keys(set);
   return f==='year'?o.sort(function(a,b){return b-a;}):o.sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true});});
 }
-function fmPrune(){ // drop selections that are no longer possible after an earlier column changed
-  FM_COLS.forEach(function(c){var f=c[0];if(f==='year')return;var ok=fmColOpts(f);Object.keys(FM.cs[f]).forEach(function(k){if(ok.indexOf(k)<0)delete FM.cs[f][k];});});
+function fmPrune(){ // drop ticks that are no longer possible after another column changed
+  for(var pass=0;pass<2;pass++)FM_COLS.forEach(function(c){var f=c[0],ok=fmColOpts(f);
+    if(f==='year'){if(FM.cs.yearAll)return;}
+    Object.keys(FM.cs[f]).forEach(function(k){if(ok.indexOf(k)<0)delete FM.cs[f][k];});});
 }
 function fmMatches(){
-  var cs=FM.cs;if(!(cs.yearAll||Object.keys(cs.year).length)||!Object.keys(cs.make).length||!Object.keys(cs.model).length)return null;
-  return fmActive().filter(function(v){return fmPass(v,5);});
+  var cs=FM.cs;if(!Object.keys(cs.make).length||!Object.keys(cs.model).length||!(cs.yearAll||Object.keys(cs.year).length))return null;
+  return fmActive().filter(function(v){return fmPass(v,null);});
 }
 function fmAddHtml(){
   var p=fmProd(FM.sel),tab=FM.addTab||'add';
   var h='<div class="fm-tabs2"><button class="'+(tab==='add'?'on':'')+'" onclick="FM.addTab=\'add\';fmRefreshAdd()">Add new fitment</button><button class="'+(tab==='copy'?'on':'')+'" onclick="FM.addTab=\'copy\';fmRefreshAdd()">Copy fitment from product</button></div>';
   if(tab==='copy')return h+fmCopyHtml();
   h+='<div class="fm-colsgrid">'+FM_COLS.map(function(c){
-    var f=c[0],opts=fmColOpts(f),req=(f==='year'||f==='make'||f==='model'),cs=FM.cs;
+    var f=c[0],opts=fmColOpts(f),req=(f==='make'||f==='model'),cs=FM.cs;
     var body='';
-    if(f==='year')body+='<label class="fm-opt fm-opt--all"><input type="checkbox"'+(cs.yearAll?' checked':'')+' onchange="FM.cs.yearAll=this.checked;if(this.checked)FM.cs.year={};fmPrune();fmRefreshAdd()"> All years</label>';
-    var prevOk=f==='year'||f==='make'||(f==='model'&&Object.keys(cs.make).length)||((f==='engine'||f==='chassis')&&Object.keys(cs.model).length);
-    if(!prevOk)body+='<div class="fm-colhint">Pick '+(f==='model'?'a make':'a model')+' first</div>';
+    var prevOk=f==='make'||(f==='model'&&Object.keys(cs.make).length)||((f==='year'||f==='engine'||f==='chassis')&&Object.keys(cs.model).length);
+    if(f==='year'&&prevOk)body+='<label class="fm-opt fm-opt--all"><input type="checkbox"'+(cs.yearAll?' checked':'')+' onchange="FM.cs.yearAll=this.checked;FM.cs.year={};fmPrune();fmRefreshAdd()"> All years'+(opts.length?' <span class="fm-tdim">('+opts[opts.length-1]+(opts.length>1?'&ndash;'+opts[0]:'')+')</span>':'')+'</label>';
+    if(!prevOk)body+='<div class="fm-colhint">Pick '+(f==='model'?'a make':'a make and model')+' first</div>';
     else body+=opts.map(function(o){var on=f==='year'?(cs.yearAll||cs.year[o]):cs[f][o];
-      return '<label class="fm-opt"><input type="checkbox"'+(on?' checked':'')+(f==='year'&&cs.yearAll?' disabled':'')+' onchange="fmColPick(\''+f+'\','+fmJs(o)+',this.checked)"> '+(o===''?'<span class="fm-tdim">(none listed)</span>':fmEsc(o))+'</label>';}).join('')||'<div class="fm-colhint">Nothing for this selection</div>';
+      return '<label class="fm-opt"><input type="checkbox"'+(on?' checked':'')+' onchange="fmColPick(\''+f+'\','+fmJs(o)+',this.checked)"> '+(o===''?'<span class="fm-tdim">(none listed)</span>':fmEsc(o))+'</label>';}).join('')||'<div class="fm-colhint">Nothing for this selection</div>';
     var n=f==='year'?(cs.yearAll?'all':Object.keys(cs.year).length):Object.keys(cs[f]).length;
     return '<div class="fm-colbox"><div class="fm-colh"><span>'+c[1]+(req?' <span class="fm-req">*</span>':' <span class="fm-tdim">(optional)</span>')+(n&&n!=='all'?' <span class="fm-cnt">'+n+'</span>':'')+'</span>'
       +(prevOk&&opts.length?'<a href="#" onclick="fmColAll(\''+f+'\');return false">'+(fmAllOn(f,opts)?'Clear':'Select all')+'</a>':'')+'</div><div class="fm-colbody" data-col="'+f+'">'+body+'</div></div>';
   }).join('')+'</div>';
   var m=fmMatches(),have={};fmFitsOf(p.handle).forEach(function(x){have[fmVKey(x)]=1;});
   var add=m?m.filter(function(v){return !have[fmVKey(v)];}):[];
-  h+='<div class="fm-addbar"><span class="fm-tdim">'+(!m?'Pick at least one year, make and model. Engine and chassis are optional - leave them empty to include every engine and chassis.':m.length+' vehicle'+(m.length!==1?'s':'')+' match'+(m.length-add.length?' ('+(m.length-add.length)+' already on this product)':''))+'</span>'
+  h+='<div class="fm-addbar"><span class="fm-tdim">'+(!m?'Tick a make and a model. Every year that applies is included unless you untick some; engine and chassis are optional.':m.length+' vehicle'+(m.length!==1?'s':'')+' match'+(m.length-add.length?' ('+(m.length-add.length)+' already on this product)':''))+'</span>'
     +'<button class="fm-btn primary" '+(add.length?'':'disabled ')+'onclick="fmAddSelected()">Add fitment'+(add.length?' ('+add.length+')':'')+'</button>'
     +'<button class="fm-btn" '+(m?'':'disabled ')+'onclick="FM.preview=!FM.preview;fmRefreshAdd()">'+(FM.preview?'Hide preview':'Preview')+'</button>'
     +'<button class="fm-btn" onclick="fmCsReset();fmRefreshAdd()">Clear selection</button></div>';
@@ -23590,9 +23592,21 @@ function fmAddHtml(){
     +(FM.newV?'<div class="fm-row wrap" style="margin-top:8px"><input class="fm-in" id="fmv-make" placeholder="Make"><input class="fm-in" id="fmv-model" placeholder="Model"><input class="fm-in" id="fmv-yf" type="number" placeholder="Year from"><input class="fm-in" id="fmv-yt" type="number" placeholder="Year to"><input class="fm-in" id="fmv-eng" placeholder="Engine (e.g. 4.0T)"><input class="fm-in" id="fmv-ch" placeholder="Chassis (e.g. C7/C7.5)"><input type="hidden" id="fmv-plat" value=""><button class="fm-btn primary" onclick="fmNewVehicle()">Add to catalog</button></div>':'')+'</div>';
   return h;
 }
-function fmAllOn(f,opts){return opts.length&&opts.every(function(o){return f==='year'?FM.cs.year[o]:FM.cs[f][o];});}
-function fmColPick(f,o,on){var s=FM.cs[f];if(on)s[o]=1;else delete s[o];fmPrune();fmRefreshAdd();}
-function fmColAll(f){var opts=fmColOpts(f),all=fmAllOn(f,opts);if(f==='year')FM.cs.yearAll=false;opts.forEach(function(o){if(all)delete FM.cs[f][o];else FM.cs[f][o]=1;});fmPrune();fmRefreshAdd();}
+function fmAllOn(f,opts){if(f==='year')return FM.cs.yearAll||(opts.length&&opts.every(function(o){return FM.cs.year[o];}));return opts.length&&opts.every(function(o){return FM.cs[f][o];});}
+function fmColPick(f,o,on){
+  if(f==='year'&&FM.cs.yearAll){ // switching from "All years" to specific years: start from every year that applies
+    FM.cs.yearAll=false;FM.cs.year={};fmColOpts('year').forEach(function(y){FM.cs.year[y]=1;});
+  }
+  var s=FM.cs[f];if(on)s[o]=1;else delete s[o];
+  if(f==='year'){var opts=fmColOpts('year');if(opts.length&&opts.every(function(y){return FM.cs.year[y];})){FM.cs.yearAll=true;FM.cs.year={};}}
+  fmPrune();fmRefreshAdd();
+}
+function fmColAll(f){
+  var opts=fmColOpts(f),all=fmAllOn(f,opts);
+  if(f==='year'){FM.cs.yearAll=!all;FM.cs.year={};}
+  else opts.forEach(function(o){if(all)delete FM.cs[f][o];else FM.cs[f][o]=1;});
+  fmPrune();fmRefreshAdd();
+}
 function fmRefreshAdd(){
   var el=document.getElementById('fm-add');if(!el)return;
   var sc={};el.querySelectorAll('.fm-colbody').forEach(function(b){sc[b.getAttribute('data-col')]=b.scrollTop;});
