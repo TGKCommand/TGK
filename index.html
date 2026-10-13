@@ -2059,6 +2059,9 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-pin{margin-right:4px;font-size:12px}
 .fm-pinbox{margin-top:4px;padding-top:8px;border-top:1px dashed var(--border2)}
 .fm-drag{cursor:grab}.fm-drag:active{cursor:grabbing}
+/* v4.5 insights */
+.fm-week{white-space:pre-wrap;font-family:var(--font);font-size:13.5px;line-height:1.7;margin:0;background:var(--body-bg);border-radius:8px;padding:12px 14px}
+.fm-ready{display:inline-block;font-size:11px;font-weight:700;color:#065f46;background:#d1fae5;border-radius:9px;padding:1px 8px;margin-right:4px}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17344,7 +17347,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v4.4';
+var TGK_CC_VERSION='v4.5';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23405,7 +23408,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
 <script>
 /* ==================================================================================================
-   FITMENT (v4.4) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
+   FITMENT (v4.5) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
    and the dealer price list read (fitments + fit_products + fit_vehicles), so a change here shows there
    immediately. Saves use the signed-in user's login (_ccFreshSession), never the public key.
    ================================================================================================== */
@@ -23543,6 +23546,82 @@ function fmRenderHistory(){
     +'</tbody></table></div></div>';
 }
 window.fmLoadHistory=fmLoadHistory;window.fmHistDetail=fmHistDetail;
+// ===================== Insights: search demand, notify me, fitment returns, weekly summary =====================
+function fmParseVeh(str){ // "2021 Audi RS5 2.9T B9" -> {year, make, model} using the catalog's make/model names
+  var t=String(str||'').trim(),m=t.match(/^(\d{4})\s+(.*)$/);if(!m)return null;var rest=m[2],best=null;
+  FM.vehicles.forEach(function(v){var mm=v.make+' '+v.model;if(rest.toLowerCase().indexOf(mm.toLowerCase())===0&&(!best||mm.length>best.mm.length))best={mm:mm,make:v.make,model:v.model};});
+  return best?{year:+m[1],make:best.make,model:best.model}:null;
+}
+function fmPartsForVeh(year,make,model){ // vehicle-specific products listing this car
+  var h={};FM.fits.forEach(function(f){var p=f.handle&&fmProd(f.handle);if(!p||p.fit_type!=='vehicle')return;
+    if(String(f.make).toLowerCase()===String(make).toLowerCase()&&String(f.model).toLowerCase()===String(model).toLowerCase()&&f.year_from<=year&&year<=f.year_to)h[f.handle]=1;});
+  return Object.keys(h).length;
+}
+function fmInStock(handle){var vs=FM.vinfo&&FM.vinfo[handle];if(!vs)return null;return vs.some(function(v){return (v.qty==null||v.qty>0)||v.policy==='continue'||!v.tracked;});}
+async function fmLoadInsights(){
+  FM.ins={loading:true};fmRender();var I={days:FM.insDays||30};
+  var q=function(fn,body){return _fmRawReq('rpc/'+fn,{method:'POST',body:JSON.stringify(body)});};
+  try{I.search=await q('fit_search_report',{p_days:I.days});}catch(e){I.searchErr=e.message||String(e);}
+  try{I.returns=await q('fit_returns_report',{p_days:365});}catch(e){I.returnsErr=e.message||String(e);}
+  try{I.notify=await fmAll('fit_notify?select=id,at,email,kind,handle,vehicle,notified_at&notified_at=is.null&order=at.desc');}catch(e){I.notifyErr=e.message||String(e);}
+  try{I.changes=await fmAll('fitment_changes?select=id,at&at=gte.'+encodeURIComponent(new Date(Date.now()-7*864e5).toISOString()));}catch(e){I.changes=null;}
+  I.loading=false;FM.ins=I;fmRender();
+}
+function fmNotifyGroups(){
+  var I=FM.ins||{},g={};(I.notify||[]).forEach(function(n){var k=n.kind+'|'+(n.kind==='restock'?n.handle:String(n.vehicle||'').toLowerCase());
+    var G=g[k]=g[k]||{kind:n.kind,handle:n.handle,vehicle:n.vehicle,rows:[]};G.rows.push(n);});
+  return Object.keys(g).map(function(k){var G=g[k];
+    if(G.kind==='restock'){G.ready=fmInStock(G.handle)===true;G.label=(fmProd(G.handle)||{}).title||G.handle;}
+    else{var pv=fmParseVeh(G.vehicle);G.parts=pv?fmPartsForVeh(pv.year,pv.make,pv.model):0;G.ready=G.parts>0;G.label=G.vehicle;}
+    return G;}).sort(function(a,b){return (b.ready-a.ready)||(b.rows.length-a.rows.length);});
+}
+function fmNotifyCsv(i){var G=fmNotifyGroups()[i];if(!G)return;var out=['email,signed_up,'+(G.kind==='restock'?'product':'vehicle')];
+  G.rows.forEach(function(n){out.push([n.email,n.at.slice(0,10),G.label].map(fmCsvCell).join(','));});
+  fmDownload('TGK-notify-'+(G.kind==='restock'?(fmProd(G.handle)||{}).sku||'product':String(G.vehicle).replace(/\W+/g,'-'))+'.csv',out.join('\r\n'));}
+function fmNotifyDone(i){var G=fmNotifyGroups()[i];if(!G)return;
+  if(!confirm('Mark these '+G.rows.length+' signup'+(G.rows.length!==1?'s':'')+' as emailed?\n\n'+G.label+'\n\nThey will leave this list.'))return;
+  fmDo(async function(){var ids=G.rows.map(function(n){return n.id;});await _fmRawReq('fit_notify?id=in.('+ids.join(',')+')',{method:'PATCH',body:JSON.stringify({notified_at:new Date().toISOString()})});
+    FM.ins.notify=FM.ins.notify.filter(function(n){return ids.indexOf(n.id)<0;});fmToast('Marked '+ids.length+' as emailed');});}
+function fmWeekText(){var I=FM.ins||{},k=fmChecks(),si=fmShopIssues(),zero=(I.search||[]).filter(function(r){return !r.specific_found;});
+  var needs=FM.products.filter(function(p){return p.fit_type==='vehicle'&&!fmFitsOf(p.handle).length;}).length,ng=fmNotifyGroups();
+  return ['TGK fitment - week of '+new Date().toLocaleDateString(),
+    '- Changes saved this week: '+(I.changes?I.changes.length:'n/a'),
+    '- Checks with something to fix: '+k.total,
+    '- Shopify products not in the Fitment tool: '+si.missing.length,
+    '- Vehicle-specific products with no fitment: '+needs,
+    '- People waiting for an email: '+ng.reduce(function(t,g){return t+g.rows.length;},0)+' ('+ng.filter(function(g){return g.ready;}).length+' list'+(ng.filter(function(g){return g.ready;}).length!==1?'s':'')+' ready to send)',
+    '- Most-searched vehicle with no parts: '+(zero[0]?[zero[0].year,zero[0].make,zero[0].model,zero[0].engine,zero[0].chassis].filter(Boolean).join(' ')+' ('+zero[0].searches+' searches)':'none'),
+    '- Fitment returns (12 months): '+((I.returns||[]).reduce(function(t,r){return t+Number(r.returns);},0))].join('\n');}
+function fmRenderInsights(){
+  if(!FM.ins&&!(FM.ins&&FM.ins.loading))setTimeout(fmLoadInsights,0);
+  var I=FM.ins||{loading:true};
+  var h='<div class="fm-pad"><div class="fm-card"><div class="fm-cardh"><b>This week</b><span class="fm-cardbtns"><button class="fm-btn" onclick="navigator.clipboard.writeText(fmWeekText()).then(function(){fmToast(\'Summary copied - paste it into an email\');})">Copy summary</button><button class="fm-btn" onclick="fmLoadInsights()">Refresh</button></span></div>';
+  if(I.loading)return h+'<div class="fm-colhint">Loading...</div></div></div>';
+  var missing=function(e){return /fit_|does not exist|schema cache|function/i.test(String(e||''))?'Run <b>fitment_7_insights.sql</b> in Supabase to turn this on.':'Could not load: '+fmEsc(e);};
+  h+='<pre class="fm-week">'+fmEsc(fmWeekText())+'</pre></div>';
+  // search demand
+  var rows=(I.search||[]).slice().sort(function(a,b){return ((a.specific_found?1:0)-(b.specific_found?1:0))||(b.searches-a.searches);});
+  h+='<div class="fm-card"><div class="fm-cardh"><b>What shoppers search for</b><span class="fm-cardbtns"><select class="fm-in fm-csel" onchange="FM.insDays=+this.value;fmLoadInsights()">'+[30,90,365].map(function(d){return '<option value="'+d+'"'+(I.days===d?' selected':'')+'>last '+d+' days</option>';}).join('')+'</select></span></div>'
+    +(I.searchErr?'<div class="fm-msg small">'+missing(I.searchErr)+'</div>':!rows.length?'<div class="fm-colhint">No searches recorded yet - they appear here as shoppers use the vehicle search.</div>'
+    :'<div class="fm-tdim" style="font-size:12.5px;margin-bottom:6px">Vehicles with <b>no parts made for them</b> come first - that is demand you are not serving yet.</div><table class="fm-table"><thead><tr><th>Vehicle</th><th class="fm-tnum">Searches</th><th class="fm-tnum">Parts made for it</th><th>Last search</th></tr></thead><tbody>'
+      +rows.slice(0,60).map(function(r){return '<tr><td><b>'+fmEsc([r.year,r.make,r.model].join(' '))+'</b> '+fmEsc([r.engine,r.chassis].filter(Boolean).join(' '))+'</td><td class="fm-tnum">'+r.searches+'</td><td class="fm-tnum">'+(r.specific_found?r.specific_found:'<span class="fm-bad">none</span>')+'</td><td class="fm-tdim">'+fmEsc(new Date(r.last_at).toLocaleDateString())+'</td></tr>';}).join('')+'</tbody></table>')+'</div>';
+  // notify me
+  var ng=fmNotifyGroups();
+  h+='<div class="fm-card"><div class="fm-cardh"><b>Waiting for an email</b><span class="fm-tdim" style="font-size:12.5px">"Notify me" signups from the website. Export the list, send it from your email tool, then mark it emailed.</span></div>'
+    +(I.notifyErr?'<div class="fm-msg small">'+missing(I.notifyErr)+'</div>':!ng.length?'<div class="fm-colhint">Nobody waiting.</div>'
+    :'<table class="fm-table"><tbody>'+ng.map(function(G,i){return '<tr><td>'+(G.ready?'<span class="fm-ready">ready to email</span> ':'')+(G.kind==='restock'?'Back in stock: ':'Parts for: ')+'<b>'+fmEsc(G.label)+'</b>'
+        +(G.kind==='restock'?(G.ready?' <span class="fm-tdim">(in stock now)</span>':' <span class="fm-tdim">(still sold out)</span>'):(G.parts?' <span class="fm-tdim">('+G.parts+' part'+(G.parts!==1?'s':'')+' fit it now)</span>':' <span class="fm-tdim">(no parts yet)</span>'))
+        +'</td><td class="fm-tnum">'+G.rows.length+' '+(G.rows.length!==1?'people':'person')+'</td><td style="text-align:right;white-space:nowrap"><button class="fm-btn" onclick="fmNotifyCsv('+i+')">Export CSV</button> <button class="fm-link" onclick="fmNotifyDone('+i+')">Mark emailed</button></td></tr>';}).join('')+'</tbody></table>')+'</div>';
+  // fitment returns
+  var rr=I.returns||[];
+  h+='<div class="fm-card"><div class="fm-cardh"><b>Fitment returns</b><span class="fm-tdim" style="font-size:12.5px">returns marked "Doesn\'t fit vehicle" in the ERP, last 12 months</span></div>'
+    +(I.returnsErr?'<div class="fm-msg small">'+missing(I.returnsErr)+'</div>':!rr.length?'<div class="fm-colhint">None - nothing has been returned for not fitting.</div>'
+    :'<table class="fm-table"><thead><tr><th>SKU</th><th>Product</th><th class="fm-tnum">Returned</th><th class="fm-tnum">Rate</th><th>Vehicles</th></tr></thead><tbody>'
+      +rr.map(function(r){var p=FM.products.find(function(x){return x.sku&&fmSkuSame(x.sku,r.sku);});var rate=r.sold?Math.round(100*r.returns/r.sold):0;
+        return '<tr'+(p?' class="fm-trow" onclick="FM.tab=\'products\';fmPick('+fmJs(p.handle).replace(/"/g,'&quot;')+')"':'')+'><td class="fm-tsku">'+fmEsc(r.sku)+'</td><td>'+fmEsc(p?p.title:'')+'</td><td class="fm-tnum">'+r.returns+' of '+r.sold+'</td><td class="fm-tnum'+(rate>=5?' fm-bad':'')+'">'+rate+'%</td><td class="fm-tdim">'+fmEsc(r.vehicles||'(vehicle not recorded - new orders will have it)')+'</td></tr>';}).join('')+'</tbody></table>')+'</div>';
+  return h+'</div>';
+}
+window.fmLoadInsights=fmLoadInsights;window.fmNotifyCsv=fmNotifyCsv;window.fmNotifyDone=fmNotifyDone;window.fmWeekText=fmWeekText;
 function fmToastAct(msg,btn,fn){
   var t=document.getElementById('fm-toast');if(!t){t=document.createElement('div');t.id='fm-toast';document.body.appendChild(t);}
   t.innerHTML='<span>'+fmEsc(msg)+'</span> <button type="button" class="fm-undo">'+fmEsc(btn)+'</button>';t.className='fm-toast show fm-toast--act';
@@ -23621,6 +23700,7 @@ async function fmRefreshRanks(){
       for(var i=0;i<pairs.length;i+=500)await _fmRawReq('fit_variant_skus',{method:'POST',headers:{'Prefer':'return=minimal,resolution=ignore-duplicates'},body:JSON.stringify(pairs.slice(i,i+500))});
     }
     var n=await _fmRawReq('rpc/refresh_fit_sales_rank',{method:'POST',body:JSON.stringify({p_days:90})});
+    try{await _fmRawReq('rpc/refresh_fit_pairs',{method:'POST',body:JSON.stringify({p_days:365})});}catch(e){} // "complete your build" pairs (fitment_7)
     await fmLoadRanks();
     fmToast('Best sellers refreshed: '+n+' products ranked (retail sales, last 90 days)'+(FM.vinfo?'':' - Shopify variants not loaded yet, so variant SKUs used the last saved list'));
   }catch(e){fmToast('Could not refresh best sellers: '+(e.message||e),true);}
@@ -24095,12 +24175,12 @@ fmRender._inner=function(){
     root.innerHTML='<div class="fm-msg">'+(missing?'<b>Fitment tables not set up yet.</b><br>Run <b>fitment_1_schema.sql</b> and then <b>fitment_2_import.sql</b> in the Supabase SQL editor, then <a href="#" onclick="fmLoad(true);return false">reload</a>.':'<b>Could not load fitment.</b> '+fmEsc(FM.err.message)+' <a href="#" onclick="fmLoad(true);return false">Try again</a>')+'</div>';return;
   }
   if(!FM.loaded){root.innerHTML='<div class="fm-msg">Loading fitment...</div>';return;}
-  var tabs=[['products','Products ('+FM.products.length+')'],['vehicles','Vehicle catalog ('+FM.vehicles.length+')'],['checks','Checks'+(fmChecks().total?' ('+fmChecks().total+')':'')],['history','History']];
+  var tabs=[['products','Products ('+FM.products.length+')'],['vehicles','Vehicle catalog ('+FM.vehicles.length+')'],['checks','Checks'+(fmChecks().total?' ('+fmChecks().total+')':'')],['insights','Insights'],['history','History']];
   root.innerHTML='<div class="fm-top"><div class="fm-tabs">'+tabs.map(function(t){return '<button class="fm-tab'+(FM.tab===t[0]?' on':'')+'" onclick="FM.tab=\''+t[0]+'\';fmRender()">'+t[1]+'</button>';}).join('')+'</div>'
     +'<div class="fm-note">Saved changes show in the ERP and on the dealer price list right away.</div>'
     +'<span id="fm-busy" class="fm-busy" style="display:'+(FM._busy?'inline-flex':'none')+'">Saving&hellip;</span><span class="fm-hist">'+fmHistBtns()+'</span><button class="fm-btn" onclick="fmLoad(true)">Reload</button></div>'
     +fmClipBar()
-    +(FM.tab==='history'?fmRenderHistory():FM.tab==='products'?fmRenderProducts():FM.tab==='vehicles'?fmRenderVehicles():fmRenderChecks());
+    +(FM.tab==='insights'?fmRenderInsights():FM.tab==='history'?fmRenderHistory():FM.tab==='products'?fmRenderProducts():FM.tab==='vehicles'?fmRenderVehicles():fmRenderChecks());
   root.querySelectorAll('input[data-ind="1"]').forEach(function(i){i.indeterminate=true;});
 };
 // ===================== v4 product screens (Convermax-style) =====================
