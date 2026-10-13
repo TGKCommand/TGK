@@ -2055,6 +2055,10 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 [data-theme="dark"] .fm-cat{background:rgba(24,95,165,.3);color:#9cc7f3}
 [data-theme="dark"] .fm-grprow td{background:#1f2225!important}
 .fm-toolbar{flex-wrap:wrap}.fm-toolbar #fm-q{flex:1 1 320px;min-width:260px}.fm-toolbar .fm-sel{flex:0 1 200px}
+/* v4.4: pins + ranks */
+.fm-pin{margin-right:4px;font-size:12px}
+.fm-pinbox{margin-top:4px;padding-top:8px;border-top:1px dashed var(--border2)}
+.fm-drag{cursor:grab}.fm-drag:active{cursor:grabbing}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17340,7 +17344,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v4.3';
+var TGK_CC_VERSION='v4.4';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23401,7 +23405,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
 <script>
 /* ==================================================================================================
-   FITMENT (v4.3) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
+   FITMENT (v4.4) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
    and the dealer price list read (fitments + fit_products + fit_vehicles), so a change here shows there
    immediately. Saves use the signed-in user's login (_ccFreshSession), never the public key.
    ================================================================================================== */
@@ -23558,7 +23562,7 @@ document.addEventListener('keydown',function(e){
 });
 window.fmUndo=fmUndo;window.fmRedo=fmRedo;
 function _stableOrder(path,key){ // a unique tiebreaker so pages can never overlap or skip rows
-  var i=path.indexOf('?'),t=(i<0?path:path.slice(0,i)),q=i<0?'':path.slice(i+1),k=key||(t==='fit_products'?'handle':'id');
+  var i=path.indexOf('?'),t=(i<0?path:path.slice(0,i)),q=i<0?'':path.slice(i+1),k=key||({fit_products:'handle',fit_sales_rank:'handle'}[t]||'id');
   if(/(^|&)limit=/.test(q))return path;
   var m=q.match(/(^|&)order=([^&]*)/);
   if(m){var parts=m[2].split(',');if(parts.some(function(x){return x.split('.')[0]===k;}))return path;
@@ -23566,7 +23570,7 @@ function _stableOrder(path,key){ // a unique tiebreaker so pages can never overl
   return t+'?'+(q?q+'&':'')+'order='+k;
 }
 async function fmAll(path){ // page until an empty page: the server may cap a page below what is asked for
-  // [v4.3] pages are sorted by a unique key (id / handle) as the last tiebreaker: sorting only by make/model/year
+  // [v4.2] pages are sorted by a unique key (id / handle) as the last tiebreaker: sorting only by make/model/year
   // let the database order ties differently per page, so rows could repeat on one page and be skipped on another.
   var sp=_stableOrder(path),useSp=sp!==path,out=[],from=0,seen={},pk=path.split('?')[0]==='fit_products'?'handle':'id';
   for(var guard=0;guard<400;guard++){
@@ -23595,11 +23599,51 @@ async function fmLoad(force){
       r[4].forEach(function(x){[x.pn,x.new_sku].forEach(function(k){if(k){e[String(k).toUpperCase()]=1;if(!info[String(k).toUpperCase()])info[String(k).toUpperCase()]={kind:'part',rec:x};}});});FM.erp=e;FM.erpInfo=info;
       var cn={};r[3].forEach(function(x){if(x.pn){cn[String(x.pn).trim().toUpperCase()]=x.pn;if(x.new_sku)cn[String(x.new_sku).trim().toUpperCase()]=x.pn;}});FM.canon=cn;}
     FM.loaded=true;
-    fmLoadVariants();
+    fmLoadVariants();fmLoadRanks();
   }catch(e){FM.err=e;}
   FM.loading=false;fmRender();
 }
 function fmOpen(){fmLoad(false);fmRender();}
+// ---- best sellers (rank only, from the ERP's retail sales) + pin to top
+async function fmLoadRanks(){
+  try{var r=await fmAll('fit_sales_rank?select=handle,rank,refreshed_at');var m={},at=null;r.forEach(function(x){m[x.handle]=x.rank;if(!at||x.refreshed_at>at)at=x.refreshed_at;});FM.rank=m;FM.rankAt=at;FM.noRank=false;}
+  catch(e){FM.rank={};FM.noRank=true;}
+  if(FM.tab==='products'&&!FM.sel)fmRefreshList();
+}
+async function fmRefreshRanks(){
+  if(FM.noRank){fmToast('Run fitment_6_bestsellers.sql in Supabase first',true);return;}
+  if(FM._busy){fmToast('Still saving - try again in a moment',true);return;}
+  FM._busy=(FM._busy||0)+1;fmBusyUI();
+  try{
+    if(FM.vinfo){ // variant (child) SKUs -> website page, straight from Shopify
+      var pairs=[],seen={};Object.keys(FM.vinfo).forEach(function(h){(FM.vinfo[h]||[]).forEach(function(v){var k=h+'|'+v.sku;if(v.sku&&!seen[k]){seen[k]=1;pairs.push({handle:h,sku:v.sku});}});});
+      await _fmRawReq('fit_variant_skus?handle=not.is.null',{method:'DELETE'});
+      for(var i=0;i<pairs.length;i+=500)await _fmRawReq('fit_variant_skus',{method:'POST',headers:{'Prefer':'return=minimal,resolution=ignore-duplicates'},body:JSON.stringify(pairs.slice(i,i+500))});
+    }
+    var n=await _fmRawReq('rpc/refresh_fit_sales_rank',{method:'POST',body:JSON.stringify({p_days:90})});
+    await fmLoadRanks();
+    fmToast('Best sellers refreshed: '+n+' products ranked (retail sales, last 90 days)'+(FM.vinfo?'':' - Shopify variants not loaded yet, so variant SKUs used the last saved list'));
+  }catch(e){fmToast('Could not refresh best sellers: '+(e.message||e),true);}
+  FM._busy--;fmBusyUI();fmRender();
+}
+function fmPinned(){return FM.products.filter(function(p){return p.pin_order!=null;}).sort(function(a,b){return a.pin_order-b.pin_order;});}
+function fmSetPin(handle,on){
+  var p=fmProd(handle);if(!p)return;
+  if(!('pin_order' in p)&&FM.products.every(function(x){return !('pin_order' in x);})){fmToast('Run fitment_6_bestsellers.sql in Supabase first, then reload',true);fmRender();return;}
+  var order=on?(fmPinned().reduce(function(m,x){return Math.max(m,x.pin_order);},0)+1):null;
+  fmDo(async function(){await fmReq('fit_products?handle=eq.'+encodeURIComponent(handle),{method:'PATCH',body:JSON.stringify({pin_order:order})});p.pin_order=order;
+    fmToast(on?'Pinned to the top of vehicle results (position '+order+')':'Unpinned');});
+}
+function fmPinMoveTo(handle,idx){ // put a pinned product at position idx (0-based) and renumber 1..n
+  var list=fmPinned(),cur=list.findIndex(function(p){return p.handle===handle;});if(cur<0)return;
+  idx=Math.max(0,Math.min(list.length-1,idx));if(idx===cur)return;
+  var moved=list.splice(cur,1)[0];list.splice(idx,0,moved);
+  var todo=list.map(function(p,i){return {p:p,o:i+1};}).filter(function(x){return x.p.pin_order!==x.o;});
+  fmDo(async function(){await fmPool(todo,6,function(x){return fmReq('fit_products?handle=eq.'+encodeURIComponent(x.p.handle),{method:'PATCH',body:JSON.stringify({pin_order:x.o})});});
+    todo.forEach(function(x){x.p.pin_order=x.o;});fmToast('Pinned order updated');});
+}
+function fmPinDrop(ev,target){ev.preventDefault();var h=FM._drag;FM._drag=null;if(!h||h===target)return;var idx=fmPinned().findIndex(function(p){return p.handle===target;});fmPinMoveTo(h,idx);}
+window.fmRefreshRanks=fmRefreshRanks;window.fmSetPin=fmSetPin;window.fmPinMoveTo=fmPinMoveTo;window.fmPinDrop=fmPinDrop;
 // Every product's variant (child) SKUs, straight from Shopify via the shopify-orders function (list_products,
 // the same action the ERP uses). Loaded in the background; products with one variant need nothing.
 async function fmLoadVariants(force){
@@ -24081,11 +24125,14 @@ function fmListRows(){
   var c=fmCounts(),q=FM.q.toLowerCase().trim(),f=FM.filter;
   return FM.products.filter(function(p){var n=c[p.handle]||0;
     if(f==='needs'&&!(p.fit_type==='vehicle'&&!n))return false;
+    if(f==='pinned'&&p.pin_order==null)return false;
     if(f==='vehicle'&&p.fit_type!=='vehicle')return false;if(f==='universal'&&p.fit_type!=='universal')return false;if(f==='none'&&p.fit_type!=='none')return false;
     if(FM.pcat){var pc=FM.pcat;if(!fmCats(p).some(function(c){return c===pc||c.indexOf(pc+'>')===0||c.replace(/\s*>\s*/g,'>')===pc.replace(/\s*>\s*/g,'>');}))return false;}
     if(FM.pbrand&&(p.vendor||'')!==FM.pbrand)return false;
     return !q||[p.sku,p.title,p.vendor,p.category].join(' ').toLowerCase().indexOf(q)>=0;}).sort(function(a,b){
-      var s=FM.psort||'sku';
+      var s=FM.filter==='pinned'?'pin':(FM.psort||'sku');
+      if(s==='pin')return a.pin_order-b.pin_order;
+      if(s==='rank'){var ra=FM.rank&&FM.rank[a.handle]||1e9,rb=FM.rank&&FM.rank[b.handle]||1e9;return ra-rb||fmSkuCmp(a,b);}
       if(s==='title')return String(a.title||'').localeCompare(String(b.title||''));
       if(s==='fits')return (c[b.handle]||0)-(c[a.handle]||0)||fmSkuCmp(a,b);
       if(s==='recent')return String(b.updated_at||'').localeCompare(String(a.updated_at||''))||fmSkuCmp(a,b);
@@ -24095,17 +24142,20 @@ function fmSkuPages(){var m={};FM.products.forEach(function(p){if(!p.sku)return;
 function fmOtherPages(p){if(!p.sku)return [];var g=fmSkuPages()[String(fmCanonPn(p.sku)).toUpperCase()]||[];return g.filter(function(x){return x.handle!==p.handle;});}
 function fmListBody(){
   var c=fmCounts(),rows=fmListRows(),sp=fmSkuPages(),n=0,LIMIT=400;
-  if(!rows.length)return '<tr><td colspan="6" class="fm-empty">No products match.</td></tr>';
+  if(!rows.length)return '<tr><td colspan="7" class="fm-empty">No products match.</td></tr>';
   var rowHtml=function(p){var k=c[p.handle]||0,on=!!(FM.psel&&FM.psel[p.handle]),cats=fmCats(p);
-    return '<tr class="fm-trow'+(on?' fm-trsel':'')+'" onclick="fmPick('+fmJs(p.handle)+')"><td onclick="event.stopPropagation()"><input type="checkbox"'+(on?' checked':'')+' onchange="fmPselToggle('+fmJs(p.handle)+',this.checked,event)"></td><td class="fm-tsku">'+fmEsc(p.sku||'(no SKU)')+((sp[String(fmCanonPn(p.sku)).toUpperCase()]||[]).length>1?' <span class="fm-pages" title="This SKU is listed on more than one website page">'+sp[String(fmCanonPn(p.sku)).toUpperCase()].length+' pages</span>':'')+'</td>'
+    var drag=FM.filter==='pinned'?' draggable="true" ondragstart="FM._drag='+fmJs(p.handle).replace(/"/g,'&quot;')+'" ondragover="event.preventDefault()" ondrop="fmPinDrop(event,'+fmJs(p.handle).replace(/"/g,'&quot;')+')"':'';
+    return '<tr class="fm-trow'+(on?' fm-trsel':'')+(drag?' fm-drag':'')+'"'+drag+' onclick="fmPick('+fmJs(p.handle)+')"><td onclick="event.stopPropagation()"><input type="checkbox"'+(on?' checked':'')+' onchange="fmPselToggle('+fmJs(p.handle)+',this.checked,event)"></td><td class="fm-tsku">'+(p.pin_order!=null?'<span class="fm-pin" title="Pinned to the top of vehicle results">&#128204;</span>':'')+fmEsc(p.sku||'(no SKU)')+((sp[String(fmCanonPn(p.sku)).toUpperCase()]||[]).length>1?' <span class="fm-pages" title="This SKU is listed on more than one website page">'+sp[String(fmCanonPn(p.sku)).toUpperCase()].length+' pages</span>':'')+'</td>'
       +'<td>'+fmEsc(p.title||p.handle)+(cats.length?'<div class="fm-catline">'+cats.slice(0,3).map(function(x){return '<span class="fm-cat">'+fmEsc(fmCatLabel(x))+'</span>';}).join('')+(cats.length>3?'<span class="fm-tdim"> +'+(cats.length-3)+'</span>':'')+'</div>':'')+'</td><td class="fm-tdim">'+fmEsc(p.vendor||'')+'</td>'
-      +'<td>'+fmTypeLabel(p.fit_type)+'</td><td class="fm-tnum">'+(p.fit_type==='vehicle'?(k?k:'<span class="fm-bad">0 - needs fitment</span>'):'&ndash;')+'</td></tr>';};
+      +'<td>'+fmTypeLabel(p.fit_type)+'</td><td class="fm-tnum">'+(p.fit_type==='vehicle'?(k?k:'<span class="fm-bad">0 - needs fitment</span>'):'&ndash;')+'</td>'
+      +'<td class="fm-tnum">'+(FM.filter==='pinned'?'<button class="fm-link" title="Move up" onclick="event.stopPropagation();fmPinMoveTo('+fmJs(p.handle)+','+(p.pin_order-2)+')">&#9650;</button><button class="fm-link" title="Move down" onclick="event.stopPropagation();fmPinMoveTo('+fmJs(p.handle)+','+(p.pin_order)+')">&#9660;</button>'
+        :(FM.rank&&FM.rank[p.handle]?'#'+FM.rank[p.handle]:'<span class="fm-tdim">&ndash;</span>'))+'</td></tr>';};
   if(!FM.pgroup)return rows.slice(0,LIMIT).map(rowHtml).join('')+(rows.length>LIMIT?'<tr><td colspan="6" class="fm-tdim">Showing '+LIMIT+' of '+rows.length+' - search or filter to narrow</td></tr>':'');
   var groups={};rows.forEach(function(p){fmGroupKeys(p).forEach(function(k){(groups[k]=groups[k]||[]).push(p);});});
   var keys=Object.keys(groups).sort(function(a,b){var x=a.charAt(0)==='(',y=b.charAt(0)==='(';return x!==y?(x?1:-1):a.localeCompare(b);});
   FM.pclosed=FM.pclosed||{};var h='';
   keys.forEach(function(k){var list=groups[k],open=FM.q?true:!FM.pclosed[FM.pgroup+'|'+k],allOn=list.every(function(p){return FM.psel&&FM.psel[p.handle];});
-    h+='<tr class="fm-grprow"><td onclick="event.stopPropagation()"><input type="checkbox"'+(allOn?' checked':'')+' title="Tick everything in this group" onchange="fmPselGroup('+fmJs(k)+',this.checked)"></td><td colspan="5" onclick="fmToggleGroup('+fmJs(k)+')"><span class="fm-caret">'+(open?'&#9662;':'&#9656;')+'</span> <b>'+fmEsc(FM.pgroup==='category'?fmCatLabel(k):k)+'</b> <span class="fm-tdim">'+list.length+' product'+(list.length!==1?'s':'')+'</span></td></tr>';
+    h+='<tr class="fm-grprow"><td onclick="event.stopPropagation()"><input type="checkbox"'+(allOn?' checked':'')+' title="Tick everything in this group" onchange="fmPselGroup('+fmJs(k)+',this.checked)"></td><td colspan="6" onclick="fmToggleGroup('+fmJs(k)+')"><span class="fm-caret">'+(open?'&#9662;':'&#9656;')+'</span> <b>'+fmEsc(FM.pgroup==='category'?fmCatLabel(k):k)+'</b> <span class="fm-tdim">'+list.length+' product'+(list.length!==1?'s':'')+'</span></td></tr>';
     if(open){list.forEach(function(p){if(n++<LIMIT)h+=rowHtml(p);});}});
   if(n>LIMIT)h+='<tr><td colspan="6" class="fm-tdim">Showing '+LIMIT+' rows - collapse groups or filter to narrow</td></tr>';
   return h;
@@ -24114,7 +24164,7 @@ function fmListPage(){
   var c=fmCounts(),needs=FM.products.filter(function(p){return p.fit_type==='vehicle'&&!c[p.handle];}).length;
   var opt=function(v,l){return '<option value="'+v+'"'+(FM.filter===v?' selected':'')+'>'+l+'</option>';};
   return '<div class="fm-page"><div class="fm-card"><div class="fm-toolbar"><input class="fm-in fm-grow" id="fm-q" placeholder="Search by SKU, product name or brand" value="'+fmEsc(FM.q)+'" oninput="FM.q=this.value;FM.psel={};fmRefreshList();">'
-    +'<select class="fm-in fm-sel" onchange="FM.filter=this.value;fmRender()">'+opt('all','All products')+opt('needs','Needs fitment ('+needs+')')+opt('vehicle','Vehicle specific')+opt('universal','Universal fit')+opt('none','Non-vehicle')+'</select>'
+    +'<select class="fm-in fm-sel" onchange="FM.filter=this.value;fmRender()">'+opt('all','All products')+opt('needs','Needs fitment ('+needs+')')+opt('vehicle','Vehicle specific')+opt('universal','Universal fit')+opt('none','Non-vehicle')+opt('pinned','Pinned ('+fmPinned().length+')')+'</select>'
     +'<select class="fm-in fm-sel" title="Category" onchange="FM.pcat=this.value;FM.psel={};fmRender()"><option value="">All categories</option>'+fmAllCats().map(function(x){return '<option value="'+fmEsc(x)+'"'+(FM.pcat===x?' selected':'')+'>'+(x.indexOf('>')>=0?'&nbsp;&nbsp;&nbsp;':'')+fmEsc(fmCatLabel(x))+'</option>';}).join('')+'</select>'
     +'<select class="fm-in fm-sel" title="Brand" onchange="FM.pbrand=this.value;FM.psel={};fmRender()"><option value="">All brands</option>'+Array.from(new Set(FM.products.map(function(p){return p.vendor;}).filter(Boolean))).sort().map(function(x){return '<option'+(FM.pbrand===x?' selected':'')+'>'+fmEsc(x)+'</option>';}).join('')+'</select>'
     +'<button class="fm-btn" onclick="fmNewProduct()">'+(FM.addOpen?'Close':'+ Add product')+'</button>'
@@ -24122,11 +24172,14 @@ function fmListPage(){
     +'<button class="fm-btn" onclick="fmImportOpen()">Import fitment</button>'
     +'<button class="fm-btn" onclick="fmExportYears()" title="One row per model year - for eBay, Amazon and distributor compatibility sheets">Marketplace export</button></div>'
     +'<div class="fm-toolbar fm-toolbar2"><label class="fm-cl">Group by <select class="fm-in fm-csel" onchange="FM.pgroup=this.value;fmRender()">'+[['','Nothing'],['category','Category'],['brand','Brand'],['make','Make'],['type','Fitment type']].map(function(o){return '<option value="'+o[0]+'"'+((FM.pgroup||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'
-    +'<label class="fm-cl">Sort <select class="fm-in fm-csel" onchange="FM.psort=this.value;fmRender()">'+[['sku','SKU'],['title','Product name'],['fits','Most fitments'],['recent','Recently changed']].map(function(o){return '<option value="'+o[0]+'"'+((FM.psort||'sku')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'
+    +'<label class="fm-cl">Sort <select class="fm-in fm-csel" onchange="FM.psort=this.value;fmRender()">'+[['sku','SKU'],['rank','Best sellers'],['title','Product name'],['fits','Most fitments'],['recent','Recently changed']].map(function(o){return '<option value="'+o[0]+'"'+((FM.psort||'sku')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'
     +(FM.pgroup?'<button class="fm-link" onclick="fmGroupsAll(true)">Expand all</button><button class="fm-link" onclick="fmGroupsAll(false)">Collapse all</button>':'')
-    +'<span class="fm-tdim" style="margin-left:auto">'+fmListRows().length+' of '+FM.products.length+' products</span></div>'
+    +'<span class="fm-tdim" style="margin-left:auto">'+fmListRows().length+' of '+FM.products.length+' products</span>'
+    +'<button class="fm-btn" onclick="fmRefreshRanks()" title="Re-rank products by retail sales (last 90 days, dealer orders left out). It also runs every night.">Refresh best sellers</button>'
+    +(FM.rankAt?'<span class="fm-tdim" style="font-size:12px">ranked '+fmEsc(new Date(FM.rankAt).toLocaleString())+'</span>':'')+'</div>'
+    +(FM.filter==='pinned'?'<div class="fm-notice">Pinned products show first in the website\'s vehicle results (for every vehicle they fit), in this order. Drag rows or use the arrows to reorder.</div>':'')
     +fmImportHtml()+fmAddPanelHtml()+fmPbarHtml()
-    +'<div class="fm-tablewrap"><table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" id="fm-pall" title="Select all shown" onchange="fmPselAll(this.checked)"></th><th>SKU</th><th>Product</th><th>Brand</th><th>Fitment type</th><th class="fm-tnum">Fitments</th></tr></thead><tbody id="fm-tbody">'+fmListBody()+'</tbody></table></div></div></div>';
+    +'<div class="fm-tablewrap"><table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" id="fm-pall" title="Select all shown" onchange="fmPselAll(this.checked)"></th><th>SKU</th><th>Product</th><th>Brand</th><th>Fitment type</th><th class="fm-tnum">Fitments</th><th class="fm-tnum" title="Best-seller rank: retail units, last 90 days">Rank</th></tr></thead><tbody id="fm-tbody">'+fmListBody()+'</tbody></table></div></div></div>';
 }
 // ---------- product page
 function fmProductPage(){
@@ -24136,7 +24189,9 @@ function fmProductPage(){
   return '<div class="fm-page"><div class="fm-crumb"><a href="#" onclick="FM.sel=null;fmRender();return false">&larr; Fitment Editor</a> / Product fitment</div>'
     +'<div class="fm-card fm-phead"><div class="fm-phead-l"><div class="fm-head-sku">'+fmEsc(p.sku||'(no SKU)')+'</div><div class="fm-head-desc">'+fmEsc(p.title||p.handle)+'</div><div class="fm-tdim">'+fmEsc(p.vendor||'')+'</div>'
     +'<div class="fm-wheres">'+chip('Website',w.web,'https://tgkmotorsport.com/products/'+encodeURIComponent(p.handle))+chip('Dealer price lists',w.dealer)+chip('ERP',w.erp)+'</div></div>'
-    +'<div class="fm-phead-r">'+radio('vehicle','Vehicle specific','fits the vehicles listed below')+radio('universal','Universal fit','shows for every vehicle')+radio('none','Non-vehicle product','apparel, tools - not in vehicle search')+'</div></div>'
+    +'<div class="fm-phead-r">'+radio('vehicle','Vehicle specific','fits the vehicles listed below')+radio('universal','Universal fit','shows for every vehicle')+radio('none','Non-vehicle product','apparel, tools - not in vehicle search')
+    +'<label class="fm-radio fm-pinbox"><input type="checkbox"'+(p.pin_order!=null?' checked':'')+' onchange="fmSetPin('+fmJs(p.handle)+',this.checked)"> <span><b>&#128204; Pin to top</b> <span class="fm-tdim">first in vehicle results for every vehicle it fits'+(p.pin_order!=null?' (position '+p.pin_order+')':'')+'</span></span></label>'
+    +(FM.rank&&FM.rank[p.handle]?'<div class="fm-tdim" style="font-size:12.5px">Best-seller rank <b>#'+FM.rank[p.handle]+'</b> (retail, last 90 days)</div>':'')+'</div></div>'
     +fmSamePagesHtml(p)
     +'<div class="fm-twocol"><div class="fm-card" id="fm-det">'+fmDetailsHtml()+'</div><div class="fm-card" id="fm-shop">'+fmShopHtml()+'</div></div>'
     +(p.fit_type==='vehicle'?'<div class="fm-card" id="fm-add">'+fmAddHtml()+'</div>':'')
