@@ -2038,6 +2038,23 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 [data-theme="dark"] .fm-csel.on,[data-theme="dark"] .fm-notein.on{background:rgba(194,65,12,.15);color:#fdba74}
 [data-theme="dark"] .fm-vedit td{background:rgba(42,191,170,.08)}
 .fm-busy{align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--teal-dark,#0f766e);margin-right:8px}.fm-busy::before{content:"";width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:fmspin .8s linear infinite}@keyframes fmspin{to{transform:rotate(360deg)}}
+/* v4.3: organisation + copy/paste */
+.fm-toolbar2{gap:14px;margin-top:-4px}
+.fm-catline{margin-top:3px;display:flex;flex-wrap:wrap;gap:4px}
+.fm-cat{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--blue-text,#0c3d6e);background:var(--blue-light,#E6F1FB);border-radius:9px;padding:1px 8px}
+.fm-catx button{border:0;background:none;color:inherit;font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px}
+.fm-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--card-bg)}
+.fm-catadd{border:0!important;box-shadow:none!important;min-width:180px;flex:1;padding:3px 4px!important;font-size:13px!important}
+.fm-grprow td{background:var(--body-bg)!important;cursor:pointer;font-size:13.5px;border-top:1px solid var(--border)}
+.fm-grprow:hover td{background:#eef6f5!important}
+.fm-caret{display:inline-block;width:14px;color:var(--text2)}
+.fm-cardbtns{display:inline-flex;align-items:center;gap:8px}
+.fm-clipbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 22px 0;padding:9px 14px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:13.5px}
+.fm-clipbar .fm-link{margin-left:auto}
+[data-theme="dark"] .fm-clipbar{background:rgba(234,88,12,.12);border-color:rgba(234,88,12,.35);color:#fdba74}
+[data-theme="dark"] .fm-cat{background:rgba(24,95,165,.3);color:#9cc7f3}
+[data-theme="dark"] .fm-grprow td{background:#1f2225!important}
+.fm-toolbar{flex-wrap:wrap}.fm-toolbar #fm-q{flex:1 1 320px;min-width:260px}.fm-toolbar .fm-sel{flex:0 1 200px}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17323,7 +17340,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v4.2';
+var TGK_CC_VERSION='v4.3';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23384,7 +23401,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
 <script>
 /* ==================================================================================================
-   FITMENT (v4.2) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
+   FITMENT (v4.3) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
    and the dealer price list read (fitments + fit_products + fit_vehicles), so a change here shows there
    immediately. Saves use the signed-in user's login (_ccFreshSession), never the public key.
    ================================================================================================== */
@@ -23549,7 +23566,7 @@ function _stableOrder(path,key){ // a unique tiebreaker so pages can never overl
   return t+'?'+(q?q+'&':'')+'order='+k;
 }
 async function fmAll(path){ // page until an empty page: the server may cap a page below what is asked for
-  // [v4.2] pages are sorted by a unique key (id / handle) as the last tiebreaker: sorting only by make/model/year
+  // [v4.3] pages are sorted by a unique key (id / handle) as the last tiebreaker: sorting only by make/model/year
   // let the database order ties differently per page, so rows could repeat on one page and be skipped on another.
   var sp=_stableOrder(path),useSp=sp!==path,out=[],from=0,seen={},pk=path.split('?')[0]==='fit_products'?'handle':'id';
   for(var guard=0;guard<400;guard++){
@@ -23849,10 +23866,35 @@ function fmDeleteOrphans(){
   fmDeleteIds(orph.map(function(f){return f.id;}),'Deleted '+orph.length+' orphaned rows');
 }
 function fmPselToggle(h,on,ev){if(ev)ev.stopPropagation();FM.psel=FM.psel||{};if(on)FM.psel[h]=1;else delete FM.psel[h];fmRefreshList();}
-function fmPselAll(on){FM.psel={};if(on)fmListRows().slice(0,400).forEach(function(p){FM.psel[p.handle]=1;});fmRefreshList();}
-function fmRefreshList(){var b=document.getElementById('fm-tbody');if(b)b.innerHTML=fmListBody();var bar=document.getElementById('fm-pbar');if(bar)bar.outerHTML=fmPbarHtml();var ha=document.getElementById('fm-pall');if(ha){var n=Object.keys(FM.psel||{}).length,v=Math.min(fmListRows().length,400);ha.checked=n&&n===v;}}
-function fmPbarHtml(){var n=Object.keys(FM.psel||{}).length;return '<div id="fm-pbar" class="fm-selbar'+(n?' on':'')+'">'+(n?'<b>'+n+' SKU'+(n!==1?'s':'')+' selected</b><button class="fm-del" onclick="fmDeleteProducts(Object.keys(FM.psel))">Delete selected</button><button class="fm-link" onclick="fmPselAll(false)">Clear selection</button>':'<span class="fm-tdim">Tick SKUs to delete several at once. Click a row to open it.</span>')+'</div>';}
-// ---------------- add a product: pick it from Shopify (no typing handles)
+function fmCatBulk(mode){
+  var cat=((document.getElementById('fm-bcat')||{}).value||'').trim().replace(/\s*>\s*/g,'>');if(!cat){fmToast('Type or pick a category first',true);return;}
+  if(/,/.test(cat)){fmToast('One category at a time (no commas)',true);return;}
+  var todo=Object.keys(FM.psel||{}).map(fmProd).filter(Boolean).map(function(p){var cs=fmCats(p),has=cs.some(function(x){return x.replace(/\s*>\s*/g,'>')===cat;});
+    if(mode==='add'&&has)return null;if(mode==='remove'&&!has)return null;
+    var raw=String(p.category||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
+    var next=mode==='add'?raw.concat([cat]):raw.filter(function(x){return x.replace(/\s*>\s*/g,'>')!==cat;});
+    return {p:p,val:next.join(',')||null};}).filter(Boolean);
+  if(!todo.length){fmToast(mode==='add'?'They are all in "'+fmCatLabel(cat)+'" already':'None of them are in "'+fmCatLabel(cat)+'"');return;}
+  fmDo(async function(){
+    await fmPool(todo,6,function(t){return fmReq('fit_products?handle=eq.'+encodeURIComponent(t.p.handle),{method:'PATCH',body:JSON.stringify({category:t.val,updated_at:new Date().toISOString()})});});
+    todo.forEach(function(t){t.p.category=t.val;});
+    fmToast((mode==='add'?'Added ':'Removed ')+todo.length+' product'+(todo.length!==1?'s':'')+(mode==='add'?' to ':' from ')+'"'+fmCatLabel(cat)+'"');
+  });
+}
+window.fmCatBulk=fmCatBulk;
+function fmToggleGroup(k){FM.pclosed=FM.pclosed||{};var key=FM.pgroup+'|'+k;FM.pclosed[key]=!FM.pclosed[key];fmRefreshList();}
+function fmGroupsAll(open){FM.pclosed={};if(!open){var rows=fmListRows();rows.forEach(function(p){fmGroupKeys(p).forEach(function(k){FM.pclosed[FM.pgroup+'|'+k]=true;});});}fmRefreshList();}
+function fmPselGroup(k,on){FM.psel=FM.psel||{};fmListRows().forEach(function(p){if(fmGroupKeys(p).indexOf(k)>=0){if(on)FM.psel[p.handle]=1;else delete FM.psel[p.handle];}});fmRefreshList();}
+window.fmToggleGroup=fmToggleGroup;window.fmGroupsAll=fmGroupsAll;window.fmPselGroup=fmPselGroup;
+function fmPselAll(on){FM.psel={};if(on)fmListRows().forEach(function(p){FM.psel[p.handle]=1;});fmRefreshList();}
+function fmRefreshList(){var b=document.getElementById('fm-tbody');if(b)b.innerHTML=fmListBody();var bar=document.getElementById('fm-pbar');if(bar)bar.outerHTML=fmPbarHtml();var ha=document.getElementById('fm-pall');if(ha){var n=Object.keys(FM.psel||{}).length,v=fmListRows().length;ha.checked=n&&n===v;}}
+function fmPbarHtml(){var n=Object.keys(FM.psel||{}).length;
+  return '<div id="fm-pbar" class="fm-selbar'+(n?' on':'')+'">'+(n?'<b>'+n+' SKU'+(n!==1?'s':'')+' selected</b>'
+    +'<span class="fm-setv"><input class="fm-in fm-notein" id="fm-bcat" list="fm-catlist" placeholder="Category, e.g. Engine > Fueling"><datalist id="fm-catlist">'+fmAllCats().map(function(x){return '<option value="'+fmEsc(x)+'">';}).join('')+'</datalist>'
+    +'<button class="fm-btn" onclick="fmCatBulk(\'add\')">Add to category</button><button class="fm-btn" onclick="fmCatBulk(\'remove\')">Remove from category</button></span>'
+    +(FM.clip&&FM.clip.rows.length?'<button class="fm-btn primary" onclick="fmPasteSelected()">Paste fitment into '+n+'</button>':'')
+    +'<button class="fm-del" onclick="fmDeleteProducts(Object.keys(FM.psel))">Delete selected</button><button class="fm-link" onclick="fmPselAll(false)">Clear selection</button>'
+    :'<span class="fm-tdim">Tick SKUs to set categories, paste fitment or delete several at once. Click a row to open it.</span>')+'</div>';}
 function fmNewProduct(){FM.addOpen=!FM.addOpen;FM.addQ='';fmRender();if(FM.addOpen&&!FM.vinfo&&!FM.varsLoading)fmLoadVariants(true);setTimeout(function(){var e=document.getElementById('fm-addq');if(e)e.focus();},50);}
 function fmAddPanelHtml(){
   if(!FM.addOpen)return '';
@@ -23901,6 +23943,41 @@ function fmNewVehicle(){
 function fmSetPlatform(id,val){
   fmDo(async function(){await fmReq('fit_vehicles?id=eq.'+id,{method:'PATCH',body:JSON.stringify({platform:val.trim()||null})});var v=FM.vehicles.find(function(x){return x.id===id;});if(v)v.platform=val.trim()||null;fmToast('Saved');});
 }
+function fmVKeyOf(v){var g=FM.vgroup||'mm';return g==='mm'?v.make+' \u203a '+v.model:g==='platform'?(v.platform||'(no platform)'):g==='chassis'?(v.chassis?v.make+' '+v.chassis:'(no chassis)'):g==='engine'?(v.engine?v.make+' '+v.engine:'(no engine)'):'';}
+function fmVRows(list,use,rowFn){
+  var g=FM.vgroup||'mm',LIMIT=600,n=0,h='';
+  if(g==='none'){return list.slice(0,LIMIT).map(rowFn).join('')+(list.length>LIMIT?'<tr><td colspan="10" class="fm-note">Showing '+LIMIT+' of '+list.length+' - narrow the search</td></tr>':'');}
+  var groups={};list.forEach(function(v){var k=fmVKeyOf(v);(groups[k]=groups[k]||[]).push(v);});
+  var keys=Object.keys(groups).sort(function(a,b){var x=a.charAt(0)==='(',y=b.charAt(0)==='(';return x!==y?(x?1:-1):a.localeCompare(b,undefined,{numeric:true});});
+  FM.vopen=FM.vopen||{};var auto=!!FM.vq||keys.length<=3;
+  keys.forEach(function(k){var vs=groups[k].sort(function(a,b){return a.year_from-b.year_from||String(a.engine).localeCompare(String(b.engine));}),open=auto||!!FM.vopen[g+'|'+k];
+    var prods=vs.reduce(function(t,v){return t+(use[v.id]||0);},0),allOn=vs.every(function(v){return FM.vsel&&FM.vsel[v.id];});
+    var yrs=Math.min.apply(null,vs.map(function(v){return v.year_from;}))+'-'+Math.max.apply(null,vs.map(function(v){return v.year_to;}));
+    h+='<tr class="fm-grprow"><td><input type="checkbox"'+(allOn?' checked':'')+' title="Tick every vehicle in this group" onchange="fmVselGroup('+fmJs(k)+',this.checked)"></td><td colspan="9" onclick="fmVToggle('+fmJs(k)+')"><span class="fm-caret">'+(open?'&#9662;':'&#9656;')+'</span> <b>'+fmEsc(k)+'</b> <span class="fm-tdim">'+vs.length+' vehicle'+(vs.length!==1?'s':'')+' &middot; '+yrs+' &middot; '+prods+' fitment row'+(prods!==1?'s':'')+'</span></td></tr>';
+    if(open)vs.forEach(function(v){if(n++<LIMIT)h+=rowFn(v);});});
+  if(n>LIMIT)h+='<tr><td colspan="10" class="fm-note">Showing '+LIMIT+' rows - collapse groups or search to narrow</td></tr>';
+  return h;
+}
+function fmVToggle(k){FM.vopen=FM.vopen||{};var key=(FM.vgroup||'mm')+'|'+k;FM.vopen[key]=!FM.vopen[key];fmRender();}
+function fmVGroupsAll(open){FM.vopen={};if(open)FM.vehicles.forEach(function(v){FM.vopen[(FM.vgroup||'mm')+'|'+fmVKeyOf(v)]=true;});fmRender();}
+function fmVselToggle(id,on){FM.vsel=FM.vsel||{};if(on)FM.vsel[id]=1;else delete FM.vsel[id];fmRender();}
+function fmVselGroup(k,on){FM.vsel=FM.vsel||{};FM.vehicles.forEach(function(v){if(fmVKeyOf(v)===k){if(on)FM.vsel[v.id]=1;else delete FM.vsel[v.id];}});fmRender();}
+function fmVbarHtml(){var n=Object.keys(FM.vsel||{}).length;
+  var plats=Array.from(new Set(FM.vehicles.map(function(v){return v.platform;}).filter(Boolean))).sort();
+  return '<div class="fm-selbar'+(n?' on':'')+'">'+(n?'<b>'+n+' vehicle'+(n!==1?'s':'')+' selected</b><span class="fm-setv">Platform <input class="fm-in fm-notein" id="fm-vplat" list="fm-platlist" placeholder="e.g. MLB Evo"><datalist id="fm-platlist">'+plats.map(function(x){return '<option value="'+fmEsc(x)+'">';}).join('')+'</datalist><button class="fm-btn" onclick="fmVBulk(\'platform\')">Set</button></span>'
+    +'<button class="fm-btn" onclick="fmVBulk(\'hide\')">Hide</button><button class="fm-btn" onclick="fmVBulk(\'show\')">Show</button><button class="fm-link" onclick="FM.vsel={};fmRender()">Clear selection</button>'
+    :'<span class="fm-tdim">Tick vehicles (or a whole group) to set their platform or hide / show them in the website picker.</span>')+'</div>';}
+function fmVBulk(op){
+  var ids=Object.keys(FM.vsel||{});if(!ids.length)return;var patch;
+  if(op==='platform'){var v=((document.getElementById('fm-vplat')||{}).value||'').trim();patch={platform:v||null};}
+  else patch={active:op==='show'};
+  fmDo(async function(){
+    for(var i=0;i<ids.length;i+=150)await fmReq('fit_vehicles?id=in.('+ids.slice(i,i+150).join(',')+')',{method:'PATCH',body:JSON.stringify(patch)});
+    FM.vehicles.forEach(function(v){if(FM.vsel[v.id])Object.assign(v,patch);});FM.vsel={};
+    fmToast(op==='platform'?'Platform set on '+ids.length+' vehicle'+(ids.length!==1?'s':''):(op==='hide'?'Hid ':'Showing ')+ids.length+' vehicle'+(ids.length!==1?'s':'')+(op==='hide'?' from the website picker':' in the website picker'));
+  });
+}
+window.fmVToggle=fmVToggle;window.fmVGroupsAll=fmVGroupsAll;window.fmVselToggle=fmVselToggle;window.fmVselGroup=fmVselGroup;window.fmVBulk=fmVBulk;
 function fmSetVehicleCode(id,val){
   val=(val||'').trim()||null;var v=FM.vehicles.find(function(x){return x.id===id;});if(!v||(v.engine_code||null)===val)return;
   fmDo(async function(){
@@ -23978,6 +24055,7 @@ fmRender._inner=function(){
   root.innerHTML='<div class="fm-top"><div class="fm-tabs">'+tabs.map(function(t){return '<button class="fm-tab'+(FM.tab===t[0]?' on':'')+'" onclick="FM.tab=\''+t[0]+'\';fmRender()">'+t[1]+'</button>';}).join('')+'</div>'
     +'<div class="fm-note">Saved changes show in the ERP and on the dealer price list right away.</div>'
     +'<span id="fm-busy" class="fm-busy" style="display:'+(FM._busy?'inline-flex':'none')+'">Saving&hellip;</span><span class="fm-hist">'+fmHistBtns()+'</span><button class="fm-btn" onclick="fmLoad(true)">Reload</button></div>'
+    +fmClipBar()
     +(FM.tab==='history'?fmRenderHistory():FM.tab==='products'?fmRenderProducts():FM.tab==='vehicles'?fmRenderVehicles():fmRenderChecks());
   root.querySelectorAll('input[data-ind="1"]').forEach(function(i){i.indeterminate=true;});
 };
@@ -23986,33 +24064,68 @@ var FM_COLS=[['make','Make'],['model','Model'],['year','Year'],['engine','Engine
 function fmCsReset(){FM.cs={yearAll:true,year:{},make:{},model:{},engine:{},chassis:{},vsel:{},trans:'',drive:'',note:''};FM.preview=false;FM.newV=false;FM.addTab=FM.addTab||'add';}
 function fmRenderProducts(){if(!FM.cs)fmCsReset();return FM.sel&&fmProd(FM.sel)?fmProductPage():fmListPage();}
 function fmTypeLabel(t){return t==='universal'?'Universal fit':t==='none'?'Non-vehicle':'Vehicle specific';}
+function fmCats(p){return String(p&&p.category||'').split(',').map(function(x){return x.trim();}).filter(function(x){return x&&x.toLowerCase()!=='all categories';});}
+function fmCatLabel(c){return String(c).split('>').map(function(x){return x.trim();}).join(' \u203a ');}
+function fmAllCats(){var m={};FM.products.forEach(function(p){fmCats(p).forEach(function(c){m[c]=1;var parts=c.split('>');if(parts.length>1)m[parts[0].trim()]=1;});});return Object.keys(m).sort(function(a,b){return a.localeCompare(b);});}
+function fmMakesOf(p){var m={};fmFitsOf(p.handle).forEach(function(f){if(f.make)m[f.make]=1;});return Object.keys(m).sort();}
+function fmGroupKeys(p){
+  var g=FM.pgroup;
+  if(g==='category'){var t={};fmCats(p).forEach(function(c){t[c.split('>')[0].trim()]=1;});var k=Object.keys(t);return k.length?k:['(no category)'];}
+  if(g==='brand')return [p.vendor||'(no brand)'];
+  if(g==='type')return [fmTypeLabel(p.fit_type)];
+  if(g==='make'){if(p.fit_type==='universal')return ['Universal fit'];if(p.fit_type==='none')return ['Non-vehicle'];var m=fmMakesOf(p);return m.length?m:['No fitment yet'];}
+  return [''];
+}
+window.fmCats=fmCats;
 function fmListRows(){
   var c=fmCounts(),q=FM.q.toLowerCase().trim(),f=FM.filter;
   return FM.products.filter(function(p){var n=c[p.handle]||0;
     if(f==='needs'&&!(p.fit_type==='vehicle'&&!n))return false;
     if(f==='vehicle'&&p.fit_type!=='vehicle')return false;if(f==='universal'&&p.fit_type!=='universal')return false;if(f==='none'&&p.fit_type!=='none')return false;
-    return !q||[p.sku,p.title,p.vendor].join(' ').toLowerCase().indexOf(q)>=0;}).sort(fmSkuCmp);
+    if(FM.pcat){var pc=FM.pcat;if(!fmCats(p).some(function(c){return c===pc||c.indexOf(pc+'>')===0||c.replace(/\s*>\s*/g,'>')===pc.replace(/\s*>\s*/g,'>');}))return false;}
+    if(FM.pbrand&&(p.vendor||'')!==FM.pbrand)return false;
+    return !q||[p.sku,p.title,p.vendor,p.category].join(' ').toLowerCase().indexOf(q)>=0;}).sort(function(a,b){
+      var s=FM.psort||'sku';
+      if(s==='title')return String(a.title||'').localeCompare(String(b.title||''));
+      if(s==='fits')return (c[b.handle]||0)-(c[a.handle]||0)||fmSkuCmp(a,b);
+      if(s==='recent')return String(b.updated_at||'').localeCompare(String(a.updated_at||''))||fmSkuCmp(a,b);
+      return fmSkuCmp(a,b);});
 }
 function fmSkuPages(){var m={};FM.products.forEach(function(p){if(!p.sku)return;var k=String(fmCanonPn(p.sku)).toUpperCase();(m[k]=m[k]||[]).push(p);});return m;}
 function fmOtherPages(p){if(!p.sku)return [];var g=fmSkuPages()[String(fmCanonPn(p.sku)).toUpperCase()]||[];return g.filter(function(x){return x.handle!==p.handle;});}
 function fmListBody(){
-  var c=fmCounts(),rows=fmListRows(),sp=fmSkuPages();
+  var c=fmCounts(),rows=fmListRows(),sp=fmSkuPages(),n=0,LIMIT=400;
   if(!rows.length)return '<tr><td colspan="6" class="fm-empty">No products match.</td></tr>';
-  return rows.slice(0,400).map(function(p){var n=c[p.handle]||0;
-    var on=!!(FM.psel&&FM.psel[p.handle]);
-    return '<tr class="fm-trow'+(on?' fm-trsel':'')+'" onclick="fmPick('+fmJs(p.handle)+')"><td onclick="event.stopPropagation()"><input type="checkbox"'+(on?' checked':'')+' onchange="fmPselToggle('+fmJs(p.handle)+',this.checked,event)"></td><td class="fm-tsku">'+fmEsc(p.sku||'(no SKU)')+((sp[String(fmCanonPn(p.sku)).toUpperCase()]||[]).length>1?' <span class="fm-pages" title="This SKU is listed on more than one website page">'+sp[String(fmCanonPn(p.sku)).toUpperCase()].length+' pages</span>':'')+'</td><td>'+fmEsc(p.title||p.handle)+'</td><td class="fm-tdim">'+fmEsc(p.vendor||'')+'</td>'
-      +'<td>'+fmTypeLabel(p.fit_type)+'</td><td class="fm-tnum">'+(p.fit_type==='vehicle'?(n?n:'<span class="fm-bad">0 - needs fitment</span>'):'&ndash;')+'</td></tr>';}).join('')
-    +(rows.length>400?'<tr><td colspan="6" class="fm-tdim">Showing 400 of '+rows.length+' - search to narrow</td></tr>':'');
+  var rowHtml=function(p){var k=c[p.handle]||0,on=!!(FM.psel&&FM.psel[p.handle]),cats=fmCats(p);
+    return '<tr class="fm-trow'+(on?' fm-trsel':'')+'" onclick="fmPick('+fmJs(p.handle)+')"><td onclick="event.stopPropagation()"><input type="checkbox"'+(on?' checked':'')+' onchange="fmPselToggle('+fmJs(p.handle)+',this.checked,event)"></td><td class="fm-tsku">'+fmEsc(p.sku||'(no SKU)')+((sp[String(fmCanonPn(p.sku)).toUpperCase()]||[]).length>1?' <span class="fm-pages" title="This SKU is listed on more than one website page">'+sp[String(fmCanonPn(p.sku)).toUpperCase()].length+' pages</span>':'')+'</td>'
+      +'<td>'+fmEsc(p.title||p.handle)+(cats.length?'<div class="fm-catline">'+cats.slice(0,3).map(function(x){return '<span class="fm-cat">'+fmEsc(fmCatLabel(x))+'</span>';}).join('')+(cats.length>3?'<span class="fm-tdim"> +'+(cats.length-3)+'</span>':'')+'</div>':'')+'</td><td class="fm-tdim">'+fmEsc(p.vendor||'')+'</td>'
+      +'<td>'+fmTypeLabel(p.fit_type)+'</td><td class="fm-tnum">'+(p.fit_type==='vehicle'?(k?k:'<span class="fm-bad">0 - needs fitment</span>'):'&ndash;')+'</td></tr>';};
+  if(!FM.pgroup)return rows.slice(0,LIMIT).map(rowHtml).join('')+(rows.length>LIMIT?'<tr><td colspan="6" class="fm-tdim">Showing '+LIMIT+' of '+rows.length+' - search or filter to narrow</td></tr>':'');
+  var groups={};rows.forEach(function(p){fmGroupKeys(p).forEach(function(k){(groups[k]=groups[k]||[]).push(p);});});
+  var keys=Object.keys(groups).sort(function(a,b){var x=a.charAt(0)==='(',y=b.charAt(0)==='(';return x!==y?(x?1:-1):a.localeCompare(b);});
+  FM.pclosed=FM.pclosed||{};var h='';
+  keys.forEach(function(k){var list=groups[k],open=FM.q?true:!FM.pclosed[FM.pgroup+'|'+k],allOn=list.every(function(p){return FM.psel&&FM.psel[p.handle];});
+    h+='<tr class="fm-grprow"><td onclick="event.stopPropagation()"><input type="checkbox"'+(allOn?' checked':'')+' title="Tick everything in this group" onchange="fmPselGroup('+fmJs(k)+',this.checked)"></td><td colspan="5" onclick="fmToggleGroup('+fmJs(k)+')"><span class="fm-caret">'+(open?'&#9662;':'&#9656;')+'</span> <b>'+fmEsc(FM.pgroup==='category'?fmCatLabel(k):k)+'</b> <span class="fm-tdim">'+list.length+' product'+(list.length!==1?'s':'')+'</span></td></tr>';
+    if(open){list.forEach(function(p){if(n++<LIMIT)h+=rowHtml(p);});}});
+  if(n>LIMIT)h+='<tr><td colspan="6" class="fm-tdim">Showing '+LIMIT+' rows - collapse groups or filter to narrow</td></tr>';
+  return h;
 }
 function fmListPage(){
   var c=fmCounts(),needs=FM.products.filter(function(p){return p.fit_type==='vehicle'&&!c[p.handle];}).length;
   var opt=function(v,l){return '<option value="'+v+'"'+(FM.filter===v?' selected':'')+'>'+l+'</option>';};
   return '<div class="fm-page"><div class="fm-card"><div class="fm-toolbar"><input class="fm-in fm-grow" id="fm-q" placeholder="Search by SKU, product name or brand" value="'+fmEsc(FM.q)+'" oninput="FM.q=this.value;FM.psel={};fmRefreshList();">'
     +'<select class="fm-in fm-sel" onchange="FM.filter=this.value;fmRender()">'+opt('all','All products')+opt('needs','Needs fitment ('+needs+')')+opt('vehicle','Vehicle specific')+opt('universal','Universal fit')+opt('none','Non-vehicle')+'</select>'
+    +'<select class="fm-in fm-sel" title="Category" onchange="FM.pcat=this.value;FM.psel={};fmRender()"><option value="">All categories</option>'+fmAllCats().map(function(x){return '<option value="'+fmEsc(x)+'"'+(FM.pcat===x?' selected':'')+'>'+(x.indexOf('>')>=0?'&nbsp;&nbsp;&nbsp;':'')+fmEsc(fmCatLabel(x))+'</option>';}).join('')+'</select>'
+    +'<select class="fm-in fm-sel" title="Brand" onchange="FM.pbrand=this.value;FM.psel={};fmRender()"><option value="">All brands</option>'+Array.from(new Set(FM.products.map(function(p){return p.vendor;}).filter(Boolean))).sort().map(function(x){return '<option'+(FM.pbrand===x?' selected':'')+'>'+fmEsc(x)+'</option>';}).join('')+'</select>'
     +'<button class="fm-btn" onclick="fmNewProduct()">'+(FM.addOpen?'Close':'+ Add product')+'</button>'
     +'<button class="fm-btn" onclick="fmExportFitment()" title="Every fitment row, for editing in Excel or as a backup">Export fitment</button>'
     +'<button class="fm-btn" onclick="fmImportOpen()">Import fitment</button>'
-    +'<button class="fm-btn" onclick="fmExportYears()" title="One row per model year - for eBay, Amazon and distributor compatibility sheets">Marketplace export</button></div>'+fmImportHtml()+fmAddPanelHtml()+fmPbarHtml()
+    +'<button class="fm-btn" onclick="fmExportYears()" title="One row per model year - for eBay, Amazon and distributor compatibility sheets">Marketplace export</button></div>'
+    +'<div class="fm-toolbar fm-toolbar2"><label class="fm-cl">Group by <select class="fm-in fm-csel" onchange="FM.pgroup=this.value;fmRender()">'+[['','Nothing'],['category','Category'],['brand','Brand'],['make','Make'],['type','Fitment type']].map(function(o){return '<option value="'+o[0]+'"'+((FM.pgroup||'')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'
+    +'<label class="fm-cl">Sort <select class="fm-in fm-csel" onchange="FM.psort=this.value;fmRender()">'+[['sku','SKU'],['title','Product name'],['fits','Most fitments'],['recent','Recently changed']].map(function(o){return '<option value="'+o[0]+'"'+((FM.psort||'sku')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'
+    +(FM.pgroup?'<button class="fm-link" onclick="fmGroupsAll(true)">Expand all</button><button class="fm-link" onclick="fmGroupsAll(false)">Collapse all</button>':'')
+    +'<span class="fm-tdim" style="margin-left:auto">'+fmListRows().length+' of '+FM.products.length+' products</span></div>'
+    +fmImportHtml()+fmAddPanelHtml()+fmPbarHtml()
     +'<div class="fm-tablewrap"><table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" id="fm-pall" title="Select all shown" onchange="fmPselAll(this.checked)"></th><th>SKU</th><th>Product</th><th>Brand</th><th>Fitment type</th><th class="fm-tnum">Fitments</th></tr></thead><tbody id="fm-tbody">'+fmListBody()+'</tbody></table></div></div></div>';
 }
 // ---------- product page
@@ -24043,10 +24156,20 @@ function fmDetailsHtml(){
   var p=fmProd(FM.sel),f=function(id,label,val,hint){return '<label class="fm-field"><span>'+label+'</span><input class="fm-in" id="'+id+'" value="'+fmEsc(val||'')+'">'+(hint?'<em>'+hint+'</em>':'')+'</label>';};
   return '<div class="fm-cardh"><b>Details</b><button class="fm-btn primary" onclick="fmSaveDetails()">Save</button></div>'
     +f('fmd-sku','Parent SKU',p.sku,'What the ERP and dealer price lists match this product on. Variant-specific fitment uses the child SKUs on the right.')
-    +f('fmd-title','Product name',p.title)+'<div class="fm-row2">'+f('fmd-vendor','Brand',p.vendor)+f('fmd-cat','Category',p.category,'Used for website filters when no Storefront token is set.')+'</div>'
+    +f('fmd-title','Product name',p.title)+'<div class="fm-row2">'+f('fmd-vendor','Brand',p.vendor)+'<label class="fm-field"><span>Categories</span><input type="hidden" id="fmd-cat" value="'+fmEsc(p.category||'')+'"><div class="fm-chips" id="fm-catchips">'+fmCatChips(p.category||'')+'</div><em>Used to organise this list and for website filters. Press Save to keep changes.</em></label>'+'</div>'
     +'<div class="fm-tdim" style="font-size:12px">Website page: '+fmEsc(p.handle)+'</div>'
     +'<div class="fm-danger"><button class="fm-link danger" onclick="fmDeleteProducts(['+fmJs(p.handle)+'])">Delete this SKU from the Fitment tool</button><span class="fm-tdim">removes it and all its fitment (undo available)</span></div>';
 }
+function fmCatChips(val){
+  var raw=String(val||'').split(',').map(function(x){return x.trim();}).filter(Boolean);
+  return raw.map(function(c,i){return c.toLowerCase()==='all categories'?'':'<span class="fm-cat fm-catx">'+fmEsc(fmCatLabel(c))+'<button type="button" title="Remove" onclick="fmCatChipDel('+i+')">&times;</button></span>';}).join('')
+    +'<input class="fm-in fm-catadd" id="fm-catadd" list="fm-catlist2" placeholder="+ add category" onkeydown="if(event.key===\'Enter\'){event.preventDefault();fmCatChipAdd();}" onchange="fmCatChipAdd()"><datalist id="fm-catlist2">'+fmAllCats().map(function(x){return '<option value="'+fmEsc(x)+'">';}).join('')+'</datalist>';
+}
+function fmCatChipSet(raw){var h=document.getElementById('fmd-cat');h.value=raw.join(',');document.getElementById('fm-catchips').innerHTML=fmCatChips(h.value);var a=document.getElementById('fm-catadd');if(a)a.focus();}
+function fmCatChipAdd(){var a=document.getElementById('fm-catadd');var v=(a&&a.value||'').trim().replace(/\s*>\s*/g,'>');if(!v)return;if(/,/.test(v)){fmToast('One category at a time (no commas)',true);return;}
+  var raw=String(document.getElementById('fmd-cat').value||'').split(',').map(function(x){return x.trim();}).filter(Boolean);if(raw.indexOf(v)<0)raw.push(v);fmCatChipSet(raw);}
+function fmCatChipDel(i){var raw=String(document.getElementById('fmd-cat').value||'').split(',').map(function(x){return x.trim();}).filter(Boolean);raw.splice(i,1);fmCatChipSet(raw);}
+window.fmCatChipAdd=fmCatChipAdd;window.fmCatChipDel=fmCatChipDel;
 function fmSaveDetails(){
   var p=fmProd(FM.sel),g=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
   var upd={sku:g('fmd-sku')||null,title:g('fmd-title')||p.handle,vendor:g('fmd-vendor')||null,category:g('fmd-cat')||null,updated_at:new Date().toISOString()};
@@ -24230,6 +24353,51 @@ function fmCopyHtml(){
   return h+'</div>';
 }
 // ---------- current fitment table
+// ===================== Copy / paste fitment =====================
+// The clipboard is kept in this browser (survives a reload). Pasting adds rows (skipping vehicles already listed
+// with the same conditions) or replaces the product's fitment; either way it is one undo step.
+try{FM.clip=JSON.parse(localStorage.getItem('tgk_fm_clip')||'null');}catch(e){FM.clip=null;}
+var FM_CLIPF=['make','model','year_from','year_to','engine','chassis','engine_code','transmission','drivetrain','notes','vehicle_id','variant_sku'];
+function fmCopyRows(rows,handle){
+  if(!rows.length)return;var p=fmProd(handle);
+  FM.clip={from:handle,sku:p&&p.sku||'',title:p&&p.title||handle,at:Date.now(),rows:rows.map(function(f){var o={};FM_CLIPF.forEach(function(k){if(f[k]!=null&&f[k]!=='')o[k]=f[k];});return o;})};
+  try{localStorage.setItem('tgk_fm_clip',JSON.stringify(FM.clip));}catch(e){}
+  fmToast('Copied '+rows.length+' vehicle'+(rows.length!==1?'s':'')+' - open another product and press Paste');fmRender();
+}
+function fmCopyAll(){fmCopyRows(fmFitsOf(FM.sel),FM.sel);}
+function fmCopySelected(){var ids=FM.fsel||{};fmCopyRows(fmFitsOf(FM.sel).filter(function(f){return ids[f.id];}),FM.sel);FM.fsel={};}
+function fmClipClear(){FM.clip=null;try{localStorage.removeItem('tgk_fm_clip');}catch(e){}fmRender();}
+async function fmPasteRows(handle,rows,replace){
+  var p=fmProd(handle);if(!p)return {added:0,skipped:0,removed:0};var removed=0;
+  if(replace){var cur=fmFitsOf(handle);if(cur.length){await fmReq('fitments?handle=eq.'+encodeURIComponent(handle),{method:'DELETE'});removed=cur.length;var ids={};cur.forEach(function(f){ids[f.id]=1;});FM.fits=FM.fits.filter(function(f){return !ids[f.id];});}}
+  var have={};fmFitsOf(handle).forEach(function(f){have[fmVKey(f)+'||'+fmQ(f)]=1;});
+  var out=[],skipped=0;
+  rows.forEach(function(r){var k=fmVKey(r)+'||'+fmQ(r);if(have[k]){skipped++;return;}have[k]=1;
+    var o={pn:fmCanonPn(p.sku)||null,handle:handle,make:r.make,model:r.model,year_from:r.year_from,year_to:r.year_to,engine:r.engine||'',chassis:r.chassis||'',
+      submodel:((r.chassis||'')+' '+(r.engine||'')).trim()||null,vehicle_id:r.vehicle_id||null,source:'copied',notes:r.notes||null};
+    if(!FM.noExtras){o.transmission=r.transmission||null;o.drivetrain=r.drivetrain||null;o.engine_code=r.engine_code||null;}
+    out.push(o);});
+  for(var i=0;i<out.length;i+=200){var ins=await fmReq('fitments',{method:'POST',body:JSON.stringify(fmUniform(out.slice(i,i+200)))});FM.fits=FM.fits.concat(ins||[]);}
+  if(out.length&&p.fit_type!=='vehicle')await fmSetType(handle,'vehicle',true);
+  return {added:out.length,skipped:skipped,removed:removed};
+}
+function fmPasteMsg(c){var v=c.rows.filter(function(r){return r.variant_sku;}).length;
+  return c.rows.length+' vehicle'+(c.rows.length!==1?'s':'')+' from '+(c.sku||'')+' - '+c.title+(v?'\n\n'+v+' of them were for a specific variant of that product; here they will apply to all variants (set the variant afterwards if needed).':'');}
+function fmPasteHere(replace){
+  var c=FM.clip;if(!c||!c.rows.length)return;var p=fmProd(FM.sel),cur=fmFitsOf(FM.sel).length;
+  if(!confirm((replace?'Replace this product\'s '+cur+' fitment row'+(cur!==1?'s':'')+' with ':'Paste ')+fmPasteMsg(c)+'\n\ninto '+(p.sku||'')+' - '+p.title+'?'+(replace?'':'\n\nVehicles already listed here (with the same conditions) are skipped.')+'\n\nUndo is available.'))return;
+  fmDo(async function(){var r=await fmPasteRows(FM.sel,c.rows,replace);
+    fmToast((replace?'Replaced with ':'Pasted ')+r.added+' vehicle'+(r.added!==1?'s':'')+(r.skipped?' ('+r.skipped+' already listed)':'')+(r.removed?' - '+r.removed+' old rows removed':''));});
+}
+function fmPasteSelected(){
+  var c=FM.clip,hs=Object.keys(FM.psel||{});if(!c||!c.rows.length||!hs.length)return;
+  if(!confirm('Paste '+fmPasteMsg(c)+'\n\ninto '+hs.length+' selected product'+(hs.length!==1?'s':'')+'?\n\nThis ADDS to their fitment; vehicles a product already lists are skipped. One undo step.'))return;
+  fmDo(async function(){var a=0,sk=0;for(var i=0;i<hs.length;i++){var r=await fmPasteRows(hs[i],c.rows,false);a+=r.added;sk+=r.skipped;}FM.psel={};
+    fmToast('Pasted '+a+' row'+(a!==1?'s':'')+' into '+hs.length+' product'+(hs.length!==1?'s':'')+(sk?' ('+sk+' already listed)':''));});
+}
+function fmClipBar(){var c=FM.clip;if(!c||!c.rows.length)return '';
+  return '<div class="fm-clipbar">&#128203; <b>Clipboard:</b> '+c.rows.length+' vehicle'+(c.rows.length!==1?'s':'')+' from <b>'+fmEsc(c.sku||'')+'</b> '+fmEsc(c.title||'')+' <span class="fm-tdim">- open a product and press Paste, or tick products in the list</span><button class="fm-link" onclick="fmClipClear()">Clear</button></div>';}
+window.fmCopyAll=fmCopyAll;window.fmCopySelected=fmCopySelected;window.fmClipClear=fmClipClear;window.fmPasteHere=fmPasteHere;window.fmPasteSelected=fmPasteSelected;
 function fmFitTableHtml(){
   var p=fmProd(FM.sel),fits=fmFitsOf(p.handle).slice().sort(function(a,b){return (a.make+a.model).localeCompare(b.make+b.model,undefined,{numeric:true})||(a.year_from-b.year_from)||String(a.variant_sku||'').localeCompare(String(b.variant_sku||''));});
   var vars=fmVarsOf(p.handle),showV=vars.length>0||fits.some(function(f){return f.variant_sku;});
@@ -24237,14 +24405,18 @@ function fmFitTableHtml(){
   var nSel=Object.keys(FM.fsel).length,allOn=fits.length&&nSel===fits.length;
   var note=p.fit_type==='universal'?'<div class="fm-notice">Set to <b>Universal fit</b> - it shows for every vehicle, so the rows below are not used.'+(fits.length?' You can delete them.':'')+'</div>'
     :p.fit_type==='none'?'<div class="fm-notice">Set to <b>Non-vehicle product</b> - not in vehicle search, so the rows below are not used.'+(fits.length?' You can delete them.':'')+'</div>':'';
-  var h='<div class="fm-cardh"><b>'+fits.length+' fitment'+(fits.length!==1?'s':'')+'</b>'+(fits.length?'<button class="fm-link danger" onclick="fmRemoveAll()">Delete all</button>':'')+'</div>'+note;
+  var c=FM.clip,canPaste=c&&c.rows.length&&c.from!==p.handle;
+  var h='<div class="fm-cardh"><b>'+fits.length+' fitment'+(fits.length!==1?'s':'')+'</b><span class="fm-cardbtns">'
+    +(fits.length?'<button class="fm-btn" onclick="fmCopyAll()" title="Copy every vehicle on this product">Copy all</button>':'')
+    +(canPaste?'<button class="fm-btn primary" onclick="fmPasteHere(false)" title="Add the copied vehicles to this product">Paste '+c.rows.length+' from '+fmEsc(c.sku||'clipboard')+'</button>'+(fits.length?'<button class="fm-link" onclick="fmPasteHere(true)">Replace with clipboard</button>':''):'')
+    +(fits.length?'<button class="fm-link danger" onclick="fmRemoveAll()">Delete all</button>':'')+'</span></div>'+note;
   if(!fits.length)return h+(p.fit_type==='vehicle'?'<div class="fm-empty">No fitment yet - pick a make and model above and press <b>Add fitment</b>.</div>':'');
   h+='<div class="fm-selbar'+(nSel?' on':'')+'">'+(nSel?'<b>'+nSel+' selected</b>'
       +(vars.length?'<span class="fm-setv">Fits variant <select class="fm-in fm-vsel" id="fm-bulkv">'+fmVarOptions(vars,'',null)+'</select><button class="fm-btn primary" onclick="fmSetRowsVariant(Object.keys(FM.fsel),document.getElementById(\'fm-bulkv\').value)">Set</button></span>':'')
       +'<span class="fm-setv">'+(FM.noExtras?'':'<select class="fm-in fm-csel" id="fm-bt"><option value="__k">Transmission: keep</option>'+fmOpts(FM_TRANS,'','Any').replace('<option value="">','<option value="">Transmission: ')+'</select><select class="fm-in fm-csel" id="fm-bd"><option value="__k">Drive: keep</option>'+fmOpts(FM_DRIVE,'','Any').replace('<option value="">','<option value="">Drive: ')+'</select>')
         +'<input class="fm-in fm-notein" id="fm-bn" placeholder="Note (blank = keep)"><button class="fm-btn" onclick="fmBulkCond()">Apply</button></span>'
-      +'<button class="fm-del" onclick="fmDeleteSelected()">Delete selected</button><button class="fm-link" onclick="fmFselAll(false)">Clear selection</button>'
-      :'<span class="fm-tdim">Tick rows to '+(vars.length?'change which variant they fit, or to ':'')+'delete several at once.</span>')+'</div>';
+      +'<button class="fm-btn" onclick="fmCopySelected()">Copy selected</button><button class="fm-del" onclick="fmDeleteSelected()">Delete selected</button><button class="fm-link" onclick="fmFselAll(false)">Clear selection</button>'
+      :'<span class="fm-tdim">Tick rows to copy them, '+(vars.length?'change which variant they fit, or to ':'')+'delete several at once.</span>')+'</div>';
   return h+'<table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" title="Select all"'+(allOn?' checked':'')+' onchange="fmFselAll(this.checked)"></th><th>Year</th><th>Make</th><th>Model</th><th>Engine</th><th>Chassis</th>'+(showV?'<th>Variant</th>':'')+'<th>Conditions &amp; note</th><th>Source</th><th></th></tr></thead><tbody>'
     +fits.map(function(f){var on=!!FM.fsel[f.id];return '<tr'+(on?' class="fm-trsel"':'')+'><td><input type="checkbox"'+(on?' checked':'')+' onchange="fmFselToggle('+fmJs(f.id)+',this.checked)"></td><td><span class="fm-yr">'+fmYears(f)+'</span></td><td>'+fmEsc(f.make)+'</td><td>'+fmEsc(f.model)+'</td><td>'+fmEsc(f.engine||'')+'</td><td>'+fmEsc(f.chassis||'')+'</td>'
       +(showV?'<td>'+fmVarCell(f,vars)+'</td>':'')
@@ -24282,17 +24454,21 @@ function fmRenderVehicles(){
     +'<div class="fm-row"><select onchange="FM.vmk=this.value;fmRender()"><option value="">All makes</option>'+makes.map(function(m){return '<option'+(m===FM.vmk?' selected':'')+'>'+fmEsc(m)+'</option>';}).join('')+'</select>'
     +'<select onchange="FM.vshow=this.value;fmRender()"><option value="">Show: all</option><option value="missing"'+(show==='missing'?' selected':'')+'>Missing engine or chassis</option>'+endOpts.map(function(y){return '<option value="end:'+y+'"'+(show==='end:'+y?' selected':'')+'>Ending '+y+' ('+ends[y]+')</option>';}).join('')+'</select>'
     +'<input class="fm-in" style="max-width:320px" placeholder="Search model, engine, chassis, code, year..." value="'+fmEsc(FM.vq)+'" onchange="FM.vq=this.value;fmRender()"><span class="fm-note">'+list.length+' vehicles</span></div>'
-    +'<div class="fm-card"><table class="fm-tbl"><thead><tr><th>Make</th><th>Model</th><th>Years</th><th>Engine</th><th>Chassis</th><th>Engine code</th><th>Platform</th><th>Products</th><th></th></tr></thead><tbody>'
-    +list.slice(0,500).map(function(v){
-      if(FM.vedit===v.id)return '<tr class="fm-vedit"><td><input class="fm-in sm" id="fmve-make" value="'+fmEsc(v.make)+'"></td><td><input class="fm-in sm" id="fmve-model" value="'+fmEsc(v.model)+'"></td>'
+    +'<div class="fm-row"><label class="fm-cl">Group by <select class="fm-in fm-csel" onchange="FM.vgroup=this.value;FM.vopen={};fmRender()">'+[['mm','Make › Model'],['platform','Platform'],['chassis','Chassis'],['engine','Engine'],['none','Nothing']].map(function(o){return '<option value="'+o[0]+'"'+((FM.vgroup||'mm')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'
+    +((FM.vgroup||'mm')!=='none'?'<button class="fm-link" onclick="fmVGroupsAll(true)">Expand all</button><button class="fm-link" onclick="fmVGroupsAll(false)">Collapse all</button>':'')+'</div>'
+    +fmVbarHtml()
+    +'<div class="fm-card"><table class="fm-tbl"><thead><tr><th style="width:30px"></th><th>Make</th><th>Model</th><th>Years</th><th>Engine</th><th>Chassis</th><th>Engine code</th><th>Platform</th><th>Products</th><th></th></tr></thead><tbody>'
+    +fmVRows(list,use,function(v){
+      if(FM.vedit===v.id)return '<tr class="fm-vedit"><td></td><td><input class="fm-in sm" id="fmve-make" value="'+fmEsc(v.make)+'"></td><td><input class="fm-in sm" id="fmve-model" value="'+fmEsc(v.model)+'"></td>'
         +'<td><input class="fm-in sm" id="fmve-yf" type="number" value="'+v.year_from+'" style="width:70px"> - <input class="fm-in sm" id="fmve-yt" type="number" value="'+v.year_to+'" style="width:70px"></td>'
         +'<td><input class="fm-in sm" id="fmve-eng" value="'+fmEsc(v.engine||'')+'"></td><td><input class="fm-in sm" id="fmve-ch" value="'+fmEsc(v.chassis||'')+'"></td><td colspan="3" class="fm-note">'+(use[v.id]||0)+' fitment rows follow this vehicle</td>'
         +'<td><button class="fm-btn primary" onclick="fmSaveVehicle('+fmJs(v.id)+')">Save</button> <button class="fm-link" onclick="FM.vedit=null;fmRender()">Cancel</button></td></tr>';
-      return '<tr'+(v.active===false?' class="dim"':'')+'><td>'+fmEsc(v.make)+'</td><td>'+fmEsc(v.model)+'</td><td>'+fmYears(v)+'</td><td>'+(v.engine?fmEsc(v.engine):'<span class="fm-bad">missing</span>')+'</td><td>'+(v.chassis?fmEsc(v.chassis):'<span class="fm-bad">missing</span>')+'</td>'
+      var on=!!(FM.vsel&&FM.vsel[v.id]);
+      return '<tr class="'+(v.active===false?'dim ':'')+(on?'fm-trsel':'')+'"><td><input type="checkbox"'+(on?' checked':'')+' onchange="fmVselToggle('+fmJs(v.id)+',this.checked)"></td><td>'+fmEsc(v.make)+'</td><td>'+fmEsc(v.model)+'</td><td>'+fmYears(v)+'</td><td>'+(v.engine?fmEsc(v.engine):'<span class="fm-bad">missing</span>')+'</td><td>'+(v.chassis?fmEsc(v.chassis):'<span class="fm-bad">missing</span>')+'</td>'
       +'<td><input class="fm-in sm" value="'+fmEsc(v.engine_code||'')+'" placeholder="e.g. EA888 Gen3" onchange="fmSetVehicleCode('+fmJs(v.id)+',this.value)"></td>'
       +'<td><input class="fm-in sm" value="'+fmEsc(v.platform||'')+'" onchange="fmSetPlatform('+fmJs(v.id)+',this.value)"></td><td>'+(use[v.id]||0)+'</td>'
-      +'<td style="white-space:nowrap"><button class="fm-link" onclick="FM.vedit='+fmJs(v.id)+';fmRender()">edit</button> <button class="fm-link" onclick="fmToggleVehicle('+fmJs(v.id)+')">'+(v.active===false?'show':'hide')+'</button></td></tr>';}).join('')
-    +'</tbody></table>'+(list.length>500?'<div class="fm-note">Showing 500 of '+list.length+' - narrow the search</div>':'')+'</div></div>';
+      +'<td style="white-space:nowrap"><button class="fm-link" onclick="FM.vedit='+fmJs(v.id)+';fmRender()">edit</button> <button class="fm-link" onclick="fmToggleVehicle('+fmJs(v.id)+')">'+(v.active===false?'show':'hide')+'</button></td></tr>';})
+    +'</tbody></table></div></div>';
 }
 function fmLegacyCovered(legacy){
   // An old ERP row (no website page) is "covered" when imported/website data has the same part - legacy and new
