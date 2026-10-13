@@ -17364,7 +17364,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v4.7';
+var TGK_CC_VERSION='v4.8';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23425,7 +23425,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
 <script>
 /* ==================================================================================================
-   FITMENT (v4.7) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
+   FITMENT (v4.8) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
    and the dealer price list read (fitments + fit_products + fit_vehicles), so a change here shows there
    immediately. Saves use the signed-in user's login (_ccFreshSession), never the public key.
    ================================================================================================== */
@@ -23765,7 +23765,7 @@ document.addEventListener('keydown',function(e){
 });
 window.fmUndo=fmUndo;window.fmRedo=fmRedo;
 function _stableOrder(path,key){ // a unique tiebreaker so pages can never overlap or skip rows
-  var i=path.indexOf('?'),t=(i<0?path:path.slice(0,i)),q=i<0?'':path.slice(i+1),k=key||({fit_products:'handle',fit_sales_rank:'handle'}[t]||'id');
+  var i=path.indexOf('?'),t=(i<0?path:path.slice(0,i)),q=i<0?'':path.slice(i+1),k=key||({fit_products:'handle',fit_sales_rank:'handle',fit_platform_pages:'slug',fit_variant_skus:'sku'}[t]||'id');
   if(/(^|&)limit=/.test(q))return path;
   var m=q.match(/(^|&)order=([^&]*)/);
   if(m){var parts=m[2].split(',');if(parts.some(function(x){return x.split('.')[0]===k;}))return path;
@@ -23881,6 +23881,23 @@ async function fmLoadRanks(){
   catch(e){FM.rank={};FM.noRank=true;}
   if(FM.tab==='products'&&!FM.sel)fmRefreshList();
 }
+async function fmSyncImages(){
+  if(FM._busy){fmToast('Still saving - try again in a moment',true);return;}
+  FM._busy=(FM._busy||0)+1;fmBusyUI();fmToast('Getting product images from Shopify...');
+  try{
+    FM.vars=null;await fmLoadVariants(true);
+    if(FM.varsErr)throw new Error('Shopify: '+FM.varsErr);
+    var img={},seen=0;Object.keys(FM.vinfo||{}).forEach(function(h){(FM.vinfo[h]||[]).forEach(function(v){if('image' in v)seen++;if(v.image&&!img[h])img[h]=v.image;});});
+    if(!seen)throw new Error('your shopify-orders server function does not send images yet - redeploy it (v23.83) from the deploy kit, then press Sync images again');
+    if(FM.products.length&&!('image_url' in FM.products[0])&&!FM.products.some(function(p){return 'image_url' in p;}))throw new Error('run fitment_8_staff.sql in Supabase (adds the image column), reload, then press Sync images again');
+    var todo=FM.products.filter(function(p){return (img[p.handle]||null)!==(p.image_url||null);});
+    await fmPool(todo,6,function(p){return _fmRawReq('fit_products?handle=eq.'+encodeURIComponent(p.handle),{method:'PATCH',body:JSON.stringify({image_url:img[p.handle]||null})}).then(function(){p.image_url=img[p.handle]||null;});});
+    var have=FM.products.filter(function(p){return p.image_url;}).length;
+    fmToast('Images synced: '+todo.length+' updated - '+have+' of '+FM.products.length+' products have a thumbnail');
+  }catch(e){fmToast('Could not sync images: '+(e.message||e),true);}
+  FM._busy--;fmBusyUI();fmRender();
+}
+window.fmSyncImages=fmSyncImages;
 async function fmRefreshRanks(){
   if(FM.noRank){fmToast('Run fitment_6_bestsellers.sql in Supabase first',true);return;}
   if(FM._busy){fmToast('Still saving - try again in a moment',true);return;}
@@ -24393,7 +24410,7 @@ function fmGroupKeys(p){
   return [''];
 }
 window.fmCats=fmCats;
-function fmThumb(h){var v=FM.vinfo&&FM.vinfo[h]&&FM.vinfo[h].find(function(x){return x.image;});return v?'<img class="fm-thumb" loading="lazy" alt="" src="'+fmEsc(String(v.image).replace(/(\.[a-z]+)(\?|$)/i,'_80x80$1$2'))+'">':'<span class="fm-thumb fm-thumb--none"></span>';}
+function fmThumb(h){var p=fmProd(h),src=p&&p.image_url;if(!src){var v=FM.vinfo&&FM.vinfo[h]&&FM.vinfo[h].find(function(x){return x.image;});src=v&&v.image;}var v={image:src};return src?'<img class="fm-thumb" loading="lazy" alt="" src="'+fmEsc(String(v.image).replace(/(\.[a-z]+)(\?|$)/i,'_80x80$1$2'))+'">':'<span class="fm-thumb fm-thumb--none"></span>';}
 function fmListRows(){
   var c=fmCounts(),q=FM.q.toLowerCase().trim(),f=FM.filter;
   return FM.products.filter(function(p){var n=c[p.handle]||0;
@@ -24449,6 +24466,7 @@ function fmListPage(){
     +'<label class="fm-cl">Sort <select class="fm-in fm-csel" onchange="FM.psort=this.value;fmRender()">'+[['sku','SKU'],['rank','Best sellers'],['title','Product name'],['fits','Most fitments'],['recent','Recently changed']].map(function(o){return '<option value="'+o[0]+'"'+((FM.psort||'sku')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></label>'
     +(FM.pgroup?'<button class="fm-link" onclick="fmGroupsAll(true)">Expand all</button><button class="fm-link" onclick="fmGroupsAll(false)">Collapse all</button>':'')
     +'<span class="fm-tdim" style="margin-left:auto">'+fmListRows().length+' of '+FM.products.length+' products</span>'
+    +'<button class="fm-btn" onclick="fmSyncImages()" title="Get the latest product images from Shopify for the thumbnails">Sync images</button>'
     +'<button class="fm-btn" onclick="fmRefreshRanks()" title="Re-rank products by retail sales (last 90 days, dealer orders left out). It also runs every night.">Refresh best sellers</button>'
     +(FM.rankAt?'<span class="fm-tdim" style="font-size:12px">ranked '+fmEsc(new Date(FM.rankAt).toLocaleString())+'</span>':'')+'</div>'
     +(FM.filter==='pinned'?'<div class="fm-notice">Pinned products show first in the website\'s vehicle results (for every vehicle they fit), in this order. Drag rows or use the arrows to reorder.</div>':'')
@@ -24901,22 +24919,35 @@ window.fmMergeOverlapsUI=fmMergeOverlapsUI;window.fmMergePageDups=fmMergePageDup
 // ===================== Spreadsheet export / import =====================
 var FM_COLS_X=['id','website_page','sku','product','make','model','year_from','year_to','engine','chassis','engine_code','transmission','drivetrain','variant_sku','notes'];
 function fmCsvCell(v){v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
-function fmDownload(name,text){var b=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);}
+function fmDownload(name,text){ // returns a promise; always ends with a visible message
+  var data='\ufeff'+text,blob=new Blob([data],{type:'text/csv;charset=utf-8'});
+  var viaLink=function(){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.rel='noopener';a.style.display='none';document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},60000);return true;};
+  var copyOffer=function(err){FM._lastCsv=data;fmToastAct('Could not save the file ('+(err&&err.message||err||'blocked by the browser')+')','Copy CSV',function(){navigator.clipboard.writeText(FM._lastCsv).then(function(){fmToast('CSV copied - paste it into Excel or a text file');},function(){fmToast('Copy blocked too - try another browser',true);});});};
+  if(window.showSaveFilePicker){ // Chrome / Edge: a real "Save as" window
+    return window.showSaveFilePicker({suggestedName:name,types:[{description:'CSV spreadsheet',accept:{'text/csv':['.csv']}}]})
+      .then(function(h){return h.createWritable();}).then(function(w){return w.write(blob).then(function(){return w.close();});}).then(function(){return 'saved';})
+      .catch(function(e){if(e&&e.name==='AbortError'){fmToast('Export cancelled');return 'cancelled';}try{viaLink();return 'download';}catch(e2){copyOffer(e2);return 'failed';}});
+  }
+  try{viaLink();return Promise.resolve('download');}catch(e){copyOffer(e);return Promise.resolve('failed');}
+}
 function fmStamp(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
-function fmExportFitment(){
+function fmExportFitment(){try{fmExportFitment_();}catch(e){fmToast('Export failed: '+(e.message||e),true);console.error(e);}}
+function fmExportFitment_(){
   var rows=[FM_COLS_X.join(',')];
   FM.fits.slice().sort(function(a,b){return String(a.handle||'').localeCompare(String(b.handle||''))||(a.make+a.model).localeCompare(b.make+b.model)||a.year_from-b.year_from;}).forEach(function(f){var p=f.handle?fmProd(f.handle):null;
     rows.push([f.id,f.handle||'',p?p.sku:f.pn,p?p.title:'',f.make,f.model,f.year_from,f.year_to,f.engine,f.chassis,f.engine_code,f.transmission,f.drivetrain,f.variant_sku,f.notes].map(fmCsvCell).join(','));});
-  fmDownload('TGK-fitment-'+fmStamp()+'.csv',rows.join('\r\n'));fmToast('Exported '+(rows.length-1)+' fitment rows');
+  var n=rows.length-1;fmDownload('TGK-fitment-'+fmStamp()+'.csv',rows.join('\r\n')).then(function(r){if(r==='saved')fmToast('Saved '+n+' fitment rows');else if(r==='download')fmToast('Exported '+n+' fitment rows - check your Downloads folder');});
 }
 // One row per model year - the shape eBay / Amazon / distributor compatibility sheets want.
 // (True ACES XML needs VCdb vehicle IDs from the Auto Care Association, which this data does not have.)
-function fmExportYears(){
+function fmExportYears(){try{fmExportYears_();}catch(e){fmToast('Export failed: '+(e.message||e),true);console.error(e);}}
+function fmExportYears_(){
   var out=['SKU,Product,Year,Make,Model,Engine,Engine code,Chassis,Transmission,Drive,Notes'],seen={},n=0;
   FM.fits.forEach(function(f){var p=f.handle?fmProd(f.handle):null;if(!p||p.fit_type!=='vehicle')return;var sku=f.variant_sku||p.sku||f.pn;
     for(var y=+f.year_from;y<=+f.year_to;y++){var k=[sku,y,f.make,f.model,f.engine,f.chassis,f.transmission,f.drivetrain].join('|').toLowerCase();if(seen[k])continue;seen[k]=1;n++;
       out.push([sku,p.title,y,f.make,f.model,f.engine,f.engine_code,f.chassis,f.transmission,f.drivetrain,f.notes].map(fmCsvCell).join(','));}});
-  fmDownload('TGK-fitment-by-year-'+fmStamp()+'.csv',out.join('\r\n'));fmToast('Exported '+n+' year rows');
+  fmDownload('TGK-fitment-by-year-'+fmStamp()+'.csv',out.join('\r\n')).then(function(r){if(r==='saved')fmToast('Saved '+n+' year rows');else if(r==='download')fmToast('Exported '+n+' year rows - check your Downloads folder');});
 }
 function fmParseCsv(text){
   text=String(text||'').replace(/^\ufeff/,'');var rows=[],row=[],cell='',q=false;
