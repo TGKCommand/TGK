@@ -1812,7 +1812,7 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-root{flex:1;display:flex;flex-direction:column;min-height:0;font-family:var(--font);color:var(--text)}
 .fm-top{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);background:var(--card-bg);flex-wrap:wrap}
 .fm-tabs{display:flex;gap:4px}.fm-tab{border:1px solid var(--border);background:transparent;color:var(--text2);padding:7px 14px;border-radius:var(--radius);font:600 13px var(--font);cursor:pointer}
-.fm-tab.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.fm-tab.on{background:var(--teal);border-color:var(--teal);color:#06312c}
 .fm-note{font-size:12px;color:var(--text3)}.fm-top .fm-note{flex:1}
 .fm-btn{border:1px solid var(--border2);background:var(--card-bg);color:var(--text);padding:6px 12px;border-radius:var(--radius);font:600 12px var(--font);cursor:pointer;white-space:nowrap}
 .fm-btn:hover{border-color:var(--teal)}.fm-btn.primary{background:var(--teal);border-color:var(--teal);color:#fff;margin-top:8px}
@@ -2081,6 +2081,82 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 [data-theme="dark"] .fm-cov0{background:rgba(220,38,38,.15);color:#fca5a5}
 .fm-authbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:10px 22px 0;padding:10px 14px;border:1px solid #f5c26b;border-left:4px solid #d97706;background:#fffbeb;color:#7c2d12;font-size:14px;border-radius:4px}
 [data-theme="dark"] .fm-authbar{background:rgba(217,119,6,.12);color:#fcd34d;border-color:rgba(217,119,6,.5)}
+/* Coverage v2 */
+.fm-cov-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.fm-cov-tile{border:1px solid var(--fm-line,#e3e5e8);border-radius:8px;padding:12px 14px;background:var(--fm-card,#fff)}
+.fm-cov-tile b{display:block;font-size:24px;line-height:1.1}.fm-cov-tile span{font-size:12.5px;color:#6b7177}
+.fm-cov-tile.warn{border-color:#f59e0b;background:#fffbeb}.fm-cov-tile.warn b{color:#b45309}
+.fm-badge.warn{background:#fef3c7;color:#92400e;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700}
+.fm-chip-miss{display:inline-block;border:1px dashed #d97706;color:#92400e;border-radius:10px;padding:1px 8px;font-size:12px;margin:1px 0}
+.fm-cov-pick{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.fm-cov-pick select{min-width:280px;flex:1}
+.fm-cov-bars{display:grid;gap:8px}
+.fm-cov-row{display:grid;grid-template-columns:160px 1fr 70px;gap:10px;align-items:center}
+.fm-cov-name{font-weight:600}.fm-cov-track{height:12px;background:#eef0f2;border-radius:6px;overflow:hidden}.fm-cov-fill{height:100%;background:#2cc4b2}
+.fm-cov-n{text-align:right;font-variant-numeric:tabular-nums}.fm-cov-row.gap .fm-cov-n{color:#b45309;font-weight:700}.fm-cov-row.gap .fm-cov-name{color:#b45309}
+.fm-cov-list{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;padding:0 0 4px 170px}
+.fm-cov-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}.fm-cov-filters input.fm-in{min-width:240px}
+.fm-cov-all summary{cursor:pointer;padding:4px 0}
+[data-theme="dark"] .fm-cov-tile{background:transparent}[data-theme="dark"] .fm-cov-tile.warn{background:rgba(245,158,11,.1)}
+@media (max-width:900px){.fm-cov-tiles{grid-template-columns:1fr 1fr}.fm-cov-row{grid-template-columns:110px 1fr 60px}.fm-cov-list{padding-left:0}}
+
+/* ===== Categories tab (v5.2): header stays put, only the body scrolls ===== */
+.fm-cx{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--body-bg)}
+.fm-cx-head{flex:none;padding:12px 18px 10px;border-bottom:1px solid var(--border);background:var(--card-bg)}
+.fm-cx-body{flex:1;min-height:0;overflow:auto;padding:12px 18px 70px}
+.fm-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.fm-subtabs button{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:transparent;color:var(--text2);padding:8px 14px;border-radius:var(--radius);font:600 13px var(--font);cursor:pointer}
+.fm-subtabs button:hover{color:var(--text)}
+.fm-subtabs button.on{background:var(--teal);border-color:var(--teal);color:#06312c}
+.fm-subtabs button.on .n{background:rgba(6,49,44,.16);color:#06312c}
+.fm-subtabs .n{background:rgba(127,127,127,.22);border-radius:10px;padding:1px 8px;font-size:12px}
+.fm-subtabs .n.warn{background:#f59e0b;color:#1f1300}
+.fm-cx-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fm-cx-tools .fm-in{min-width:260px}
+.fm-chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer}
+.fm-cx-sum{color:var(--text2);font-size:12.5px;font-weight:600;white-space:nowrap}
+.fm-cx-help,.fm-cx-intro{color:var(--text2);font-size:12.5px;line-height:1.45}
+.fm-cx-help{margin-top:8px;display:flex;gap:6px 18px;justify-content:space-between;flex-wrap:wrap}
+/* the tree */
+.fm-cx-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 10px;border:1px solid transparent;border-bottom-color:var(--border)}
+.fm-cx-row:hover,.fm-cx-row:focus-within{background:var(--card-bg);border-color:var(--border)}
+.fm-cx-d2{padding-left:34px}.fm-cx-d3{padding-left:58px}
+.fm-cx-chev{flex:none;width:26px;height:26px;border:0;border-radius:6px;background:transparent;cursor:pointer;position:relative}
+.fm-cx-chev:hover{background:rgba(127,127,127,.18)}
+.fm-cx-chev::after{content:"";position:absolute;left:9px;top:8px;width:7px;height:7px;border-right:2px solid var(--text2);border-bottom:2px solid var(--text2);transform:rotate(-45deg);transition:transform .12s}
+.fm-cx-chev.open::after{transform:rotate(45deg);top:6px}
+.fm-cx-chev--none{cursor:default}.fm-cx-chev--none::after{display:none}
+.fm-cx-name{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fm-cx-d1>.fm-cx-name{font-weight:800;font-size:14.5px}
+.fm-cx-name mark{background:#fde68a;color:inherit;border-radius:2px;padding:0 1px}
+.fm-cx-count{flex:none;background:rgba(127,127,127,.2);border-radius:10px;padding:1px 9px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.fm-cx-sub{color:var(--text2);font-size:12px;white-space:nowrap}
+.fm-cx-shop{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;white-space:nowrap}
+.fm-sb{border-radius:10px;padding:2px 9px;font-size:11.5px;font-weight:700;background:rgba(127,127,127,.2);color:var(--text2)}
+.fm-sb--ok{background:#dcfce7;color:#166534}.fm-sb--warn{background:#fef3c7;color:#92400e}
+.fm-cx-actions{display:flex;gap:4px;flex:none;opacity:0;transition:opacity .12s}
+.fm-cx-row:hover .fm-cx-actions,.fm-cx-row:focus-within .fm-cx-actions{opacity:1}
+@media (hover:none){.fm-cx-actions{opacity:1}}
+.fm-btn.danger{color:#b42318}.fm-btn.danger:hover{background:#fef3f2;border-color:#fda29b}
+.fm-empty{padding:40px 20px;text-align:center;color:var(--text2);font-size:14px;line-height:1.6}
+.fm-empty--ok{color:var(--text)}
+/* smart sort / misfiled cards */
+.fm-sortlist{display:grid;gap:10px}
+.fm-sortrow{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(260px,340px) auto;gap:14px;align-items:center;padding:10px 14px;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius)}
+.fm-sr-th img,.fm-sr-th .fm-thumb{width:56px;height:56px;object-fit:contain}
+.fm-sr-main{min-width:0}.fm-sr-main b{display:block;line-height:1.3}
+.fm-sr-pick{display:flex;flex-direction:column;gap:4px}.fm-sr-pick .fm-in{width:100%}
+.fm-sr-act{display:flex;gap:6px;white-space:nowrap}
+.fm-conf{font-size:11.5px;font-weight:700;border-radius:10px;padding:1px 9px;align-self:flex-start}
+.fm-conf--hi{background:#dcfce7;color:#166534}.fm-conf--mid{background:#fef3c7;color:#92400e}.fm-conf--lo{background:#fee2e2;color:#991b1b}
+@media (max-width:1100px){.fm-sortrow{grid-template-columns:56px minmax(0,1fr) auto}.fm-sr-pick{grid-column:2/4}.fm-cx-shop{display:none}}
+[data-theme="dark"] .fm-btn.danger{color:#fca5a5}[data-theme="dark"] .fm-btn.danger:hover{background:rgba(239,68,68,.16);border-color:#f87171}
+/* Coverage: the platform-pages list scrolls inside its own box instead of stretching the whole tab */
+.fm-platwrap{max-height:460px;overflow:auto;border-top:1px solid var(--border)}
+.fm-platwrap thead th{position:sticky;top:0;background:var(--card-bg);z-index:1}
+details.fm-plat>summary{cursor:pointer;list-style:none;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+details.fm-plat>summary::-webkit-details-marker{display:none}
+details.fm-plat>summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--text2);border-bottom:2px solid var(--text2);transform:rotate(-45deg);transition:transform .12s;align-self:center}
+details.fm-plat[open]>summary::before{transform:rotate(45deg)}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17366,7 +17442,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v5.0';
+var TGK_CC_VERSION='v5.2';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23427,7 +23503,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
 <script>
 /* ==================================================================================================
-   FITMENT (v5.0) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
+   FITMENT (v5.2) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
    and the dealer price list read (fitments + fit_products + fit_vehicles), so a change here shows there
    immediately. Saves use the signed-in user's login (_ccFreshSession), never the public key.
    ================================================================================================== */
@@ -23709,23 +23785,73 @@ window.fmBvToggle=fmBvToggle;
 // ===================== Coverage map: platform x category =====================
 function fmCovKey(v){return v.platform||((v.make+' '+(v.chassis||v.model)).trim());}
 async function fmLoadCovSearch(){try{FM.covSearch=await _fmRawReq('rpc/fit_search_report',{method:'POST',body:JSON.stringify({p_days:90})});}catch(e){FM.covSearch=[];}fmRender();}
-function fmRenderCoverage(){
-  if(FM.covSearch===undefined){FM.covSearch=null;setTimeout(fmLoadCovSearch,0);}
+function fmCovData(){ // per platform: products per top-level department + shopper searches (90 days)
   var byV={};FM.vehicles.forEach(function(v){byV[v.id]=v;});
   var rows={},cats={};
   FM.fits.forEach(function(f){var p=f.handle&&fmProd(f.handle);if(!p||p.fit_type!=='vehicle')return;var v=f.vehicle_id&&byV[f.vehicle_id];if(!v)return;var k=fmCovKey(v);
-    var R=rows[k]=rows[k]||{make:v.make,cats:{},all:{}};R.all[p.handle]=1;fmCats(p).map(function(c){return c.split('>')[0].trim();}).filter(function(c,i,a){return a.indexOf(c)===i;}).forEach(function(c){cats[c]=1;(R.cats[c]=R.cats[c]||{})[p.handle]=1;});});
-  FM.vehicles.forEach(function(v){var k=fmCovKey(v);rows[k]=rows[k]||{make:v.make,cats:{},all:{}};});
-  var srch={};(FM.covSearch||[]).forEach(function(r){var vv=FM.vehicles.filter(function(v){return v.make===r.make&&v.model===r.model&&v.year_from<=r.year&&r.year<=v.year_to&&(!r.chassis||v.chassis===r.chassis);});
-    var ks={};vv.forEach(function(v){ks[fmCovKey(v)]=1;});Object.keys(ks).forEach(function(k){srch[k]=(srch[k]||0)+Number(r.searches);});});
-  var cl=Object.keys(cats).filter(function(c){return !/apparel|merch/i.test(c);}).sort(),mk=FM.covMake||'';
-  var keys=Object.keys(rows).filter(function(k){return (!mk||rows[k].make===mk)&&(Object.keys(rows[k].all).length||srch[k]);})
-    .sort(function(a,b){return (srch[b]||0)-(srch[a]||0)||Object.keys(rows[b].all).length-Object.keys(rows[a].all).length||a.localeCompare(b);});
-  var makes=Array.from(new Set(Object.keys(rows).map(function(k){return rows[k].make;}))).sort();
-  return '<div class="fm-pad"><div class="fm-card"><div class="fm-cardh"><b>Coverage</b><span class="fm-cardbtns"><select class="fm-in fm-csel" onchange="FM.covMake=this.value;fmRender()"><option value="">All makes</option>'+makes.map(function(m){return '<option'+(mk===m?' selected':'')+'>'+fmEsc(m)+'</option>';}).join('')+'</select></span></div>'
-    +'<div class="fm-tdim" style="font-size:12.5px;margin-bottom:8px">Products listed per platform and category. <span class="fm-cov0">Empty cells</span> are gaps; platforms people search most come first (last 90 days). Platforms come from the catalog\'s Platform field, or make + chassis.</div>'
-    +'</div>'+fmRenderPlatforms()+'<div class="fm-card"><div class="fm-tablewrap"><table class="fm-table fm-cov"><thead><tr><th>Platform</th><th class="fm-tnum">Searches</th><th class="fm-tnum">Products</th>'+cl.map(function(c){return '<th class="fm-tnum">'+fmEsc(c)+'</th>';}).join('')+'</tr></thead><tbody>'
-    +keys.slice(0,150).map(function(k){var R=rows[k];return '<tr><td><b>'+fmEsc(k)+'</b></td><td class="fm-tnum">'+(srch[k]||'')+'</td><td class="fm-tnum">'+Object.keys(R.all).length+'</td>'+cl.map(function(c){var n=R.cats[c]?Object.keys(R.cats[c]).length:0;return '<td class="fm-tnum'+(n?'':' fm-cov0')+'">'+(n||'')+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div></div></div>';
+    var R=rows[k]=rows[k]||{key:k,make:v.make,cats:{},all:{}};R.all[p.handle]=1;
+    fmCats(p).map(function(c){return c.split('>')[0].trim();}).filter(function(c,i,a){return a.indexOf(c)===i;}).forEach(function(c){cats[c]=1;(R.cats[c]=R.cats[c]||{})[p.handle]=1;});});
+  FM.vehicles.forEach(function(v){var k=fmCovKey(v);rows[k]=rows[k]||{key:k,make:v.make,cats:{},all:{}};});
+  var srch={},unm={};(FM.covSearch||[]).forEach(function(r){var ks={};FM.vehicles.forEach(function(v){if(v.make===r.make&&v.model===r.model&&v.year_from<=r.year&&r.year<=v.year_to&&(!r.chassis||v.chassis===r.chassis))ks[fmCovKey(v)]=1;});
+    var kk=Object.keys(ks);if(!kk.length){var uk=((r.make||'')+' '+(r.chassis||r.model||'')).trim()||'Unknown';var U=unm[uk]=unm[uk]||{key:uk,make:r.make,cats:{},all:{},s:0,n:0,unmatched:true};U.s+=Number(r.searches);}
+    kk.forEach(function(k){srch[k]=(srch[k]||0)+Number(r.searches);});});
+  var depts=Object.keys(cats).filter(function(c){return !/apparel|merch/i.test(c);}).sort();
+  Object.keys(rows).forEach(function(k){var R=rows[k];R.n=Object.keys(R.all).length;R.s=srch[k]||0;R.missing=depts.filter(function(c){return !R.cats[c];});});
+  var unmatched=Object.keys(unm).map(function(k){unm[k].missing=depts.slice();return unm[k];});
+  return {rows:rows,depts:depts,unmatched:unmatched};
+}
+window.fmCovOpen=function(key){ // open this platform in "By vehicle" to add fitment
+  var v=FM.vehicles.find(function(x){return fmCovKey(x)===key;});if(!v)return;
+  FM.bv={make:v.make,model:v.model,engine:'',chassis:v.chassis||''};FM.tab='byvehicle';fmRender();
+};
+window.fmCovSel=function(key){FM.cov=FM.cov||{};FM.cov.sel=key;fmRender();setTimeout(function(){var e=document.getElementById('fm-covdetail');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});},50);};
+function fmCovGridHtml(){
+  var C=FM.cov||{},K=FM._covC;if(!K)return {html:'',count:0};
+  var mk=C.mk||'',qq=(C.q||'').toLowerCase(),gonly=!!C.gaps,depts=K.depts,ek=function(k){return fmEsc(k).replace(/'/g,"\\'");};
+  var gk=K.keysBy.filter(function(R){return (!mk||R.make===mk)&&(!qq||R.key.toLowerCase().indexOf(qq)>=0)&&(!gonly||R.missing.length);}).slice(0,150);
+  var html='<table class="fm-table fm-cov"><thead><tr><th>Platform</th><th class="fm-tnum">Searches</th><th class="fm-tnum">Parts</th>'+depts.map(function(c){return '<th class="fm-tnum">'+fmEsc(c)+'</th>';}).join('')+'</tr></thead><tbody>'
+    +(gk.length?gk.map(function(R){return '<tr><td><a href="#" onclick="fmCovSel(\''+ek(R.key)+'\');return false"><b>'+fmEsc(R.key)+'</b></a></td><td class="fm-tnum">'+(R.s||'')+'</td><td class="fm-tnum">'+R.n+'</td>'
+      +depts.map(function(c){var n=R.cats[c]?Object.keys(R.cats[c]).length:0;return '<td class="fm-tnum '+(n?'':'fm-cov0')+'" onclick="fmCovSel(\''+ek(R.key)+'\')" style="cursor:pointer" title="'+fmEsc(R.key+' - '+c)+'">'+(n||'&ndash;')+'</td>';}).join('')+'</tr>';}).join(''):'<tr><td colspan="'+(3+depts.length)+'" class="fm-tdim" style="padding:18px">No platform matches these filters.</td></tr>')+'</tbody></table>';
+  return {html:html,count:gk.length};
+}
+window.fmCovFilter=function(k,v){FM.cov=FM.cov||{};FM.cov[k]=v;clearTimeout(window.__fmcq);window.__fmcq=setTimeout(function(){var g=document.getElementById('fm-cov-grid');if(!g)return;var r=fmCovGridHtml();g.innerHTML=r.html;var n=document.getElementById('fm-cov-gn');if(n)n.textContent=r.count+' platforms';},k==='q'?120:0);};
+function fmRenderCoverage(){
+  if(FM.covSearch===undefined){FM.covSearch=null;setTimeout(fmLoadCovSearch,0);}
+  var C=FM.cov=FM.cov||{},D=fmCovData(),rows=D.rows,depts=D.depts,all=Object.keys(rows).map(function(k){return rows[k];});
+  var withParts=all.filter(function(R){return R.n;}),searched=all.filter(function(R){return R.s;}).concat(D.unmatched),missed=searched.filter(function(R){return !R.n;});
+  var totalS=searched.reduce(function(a,R){return a+R.s;},0);
+  var tile=function(n,l,warn){return '<div class="fm-cov-tile'+(warn?' warn':'')+'"><b>'+n+'</b><span>'+l+'</span></div>';};
+  // 1) opportunities: demand vs what we have
+  var opp=searched.slice().sort(function(a,b){return (b.s/(b.n+1))-(a.s/(a.n+1))||b.s-a.s;}).slice(0,12);
+  var ek=function(k){return fmEsc(k).replace(/'/g,"\\'");};
+  var oppHtml=!FM.covSearch?'<div class="fm-colhint">Loading shopper searches&hellip;</div>':!opp.length?'<div class="fm-colhint">No vehicle searches recorded yet. Opportunities appear here as shoppers use the vehicle search on the website.</div>'
+    :'<table class="fm-table"><thead><tr><th>Platform</th><th class="fm-tnum">Searches</th><th class="fm-tnum">Parts</th><th>Missing departments</th><th></th></tr></thead><tbody>'
+      +opp.map(function(R){return '<tr><td><b>'+fmEsc(R.key)+'</b>'+(R.unmatched?' <span class="fm-badge warn">not in vehicle catalog</span>':R.n?'':' <span class="fm-badge warn">no parts</span>')+'</td><td class="fm-tnum">'+R.s+'</td><td class="fm-tnum">'+R.n+'</td>'
+        +'<td>'+(R.missing.length?R.missing.slice(0,5).map(function(c){return '<span class="fm-chip-miss">'+fmEsc(c)+'</span>';}).join(' ')+(R.missing.length>5?' <span class="fm-tdim">+'+(R.missing.length-5)+'</span>':''):'<span class="fm-tdim">All departments covered</span>')+'</td>'
+        +'<td style="white-space:nowrap">'+(R.unmatched?'<button class="fm-btn sm primary" onclick="FM.tab=\'vehicles\';fmRender()" title="Add this car to the Vehicle catalog first, then add fitment for it">Add to catalog</button>':'<button class="fm-btn sm" onclick="fmCovSel(\''+ek(R.key)+'\')">Details</button> <button class="fm-btn sm primary" onclick="fmCovOpen(\''+ek(R.key)+'\')">Add fitment</button>')+'</td></tr>';}).join('')+'</tbody></table>';
+  // 2) one platform in detail
+  var keysBy=all.filter(function(R){return R.n||R.s;}).sort(function(a,b){return b.s-a.s||b.n-a.n||a.key.localeCompare(b.key);});
+  var sel=C.sel&&rows[C.sel]?rows[C.sel]:(opp[0]||keysBy[0]);
+  var det='';
+  if(sel){var mx=Math.max.apply(null,depts.map(function(c){return sel.cats[c]?Object.keys(sel.cats[c]).length:0;}).concat([1]));
+    det='<div class="fm-cov-pick"><select class="fm-in" onchange="fmCovSel(this.value)">'+keysBy.map(function(R){return '<option value="'+fmEsc(R.key)+'"'+(R===sel?' selected':'')+'>'+fmEsc(R.key)+' ('+R.n+' parts'+(R.s?', '+R.s+' searches':'')+')</option>';}).join('')+'</select>'
+      +'<button class="fm-btn primary" onclick="fmCovOpen(\''+ek(sel.key)+'\')">Add fitment for '+fmEsc(sel.key)+'</button></div>'
+      +'<div class="fm-cov-bars">'+depts.map(function(c){var hs=sel.cats[c]?Object.keys(sel.cats[c]):[],n=hs.length;
+        return '<div class="fm-cov-row'+(n?'':' gap')+'"><div class="fm-cov-name">'+fmEsc(c)+'</div><div class="fm-cov-track"><div class="fm-cov-fill" style="width:'+(n?Math.max(4,Math.round(100*n/mx)):0)+'%"></div></div><div class="fm-cov-n">'+(n||'None yet')+'</div>'
+          +(n?'<div class="fm-cov-list">'+hs.slice(0,4).map(function(h){var p=fmProd(h);return '<a href="#" onclick="fmPick(\''+fmEsc(h).replace(/'/g,"\\'")+'\');return false">'+fmEsc((p&&p.title||h).replace(/^TGK Motorsport\s+/i,'').slice(0,46))+'</a>';}).join('')+(n>4?'<span class="fm-tdim">+'+(n-4)+' more</span>':'')+'</div>':'')+'</div>';}).join('')+'</div>';}
+  // 3) full grid (collapsed), with search, make and gaps-only filters. Filters repaint only #fm-cov-grid, so typing never loses the cursor.
+  FM._covC={keysBy:keysBy,depts:depts};
+  var mk=C.mk||'',gonly=!!C.gaps,makes=Array.from(new Set(all.map(function(R){return R.make;}))).sort(),G0=fmCovGridHtml();
+  var grid='<div class="fm-cov-filters"><input id="fm-cov-q" class="fm-in" placeholder="Find a platform (e.g. C7, RS7)" value="'+fmEsc(C.q||'')+'" oninput="fmCovFilter(\'q\',this.value)">'
+    +'<select class="fm-in" onchange="fmCovFilter(\'mk\',this.value)"><option value="">All makes</option>'+makes.map(function(m){return '<option'+(m===mk?' selected':'')+'>'+fmEsc(m)+'</option>';}).join('')+'</select>'
+    +'<label class="fm-tdim"><input type="checkbox"'+(gonly?' checked':'')+' onchange="fmCovFilter(\'gaps\',this.checked)"> Only platforms with gaps</label><span id="fm-cov-gn" class="fm-tdim">'+G0.count+' platforms</span></div>'
+    +'<div class="fm-tablewrap" id="fm-cov-grid">'+G0.html+'</div>';
+  return '<div class="fm-pad">'
+    +'<div class="fm-cov-tiles">'+tile(withParts.length,'platforms with parts')+tile(missed.length,'searched platforms with no parts',missed.length>0)+tile(totalS,'vehicle searches (90 days)')+tile(depts.length,'departments')+'</div>'
+    +'<div class="fm-card"><div class="fm-cardh"><b>Opportunities: what to add next</b><span class="fm-tdim" style="font-size:12.5px">Platforms shoppers search for, ranked by demand against how many parts we list. Missing departments show where there is nothing for that car yet.</span></div>'+oppHtml+'</div>'
+    +'<div class="fm-card" id="fm-covdetail"><div class="fm-cardh"><b>Platform detail</b><span class="fm-tdim" style="font-size:12.5px">What we list for one platform, by department. Click a product to open it.</span></div>'+(det||'<div class="fm-colhint">No platforms yet.</div>')+'</div>'
+    +'<details class="fm-card fm-cov-all"'+(C.open?' open':'')+' ontoggle="FM.cov.open=this.open"><summary><b>Full grid: every platform &times; department</b> <span class="fm-tdim">(click a row or cell for details)</span></summary>'+grid+'</details>'
+    +fmRenderPlatforms()+'</div>';
 }
 // ===================== Platform pages (Google-friendly Shopify collections) =====================
 function fmPlatformSources(){ // saved groups + catalog Platform values
@@ -23781,6 +23907,7 @@ function fmCatSuggest(M,p){
 }
 function fmCatTree(){
   var nodes={};
+  (FM.catx||[]).forEach(function(r){var b=fmCatNorm(r.path).split('>');for(var i=1;i<=b.length;i++){var k=b.slice(0,i).join('>');nodes[k]=nodes[k]||{path:k,depth:i,h:{}};}});
   FM.products.forEach(function(p){fmCats(p).map(fmCatNorm).forEach(function(c){var b=c.split('>');for(var i=1;i<=b.length;i++){var k=b.slice(0,i).join('>');(nodes[k]=nodes[k]||{path:k,depth:i,h:{}}).h[p.handle]=1;}});});
   return Object.keys(nodes).map(function(k){return nodes[k];}).sort(function(a,b){return a.path.localeCompare(b.path);});
 }
@@ -23798,9 +23925,9 @@ async function fmCatApply(handle,cat,mode){ // mode: 'set' (uncategorised), 'mov
 }
 window.fmCatPick=function(h,mode){var sel=document.getElementById('fmcs-'+fmCatSlug(h));fmCatApply(h,sel?sel.value:'',mode);};
 window.fmCatAcceptAll=async function(){
-  var M=fmCatModel(),todo=FM.products.filter(function(p){return !fmCats(p).length;}).map(function(p){var s=fmCatSuggest(M,p)[0];return s&&s.p>=0.6?{p:p,c:s.c}:null;}).filter(Boolean);
-  if(!todo.length){fmToast('No confident suggestions to accept',true);return;}
-  if(!confirm('File '+todo.length+' product'+(todo.length!==1?'s':'')+' under their suggested category?\n\n'+todo.map(function(t){return '- '+(t.p.title||t.p.handle).slice(0,60)+'  ->  '+fmCatLabel(t.c);}).join('\n')))return;
+  var M=fmCatModel(),todo=FM.products.filter(function(p){return !fmCats(p).length;}).map(function(p){var s=fmCatSuggest(M,p)[0];return s&&s.p>=0.5?{p:p,c:s.c,pr:s.p}:null;}).filter(Boolean);
+  if(!todo.length){fmToast('No suggestions at 50% or better to accept',true);return;}
+  if(!confirm('File '+todo.length+' product'+(todo.length!==1?'s':'')+' under their suggested category?\n\n'+todo.map(function(t){return '- '+(t.p.title||t.p.handle).slice(0,60)+'  ->  '+fmCatLabel(t.c)+' ('+Math.round(t.pr*100)+'%)';}).join('\n')))return;
   await fmDo(async function(){
     await fmPool(todo,6,function(t){var v=fmCatNorm(t.c)+(String(t.p.category||'').toLowerCase().indexOf('all categories')>=0?',All Categories':'');
       return fmReq('fit_products?handle=eq.'+encodeURIComponent(t.p.handle),{method:'PATCH',body:JSON.stringify({category:v,updated_at:new Date().toISOString()})}).then(function(){t.p.category=v;});});
@@ -23827,43 +23954,152 @@ async function fmCatSync(paths){
 }
 window.fmCatSync=fmCatSync;
 window.fmCatSyncAll=function(){fmCatSync(fmCatTree().map(function(n){return n.path;}));};
+// ----- add / rename (move) / delete categories. Renaming or deleting rewrites every affected product's category
+// in one step (with undo + history). A new category can exist before it has products (fit_categories table).
+function fmCatRewrite(fn){ // fn(path) -> new path | null (remove) | undefined (keep); returns [{p,val}]
+  var out=[];FM.products.forEach(function(p){
+    var raw=String(p.category||'').split(',').map(function(x){return x.trim();}).filter(Boolean),ch=false;
+    var next=[];raw.forEach(function(c){if(c.toLowerCase()==='all categories'){next.push(c);return;}var r=fn(fmCatNorm(c));if(r===undefined){next.push(c);return;}ch=true;if(r)next.push(r);});
+    next=next.filter(function(x,i,a){return a.indexOf(x)===i;});
+    if(ch)out.push({p:p,val:next.join(',')||null});});
+  return out;
+}
+async function fmCatSave(todo,msg){
+  await fmDo(async function(){
+    await fmPool(todo,6,function(t){return fmReq('fit_products?handle=eq.'+encodeURIComponent(t.p.handle),{method:'PATCH',body:JSON.stringify({category:t.val,updated_at:new Date().toISOString()})}).then(function(){t.p.category=t.val;});});
+    fmToast(msg);
+  });
+}
+function fmCatUnder(path,c){return c===path||c.indexOf(path+'>')===0;}
+window.fmCatAdd=async function(parent){
+  if(FM.catx===null){fmToast('Run fitment_9_categories.sql in Supabase first (adding empty categories needs it)',true);return;}
+  var name=(prompt(parent?'New sub-category under "'+fmCatLabel(parent)+'":':'New department name (e.g. Lighting):')||'').trim().replace(/[>,]/g,' ').replace(/\s+/g,' ');if(!name)return;
+  var path=parent?parent+'>'+name:name;
+  if(fmCatTree().some(function(n){return n.path.toLowerCase()===path.toLowerCase();})){fmToast('"'+fmCatLabel(path)+'" already exists',true);return;}
+  try{await _fmRawReq('fit_categories',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({path:path,created_by:FM.me})});
+    FM.catx=(FM.catx||[]).concat([{path:path}]);fmToast('Added "'+fmCatLabel(path)+'" - file products into it from Products (category chips or bulk "Add to category")');fmRender();}
+  catch(e){fmToast('Could not add: '+(e.message||e),true);}
+};
+window.fmCatRename=async function(path){
+  var to=(prompt('Rename or move "'+fmCatLabel(path)+'".\n\nUse > for levels, e.g. "Suspension>Sway Bars". Everything under it moves too.',path.replace(/>/g,' > '))||'').trim();
+  if(!to)return;to=fmCatNorm(to.replace(/,/g,' '));if(!to||to===path)return;
+  if(fmCatUnder(path,to)){fmToast('A category can\'t be moved inside itself',true);return;}
+  var todo=fmCatRewrite(function(c){return fmCatUnder(path,c)?to+c.slice(path.length):undefined;});
+  if(!confirm('Rename "'+fmCatLabel(path)+'" to "'+fmCatLabel(to)+'"?\n\n'+todo.length+' product'+(todo.length!==1?'s':'')+' will be updated. The website catalog follows right away.'+((FM.ppages||[]).some(function(r){return r.slug===fmCatSlug(path);})?'\n\nIts Shopify collection keeps the old name - press Sync on the new category afterwards and delete the old collection in Shopify.':'')))return;
+  if(todo.length)await fmCatSave(todo,'Renamed "'+fmCatLabel(path)+'" to "'+fmCatLabel(to)+'" on '+todo.length+' product'+(todo.length!==1?'s':''));
+  if(FM.catx){var mine=FM.catx.filter(function(r){return fmCatUnder(path,fmCatNorm(r.path));});
+    for(var i=0;i<mine.length;i++){var np=to+fmCatNorm(mine[i].path).slice(path.length);
+      try{await _fmRawReq('fit_categories?path=eq.'+encodeURIComponent(mine[i].path),{method:'DELETE'});await _fmRawReq('fit_categories',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({path:np,created_by:FM.me})});mine[i].path=np;}catch(e){}}}
+  fmRender();
+};
+window.fmCatDelete=async function(path){
+  var parent=path.indexOf('>')>0?path.slice(0,path.lastIndexOf('>')):'';
+  var n=FM.products.filter(function(p){return fmCats(p).map(fmCatNorm).some(function(c){return fmCatUnder(path,c);});}).length;
+  var to='';
+  if(n){to=prompt('Delete "'+fmCatLabel(path)+'" (and anything under it).\n\n'+n+' product'+(n!==1?'s are':' is')+' in it. Move '+(n!==1?'them':'it')+' to which category?\n\nLeave blank to just remove the category from '+(n!==1?'them':'it')+'.',parent.replace(/>/g,' > '));
+    if(to===null)return;to=fmCatNorm(String(to).replace(/,/g,' '));if(to&&fmCatUnder(path,to)){fmToast('Pick a category outside the one being deleted',true);return;}}
+  var todo=fmCatRewrite(function(c){return fmCatUnder(path,c)?(to||null):undefined;});
+  var orphans=todo.filter(function(t){return !String(t.val||'').split(',').some(function(x){return x.trim()&&x.trim().toLowerCase()!=='all categories';});}).length;
+  if(!confirm('Delete "'+fmCatLabel(path)+'"?\n\n'+(n?(to?n+' product'+(n!==1?'s':'')+' move to "'+fmCatLabel(to)+'".':n+' product'+(n!==1?'s':'')+' lose this category.'):'It has no products.')+(orphans?'\n\nWarning: '+orphans+' product'+(orphans!==1?'s':'')+' will have NO category and won\'t show in the website catalog until filed again (Categories > Smart sort).':'')))return;
+  if(todo.length)await fmCatSave(todo,'Deleted "'+fmCatLabel(path)+'"'+(to?' - products moved to "'+fmCatLabel(to)+'"':''));
+  if(FM.catx){var mine=FM.catx.filter(function(r){return fmCatUnder(path,fmCatNorm(r.path));});
+    for(var i=0;i<mine.length;i++){try{await _fmRawReq('fit_categories?path=eq.'+encodeURIComponent(mine[i].path),{method:'DELETE'});}catch(e){}}
+    FM.catx=FM.catx.filter(function(r){return mine.indexOf(r)<0;});}
+  if(!todo.length)fmToast('Deleted "'+fmCatLabel(path)+'"');
+  fmRender();
+};
+window.fmCatProducts=function(path){FM.pcat=path;FM.psel={};FM.tab='products';FM.cur=null;fmRender();};
+// ----- Categories tab: three views (Manage / Smart sort / Possibly misfiled). The header stays put; only the body scrolls.
+function fmCx(){return FM.cx=FM.cx||{sub:'manage',q:'',open:{},stale:false};}
+window.fmCatSub=function(sub){fmCx().sub=sub;fmRender();};
+window.fmCatToggle=function(path){var c=fmCx();c.open[path]=!c.open[path];fmCatPaint();};
+window.fmCatOpenAll=function(on){var c=fmCx();c.open={};if(on)fmCatTree().forEach(function(n){c.open[n.path]=true;});fmCatPaint();};
+window.fmCatFind=function(v){fmCx().q=v;fmCatPaint();};
+window.fmCatStaleOnly=function(on){fmCx().stale=!!on;fmCatPaint();};
+function fmCatHL(name,q){if(!q)return fmEsc(name);var i=name.toLowerCase().indexOf(q);return i<0?fmEsc(name):fmEsc(name.slice(0,i))+'<mark>'+fmEsc(name.slice(i,i+q.length))+'</mark>'+fmEsc(name.slice(i+q.length));}
+function fmCatTreeInfo(){ // everything the tree needs, in one place
+  var c=fmCx(),q=c.q.trim().toLowerCase(),nodes=fmCatTree(),rec={};(FM.ppages||[]).forEach(function(r){rec[r.slug]=r;});
+  var kids={};nodes.forEach(function(n){var par=n.path.indexOf('>')>0?n.path.slice(0,n.path.lastIndexOf('>')):'';(kids[par]=kids[par]||[]).push(n);});
+  Object.keys(kids).forEach(function(k){kids[k].sort(function(a,b){return a.path.split('>').pop().localeCompare(b.path.split('>').pop());});});
+  var state=function(n){var r=rec[fmCatSlug(n.path)],cnt=Object.keys(n.h).length;return !r?'none':(r.products!=null&&r.products!==cnt?'stale':'ok');};
+  var label=function(pth){return pth.split('>').map(function(x){return x.trim();}).join(' \u203a ').toLowerCase();};
+  var vis={};
+  (function mark(list,anc){var any=false;list.forEach(function(n){var self=!q||label(n.path).indexOf(q)>=0,pass=anc||self,sub=mark(kids[n.path]||[],pass),ok=pass&&(!c.stale||state(n)!=='ok');vis[n.path]=ok||sub;if(vis[n.path])any=true;});return any;})(kids['']||[],false);
+  var counts={none:0,stale:0,ok:0};nodes.forEach(function(n){counts[state(n)]++;});
+  return {c:c,q:q,nodes:nodes,rec:rec,kids:kids,state:state,vis:vis,counts:counts,depts:(kids['']||[]).length};
+}
+function fmCatTreeHtml(){
+  var I=fmCatTreeInfo(),c=I.c,q=I.q,badge={ok:'<span class="fm-sb fm-sb--ok" title="Shopify has the same number of products">Synced</span>',none:'<span class="fm-sb" title="No Shopify collection yet">Not in Shopify</span>',stale:'<span class="fm-sb fm-sb--warn" title="Products changed since the last sync">Out of date</span>'};
+  var shown=0;
+  function rows(list,depth){return list.filter(function(n){return I.vis[n.path];}).map(function(n){
+    shown++;var ks=(I.kids[n.path]||[]),vk=ks.filter(function(k){return I.vis[k.path];}),has=ks.length>0,open=has&&(c.open[n.path]||((q||c.stale)&&vk.length>0)),cnt=Object.keys(n.h).length,a=fmEsc(n.path).replace(/'/g,"\\'"),st=I.state(n),name=n.path.split('>').pop();
+    var r=I.rec[fmCatSlug(n.path)];
+    return '<div class="fm-cx-row fm-cx-d'+Math.min(depth,3)+'" data-path="'+fmEsc(n.path)+'">'
+      +(has?'<button class="fm-cx-chev'+(open?' open':'')+'" aria-expanded="'+(open?'true':'false')+'" aria-label="'+(open?'Collapse ':'Expand ')+fmEsc(name)+'" onclick="fmCatToggle(\''+a+'\')"></button>':'<span class="fm-cx-chev fm-cx-chev--none"></span>')
+      +'<span class="fm-cx-name">'+fmCatHL(name,q)+'</span>'
+      +'<span class="fm-cx-count" title="'+cnt+' product'+(cnt!==1?'s':'')+'">'+cnt+'</span>'
+      +(has&&!open?'<span class="fm-cx-sub">'+ks.length+' sub-categor'+(ks.length===1?'y':'ies')+'</span>':'')
+      +'<span class="fm-cx-shop">'+badge[st]+(r&&r.collection_handle?' <a class="fm-tdim" href="https://tgkmotorsport.com/collections/'+fmEsc(r.collection_handle)+'" target="_blank" rel="noopener" title="Open the Shopify collection">/'+fmEsc(r.collection_handle)+'</a>':'')+'</span>'
+      +'<span class="fm-cx-actions"><button class="fm-btn sm" onclick="fmCatProducts(\''+a+'\')" title="Show these products">Products</button><button class="fm-btn sm" onclick="fmCatAdd(\''+a+'\')" title="Add a sub-category">+ Sub</button><button class="fm-btn sm" onclick="fmCatRename(\''+a+'\')" title="Rename or move">Rename</button><button class="fm-btn sm danger" onclick="fmCatDelete(\''+a+'\')" title="Delete this category">Delete</button><button class="fm-btn sm" onclick="fmCatSync([\''+a+'\'])" title="Create or update the Shopify collection">'+(st==='none'?'Create':'Sync')+'</button></span></div>'
+      +(open?'<div class="fm-cx-kids">'+rows(ks,depth+1)+'</div>':'');}).join('');}
+  var html=rows(I.kids['']||[],1);
+  if(!shown)html='<div class="fm-empty">'+(q||c.stale?'No categories match'+(q?' "'+fmEsc(c.q)+'"':'')+(c.stale?' that need syncing':'')+'. <a href="#" onclick="fmCatFind(\'\');fmCatStaleOnly(false);var i=document.getElementById(\'fm-cx-q\');if(i)i.value=\'\';return false">Clear the filter</a>':'No categories yet. Use <b>+ New department</b> to start.')+'</div>';
+  var need=I.counts.none+I.counts.stale;
+  return {html:html,sum:I.depts+' department'+(I.depts!==1?'s':'')+' \u00b7 '+I.nodes.length+' categories \u00b7 '+I.counts.ok+' synced'+(I.counts.stale?' \u00b7 '+I.counts.stale+' out of date':'')+(I.counts.none?' \u00b7 '+I.counts.none+' not in Shopify':''),need:need};
+}
+function fmCatPaint(){ // repaint only the tree (keeps the search box focused and the scroll position)
+  var el=document.getElementById('fm-cx-tree');if(!el)return;var r=fmCatTreeHtml();el.innerHTML=r.html;
+  var s=document.getElementById('fm-cx-sum');if(s)s.textContent=r.sum;
+  var b=document.getElementById('fm-cx-syncall');if(b){b.textContent=r.need?'Sync all to Shopify ('+r.need+')':'All synced \u2713';b.disabled=!r.need;}
+}
+function fmCatSortRow(M,opts,p,mode,cur){
+  var sg=fmCatSuggest(M,p),top=sg[0],lv=!top?'':top.p>=0.8?['Confident','hi']:top.p>=0.5?['Likely','mid']:['Unsure - please check','lo'];
+  var sel='<select id="fmcs-'+fmCatSlug(p.handle)+'" class="fm-in" aria-label="Category for '+fmEsc(p.title||p.handle)+'">'+sg.map(function(x){return '<option value="'+fmEsc(x.c)+'">'+fmEsc(fmCatLabel(x.c))+' ('+Math.round(x.p*100)+'%)</option>';}).join('')
+    +'<option disabled>----------</option>'+opts.filter(function(o){return !sg.some(function(x){return x.c===o;});}).map(function(o){return '<option value="'+fmEsc(o)+'">'+fmEsc(fmCatLabel(o))+'</option>';}).join('')+'</select>';
+  var h=fmEsc(p.handle);
+  return '<div class="fm-sortrow"><div class="fm-sr-th">'+fmThumb(p.handle)+'</div><div class="fm-sr-main"><b>'+fmEsc(p.title||p.handle)+'</b><div class="fm-tdim">'+fmEsc(p.sku||'')+(cur?' &middot; now in <b>'+fmEsc(cur)+'</b>':'')+'</div></div>'
+    +'<div class="fm-sr-pick">'+sel+(lv?'<span class="fm-conf fm-conf--'+lv[1]+'">'+lv[0]+'</span>':'')+'</div>'
+    +'<div class="fm-sr-act"><button class="fm-btn primary" onclick="fmCatPick(\''+h+'\',\''+mode+'\')">'+(mode==='move'?'Move':'File')+'</button>'+(mode==='move'?'<button class="fm-btn" onclick="fmCatPick(\''+h+'\',\'add\')">Add as well</button>':'')+'</div></div>';
+}
 function fmRenderCategories(){
-  var M=fmCatModel(),opts=Object.keys(M.docs).sort();
-  var unc=FM.products.filter(function(p){return !fmCats(p).length;});
-  var row=function(p,mode,cur){var sg=fmCatSuggest(M,p),top=sg[0];
-    var sel='<select id="fmcs-'+fmCatSlug(p.handle)+'" class="fm-in" style="max-width:280px">'+(sg.map(function(x){return '<option value="'+fmEsc(x.c)+'">'+fmEsc(fmCatLabel(x.c))+' ('+Math.round(x.p*100)+'%)</option>';}).join(''))
-      +'<option disabled>----------</option>'+opts.filter(function(o){return !sg.some(function(x){return x.c===o;});}).map(function(o){return '<option value="'+fmEsc(o)+'">'+fmEsc(fmCatLabel(o))+'</option>';}).join('')+'</select>';
-    return '<tr><td style="width:56px">'+fmThumb(p.handle)+'</td><td><b>'+fmEsc(p.title||p.handle)+'</b><div class="fm-tdim" style="font-size:12px">'+fmEsc(p.sku||'')+(cur?' &middot; now: '+fmEsc(cur):'')+'</div></td>'
-      +'<td>'+sel+(top?'<div class="fm-tdim" style="font-size:12px;margin-top:3px">'+(top.p>=0.8?'Confident':top.p>=0.5?'Likely':'Unsure - please check')+'</div>':'')+'</td>'
-      +'<td style="white-space:nowrap"><button class="fm-btn primary sm" onclick="fmCatPick(\''+fmEsc(p.handle)+'\',\''+mode+'\')">'+(mode==='move'?'Move':'File')+'</button>'+(mode==='move'?' <button class="fm-btn sm" onclick="fmCatPick(\''+fmEsc(p.handle)+'\',\'add\')">Add as well</button>':'')+'</td></tr>';};
-  // possibly misfiled: title points somewhere else with high confidence
+  var c=fmCx(),M=fmCatModel(),opts=Object.keys(M.docs).sort(),unc=FM.products.filter(function(p){return !fmCats(p).length;});
   var mis=FM.products.filter(function(p){var cs=fmCats(p).map(fmCatNorm);if(!cs.length)return false;var t=fmCatSuggest(M,p)[0];
-    return t&&t.p>=0.9&&!cs.some(function(c){return c===t.c||t.c.indexOf(c+'>')===0||c.indexOf(t.c+'>')===0;});}).slice(0,40);
-  var tree=fmCatTree(),rec={};(FM.ppages||[]).forEach(function(r){rec[r.slug]=r;});
-  var nSynced=tree.filter(function(n){return rec[fmCatSlug(n.path)];}).length;
-  return '<div class="fm-card"><div class="fm-cardh"><b>Smart sort: products with no category ('+unc.length+')</b><span class="fm-tdim" style="font-size:12.5px">Suggestions come from the titles and SKU families of the '+M.n+' products already categorised. Check the photo, then File.</span>'
-      +(unc.length?'<button class="fm-btn" style="margin-left:auto" onclick="fmCatAcceptAll()">Accept all confident</button>':'')+'</div>'
-      +(unc.length?'<table class="fm-table"><tbody>'+unc.map(function(p){return row(p,'set');}).join('')+'</tbody></table>':'<div class="fm-colhint">Every product has a category.</div>')+'</div>'
-    +'<div class="fm-card"><div class="fm-cardh"><b>Possibly misfiled ('+mis.length+')</b><span class="fm-tdim" style="font-size:12.5px">The title strongly points to a different category. Move it, add the category as well, or leave it.</span></div>'
-      +(mis.length?'<table class="fm-table"><tbody>'+mis.map(function(p){return row(p,'move',fmCats(p).map(fmCatLabel).join(', '));}).join('')+'</tbody></table>':'<div class="fm-colhint">Nothing looks misfiled.</div>')+'</div>'
-    +'<div class="fm-card"><div class="fm-cardh"><b>Categories on the website and in Shopify</b><span class="fm-tdim" style="font-size:12.5px">The website catalog uses these categories directly. Sync makes each one a real Shopify collection too (search, filters, menus, Google) - '+nSynced+' of '+tree.length+' synced.</span>'
-      +'<button class="fm-btn primary" style="margin-left:auto" onclick="fmCatSyncAll()">Sync all to Shopify</button></div>'
-      +(FM.ppages===null?'<div class="fm-msg small">Run <b>fitment_8_staff.sql</b> in Supabase to turn on Shopify sync.</div>':'')
-      +'<table class="fm-table"><thead><tr><th>Category</th><th class="fm-tnum">Products</th><th>Shopify collection</th><th></th></tr></thead><tbody>'
-      +tree.map(function(n){var r=rec[fmCatSlug(n.path)],cnt=Object.keys(n.h).length;
-        return '<tr><td style="padding-left:'+(8+(n.depth-1)*22)+'px">'+(n.depth===1?'<b>':'')+fmEsc(n.path.split('>').pop())+(n.depth===1?'</b>':'')+'</td><td class="fm-tnum">'+cnt+'</td>'
-          +'<td>'+(r?'<span class="fm-tdim">/collections/'+fmEsc(r.collection_handle||'')+' &middot; '+(r.products!=null?r.products+' products':'')+(r.products!=null&&r.products!==cnt?' <b style="color:#b45309">(out of date)</b>':'')+'</span>':'<span class="fm-tdim">Not in Shopify yet</span>')+'</td>'
-          +'<td><button class="fm-btn sm" onclick="fmCatSync([\''+fmEsc(n.path).replace(/'/g,"\\'")+'\'])">'+(r?'Sync':'Create')+'</button></td></tr>';}).join('')
-      +'</tbody></table></div>';
+    return t&&t.p>=0.9&&!cs.some(function(x){return x===t.c||t.c.indexOf(x+'>')===0||x.indexOf(t.c+'>')===0;});}).slice(0,60);
+  var nCats=fmCatTree().length,tab=function(id,label,n,warn){return '<button role="tab" aria-selected="'+(c.sub===id)+'" class="'+(c.sub===id?'on':'')+'" onclick="fmCatSub(\''+id+'\')">'+label+' <span class="n'+(warn&&n?' warn':'')+'">'+n+'</span></button>';};
+  var head='<div class="fm-cx-head"><div class="fm-subtabs" role="tablist">'+tab('manage','Manage categories',nCats,false)+tab('sort','Smart sort',unc.length,true)+tab('misfiled','Possibly misfiled',mis.length,false)+'</div>';
+  var body='';
+  if(c.sub==='manage'){
+    var T=fmCatTreeHtml();
+    head+='<div class="fm-cx-tools"><input id="fm-cx-q" class="fm-in" type="search" aria-label="Search categories" placeholder="Find a category (e.g. Sway Bars)" value="'+fmEsc(c.q)+'" oninput="fmCatFind(this.value)" onkeydown="if(event.key===\'Escape\'){this.value=\'\';fmCatFind(\'\');}">'
+      +'<button class="fm-btn primary" onclick="fmCatAdd(\'\')">+ New department</button><button class="fm-btn" onclick="fmCatOpenAll(true)">Expand all</button><button class="fm-btn" onclick="fmCatOpenAll(false)">Collapse all</button>'
+      +'<label class="fm-chk"><input type="checkbox"'+(c.stale?' checked':'')+' onchange="fmCatStaleOnly(this.checked)"> Needs sync only</label>'
+      +'<button id="fm-cx-syncall" class="fm-btn'+(T.need?' primary':'')+'" style="margin-left:auto"'+(T.need?'':' disabled')+' onclick="fmCatSyncAll()">'+(T.need?'Sync all to Shopify ('+T.need+')':'All synced \u2713')+'</button></div>'
+      +'<div class="fm-cx-help"><span>Categories live on each product and the website catalog uses them directly. <b>Sync</b> creates a matching Shopify collection (search, filters, menus, Google). Hover a row for its actions.</span><span id="fm-cx-sum" class="fm-cx-sum">'+T.sum+'</span></div>';
+    body=(FM.catx===null?'<div class="fm-msg small">Run <b>fitment_9_categories.sql</b> in Supabase to add new (empty) categories. Renaming and deleting already work.</div>':'')
+      +(FM.ppages===null?'<div class="fm-msg small">Run <b>fitment_8_staff.sql</b> in Supabase to turn on Shopify sync.</div>':'')+'<div id="fm-cx-tree">'+T.html+'</div>';
+  }else if(c.sub==='sort'){
+    var conf=unc.filter(function(p){var s=fmCatSuggest(M,p)[0];return s&&s.p>=0.5;}).length; // same 50% line as the 'Likely' pill
+    head+='<div class="fm-cx-tools"><span class="fm-cx-intro">Suggestions come from the titles and SKU families of the '+M.n+' products already categorised. Check the photo, then <b>File</b>.</span>'
+      +(unc.length?'<button class="fm-btn primary" style="margin-left:auto"'+(conf?'':' disabled')+' onclick="fmCatAcceptAll()">Accept all Confident &amp; Likely ('+conf+')</button>':'')+'</div>';
+    body=unc.length?'<div class="fm-sortlist">'+unc.map(function(p){return fmCatSortRow(M,opts,p,'set');}).join('')+'</div>':'<div class="fm-empty fm-empty--ok"><b>\u2713 Every product has a category.</b><br>New products without one will show up here, with a suggested category.</div>';
+  }else{
+    head+='<div class="fm-cx-tools"><span class="fm-cx-intro">The title strongly points to a different category than the one it is in. <b>Move</b> it, <b>Add as well</b>, or just leave it.</span></div>';
+    body=mis.length?'<div class="fm-sortlist">'+mis.map(function(p){return fmCatSortRow(M,opts,p,'move',fmCats(p).map(fmCatLabel).join(', '));}).join('')+'</div>':'<div class="fm-empty fm-empty--ok"><b>\u2713 Nothing looks misfiled.</b></div>';
+  }
+  return '<div class="fm-cx">'+head+'</div><div class="fm-pad fm-cx-body">'+body+'</div></div>'; // head opened .fm-cx-head; '</div>' closes it, then the scrolling body, then .fm-cat
 }
 function fmRenderPlatforms(){
   var src=fmPlatformSources();
-  return '<div class="fm-card"><div class="fm-cardh"><b>Platform pages for Google</b><span class="fm-tdim" style="font-size:12.5px">Each saved group or catalog Platform can become a real Shopify collection page (e.g. /collections/audi-c7-rs7-parts) that Google can index. Press Sync after fitment changes.</span></div>'
+  var nSyn=src.filter(function(o){return o.rec;}).length;
+  return '<details class="fm-card fm-plat"'+((FM.cov&&FM.cov.platOpen)?' open':'')+' ontoggle="FM.cov=FM.cov||{};FM.cov.platOpen=this.open"><summary class="fm-cardh"><b>Platform pages for Google</b><span class="fm-tdim" style="font-size:12.5px">'+src.length+' platform'+(src.length!==1?'s':'')+' &middot; '+nSyn+' with a Shopify page &middot; click to open</span></summary>'
+    +'<div class="fm-tdim" style="font-size:12.5px;padding:2px 14px 8px">Each saved group or catalog Platform can become a real Shopify collection page (e.g. /collections/audi-c7-rs7-parts) that Google can index. Press Sync after fitment changes.</div>'
+    +(src.length>8?'<div style="padding:0 14px 8px"><input class="fm-in" style="min-width:260px" type="search" placeholder="Find a platform page" aria-label="Find a platform page" oninput="fmPlatFind(this.value)"></div>':'')
     +(FM.ppages===null?'<div class="fm-msg small">Run <b>fitment_8_staff.sql</b> in Supabase to turn this on.</div>':!src.length?'<div class="fm-colhint">Save a vehicle group (Products &gt; a product &gt; Groups) or set a Platform on catalog vehicles first.</div>'
-    :'<table class="fm-table"><thead><tr><th>Platform</th><th class="fm-tnum">Vehicles</th><th class="fm-tnum">Products</th><th>Shopify page</th><th></th></tr></thead><tbody>'
+    :'<div class="fm-platwrap"><table class="fm-table"><thead><tr><th>Platform</th><th class="fm-tnum">Vehicles</th><th class="fm-tnum">Products</th><th>Shopify page</th><th></th></tr></thead><tbody>'
       +src.map(function(o){return '<tr><td><b>'+fmEsc(o.title)+'</b></td><td class="fm-tnum">'+o.vs.length+'</td><td class="fm-tnum">'+o.handles.length+'</td><td>'+(o.rec&&o.rec.collection_handle?'<a href="https://tgkmotorsport.com/collections/'+fmEsc(o.rec.collection_handle)+'" target="_blank" rel="noopener">/collections/'+fmEsc(o.rec.collection_handle)+'</a> <span class="fm-tdim">synced '+fmEsc(new Date(o.rec.synced_at).toLocaleDateString())+(o.rec.products!==o.handles.length?' - '+o.handles.length+' now, '+o.rec.products+' last sync':'')+'</span>':'<span class="fm-tdim">not created yet</span>')+'</td>'
-        +'<td style="text-align:right"><button class="fm-btn'+(o.rec?'':' primary')+'" onclick="fmSyncPlatform('+fmJs(o.slug).replace(/"/g,'&quot;')+')"'+(o.handles.length?'':' disabled')+'>'+(o.rec?'Sync':'Create page')+'</button></td></tr>';}).join('')+'</tbody></table>')+'</div>';
+        +'<td style="text-align:right"><button class="fm-btn'+(o.rec?'':' primary')+'" onclick="fmSyncPlatform('+fmJs(o.slug).replace(/"/g,'&quot;')+')"'+(o.handles.length?'':' disabled')+'>'+(o.rec?'Sync':'Create page')+'</button></td></tr>';}).join('')+'</tbody></table></div>')+'</details>';
 }
+window.fmPlatFind=function(v){var q=String(v||'').toLowerCase().trim();[].forEach.call(document.querySelectorAll('.fm-platwrap tbody tr'),function(tr){tr.style.display=(!q||tr.textContent.toLowerCase().indexOf(q)>=0)?'':'none';});};
 window.fmSyncPlatform=fmSyncPlatform;
 // ===================== Supplier spreadsheets: map their columns to ours =====================
 var FM_MAPF=[['website_page','Website page (handle)'],['sku','SKU'],['make','Make *'],['model','Model *'],['years','Years, e.g. 2012-2018'],['year_from','Year from'],['year_to','Year to'],['engine','Engine'],['chassis','Chassis'],['engine_code','Engine code'],['transmission','Transmission'],['drivetrain','Drive'],['variant_sku','Variant SKU'],['notes','Notes']];
@@ -23947,6 +24183,7 @@ function fmOpen(){fmLoad(false);fmRender();}
 async function fmLoadGroups(){
   try{FM.groups=await fmAll('fit_vehicle_groups?select=*&order=name');FM.noGroups=false;}catch(e){FM.groups=[];FM.noGroups=true;}
   try{FM.ppages=await fmAll('fit_platform_pages?select=*&order=title');}catch(e){FM.ppages=null;}
+  try{FM.catx=await fmAll('fit_categories?select=path&order=path');}catch(e){FM.catx=null;}
   if(FM.loaded)fmRender();
 }
 function fmGroupVehicles(g){var ids={};(g.vehicle_ids||[]).forEach(function(i){ids[i]=1;});return FM.vehicles.filter(function(v){return ids[v.id];});}
