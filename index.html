@@ -2079,6 +2079,8 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-mapgrid .fm-cl{justify-content:space-between}
 [data-theme="dark"] .fm-rev--verified{background:rgba(16,185,129,.18);color:#6ee7b7}[data-theme="dark"] .fm-rev--needs_review{background:rgba(245,158,11,.18);color:#fcd34d}
 [data-theme="dark"] .fm-cov0{background:rgba(220,38,38,.15);color:#fca5a5}
+.fm-authbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:10px 22px 0;padding:10px 14px;border:1px solid #f5c26b;border-left:4px solid #d97706;background:#fffbeb;color:#7c2d12;font-size:14px;border-radius:4px}
+[data-theme="dark"] .fm-authbar{background:rgba(217,119,6,.12);color:#fcd34d;border-color:rgba(217,119,6,.5)}
 </style>
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -17364,7 +17366,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v4.8';
+var TGK_CC_VERSION='v5.0';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -23425,7 +23427,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
 <script>
 /* ==================================================================================================
-   FITMENT (v4.8) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
+   FITMENT (v5.0) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
    and the dealer price list read (fitments + fit_products + fit_vehicles), so a change here shows there
    immediately. Saves use the signed-in user's login (_ccFreshSession), never the public key.
    ================================================================================================== */
@@ -23445,15 +23447,42 @@ function fmToast(msg,bad){
   if(!t){t=document.createElement('div');t.id='fm-toast';document.body.appendChild(t);}
   t.textContent=msg;t.className='fm-toast show'+(bad?' bad':'');clearTimeout(fmToast._t);fmToast._t=setTimeout(function(){t.className='fm-toast';},bad?7000:3000);
 }
+// Sign-in handling: a login token lasts about an hour and the Command Center refreshes it. If that refresh fails
+// (Command Center open for a long time, or in two tabs using up the same refresh token), the old expired token
+// used to be sent and Supabase answered "JWT expired". Now: use a newer token if another tab has one, refresh and
+// retry once, and if the sign-in is really gone keep the tool readable (public read access, like the website)
+// and show a clear "Sign in again" bar instead of failing.
+function fmTokOk(t){if(!t)return false;try{var x=(typeof _ccTokenExp==='function')?_ccTokenExp(t):0;return !x||x>Date.now()+5000;}catch(e){return true;}} // unreadable expiry: let the server decide
+async function fmToken(){
+  var s=(typeof _ccFreshSession==='function')?await _ccFreshSession():null,tok=s&&s.access_token;
+  if(tok&&!fmTokOk(tok)){var s2=(typeof _getSession==='function')?_getSession():null;tok=(s2&&fmTokOk(s2.access_token))?s2.access_token:null;}
+  return tok||null;
+}
+function fmAuthExpired(){
+  FM.authExpired=true;
+  if(document.getElementById('fm-authbar'))return;
+  var root=document.getElementById('fm-root'),bar=document.createElement('div');bar.id='fm-authbar';bar.className='fm-authbar'; // outside fm-root, so re-renders never remove it
+  bar.innerHTML='<span><b>Your sign-in has expired.</b> You can view fitment, but sign in again to save changes.</span><button type="button" class="fm-btn primary">Sign in again</button>';
+  bar.querySelector('button').onclick=function(){if(typeof doLogout==='function')doLogout();else location.reload();};
+  if(root&&root.parentNode)root.parentNode.insertBefore(bar,root);else document.body.insertBefore(bar,document.body.firstChild);
+}
 async function fmReq(path,opts){
   opts=opts||{};
-  var s=(typeof _ccFreshSession==='function')?await _ccFreshSession():null,tok=s&&s.access_token;
+  var tok=await fmToken();
   var write=opts.method&&opts.method!=='GET';
-  if(write&&!tok)throw new Error('Your sign-in has expired - sign in again to save');
-  var h=Object.assign({'apikey':TGK_SB_KEY,'Authorization':'Bearer '+(tok||TGK_SB_KEY),'Content-Type':'application/json','Prefer':'return=representation'},opts.headers||{});
-  var r=await fetch(TGK_SB_URL+'/rest/v1/'+path,Object.assign({},opts,{headers:h}));
-  var txt=await r.text();
+  if(write&&!tok){fmAuthExpired();throw new Error('Your sign-in has expired - sign in again to save');}
+  if(!tok&&!write&&typeof _getSession==='function'&&_getSession())fmAuthExpired(); // signed in once, but the login has run out
+  var send=function(t){var h=Object.assign({'apikey':TGK_SB_KEY,'Authorization':'Bearer '+(t||TGK_SB_KEY),'Content-Type':'application/json','Prefer':'return=representation'},opts.headers||{});
+    return fetch(TGK_SB_URL+'/rest/v1/'+path,Object.assign({},opts,{headers:h}));};
+  var r=await send(tok),txt=await r.text();
+  if(r.status===401&&/jwt|expired|token/i.test(txt)){ // expired on the way: refresh once and retry
+    var t2=await fmToken();
+    if(t2&&t2!==tok){r=await send(t2);txt=await r.text();}
+    else if(!write){fmAuthExpired();r=await send(null);txt=await r.text();}  // read-only, like the website
+    else{fmAuthExpired();throw new Error('Your sign-in has expired - sign in again to save');}
+  }
   if(!r.ok){var m=txt;try{var j=JSON.parse(txt);m=j.message||txt;}catch(_){}var e=new Error(m||('HTTP '+r.status));e.status=r.status;throw e;}
+  if(FM.authExpired&&tok&&fmTokOk(tok)){FM.authExpired=false;var ab=document.getElementById('fm-authbar');if(ab)ab.remove();}
   return txt?JSON.parse(txt):null;
 }
 // ===================== Undo / Redo =====================
@@ -23721,6 +23750,111 @@ async function fmSyncPlatform(slug){
     fmToast((j.created?'Created':'Synced')+' /collections/'+j.collection_handle+': '+j.products+' products ('+j.added+' added, '+j.removed+' removed'+(j.not_found?', '+j.not_found+' not found in Shopify':'')+')');
   }catch(e){fmToast('Could not sync: '+(e.message||e)+(String(e.message||e).indexOf('Unknown')>=0||String(e.message||e).indexOf('action')>=0?' - redeploy shopify-orders (v23.83)':''),true);}
   FM._busy--;fmBusyUI();fmRender();
+}
+// ===================== Categories: smart sort + Shopify collections =====================
+// Categories live on each product (fit_products.category, e.g. "Suspension>Lowering Links"). The website catalog
+// and category pages are built from them. Smart sort learns from the products already categorised (title words
+// and SKU family) and suggests a category for the rest; Shopify sync makes a real collection per category.
+function fmCatNorm(c){return String(c||'').split('>').map(function(x){return x.trim();}).filter(Boolean).join('>');}
+function fmCatTokens(p){
+  var STOP={tgk:1,motorsport:1,motorsports:1,audi:1,vw:1,volkswagen:1,porsche:1,bmw:1,kit:1,kits:1,the:1,and:1,for:1,with:1,set:1,of:1,'-':1};
+  var t=String(p.title||'').toLowerCase().replace(/["'()\/,+&]/g,' ').split(/\s+/).map(function(w){return w.replace(/[^a-z0-9.]/g,'').replace(/s$/,'');}).filter(function(w){return w.length>1&&!STOP[w]&&!/^\d+(\.\d+)?$/.test(w);});
+  var m=String(p.sku||'').toUpperCase().match(/^([A-Z]+-\d{4})/);if(m)t.push('sku:'+m[1]);
+  return t;
+}
+function fmCatModel(){ // multinomial naive Bayes over the deepest category paths of already-categorised products
+  var docs={},tok={},vocab={},n=0;
+  FM.products.forEach(function(p){
+    var cs=fmCats(p).map(fmCatNorm).filter(Boolean);if(!cs.length)return;
+    var leaf=cs.filter(function(c){return !cs.some(function(o){return o!==c&&o.indexOf(c+'>')===0;});}); // deepest only
+    var ts=fmCatTokens(p);n++;
+    leaf.forEach(function(c){docs[c]=(docs[c]||0)+1;var T=tok[c]=tok[c]||{_n:0};ts.forEach(function(w){T[w]=(T[w]||0)+(w.indexOf('sku:')===0?3:1);T._n+=(w.indexOf('sku:')===0?3:1);vocab[w]=1;});});
+  });
+  return {docs:docs,tok:tok,V:Object.keys(vocab).length||1,n:n};
+}
+function fmCatSuggest(M,p){
+  var ts=fmCatTokens(p);if(!ts.length)return [];
+  var sc=Object.keys(M.docs).map(function(c){var T=M.tok[c],l=Math.log(M.docs[c]/M.n);
+    ts.forEach(function(w){var k=w.indexOf('sku:')===0?3:1;l+=k*Math.log(((T[w]||0)+0.1)/(T._n+0.1*M.V));});return {c:c,l:l};});
+  var mx=Math.max.apply(null,sc.map(function(x){return x.l;})),z=sc.reduce(function(a,x){return a+Math.exp(x.l-mx);},0);
+  return sc.map(function(x){return {c:x.c,p:Math.exp(x.l-mx)/z};}).sort(function(a,b){return b.p-a.p;}).slice(0,3);
+}
+function fmCatTree(){
+  var nodes={};
+  FM.products.forEach(function(p){fmCats(p).map(fmCatNorm).forEach(function(c){var b=c.split('>');for(var i=1;i<=b.length;i++){var k=b.slice(0,i).join('>');(nodes[k]=nodes[k]||{path:k,depth:i,h:{}}).h[p.handle]=1;}});});
+  return Object.keys(nodes).map(function(k){return nodes[k];}).sort(function(a,b){return a.path.localeCompare(b.path);});
+}
+function fmCatSlug(path){return 'cat-'+path.toLowerCase().replace(/>/g,' ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70);}
+async function fmCatApply(handle,cat,mode){ // mode: 'set' (uncategorised), 'move' (replace), 'add'
+  var p=fmProd(handle);if(!p||!cat)return;
+  var raw=String(p.category||'').split(',').map(function(x){return x.trim();}).filter(function(x){return x&&x.toLowerCase()!=='all categories';});
+  var keepAll=String(p.category||'').split(',').some(function(x){return x.trim().toLowerCase()==='all categories';});
+  var next=(mode==='add'?raw.concat([cat]):[cat]);if(keepAll)next.push('All Categories');
+  var val=Array.from(new Set(next)).join(',');
+  await fmDo(async function(){
+    await fmReq('fit_products?handle=eq.'+encodeURIComponent(handle),{method:'PATCH',body:JSON.stringify({category:val,updated_at:new Date().toISOString()})});
+    p.category=val;fmToast((mode==='move'?'Moved':'Filed')+' "'+(p.title||handle).slice(0,50)+'" under '+fmCatLabel(cat));
+  });
+}
+window.fmCatPick=function(h,mode){var sel=document.getElementById('fmcs-'+fmCatSlug(h));fmCatApply(h,sel?sel.value:'',mode);};
+window.fmCatAcceptAll=async function(){
+  var M=fmCatModel(),todo=FM.products.filter(function(p){return !fmCats(p).length;}).map(function(p){var s=fmCatSuggest(M,p)[0];return s&&s.p>=0.6?{p:p,c:s.c}:null;}).filter(Boolean);
+  if(!todo.length){fmToast('No confident suggestions to accept',true);return;}
+  if(!confirm('File '+todo.length+' product'+(todo.length!==1?'s':'')+' under their suggested category?\n\n'+todo.map(function(t){return '- '+(t.p.title||t.p.handle).slice(0,60)+'  ->  '+fmCatLabel(t.c);}).join('\n')))return;
+  await fmDo(async function(){
+    await fmPool(todo,6,function(t){var v=fmCatNorm(t.c)+(String(t.p.category||'').toLowerCase().indexOf('all categories')>=0?',All Categories':'');
+      return fmReq('fit_products?handle=eq.'+encodeURIComponent(t.p.handle),{method:'PATCH',body:JSON.stringify({category:v,updated_at:new Date().toISOString()})}).then(function(){t.p.category=v;});});
+    fmToast('Filed '+todo.length+' product'+(todo.length!==1?'s':''));
+  });
+};
+async function fmCatSync(paths){
+  if(FM.ppages===null){fmToast('Run fitment_8_staff.sql in Supabase first',true);return;}
+  var tree=fmCatTree(),todo=tree.filter(function(n){return paths.indexOf(n.path)>=0;});if(!todo.length)return;
+  if(todo.length>1&&!confirm('Create / update '+todo.length+' Shopify collections from your categories?\n\nEach becomes a published collection (e.g. /collections/'+fmCatSlug(todo[0].path)+'-parts) holding exactly the products in that category, and is kept in sync each time you press Sync.'))return;
+  FM._busy=(FM._busy||0)+1;fmBusyUI();var ok=0,fail=[];
+  var s=(typeof _ccFreshSession==='function')?await _ccFreshSession():null,tok=s&&s.access_token;
+  await fmPool(todo,2,async function(n){
+    try{
+      var title=n.path.split('>').pop(),slug=fmCatSlug(n.path);
+      var r=await fetch(TGK_SB_URL+'/functions/v1/shopify-orders',{method:'POST',headers:{'Content-Type':'application/json',apikey:TGK_SB_KEY,Authorization:'Bearer '+(tok||TGK_SB_KEY)},body:JSON.stringify({action:'sync_platform_collection',slug:slug,title:title,handles:Object.keys(n.h),description:fmCatLabel(n.path)+' - TGK Motorsport'})});
+      var j=await r.json();if(!r.ok||j.error)throw new Error(j.error||('HTTP '+r.status));
+      await _fmRawReq('fit_platform_pages?on_conflict=slug',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({slug:slug,title:fmCatLabel(n.path),vehicle_ids:[],collection_handle:j.collection_handle,products:j.products,synced_at:new Date().toISOString(),synced_by:FM.me})});
+      ok++;
+    }catch(e){fail.push(fmCatLabel(n.path)+': '+(e.message||e));}
+  });
+  await fmLoadGroups();FM._busy--;fmBusyUI();fmRender();
+  if(fail.length)fmToast('Synced '+ok+', failed '+fail.length+': '+fail[0]+(String(fail[0]).indexOf('action')>=0?' - redeploy shopify-orders (v23.83)':''),true);else fmToast('Synced '+ok+' categor'+(ok===1?'y':'ies')+' to Shopify');
+}
+window.fmCatSync=fmCatSync;
+window.fmCatSyncAll=function(){fmCatSync(fmCatTree().map(function(n){return n.path;}));};
+function fmRenderCategories(){
+  var M=fmCatModel(),opts=Object.keys(M.docs).sort();
+  var unc=FM.products.filter(function(p){return !fmCats(p).length;});
+  var row=function(p,mode,cur){var sg=fmCatSuggest(M,p),top=sg[0];
+    var sel='<select id="fmcs-'+fmCatSlug(p.handle)+'" class="fm-in" style="max-width:280px">'+(sg.map(function(x){return '<option value="'+fmEsc(x.c)+'">'+fmEsc(fmCatLabel(x.c))+' ('+Math.round(x.p*100)+'%)</option>';}).join(''))
+      +'<option disabled>----------</option>'+opts.filter(function(o){return !sg.some(function(x){return x.c===o;});}).map(function(o){return '<option value="'+fmEsc(o)+'">'+fmEsc(fmCatLabel(o))+'</option>';}).join('')+'</select>';
+    return '<tr><td style="width:56px">'+fmThumb(p.handle)+'</td><td><b>'+fmEsc(p.title||p.handle)+'</b><div class="fm-tdim" style="font-size:12px">'+fmEsc(p.sku||'')+(cur?' &middot; now: '+fmEsc(cur):'')+'</div></td>'
+      +'<td>'+sel+(top?'<div class="fm-tdim" style="font-size:12px;margin-top:3px">'+(top.p>=0.8?'Confident':top.p>=0.5?'Likely':'Unsure - please check')+'</div>':'')+'</td>'
+      +'<td style="white-space:nowrap"><button class="fm-btn primary sm" onclick="fmCatPick(\''+fmEsc(p.handle)+'\',\''+mode+'\')">'+(mode==='move'?'Move':'File')+'</button>'+(mode==='move'?' <button class="fm-btn sm" onclick="fmCatPick(\''+fmEsc(p.handle)+'\',\'add\')">Add as well</button>':'')+'</td></tr>';};
+  // possibly misfiled: title points somewhere else with high confidence
+  var mis=FM.products.filter(function(p){var cs=fmCats(p).map(fmCatNorm);if(!cs.length)return false;var t=fmCatSuggest(M,p)[0];
+    return t&&t.p>=0.9&&!cs.some(function(c){return c===t.c||t.c.indexOf(c+'>')===0||c.indexOf(t.c+'>')===0;});}).slice(0,40);
+  var tree=fmCatTree(),rec={};(FM.ppages||[]).forEach(function(r){rec[r.slug]=r;});
+  var nSynced=tree.filter(function(n){return rec[fmCatSlug(n.path)];}).length;
+  return '<div class="fm-card"><div class="fm-cardh"><b>Smart sort: products with no category ('+unc.length+')</b><span class="fm-tdim" style="font-size:12.5px">Suggestions come from the titles and SKU families of the '+M.n+' products already categorised. Check the photo, then File.</span>'
+      +(unc.length?'<button class="fm-btn" style="margin-left:auto" onclick="fmCatAcceptAll()">Accept all confident</button>':'')+'</div>'
+      +(unc.length?'<table class="fm-table"><tbody>'+unc.map(function(p){return row(p,'set');}).join('')+'</tbody></table>':'<div class="fm-colhint">Every product has a category.</div>')+'</div>'
+    +'<div class="fm-card"><div class="fm-cardh"><b>Possibly misfiled ('+mis.length+')</b><span class="fm-tdim" style="font-size:12.5px">The title strongly points to a different category. Move it, add the category as well, or leave it.</span></div>'
+      +(mis.length?'<table class="fm-table"><tbody>'+mis.map(function(p){return row(p,'move',fmCats(p).map(fmCatLabel).join(', '));}).join('')+'</tbody></table>':'<div class="fm-colhint">Nothing looks misfiled.</div>')+'</div>'
+    +'<div class="fm-card"><div class="fm-cardh"><b>Categories on the website and in Shopify</b><span class="fm-tdim" style="font-size:12.5px">The website catalog uses these categories directly. Sync makes each one a real Shopify collection too (search, filters, menus, Google) - '+nSynced+' of '+tree.length+' synced.</span>'
+      +'<button class="fm-btn primary" style="margin-left:auto" onclick="fmCatSyncAll()">Sync all to Shopify</button></div>'
+      +(FM.ppages===null?'<div class="fm-msg small">Run <b>fitment_8_staff.sql</b> in Supabase to turn on Shopify sync.</div>':'')
+      +'<table class="fm-table"><thead><tr><th>Category</th><th class="fm-tnum">Products</th><th>Shopify collection</th><th></th></tr></thead><tbody>'
+      +tree.map(function(n){var r=rec[fmCatSlug(n.path)],cnt=Object.keys(n.h).length;
+        return '<tr><td style="padding-left:'+(8+(n.depth-1)*22)+'px">'+(n.depth===1?'<b>':'')+fmEsc(n.path.split('>').pop())+(n.depth===1?'</b>':'')+'</td><td class="fm-tnum">'+cnt+'</td>'
+          +'<td>'+(r?'<span class="fm-tdim">/collections/'+fmEsc(r.collection_handle||'')+' &middot; '+(r.products!=null?r.products+' products':'')+(r.products!=null&&r.products!==cnt?' <b style="color:#b45309">(out of date)</b>':'')+'</span>':'<span class="fm-tdim">Not in Shopify yet</span>')+'</td>'
+          +'<td><button class="fm-btn sm" onclick="fmCatSync([\''+fmEsc(n.path).replace(/'/g,"\\'")+'\'])">'+(r?'Sync':'Create')+'</button></td></tr>';}).join('')
+      +'</tbody></table></div>';
 }
 function fmRenderPlatforms(){
   var src=fmPlatformSources();
@@ -24384,12 +24518,12 @@ fmRender._inner=function(){
     root.innerHTML='<div class="fm-msg">'+(missing?'<b>Fitment tables not set up yet.</b><br>Run <b>fitment_1_schema.sql</b> and then <b>fitment_2_import.sql</b> in the Supabase SQL editor, then <a href="#" onclick="fmLoad(true);return false">reload</a>.':'<b>Could not load fitment.</b> '+fmEsc(FM.err.message)+' <a href="#" onclick="fmLoad(true);return false">Try again</a>')+'</div>';return;
   }
   if(!FM.loaded){root.innerHTML='<div class="fm-msg">Loading fitment...</div>';return;}
-  var tabs=[['products','Products ('+FM.products.length+')'],['vehicles','Vehicle catalog ('+FM.vehicles.length+')'],['checks','Checks'+(fmChecks().total?' ('+fmChecks().total+')':'')],['byvehicle','By vehicle'],['coverage','Coverage'],['insights','Insights'],['history','History']];
+  var tabs=[['products','Products ('+FM.products.length+')'],['vehicles','Vehicle catalog ('+FM.vehicles.length+')'],['checks','Checks'+(fmChecks().total?' ('+fmChecks().total+')':'')],['byvehicle','By vehicle'],['coverage','Coverage'],['categories','Categories'],['insights','Insights'],['history','History']];
   root.innerHTML='<div class="fm-top"><div class="fm-tabs">'+tabs.map(function(t){return '<button class="fm-tab'+(FM.tab===t[0]?' on':'')+'" onclick="FM.tab=\''+t[0]+'\';fmRender()">'+t[1]+'</button>';}).join('')+'</div>'
     +'<div class="fm-note">Saved changes show in the ERP and on the dealer price list right away.</div>'
     +'<span id="fm-busy" class="fm-busy" style="display:'+(FM._busy?'inline-flex':'none')+'">Saving&hellip;</span><span class="fm-hist">'+fmHistBtns()+'</span><button class="fm-btn" onclick="fmLoad(true)">Reload</button></div>'
     +fmClipBar()
-    +(FM.tab==='byvehicle'?fmRenderByVehicle():FM.tab==='coverage'?fmRenderCoverage():FM.tab==='insights'?fmRenderInsights():FM.tab==='history'?fmRenderHistory():FM.tab==='products'?fmRenderProducts():FM.tab==='vehicles'?fmRenderVehicles():fmRenderChecks());
+    +(FM.tab==='byvehicle'?fmRenderByVehicle():FM.tab==='coverage'?fmRenderCoverage():FM.tab==='categories'?fmRenderCategories():FM.tab==='insights'?fmRenderInsights():FM.tab==='history'?fmRenderHistory():FM.tab==='products'?fmRenderProducts():FM.tab==='vehicles'?fmRenderVehicles():fmRenderChecks());
   root.querySelectorAll('input[data-ind="1"]').forEach(function(i){i.indeterminate=true;});
 };
 // ===================== v4 product screens (Convermax-style) =====================
