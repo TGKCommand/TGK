@@ -2344,6 +2344,53 @@ thead th{background:transparent!important;color:#E8EDF0!important;border-bottom:
 html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
 .mod-card{transition:transform .12s,box-shadow .12s}
 .mod-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(14,20,24,.10),0 0 0 1px var(--border2)!important}
+/* ================= PHONE TOP BAR + BREADCRUMB =================
+   The bar had three problems on a phone: the hamburger opened a dark backdrop
+   but no menu (a leftover "sidebar hidden" rule never let the drawer show),
+   "Sign out" broke onto two lines, and the five-part breadcrumb wrapped into
+   fragments and pushed the Close button off the edge of the screen.
+   Now: a working drawer (Apps + Tools), an icon for sign-out, and a one-line
+   breadcrumb:  All Tools  >  Current tool            x Close            */
+.cc-appbtn{display:none}
+.bc-long{display:inline}
+@media(max-width:768px){
+  /* the drawer actually opens */
+  #cc-sidebar{display:flex!important;flex-direction:column;overflow-y:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  .cc-appbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:46px;padding:12px;border:none;border-radius:var(--r-md);background:none;color:#ccc;font-size:var(--t-lg);font-family:inherit;text-align:left;cursor:pointer;white-space:nowrap}
+  .cc-appbtn:active,.cc-appbtn:hover{background:rgba(255,255,255,.06);color:#fff}
+  .cc-navbtn{white-space:nowrap}
+  .cc-drag-handle{display:none}
+
+  /* top bar: nothing wraps, sign-out is an icon */
+  #cc-topbar{gap:6px;height:52px}
+  #cc-topbar>*{flex-shrink:0}
+  #cc-topbar img{height:24px!important;width:auto;max-width:none}
+  #cc-topbar>div[style*="margin-left:auto"]{flex:1 1 0;min-width:0}
+  #cc-theme-btn,#ai-guy-toggle-btn,#cc-notif-bell{margin-left:0!important;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center}
+  #cc-notif-bell{display:none}
+  #cc-topbar #logout-btn{font-size:0!important;line-height:0;width:36px;height:36px;min-height:36px;padding:0;margin:0;border-radius:var(--r-md);background:transparent url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/><polyline points='16 17 21 12 16 7'/><line x1='21' y1='12' x2='9' y2='12'/></svg>") center/18px no-repeat;white-space:nowrap}
+  #cc-topbar #logout-btn:active{border-color:#f87171}
+  #cc-version-badge{display:none!important}
+
+  /* breadcrumb: one line, never wraps, Close always reachable */
+  #cc-breadcrumb{height:46px;gap:2px;padding:0 6px 0 2px;overflow:hidden}
+  #cc-breadcrumb .cc-bc-jump,#cc-breadcrumb .cc-bc-sep{display:none}
+  #cc-breadcrumb #cc-bc-sep-last{display:inline;flex-shrink:0;padding:0 2px}
+  .cc-bc-home,.cc-bc-btn{white-space:nowrap;flex-shrink:0}
+  #cc-breadcrumb .cc-bc-home{padding:0 8px;gap:5px;font-size:var(--t-md)}
+  .cc-bc-label{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t-lg)}
+  #cc-bc-actions{margin-left:0;flex:0 0 auto;gap:6px}
+  .cc-bc-btn{min-height:36px;padding:0 12px;font-size:var(--t-sm)}
+  .bc-long{display:none}
+}
+/* the narrowest phones: the home crumb keeps just its icon */
+@media(max-width:360px){
+  #cc-topbar{padding:0 6px;gap:4px}
+  #cc-topbar img{height:20px!important}
+  #cc-breadcrumb .cc-bc-home .bc-t{display:none}
+  #cc-breadcrumb .cc-bc-home{padding:0 10px}
+}
+
 @media print{.erp-hero,.support-hero,.ghost-hero,.dash-section-lbl{background:#fff!important;background-image:none!important;color:var(--text)!important;box-shadow:none!important;border:1px solid var(--border)!important}}
 
 
@@ -2412,7 +2459,7 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
     <span id="tllib-sync-status" style="font-size:var(--t-xs);font-family:inherit;letter-spacing:.03em;display:flex;align-items:center;gap:5px;cursor:default" title=""></span>
   </div>
-  <span id="topbar-user" style="font-size:var(--t-sm);color:#9CA3AF;font-weight:500;margin-right:12px"></span><button class="logout-btn" id="logout-btn" onclick="doLogout()" style="display:none">Sign out</button>
+  <span id="topbar-user" style="font-size:var(--t-sm);color:#9CA3AF;font-weight:500;margin-right:12px"></span><button class="logout-btn" id="logout-btn" onclick="doLogout()" style="display:none" title="Sign out" aria-label="Sign out">Sign out</button>
   <div id="cc-notif" style="position:relative;display:inline-flex;align-items:center">
     <button id="cc-notif-bell" title="Notifications" data-notif-act="panel">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -2432,24 +2479,24 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
 <div id="cc-breadcrumb">
   <button class="cc-bc-home" onclick="showView('home')">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-    All Tools
+    <span class="bc-t">All Tools</span>
   </button>
   <span class="cc-bc-sep">&#8250;</span>
-  <button class="cc-bc-home" id="cc-bc-erp" onclick="openERP()" title="Jump straight to the ERP from anywhere">
+  <button class="cc-bc-home cc-bc-jump" id="cc-bc-erp" onclick="openERP()" title="Jump straight to the ERP from anywhere">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.09 2.26L15 3l-.5 2.5L17 6l-2 1.5L16.5 10 14 9l-1 2-1-2-2.5 1L11 7.5 9 6l2.5-.5L11 3l1.91 1.26z"/><circle cx="12" cy="14" r="7"/></svg>
     ERP
   </button>
   <span class="cc-bc-sep">&#8250;</span>
-  <button class="cc-bc-home" id="cc-bc-support" onclick="openSupportCenter()" title="Jump straight to the Support Center from anywhere">
+  <button class="cc-bc-home cc-bc-jump" id="cc-bc-support" onclick="openSupportCenter()" title="Jump straight to the Support Center from anywhere">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 11.9 13 12.5 13 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
     Support
   </button>
   <span class="cc-bc-sep">&#8250;</span>
-  <button class="cc-bc-home" id="cc-bc-ghost" onclick="openGhostTuning()" title="Jump straight to Ghost Tuning Center from anywhere">
+  <button class="cc-bc-home cc-bc-jump" id="cc-bc-ghost" onclick="openGhostTuning()" title="Jump straight to Ghost Tuning Center from anywhere">
     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17a1 1 0 001 1h1v2a1 1 0 001 1h2a1 1 0 001-1v-2h1a1 1 0 001-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm-2 15.5v-1h4v1a.5.5 0 01-.5.5h-3a.5.5 0 01-.5-.5z"/></svg>
     Ghost Tuning
   </button>
-  <span class="cc-bc-sep">&#8250;</span>
+  <span class="cc-bc-sep" id="cc-bc-sep-last">&#8250;</span>
   <span class="cc-bc-label" id="cc-bc-label">Tool</span>
   <div id="cc-bc-actions"></div>
 </div>
@@ -2513,6 +2560,19 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
     <iframe id="hb-frame" title="TGK Harness Builder" allowfullscreen></iframe>
   </div>
   <div id="cc-sidebar">
+    <span class="cc-slbl">Apps</span>
+    <button type="button" class="cc-appbtn" id="cc-app-erp" onclick="ccCloseDrawer();openERP()">
+      <div class="cc-icon" style="background:rgba(42,191,170,.15);color:#2ABFAA"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.09 2.26L15 3l-.5 2.5L17 6l-2 1.5L16.5 10 14 9l-1 2-1-2-2.5 1L11 7.5 9 6l2.5-.5L11 3l1.91 1.26z"/><circle cx="12" cy="14" r="7"/></svg></div>
+      ERP
+    </button>
+    <button type="button" class="cc-appbtn" id="cc-app-support" onclick="ccCloseDrawer();openSupportCenter()">
+      <div class="cc-icon" style="background:rgba(224,123,40,.15);color:#E07B28"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 11.9 13 12.5 13 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg></div>
+      Support Center
+    </button>
+    <button type="button" class="cc-appbtn" id="cc-app-ghost" onclick="ccCloseDrawer();openGhostTuning()">
+      <div class="cc-icon" style="background:rgba(139,127,232,.18);color:#a99bff"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17a1 1 0 001 1h1v2a1 1 0 001 1h2a1 1 0 001-1v-2h1a1 1 0 001-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7z"/></svg></div>
+      Ghost Tuning Center
+    </button>
     <span class="cc-slbl">Tools</span>
     <button class="cc-navbtn active" id="cc-nav-home" onclick="showView('home')" draggable="true">
       <div class="cc-icon" style="background:rgba(255,255,255,.06);color:#aaa">&#8962;</div>
@@ -2572,7 +2632,7 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
       <span class="cc-badge badge-live">LIVE</span>
       <span class="cc-drag-handle">&#10783;</span>
     </button>
-    <div class="cc-foot"><p>TGK Motorsport<br>Command Center v1.3<br>Add tools as you build them.</p></div>
+    <div class="cc-foot"><p>TGK Motorsport<br>Command Center <span id="cc-foot-ver">v1.3</span><br>Add tools as you build them.</p></div>
   </div>
 
   <div id="cc-main">
@@ -13067,7 +13127,7 @@ function openERP() {
   if (lbl) lbl.textContent = 'TGK ERP';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeERP()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close ERP</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeERP()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> ERP</span></button>';
   }
 
   // Load ERP — pass auth token once iframe loads
@@ -13140,7 +13200,7 @@ function openSupportCenter() {
   if (lbl) lbl.textContent = 'Support Center';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSupportCenter()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Support Center</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSupportCenter()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> Support Center</span></button>';
   }
 
   if (frame.src !== SUPPORT_URL) {
@@ -13205,7 +13265,7 @@ function openGhostTuning() {
   if (lbl) lbl.textContent = 'Ghost Tuning Center';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeGhostTuning()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Ghost Tuning</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeGhostTuning()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> Ghost Tuning</span></button>';
   }
 
   // Pass auth session to Ghost Tuning Center so it skips its own login,
@@ -13270,7 +13330,7 @@ function openNotes() {
   if (lbl) lbl.textContent = 'Notes';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeNotes()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Notes</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeNotes()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> Notes</span></button>';
   }
 
   // Hand the session to Notes so it skips its own login - same pattern as the ERP, Support
@@ -13345,7 +13405,7 @@ function openSKU() {
   if (lbl) lbl.textContent = 'SKU Manager';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSKU()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close SKU Manager</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeSKU()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> SKU Manager</span></button>';
   }
 
   // No auth token passed — the SKU Manager connects to Supabase directly with its own
@@ -13400,7 +13460,7 @@ function openCal() {
   if (lbl) lbl.textContent = 'Team Calendar';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeCal()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Team Calendar</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeCal()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> Team Calendar</span></button>';
   }
 
   if (frame.src !== CAL_URL) {
@@ -13455,7 +13515,7 @@ function openTimeAttack() {
   if (lbl) lbl.textContent = 'Time Attack';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeTimeAttack()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Time Attack</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeTimeAttack()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> Time Attack</span></button>';
   }
 
   if (frame.src !== TA_URL) {
@@ -13522,7 +13582,7 @@ function openHarnessBuilder() {
   if (lbl) lbl.textContent = 'Harness Builder';
   var acts = document.getElementById('cc-bc-actions');
   if (acts) {
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeHarnessBuilder()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close Harness Builder</button>';
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="closeHarnessBuilder()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> Harness Builder</span></button>';
   }
   if (frame.src !== HB_URL) {
     frame.onload = function() { if (loading) loading.classList.add('hidden'); _hbSendAuth(); };
@@ -17442,7 +17502,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v5.2';
+var TGK_CC_VERSION='v5.3';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -17453,6 +17513,7 @@ var TGK_CC_VERSION='v5.2';
     sp.textContent=TGK_CC_VERSION;
     sp.title='TGK Command Center '+TGK_CC_VERSION;
     tb.appendChild(sp);
+    var fv=document.getElementById('cc-foot-ver'); if(fv)fv.textContent=TGK_CC_VERSION;
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();
 })();
