@@ -2344,6 +2344,15 @@ thead th{background:transparent!important;color:#E8EDF0!important;border-bottom:
 html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
 .mod-card{transition:transform .12s,box-shadow .12s}
 .mod-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(14,20,24,.10),0 0 0 1px var(--border2)!important}
+/* GIF / image blocks - editor view only. The published HTML carries its own inline styles. */
+.wysi figure.tgk-gif{border:1px dashed transparent;border-radius:8px;padding:6px;transition:border-color .15s}
+.wysi figure.tgk-gif:hover{border-color:rgba(42,191,170,.55)}
+.wysi figure.tgk-gif img{cursor:pointer}
+.wysi figure.tgk-gif:hover::after{content:'Double-click the image to change its link';position:absolute;top:8px;left:8px;background:rgba(20,22,24,.85);color:#fff;font:600 11px/1 system-ui,sans-serif;padding:5px 8px;border-radius:4px;pointer-events:none;z-index:5}
+.wysi figure.tgk-gif figcaption:empty::before{content:'Add a caption (optional)';color:#9CA3AF}
+.wysi figure.tgk-gif.tgk-gif-broken{border-color:#f87171;background:rgba(248,113,113,.06)}
+.wysi figure.tgk-gif.tgk-gif-broken::before{content:"This link did not load - double-click the image to fix it";display:block;color:#b91c1c;font:600 12px/1.3 system-ui,sans-serif;padding:14px 8px}
+
 /* ================= PHONE TOP BAR + BREADCRUMB =================
    The bar had three problems on a phone: the hamburger opened a dark backdrop
    but no menu (a leftover "sidebar hidden" rule never let the drawer show),
@@ -2829,8 +2838,8 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
         </label>
       </div>
       <div class="fg">
-        <div class="flbl">Product video URL <span class="flbl-hint">YouTube or Shopify CDN &mdash; optional</span></div>
-        <input id="p-video" placeholder="https://www.youtube.com/watch?v=... or Shopify CDN .mp4 URL"/>
+        <div class="flbl">Product video or GIF URL <span class="flbl-hint">YouTube, a Shopify video, or a .gif / .webp link &mdash; optional</span></div>
+        <input id="p-video" placeholder="https://www.youtube.com/watch?v=...  or a Shopify .mp4  or a .gif link"/>
         <div style="font-size:var(--t-sm);color:#9CA3AF;margin-top:4px">A video embed section will be added to the generated description. Works with YouTube and Shopify-hosted videos.</div>
       </div>
       <div class="fg"><div class="flbl">Anything else the AI should know</div><textarea id="p-notes" placeholder="e.g. Pairs with our coilover kit. Ships same day."></textarea></div>
@@ -3027,8 +3036,8 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
       <div id="edit-step1">
         <div class="fg" style="margin-bottom:12px"><div class="flbl">Paste your existing description HTML</div><textarea id="edit-input" style="min-height:130px;font-family:var(--mono);font-size:var(--t-sm);line-height:1.6" placeholder="Paste any description HTML — TGK format or Shopify/other. Non-TGK HTML is auto-converted to TGK format on Load."></textarea></div>
           <div class="fg" style="margin-bottom:12px">
-        <div class="flbl">Product video URL <span class="flbl-hint">YouTube or Shopify CDN &mdash; optional</span></div>
-        <input id="edit-video" placeholder="https://www.youtube.com/watch?v=... or Shopify CDN .mp4 URL"/>
+        <div class="flbl">Product video or GIF URL <span class="flbl-hint">YouTube, a Shopify video, or a .gif / .webp link &mdash; optional</span></div>
+        <input id="edit-video" placeholder="https://www.youtube.com/watch?v=...  or a Shopify .mp4  or a .gif link"/>
         <div style="font-size:var(--t-sm);color:#9CA3AF;margin-top:4px">A video embed will be prepended when you load the description.</div>
       </div>
       <div style="display:flex;gap:10px"><button class="gbtn" onclick="loadEdit()">Load &amp; edit →</button><button onclick="openTplModal('edit')" style="padding:11px 18px;background:rgba(42,191,170,.08);border:1px solid #2ABFAA;border-radius:var(--r-md);color:#2ABFAA;font-size:var(--t-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;font-family:var(--font);transition:all .15s" onmouseover="this.style.background='rgba(42,191,170,.18)'" onmouseout="this.style.background='rgba(42,191,170,.08)'">＋ Insert template</button><button class="gbtn sec" onclick="clearEdit()">Clear</button></div>
@@ -3325,8 +3334,8 @@ html:not([data-theme="dark"]) .mod-card{background:rgba(255,255,255,.84)}
         <div class="fg" style="margin:0"><div class="flbl">What to do</div><select id="conv-mode"><option value="reformat">Reformat into TGK template — keep all existing content</option><option value="rewrite">Rewrite + improve — enhance the copy while reformatting</option><option value="expand">Expand — add missing sections (FAQ, features, etc)</option></select></div>
       </div>
       <div class="fg" style="margin-bottom:14px">
-        <div class="flbl">Product video URL <span class="flbl-hint">YouTube or Shopify CDN &mdash; optional</span></div>
-        <input id="conv-video" placeholder="https://www.youtube.com/watch?v=... or Shopify CDN .mp4 URL"/>
+        <div class="flbl">Product video or GIF URL <span class="flbl-hint">YouTube, a Shopify video, or a .gif / .webp link &mdash; optional</span></div>
+        <input id="conv-video" placeholder="https://www.youtube.com/watch?v=...  or a Shopify .mp4  or a .gif link"/>
         <div style="font-size:var(--t-sm);color:#9CA3AF;margin-top:4px">A video embed will be prepended to the converted description.</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -7369,7 +7378,7 @@ let _blkToolbar=null, _activeBlk=null, _addMenu=null, _clrPanel=null, _clrTarget
 // and Merge concatenates the selected blocks' content into the first one.
 let _multiSel = [], _multiAnchor = null, _multiToolbar = null;
 
-const BLOCK_SELS = '.tgk-p, .tgk-feat, .tgk-faq-item, .tgk-disc-card, .tgk-disc-nvh-box, .tgk-disc-fit-box, .tgk-disc-legal';
+const BLOCK_SELS = '.tgk-p, .tgk-feat, .tgk-faq-item, .tgk-disc-card, .tgk-disc-nvh-box, .tgk-disc-fit-box, .tgk-disc-legal, figure.tgk-gif';
 
 function enableBlockEditing(wysiwyg, syncFn) {
   wysiwyg.querySelectorAll(BLOCK_SELS).forEach(function(blk){
@@ -8028,6 +8037,9 @@ const BLOCK_TEMPLATES = [
     el.innerHTML='<p class="tgk-disc-fit-title" contenteditable="true" spellcheck="true">Title</p><p class="tgk-disc-fit-body" contenteditable="true" spellcheck="true">Content goes here.</p>';
     return el;
   }},
+  { label:'GIF / image', icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>', fn: function(){
+    return window.tgkMakeGifBlock ? window.tgkMakeGifBlock() : null;
+  }},
   { label:'Legal text', icon:'§', fn: function(){
     const el = document.createElement('div');
     el.className='tgk-disc-legal';
@@ -8073,6 +8085,7 @@ function showAddMenu(anchorBtn, refEl, wysiwyg, syncFn){
     item.addEventListener('mousedown', function(e){
       e.preventDefault();
       const newEl = tmpl.fn();
+      if(!newEl){ hideAddMenu(); return; }          // e.g. the GIF prompt was cancelled
       refEl.parentNode.insertBefore(newEl, refEl.nextSibling);
       // wire up new block
       if(newEl.classList.contains('tgk-section')) wireSection(newEl);
@@ -9324,12 +9337,24 @@ function _cleanWysiwygHtml(wy) {
   // Remove tool state classes
   clone.querySelectorAll(
     '.blk-hover,.blk-active,.blk-dragging,.sh-active,' +
-    '.tbl-cell-active,.sec-drag-over-top,.sec-drag-over-bot,.sec-dragging'
+    '.tbl-cell-active,.sec-drag-over-top,.sec-drag-over-bot,.sec-dragging,.tgk-gif-broken'
   ).forEach(function(el) {
     el.classList.remove(
       'blk-hover','blk-active','blk-dragging','sh-active',
-      'tbl-cell-active','sec-drag-over-top','sec-drag-over-bot','sec-dragging'
+      'tbl-cell-active','sec-drag-over-top','sec-drag-over-bot','sec-dragging','tgk-gif-broken'
     );
+  });
+
+  // GIF / image blocks: leave out an empty caption, drop the editor-only caption class,
+  // and give the image alt text (the caption, or a plain default) for screen readers.
+  clone.querySelectorAll('figure.tgk-gif').forEach(function(fig) {
+    var cap = fig.querySelector('figcaption');
+    var capText = cap ? cap.textContent.trim() : '';
+    if (cap && !capText) cap.remove();
+    else if (cap) cap.classList.remove('tgk-gif-cap');
+    if (cap && !cap.className.trim()) cap.removeAttribute('class');
+    var im = fig.querySelector('img');
+    if (im && !(im.getAttribute('alt') || '').trim()) im.setAttribute('alt', capText || 'Product animation');
   });
 
   // Remove draggable attribute
@@ -16631,6 +16656,9 @@ function _applyVideoPlaceholders(container) {
         var isrc = iEl.getAttribute('src') || '';
         var ytM = isrc.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
         currentUrl = ytM ? 'https://www.youtube.com/watch?v=' + ytM[1] : isrc;
+      } else {
+        var imEl = wrap.querySelector('img');
+        if (imEl) currentUrl = imEl.getAttribute('src') || '';
       }
     }
     // Extract autoplay
@@ -16653,10 +16681,10 @@ function _applyVideoPlaceholders(container) {
     ph.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
       + '<svg width="16" height="16" viewBox="0 0 24 24" fill="#2ABFAA" style="flex-shrink:0"><path d="M8 5v14l11-7z"/></svg>'
       + '<input class="tgk-vid-url-inp" data-tgkvid="' + id + '" value="' + currentUrl.replace(/"/g, '&quot;') + '"'
-      + ' placeholder="YouTube or Shopify CDN URL..."'
+      + ' placeholder="YouTube, video or GIF URL..."'
       + ' style="flex:1;padding:6px 10px;border:1.5px solid rgba(42,191,170,.4);border-radius:var(--r-md);background:rgba(42,191,170,.06);color:#1F2937;'
       + 'color:#1F2937;font-size:var(--t-sm);font-family:inherit;outline:none;min-width:0">'
-      + '<button onclick="tgkVidUpdate(this.previousElementSibling)" title="Update video"'
+      + '<button onclick="tgkVidUpdate(this.previousElementSibling)" title="Update"'
       + ' style="padding:5px 12px;background:#2ABFAA;border:none;border-radius:var(--r-md);color:#fff;font-size:var(--t-sm);font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit">Update</button>'
       + '<span class="tgk-vid-feedback" style="font-size:var(--t-sm);color:#2ABFAA;flex-shrink:0;min-width:46px"></span>'
       + '</div>'
@@ -16665,12 +16693,77 @@ function _applyVideoPlaceholders(container) {
       + '<input type="checkbox" class="tgk-vid-autoplay" data-tgkvid="' + id + '"' + (autoplay ? ' checked' : '') + ' style="display:none">'
       + '<span style="font-size:var(--t-sm);color:#4B5563">Autoplay (muted) &mdash; plays automatically on page load</span>'
       + '</label>';
+    if (_vidIsImageUrl(currentUrl)) { var _apl = ph.querySelector('label'); if (_apl) _apl.style.display = 'none'; }
     wrap.parentNode.replaceChild(ph, wrap);
   });
 }
 
 /* ── _wireVideoSections: post-load wiring for video sections ── */
+
+/* ── GIF / image block (v5.5) ─────────────────────────────────────────────────────────
+   Insert from "+ Add block > GIF / image" anywhere in a section of the Page Editor,
+   Convert Existing or the Template Library. It is a plain <figure><img><figcaption>, so
+   it needs no editor furniture in the published HTML: double-click the image to change
+   its link, type a caption underneath (an empty caption is left out when published). */
+(function(){
+  function clean(u){
+    u = String(u == null ? '' : u).trim();
+    return (u && window._vidIsImageUrl(u)) ? u : '';
+  }
+  window.tgkGifClean = clean;
+  window.tgkMakeGifBlock = function(preset){
+    var raw = preset;
+    if (raw == null) raw = window.prompt('Paste the link to your GIF or image.\n\nIt must be a direct link ending in .gif, .webp, .png or .jpg - for example a file from Shopify > Content > Files.', '');
+    if (raw == null) return null;                       // cancelled
+    var url = clean(raw);
+    if (!url) { window.alert('That does not look like a direct image link.\n\nUse a link that starts with https:// and ends in .gif, .webp, .png or .jpg (not a page that shows the GIF).'); return null; }
+    var fig = document.createElement('figure');
+    fig.className = 'tgk-gif';
+    fig.setAttribute('data-gif-url', url);
+    fig.style.cssText = 'margin:18px 0;text-align:center';
+    var img = document.createElement('img');
+    img.src = url; img.alt = ''; img.loading = 'lazy';
+    img.style.cssText = 'display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px';
+    var cap = document.createElement('figcaption');
+    cap.style.cssText = 'margin-top:8px;font-size:13px;color:#6B7280';
+    fig.appendChild(img); fig.appendChild(cap);
+    window.tgkWireGifs(fig);
+    return fig;
+  };
+  // Editor-only wiring: a caption you can type in, and a cue if the link does not load.
+  window.tgkWireGifs = function(root){
+    if (!root) return;
+    var list = root.matches && root.matches('figure.tgk-gif') ? [root] : Array.prototype.slice.call(root.querySelectorAll('figure.tgk-gif'));
+    list.forEach(function(fig){
+      var cap = fig.querySelector('figcaption');
+      if (!cap) { cap = document.createElement('figcaption'); cap.style.cssText = 'margin-top:8px;font-size:13px;color:#6B7280'; fig.appendChild(cap); }
+      cap.classList.add('tgk-gif-cap'); cap.setAttribute('contenteditable', 'true'); cap.setAttribute('spellcheck', 'true');
+      var img = fig.querySelector('img');
+      if (img && !img._gifWired) {
+        img._gifWired = true;
+        img.addEventListener('error', function(){ fig.classList.add('tgk-gif-broken'); });
+        img.addEventListener('load', function(){ fig.classList.remove('tgk-gif-broken'); });
+      }
+    });
+  };
+  // Double-click the image to change its link.
+  document.addEventListener('dblclick', function(e){
+    var img = e.target && e.target.closest ? e.target.closest('figure.tgk-gif img') : null;
+    if (!img || !img.closest('.wysi')) return;
+    var fig = img.closest('figure.tgk-gif');
+    var raw = window.prompt('Change the link to your GIF or image:', fig.getAttribute('data-gif-url') || img.getAttribute('src') || '');
+    if (raw == null) return;
+    var url = clean(raw);
+    if (!url) { window.alert('That does not look like a direct image link (it must end in .gif, .webp, .png or .jpg).'); return; }
+    img.src = url; fig.setAttribute('data-gif-url', url);
+    var ctx = (typeof _getWyCtx === 'function') ? _getWyCtx(fig) : 'edit';
+    if (typeof _wySyncFn === 'function') _wySyncFn(ctx);
+  });
+})();
+
+/* ── _wireVideoSections: post-load wiring for video sections ── */
 function _wireVideoSections(wy) {
+  if (window.tgkWireGifs) window.tgkWireGifs(wy);        // GIF blocks get their caption + load cue after any load
   wy.querySelectorAll('.tgk-video-section').forEach(function(vsec) {
     // Ensure header has tgk-sh so wireSection can grab it
     var sh = vsec.querySelector('.tgk-sh');
@@ -16753,6 +16846,10 @@ window.tgkVidUpdate = function(inp) {
   var wrap = tmp.querySelector('.tgk-video-wrap');
   if (wrap) {
     window._tgkPhStore[id] = wrap.outerHTML;
+    var _isImgNow = _vidIsImageUrl(url);
+    var _apRow = ph ? ph.querySelector('label') : null;
+    if (_apRow) _apRow.style.display = _isImgNow ? 'none' : 'flex';        // a GIF animates by itself
+    if (_isImgNow && titleSpan && titleSpan.textContent.trim() === 'Product Video') titleSpan.textContent = 'Product Animation';
     inp.setAttribute('value', url);
     // Update data-autoplay on outer section wrapper
     var outerSec = ph ? ph.closest('.tgk-video-section') : null;
@@ -16781,15 +16878,32 @@ function showLaunchSub(sub) {
 /* ── buildVideoEmbed: convert a YouTube or Shopify CDN URL to TGK embed HTML ── */
 window._tgkPhStore = {};
 window._tgkPhCtr = 0;
+// A direct link to an animated GIF or an image (http/https only, and it must end in an image extension).
+function _vidIsImageUrl(url) {
+  try {
+    var u = new URL(String(url).trim());
+    return /^https?:$/.test(u.protocol) && /\.(gif|webp|png|jpe?g|avif)$/i.test(u.pathname);
+  } catch (e) { return false; }
+}
+window._vidIsImageUrl = _vidIsImageUrl;
+
 function buildVideoEmbed(url, opts) {
   if (!url || !url.trim()) return '';
   url = url.trim();
   opts = opts || {};
-  var title = opts.title || 'Product Video';
-  var autoplay = !!opts.autoplay;
+  var isImg = _vidIsImageUrl(url);              // a GIF / image link, not a video
+  var title = opts.title || (isImg ? 'Product Animation' : 'Product Video');
+  if (isImg && title === 'Product Video') title = 'Product Animation';
+  var autoplay = !isImg && !!opts.autoplay;     // a GIF animates by itself; autoplay is a video setting
+  var urlAttr = url.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   var embedInner = '';
   var ytMatch = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) {
+  if (isImg) {
+    // Checked BEFORE the "cdn.shopify.com means video" rule below: a GIF on the Shopify CDN used to
+    // be wrapped in a <video> tag (a broken player), and a GIF anywhere else was silently dropped.
+    embedInner = '<img src="' + urlAttr + '" alt="' + title.replace(/"/g, '&quot;') + '" loading="lazy"'
+      + ' style="display:block;width:100%;height:auto;position:static;border-radius:0 0 6px 6px">';
+  } else if (ytMatch) {
     var vid = ytMatch[1];
     var ytSrc = 'https://www.youtube.com/embed/' + vid + '?rel=0' + (autoplay ? '&autoplay=1&mute=1' : '');
     embedInner = '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:0 0 6px 6px">'
@@ -16811,7 +16925,7 @@ function buildVideoEmbed(url, opts) {
     + '</div>';
   return '<div class="tgk-section tgk-video-section" data-autoplay="' + (autoplay ? '1' : '0') + '" style="margin:20px 0">'
     + header
-    + '<div class="tgk-video-wrap" data-video-url="' + url + '" style="height:auto;overflow:visible;padding:0;position:static;background:#000;border-radius:0 0 6px 6px">'
+    + '<div class="tgk-video-wrap" data-video-url="' + urlAttr + '" style="height:auto;overflow:visible;padding:0;position:static;background:#000;border-radius:0 0 6px 6px">'
     + embedInner
     + '</div></div>';
 }
@@ -17578,7 +17692,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v5.4';
+var TGK_CC_VERSION='v5.5';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
