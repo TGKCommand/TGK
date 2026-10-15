@@ -17471,38 +17471,114 @@ if ('serviceWorker' in navigator) {
 })();
 </script>
 <script>
-/* Back-button trap (added v1.2): dismiss the top layer instead of closing the app. */
+/* Back button (v5.4). On a phone, Back steps back through the app - close a pop-up or the
+   menu, then step back inside the open module (Ghost Tuning reports what it has open), then
+   close the module, then leave a tool for the home screen - and only leaves the app when there
+   is nothing left. The old version added one entry when the page loaded and re-added it from
+   inside the Back handler; phones ignore entries a page adds without a tap, so Back fell
+   straight through to closing the app, and it only knew four of the eight modules. Now the
+   browser's history is kept the same depth as what is open: entries are added right after a
+   tap as you go deeper and removed as you come back up, so one press of Back is one step. */
 (function(){
-  function arm(){ try{ history.pushState({ccTrap:1}, ''); }catch(_){} }
-  function onBack(){
-    var handled=false;
-    var m=document.querySelector('.tbx-modal-overlay.open, .fbg-modal-overlay.open');
-    if(m){ m.classList.remove('open'); handled=true; }
-    if(!handled){
-      var list=document.querySelectorAll('.modal-overlay');
-      for(var i=0;i<list.length;i++){ if(getComputedStyle(list[i]).display!=='none'){ list[i].style.display='none'; handled=true; break; } }
-    }
-    if(!handled){
-      var dr=document.getElementById('cc-sidebar');
-      if(dr && dr.classList.contains('cc-drawer-open')){ dr.classList.remove('cc-drawer-open'); var bd=document.getElementById('cc-drawer-backdrop'); if(bd)bd.classList.remove('cc-drawer-open'); handled=true; }
-    }
-    if(!handled){
-      var v=document.querySelector('#erp-viewer.active, #support-viewer.active, #cal-viewer.active, #hb-viewer.active');
-      if(v){ try{ showView('home'); }catch(_){ v.classList.remove('active'); } handled=true; }
-    }
-    if(!handled){
-      var av=document.querySelector('.cc-view.active');
-      if(av && av.id!=='view-home'){ try{ showView('home'); }catch(_){} handled=true; }
-    }
-    if(handled) arm();
+  var H = { on: false, depth: 0, ignore: 0, ignoreUntil: 0, root: false, timer: null, hold: 0, modDepth: 0, msgId: 0, pending: null };
+  var CLOSERS = { 'erp-viewer':'closeERP', 'support-viewer':'closeSupportCenter', 'ghost-viewer':'closeGhostTuning', 'notes-viewer':'closeNotes',
+                  'sku-viewer':'closeSKU', 'cal-viewer':'closeCal', 'ta-viewer':'closeTimeAttack', 'hb-viewer':'closeHarnessBuilder' };
+  var VIEWER_SEL = '#erp-viewer.active, #support-viewer.active, #ghost-viewer.active, #notes-viewer.active, #sku-viewer.active, #cal-viewer.active, #ta-viewer.active, #hb-viewer.active';
+  function toast(msg){
+    var t = document.getElementById('cc-back-toast');
+    if(!t){ t = document.createElement('div'); t.id = 'cc-back-toast';
+      t.style.cssText = 'position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(20,22,24,.94);color:#fff;padding:10px 18px;border-radius:22px;font:600 13px/1.3 system-ui,sans-serif;z-index:100000;pointer-events:none;transition:opacity .2s;opacity:0;max-width:90vw;text-align:center';
+      document.body.appendChild(t); }
+    t.textContent = msg; t.style.opacity = '1'; clearTimeout(t._h); t._h = setTimeout(function(){ t.style.opacity = '0'; }, 2200);
   }
-  function init(){ arm(); window.addEventListener('popstate', onBack); }
+  function openModal(){
+    var m = document.querySelector('.tbx-modal-overlay.open, .fbg-modal-overlay.open'); if(m) return m;
+    var list = document.querySelectorAll('.modal-overlay');
+    for(var i = 0; i < list.length; i++){ if(getComputedStyle(list[i]).display !== 'none') return list[i]; }
+    return null;
+  }
+  function drawerOpen(){ var s = document.getElementById('cc-sidebar'); return !!(s && s.classList.contains('cc-drawer-open')); }
+  function activeViewer(){ return document.querySelector(VIEWER_SEL); }
+  function activeView(){ var v = document.querySelector('.cc-view.active'); return (v && v.id !== 'view-home') ? v : null; }
+  function loggedIn(){ var l = document.getElementById('cc-login'); return !!l && l.style.display === 'none'; }
+  function layers(){
+    var v = activeViewer();
+    return (openModal() ? 1 : 0) + (drawerOpen() ? 1 : 0) + (v ? 1 + H.modDepth : 0) + (activeView() ? 1 : 0);
+  }
+  function closeViewer(id){
+    H.modDepth = 0;
+    var fn = window[CLOSERS[id]];
+    if(typeof fn === 'function'){ try{ fn(); return; }catch(e){} }
+    var v = document.getElementById(id); if(v) v.classList.remove('active');
+    var m = document.getElementById('cc-main'); if(m) m.style.display = '';
+  }
+  // Ask the open module to step back first; if it has nothing to step back through (or does not
+  // answer - ERP and Support do not know this message yet), close the module itself.
+  function backInModule(v){
+    var frame = document.getElementById(v.id.replace('-viewer', '-frame'));
+    var origin = null; try{ origin = frame && frame.src ? new URL(frame.src).origin : null; }catch(e){}
+    if(!frame || !frame.contentWindow || !origin){ closeViewer(v.id); return; }
+    var id = ++H.msgId;
+    H.pending = { id: id, viewer: v.id, frame: frame, timer: setTimeout(function(){ if(H.pending && H.pending.id === id){ H.pending = null; closeViewer(v.id); schedule(); } }, 200) };
+    H.hold = Date.now() + 320;
+    try{ frame.contentWindow.postMessage({ source: 'TGK_CC', type: 'BACK', id: id }, origin); }catch(e){ clearTimeout(H.pending.timer); H.pending = null; closeViewer(v.id); }
+  }
+  window.addEventListener('message', function(e){
+    var d = e && e.data; if(!d || d.source !== 'TGK_GHOST') return;
+    var f = document.getElementById('ghost-frame'); if(!f || e.source !== f.contentWindow) return;
+    if(d.type === 'DEPTH'){ H.modDepth = Math.max(0, d.n | 0); schedule(); return; }
+    if(d.type === 'BACK_RESULT' && H.pending && H.pending.id === d.id){
+      clearTimeout(H.pending.timer); var p = H.pending; H.pending = null;
+      if(!d.handled) closeViewer(p.viewer);
+      H.hold = 0; schedule();
+    }
+  });
+  // Close the top-most thing that is open. Returns true if something was done with this press.
+  function closeTop(){
+    var m = document.querySelector('.tbx-modal-overlay.open, .fbg-modal-overlay.open');
+    if(m){ m.classList.remove('open'); return true; }
+    var list = document.querySelectorAll('.modal-overlay');
+    for(var i = 0; i < list.length; i++){ if(getComputedStyle(list[i]).display !== 'none'){ list[i].style.display = 'none'; return true; } }
+    if(drawerOpen()){ try{ ccCloseDrawer(); }catch(e){ document.getElementById('cc-sidebar').classList.remove('cc-drawer-open'); } return true; }
+    var v = activeViewer(); if(v){ backInModule(v); return true; }
+    if(activeView()){ try{ showView('home'); }catch(e){} return true; }
+    return false;
+  }
+  function schedule(){ if(!H.timer) H.timer = setTimeout(sync, 0); }
+  function sync(){
+    H.timer = null;
+    if(!H.on || !loggedIn()) return;
+    if(Date.now() < H.hold){ H.timer = setTimeout(sync, 60); return; }
+    var want = layers() + (H.root ? 1 : 0);
+    while(H.depth < want){ try{ history.pushState({ tgk: 1, n: H.depth + 1 }, ''); }catch(e){ return; } H.depth++; }
+    if(H.depth > want){
+      var n = H.depth - want; H.depth = want; H.ignore++; H.ignoreUntil = Date.now() + 900; H.hold = Date.now() + 500;
+      try{ history.go(-n); }catch(e){ H.ignore = 0; H.hold = 0; }
+    }
+  }
+  function arm(){ if(H.on && loggedIn() && !H.root && layers() === 0){ H.root = true; schedule(); } }
+  window.addEventListener('popstate', function(){
+    if(!H.on) return;
+    if(H.ignore > 0 && Date.now() < H.ignoreUntil){ H.ignore--; H.hold = 0; schedule(); return; }   // our own tidy-up, not the user's press
+    H.ignore = 0;
+    H.depth = Math.max(0, H.depth - 1);                                                              // the browser just removed one entry
+    if(!closeTop() && H.root){ H.root = false; toast('Press back again to leave'); }
+    schedule();
+  });
+  function init(){
+    H.on = true;
+    setInterval(sync, 250);                                          // catches pop-ups opened by any code path
+    document.addEventListener('pointerup', arm, true); document.addEventListener('keydown', arm, true);
+    ['pointerup', 'click', 'keyup'].forEach(function(ev){ document.addEventListener(ev, schedule, true); });
+    window.addEventListener('resize', function(){ if(window.innerWidth > 768 && drawerOpen()) schedule(); });
+    window.__ccBack = H;                                             // exposed for the tests
+  }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v5.3';
+var TGK_CC_VERSION='v5.4';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
