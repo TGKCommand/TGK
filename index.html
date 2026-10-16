@@ -2620,7 +2620,7 @@ button,input,select,textarea{font-family:var(--font)}
 #cc-topbar{background:#1b2529!important;border-bottom:0!important;position:sticky;padding:12px 24px!important}
 #cc-topbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#2cbcb4 0 34%,transparent 34% 35.5%,#e8731c 35.5% 39%,transparent 39%)}
 .logo-sub{font-size:14px!important;color:#c9d1d6!important;letter-spacing:.06em;text-transform:uppercase}
-.logout-btn,#cc-topbar button{border:1px solid #5a6670!important;border-radius:2px!important;background:transparent!important;color:#fff!important;font-size:13px!important}
+.logout-btn,#cc-topbar button:not(#cc-notif-panel *){border:1px solid #5a6670!important;border-radius:2px!important;background:transparent!important;color:#fff!important;font-size:13px!important}
 .sidebar,#view-launch .sidebar{background:#1b2529!important;border-right:0!important}
 html:not([data-theme="dark"]) #view-launch .sidebar .nav,.nav{color:#c9d1d6!important;font-size:14px!important;font-weight:700!important;letter-spacing:.02em;padding:9px 10px!important;border-radius:2px!important;background:transparent!important}
 html:not([data-theme="dark"]) #view-launch .sidebar .nav:hover,.nav:hover{background:rgba(255,255,255,.07)!important;color:#fff!important}
@@ -2775,28 +2775,76 @@ html[data-theme="dark"] button[style*="background:#fff"]{background:var(--card-b
 .sidebar .ref-chip.sel{background:rgba(44,188,180,.2)!important;border-color:#2cbcb4!important;color:#fff!important;font-weight:700}
 html:not([data-theme="dark"]) #view-launch .sidebar .ref-chip{color:#c9d1d6!important}
 html:not([data-theme="dark"]) #view-launch .sidebar .ref-chip.sel{color:#fff!important}
+
+/* ===== Notifications: bell, banner and popover (readable, brand colours, nothing cut off) ===== */
+#cc-notif-bell.has{color:#ffa968!important;border-color:#e8731c!important}
+#cc-notif-count{background:#e8731c!important;color:#14171a!important;border-radius:2px!important;font-size:12px!important}
+#cc-notif-banner{background:var(--orange-light)!important;border-bottom:1px solid #e8731c!important;border-left:4px solid #e8731c!important;color:var(--text)!important;padding:9px 20px!important}
+#cc-notif-banner .nb-msg{color:var(--text)!important;font-size:15px!important;font-weight:700!important}
+#cc-notif-banner .nb-dot{background:#e8731c!important}
+#cc-notif-banner .nb-btn{background:#e8731c!important;color:#14171a!important;border:0!important;border-radius:2px!important;font-size:13px!important;font-weight:700!important;letter-spacing:.07em;text-transform:uppercase;padding:6px 14px!important}
+#cc-notif-banner .nb-btn:hover{background:#f5934a!important}
+#cc-notif-banner .nb-x{color:var(--text2)!important;font-size:22px!important;min-width:28px;min-height:28px}
+#cc-notif-banner .nb-x:hover{color:var(--text)!important}
+html .cc-notif-hot{border-color:#e8731c!important;box-shadow:0 0 0 2px rgba(232,115,28,.45),0 0 16px rgba(232,115,28,.3)!important;animation:cxHotPulse 1.8s ease-in-out infinite!important}
+html .cc-bc-home.cc-notif-hot{color:#ffa968!important}
+@keyframes cxHotPulse{0%,100%{box-shadow:0 0 0 2px rgba(232,115,28,.35),0 0 12px rgba(232,115,28,.2)}50%{box-shadow:0 0 0 2px rgba(232,115,28,.6),0 0 22px rgba(232,115,28,.4)}}
+@media (prefers-reduced-motion:reduce){html .cc-notif-hot,#cc-notif-banner .nb-dot{animation:none!important}}
+#cc-notif-panel{width:440px!important;max-width:calc(100vw - 24px)!important;background:var(--card-bg)!important;color:var(--text)!important;border:1px solid var(--border2)!important;border-radius:2px!important;box-shadow:0 10px 28px rgba(0,0,0,.28)!important;z-index:500}
+#cc-notif-panel .ccnp-head{background:var(--card-bg)!important;color:var(--text)!important;border-bottom:1px solid var(--border)!important;font-family:var(--font-head)!important;font-size:17px!important;text-transform:uppercase;letter-spacing:.04em}
+#cc-notif-panel .ccnp-clear{background:var(--card-bg)!important;color:var(--text)!important;border:1px solid var(--text)!important;border-radius:2px!important;font-size:13px!important;font-weight:700!important;text-transform:uppercase;letter-spacing:.06em;padding:5px 10px!important}
+#cc-notif-panel .ccnp-clear:hover{background:var(--teal-light)!important}
+#cc-notif-panel .ccnp-item{border-bottom:1px solid var(--border)!important;align-items:flex-start;padding:12px 14px}
+#cc-notif-panel .ccnp-lbl{white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--text)!important;font-size:14px!important;font-weight:700!important;line-height:1.3}
+#cc-notif-panel .ccnp-time{color:var(--text3)!important;font-size:12px!important}
+#cc-notif-panel .ccnp-tag{font-size:12px!important;border-radius:2px!important;background:var(--teal-light)!important;color:var(--teal-dark)!important;min-width:64px;text-align:center}
+#cc-notif-panel .ccnp-orders,#cc-notif-panel .ccnp-livechat,#cc-notif-panel .ccnp-warranty,#cc-notif-panel .ccnp-shiperrors{background:var(--orange-light)!important;color:#9a4a0a!important}
+html[data-theme="dark"] #cc-notif-panel .ccnp-orders,html[data-theme="dark"] #cc-notif-panel .ccnp-livechat,html[data-theme="dark"] #cc-notif-panel .ccnp-warranty,html[data-theme="dark"] #cc-notif-panel .ccnp-shiperrors{color:#ffa968!important}
+#cc-notif-panel .ccnp-open{background:var(--card-bg)!important;color:var(--text)!important;border:1px solid var(--text)!important;border-radius:2px!important;font-size:12px!important;font-weight:700!important;text-transform:uppercase;letter-spacing:.05em;padding:5px 9px!important;white-space:nowrap}
+#cc-notif-panel .ccnp-open:hover{background:var(--teal-light)!important}
+#cc-notif-panel .ccnp-x{color:var(--text2)!important;font-size:22px!important;min-width:28px;min-height:28px}
+#cc-notif-panel .ccnp-x:hover{color:var(--text)!important}
+#cc-notif-panel .ccnp-empty{color:var(--text2)!important;font-size:14px!important}
+#cc-notif-panel .ccnp-status{padding:9px 14px;font-size:12px;color:var(--text2);border-top:1px solid var(--border);background:var(--bg3)}
+#cc-notif-panel .ccnp-status.bad{color:#9a4a0a;background:var(--orange-light);font-weight:700}
+html[data-theme="dark"] #cc-notif-panel .ccnp-status.bad{color:#ffa968}
+/* ===== Sign-in screen ===== */
+#cc-login .login-box{border-radius:2px!important;border-top:4px solid #2cbcb4}
+#cc-login .login-logo{display:flex;justify-content:center;margin-bottom:6px}
+#cc-login .login-logo-img{height:44px;width:auto;max-width:100%}
+#cc-login .login-title{font-family:var(--font-head)!important;text-transform:uppercase;letter-spacing:.02em;font-size:26px!important}
+#cc-login .login-sub{font-size:14px!important;color:var(--text2)!important}
+#cc-login .login-lbl{font-size:12px!important;letter-spacing:.1em;font-weight:700;color:var(--text2)!important}
+#cc-login .login-inp{font-size:15px!important}
+#cc-login .login-btn{background:#e8731c!important;color:#14171a!important;border:0!important;border-radius:2px!important;font-size:14px!important;font-weight:700!important;letter-spacing:.08em;text-transform:uppercase}
+#cc-login .login-btn:hover:not(:disabled){background:#f5934a!important}
+#cc-login .login-btn:disabled{opacity:.7;cursor:wait}
+#cc-login .login-forgot-link,#cc-login .login-back-link{color:var(--teal-dark)!important;font-size:13px!important;font-weight:700;text-decoration:underline;cursor:pointer}
+#cc-login .login-err{color:#b42318!important;font-size:14px!important;font-weight:700}
+html[data-theme="dark"] #cc-login .login-err{color:#ff9d9d!important}
+#cc-login .login-footer{color:var(--text3)!important;font-size:12px!important}
+#cc-login .login-reset-ok{font-size:14px!important}
 </style>
 </head>
 <body>
 <div id="cc-login" style="display:none">
   <div class="login-box">
     <div class="login-logo">
-      <div class="login-logo-dot"></div>
-      <span class="login-logo-name">TGK <span class="login-logo-teal">Motorsport</span></span>
+      <img class="login-logo-img" alt="TGK Motorsport" src="data:image/webp;base64,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">
     </div>
     <div class="login-title">Command Center</div>
     <div class="login-sub">Sign in to access your tools and ERP</div>
     <div class="login-fg">
-      <label class="login-lbl">Email</label>
+      <label class="login-lbl" for="login-email">Email</label>
       <input class="login-inp" id="login-email" type="email" placeholder="you@tgkmotorsport.com" autocomplete="email"/>
     </div>
     <div class="login-fg">
-      <label class="login-lbl">Password</label>
+      <label class="login-lbl" for="login-pass">Password</label>
       <input class="login-inp" id="login-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password"/>
       <a class="login-forgot-link" onclick="showForgotPanel()">Forgot password?</a>
     </div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
-    <div class="login-err" id="login-err"></div>
+    <div class="login-err" id="login-err" role="alert"></div>
 
     <!-- Forgot Password Panel -->
     <div class="login-reset-panel" id="login-reset-panel">
@@ -2804,12 +2852,12 @@ html:not([data-theme="dark"]) #view-launch .sidebar .ref-chip.sel{color:#fff!imp
       <div class="login-title" style="font-size:var(--t-xl);margin-bottom:4px">Reset Password</div>
       <div class="login-sub" style="margin-bottom:20px">Enter your email and we will send a reset link.</div>
       <div class="login-fg">
-        <label class="login-lbl">Email</label>
+        <label class="login-lbl" for="reset-email">Email</label>
         <input class="login-inp" id="reset-email" type="email" placeholder="you@tgkmotorsport.com" autocomplete="email"/>
       </div>
       <button class="login-btn" id="reset-btn" onclick="doForgotPassword()">Send Reset Link</button>
       <div class="login-reset-ok" id="reset-ok">Check your inbox - reset link sent.</div>
-      <div class="login-err" id="reset-err"></div>
+      <div class="login-err" id="reset-err" role="alert"></div>
       <a class="login-back-link" onclick="hideForgotPanel()">Back to sign in</a>
     </div>
 
@@ -4720,40 +4768,11 @@ function _tgkJwtExp(t){
   }catch(e){return 0;}
 }
 async function _tgkFreshToken(){
-  var s={};
-  try{s=JSON.parse(localStorage.getItem('tgk_cc_session')||'{}')||{};}catch(e){s={};}
-  var tok=s.access_token||'';
-  if(!tok)return '';
-  var exp=_tgkJwtExp(tok);
-  // Refresh with 2 minutes of headroom so a long convert cannot expire mid-run.
-  if(exp && Date.now() < exp-120000) return tok;
-  if(!s.refresh_token){
-    console.warn('[TGK AI] access token expired and no refresh_token stored — falling back to the anon key.');
-    return '';
-  }
   try{
-    var base=(typeof SB_AUTH_URL!=='undefined')?SB_AUTH_URL:TGK_SB_URL;
-    var key=(typeof SB_ANON_KEY!=='undefined')?SB_ANON_KEY:TGK_SB_KEY;
-    var rr=await fetch(base+'/auth/v1/token?grant_type=refresh_token',{
-      method:'POST',
-      headers:{'apikey':key,'Content-Type':'application/json'},
-      body:JSON.stringify({refresh_token:s.refresh_token})
-    });
-    if(!rr.ok){
-      console.warn('[TGK AI] token refresh failed with HTTP '+rr.status+' — falling back to the anon key.');
-      return '';
-    }
-    var nd=await rr.json();
-    if(!nd||!nd.access_token)return '';
-    s.access_token=nd.access_token;
-    if(nd.refresh_token)s.refresh_token=nd.refresh_token;
-    try{localStorage.setItem('tgk_cc_session',JSON.stringify(s));}catch(e){}
-    console.info('[TGK AI] access token refreshed.');
-    return nd.access_token;
-  }catch(e){
-    console.warn('[TGK AI] token refresh threw:',e);
-    return '';
-  }
+    var sx=await _ccFreshSession(false); var t=(sx&&sx.access_token)||''; if(!t)return '';
+    var ex=_tgkJwtExp(t); if(ex && ex<=Date.now()) return '';
+    return t;
+  }catch(e){return '';}
 }
 async function tgkAIFetch(bodyObj){
   var anon=(typeof TGK_SB_JWT!=='undefined')?TGK_SB_JWT:TGK_SB_KEY;
@@ -13422,6 +13441,7 @@ function showForgotPanel() {
     var el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  Array.prototype.forEach.call(document.querySelectorAll('#cc-login .login-box > .login-fg'), function(g){ g.style.display = 'none'; });
   var fLink = document.querySelector('.login-forgot-link');
   if (fLink) fLink.style.display = 'none';
   var panel = document.getElementById('login-reset-panel');
@@ -13437,6 +13457,7 @@ function hideForgotPanel() {
     var el = document.getElementById(id);
     if (el) el.style.display = '';
   });
+  Array.prototype.forEach.call(document.querySelectorAll('#cc-login .login-box > .login-fg'), function(g){ g.style.display = ''; });
   var fLink = document.querySelector('.login-forgot-link');
   if (fLink) fLink.style.display = '';
   var panel = document.getElementById('login-reset-panel');
@@ -13986,7 +14007,7 @@ function _calSendIdentity() {
     var email = (sess && sess.email) ? sess.email : '';
     if (!email || !frame || !frame.contentWindow) return;
     var name = email.split('@')[0];
-    frame.contentWindow.postMessage({ type: 'tgk-identity', email: email, name: name }, '*');
+    frame.contentWindow.postMessage({ type: 'tgk-identity', email: email, name: name }, 'https://command.tgkmotorsport.com');
     // Also hand over the REAL session, exactly as already done for the ERP - a plain email
     // label is spoofable by anything that can post into this frame, so it is only ever used as
     // a display fallback. Google Calendar access is gated on a genuine Supabase session, which
@@ -14052,10 +14073,10 @@ window.openHarnessBuilder = openHarnessBuilder; window.closeHarnessBuilder = clo
 // expiring, refresh it HERE once, save it, and hand the new one to every open module.
 function _ccTokenExp(tok){ try{ return JSON.parse(atob(tok.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).exp*1000; }catch(e){ return 0; } }
 var _ccRefreshing = null;
-async function _ccFreshSession() {
+async function _ccFreshSession(force) {
   var sess = _getSession();
   if (!sess || !sess.access_token) return null;
-  if (_ccTokenExp(sess.access_token) - Date.now() > 120000) return sess;
+  if (!force && _ccTokenExp(sess.access_token) - Date.now() > 120000) return sess;
   if (!sess.refresh_token) return sess;
   if (!_ccRefreshing) {
     _ccRefreshing = (async function(){
@@ -14064,7 +14085,13 @@ async function _ccFreshSession() {
           method: 'POST', headers: { 'apikey': SB_ANON_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: sess.refresh_token })
         });
-        if (!rr.ok) { console.error('[CC] token refresh failed', rr.status); return _getSession(); }
+        if (!rr.ok) {
+          console.error('[CC] token refresh failed', rr.status);
+          // A definite "no" (the refresh token was revoked or already used) on a token that has ALSO expired means this sign-in is over: say so, instead of every screen failing quietly.
+          var cur = _getSession();
+          if ((rr.status === 400 || rr.status === 401 || rr.status === 403) && cur && _ccTokenExp(cur.access_token) <= Date.now()) _ccSessionLost();
+          return _getSession();
+        }
         var nd = await rr.json();
         _setSession({ access_token: nd.access_token, refresh_token: nd.refresh_token, email: sess.email });
         var ns = _getSession();
@@ -14076,6 +14103,16 @@ async function _ccFreshSession() {
   }
   return _ccRefreshing;
 }
+function _ccSessionLost() {
+  _ccBroadcastToFrames({ source:'TGK_CC', type:'SIGN_OUT' });
+  _clearSession();
+  showLoginScreen();
+  var e = document.getElementById('login-err'); if (e) e.textContent = 'Your session expired. Please sign in again.';
+}
+// Keep the sign-in fresh in the background (notifications, Shopify, AI and every open module all read it), and again when the computer wakes.
+function _ccSessionTick() { if (_getSession()) return _ccFreshSession(false); }
+setInterval(_ccSessionTick, 60000);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) _ccSessionTick(); });
 async function _hbSendAuth() {
   try {
     var frame = document.getElementById('hb-frame');
@@ -17520,6 +17557,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var hwm = {};      // { orders:isoTs, tickets:isoTs }  high-water marks
   var pollTimer = null;
   var cssDone = false;
+  var _roundFail = false, pollStat = { failed: false, since: 0, lastOk: 0 };
 
   function loadState(){
     try { active = JSON.parse(localStorage.getItem(LS_ACTIVE)) || []; } catch(e){ active = []; }
@@ -17603,10 +17641,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  async function sbQuery(table, qs){
+  async function sbQuery(table, qs, retried){
+    var used = token();
     var res = await fetch(SB_URL + '/rest/v1/' + table + '?' + qs, {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token() }
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + used }
     });
+    // 401 = the token we used is no longer good. If another request already refreshed it, just retry; otherwise refresh once (shared, never twice).
+    if (res.status === 401 && !retried && typeof _ccFreshSession === 'function') { if (token() === used) { try { await _ccFreshSession(true); } catch(e){} } return sbQuery(table, qs, true); }
     if (!res.ok) { throw new Error(table + ' ' + res.status); }
     return await res.json();
   }
@@ -17696,6 +17737,7 @@ document.addEventListener('DOMContentLoaded', function() {
       rows = await sbQuery(src.table, qs);
     } catch(e){
       console.warn('[notif] poll failed for ' + kind + ': ' + e.message);
+      _roundFail = true;
       return false;
     }
     if (!rows || !rows.length) return false;
@@ -17724,9 +17766,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   async function pollAll(){
     if (!loggedIn()) return;
+    _roundFail = false;
     var results = await Promise.all(Object.keys(SOURCES).map(pollKind));
+    if (_roundFail) { pollStat.failed = true; if (!pollStat.since) pollStat.since = Date.now(); }
+    else { pollStat.failed = false; pollStat.since = 0; pollStat.lastOk = Date.now(); }
     saveState();
-    if (results.some(Boolean)) render();
+    if (results.some(Boolean)) render(); else renderPanel();
   }
 
   // ---- Rendering ---------------------------------------------------------
@@ -17773,11 +17818,18 @@ document.addEventListener('DOMContentLoaded', function() {
     applyHot();
   }
 
+  function statusLine(){
+    var t;
+    if (pollStat.failed) t = 'Cannot check for new notifications right now (since ' + new Date(pollStat.since).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) + '). Trying again every 30 seconds.';
+    else if (pollStat.lastOk) t = 'Checked ' + relTime(new Date(pollStat.lastOk).toISOString()) + '. Checks every 30 seconds.';
+    else t = 'Waiting for the first check.';
+    return '<div class="ccnp-status' + (pollStat.failed ? ' bad' : '') + '" role="status">' + esc(t) + '</div>';
+  }
   function renderPanel(){
     var list = document.getElementById('cc-notif-list');
     if (!list) return;
     if (!active.length){
-      list.innerHTML = '<div class="ccnp-empty">You are all caught up</div>';
+      list.innerHTML = '<div class="ccnp-empty">You are all caught up</div>' + statusLine();
       return;
     }
     var items = active.slice().sort(function(a,b){ return (a.ts||'') < (b.ts||'') ? 1 : -1; });
@@ -17790,21 +17842,20 @@ document.addEventListener('DOMContentLoaded', function() {
         '<div class="ccnp-acts">' +
           '<button class="ccnp-open" data-notif-act="open" data-notif-kind="' + n.kind +
             '" data-notif-id="' + esc(n.id) + '">' + (s.openLbl || 'Open') + '</button>' +
-          '<button class="ccnp-x" title="Dismiss" data-notif-act="dismiss" data-notif-kind="' + n.kind +
+          '<button class="ccnp-x" title="Dismiss" aria-label="Dismiss" data-notif-act="dismiss" data-notif-kind="' + n.kind +
             '" data-notif-id="' + esc(n.id) + '">&times;</button>' +
         '</div></div>';
-    }).join('');
+    }).join('') + statusLine();
   }
 
   function applyHot(){
-    var kinds = {};
-    active.forEach(function(n){ kinds[n.kind] = true; });
-    Object.keys(HOT).forEach(function(kind){
-      var on = !!kinds[kind];
-      HOT[kind].forEach(function(id){
-        var el = document.getElementById(id);
-        if (el) el.classList.toggle('cc-notif-hot', on);
-      });
+    // An element is "hot" if ANY kind that points at it is active. (It used to switch the glow on and then straight back off, because several kinds share the Support card and each inactive one turned it off again.)
+    var want = {}, all = {};
+    active.forEach(function(n){ (HOT[n.kind] || []).forEach(function(id){ want[id] = true; }); });
+    Object.keys(HOT).forEach(function(k){ HOT[k].forEach(function(id){ all[id] = true; }); });
+    Object.keys(all).forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle('cc-notif-hot', !!want[id]);
     });
   }
 
@@ -27773,7 +27824,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     var cfg = window._shp && window._shp.cfg;
     function n(f) { return CAT.parts.filter(function (p) { return p.format === f; }).length; }
     var legacy = n('legacy'), empty = n('empty'), good = n('tgk'), have = !!(CAT.at || CAT.loading);
-    var needV = have ? String(legacy + empty) : '-', partsV = have ? String(CAT.parts.length) : '-';
+    var more = CAT.loading ? '+' : '', needV = have ? String(legacy + empty) + more : '-', partsV = have ? String(CAT.parts.length) + more : '-';
     var needS, partsS;
     if (CAT.loading) { needS = partsS = 'Scanning... ' + CAT.scanned + ' so far'; }
     else if (CAT.at) { needS = legacy + ' old format, ' + empty + ' with no description'; partsS = good + ' in the TGK template'; }
