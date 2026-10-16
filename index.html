@@ -2012,6 +2012,14 @@ select,select option{background-color:#fff!important;color:var(--text)!important
 .fm-vsel{width:auto!important;min-width:150px;max-width:260px;padding:4px 6px!important;font-size:12.5px!important;flex:none!important}
 .fm-vsel.on{border-color:#e07b28;background:#fef6ee;color:#7a3a0a;font-weight:600}
 .fm-setv{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.fm-vm{display:inline-block;vertical-align:top;max-width:280px}
+.fm-vm>summary{list-style:none;cursor:pointer;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box}
+.fm-vm>summary::-webkit-details-marker{display:none}
+.fm-vm>summary::after{content:"\25BE";float:right;margin-left:8px;color:var(--text2)}
+.fm-vm-box{margin-top:4px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--card-bg);min-width:230px}
+.fm-vm-opt{display:flex;align-items:center;gap:7px;padding:3px 0;font-size:13px;font-weight:500;cursor:pointer;white-space:normal}
+.fm-vm-act{display:flex;align-items:center;gap:10px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+.fm-vm-act .fm-btn{padding:4px 12px}
 [data-theme="dark"] .fm-vsel.on{background:rgba(224,123,40,.15);color:#f5b17a}
 /* same SKU on several pages */
 .fm-pages{display:inline-block;font-family:var(--font);font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--blue-light,#E6F1FB);color:var(--blue-text,#0c3d6e);margin-left:4px;vertical-align:1px}
@@ -2829,7 +2837,7 @@ html:not([data-theme="dark"]) #view-launch .sidebar .ref-chip.sel{color:var(--te
       <span class="cc-badge badge-live">LIVE</span>
       <span class="cc-drag-handle">&#10783;</span>
     </button>
-    <div class="cc-foot"><p>TGK Motorsport<br>Command Center <span id="cc-foot-ver">v5.7</span><br>Add tools as you build them.</p></div>
+    <div class="cc-foot"><p>TGK Motorsport<br>Command Center <span id="cc-foot-ver">v5.7.1</span><br>Add tools as you build them.</p></div>
   </div>
 
   <div id="cc-main">
@@ -17882,7 +17890,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v5.7';
+var TGK_CC_VERSION='v5.7.1';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -24920,6 +24928,96 @@ function fmUndoVariant(before){
     var f=FM.fits.find(function(x){return x.id===b.id;});if(f){f.variant_sku=b.variant_sku;f.pn=b.pn;}}fmToast('Undone');});
 }
 window.fmSetRowsVariant=fmSetRowsVariant;
+// ---------- one table line per vehicle: every variant it fits is listed together (stored as one row per variant) ----------
+function fmFitGroups(handle){
+  var fits=fmFitsOf(handle).slice().sort(function(a,b){return (a.make+a.model).localeCompare(b.make+b.model,undefined,{numeric:true})||(a.year_from-b.year_from)||String(a.variant_sku||'').localeCompare(String(b.variant_sku||''));});
+  var by={},out=[];
+  fits.forEach(function(f){var k=fmVKey(f)+'|'+fmQ(f)+'|'+(f.notes||'');var g=by[k];if(!g){g=by[k]={rows:[],ids:[]};out.push(g);}g.rows.push(f);g.ids.push(f.id);});
+  out.forEach(function(g){g.first=g.rows[0];g.skus=g.rows.map(function(r){return r.variant_sku;}).filter(Boolean);});
+  return out;
+}
+function fmVarBox(g,vars,bulk){
+  if(!bulk&&!vars.length)return g.skus.length?g.skus.map(function(s){return '<span class="fm-vtag">'+fmEsc(s)+'</span>';}).join(' '):'<span class="fm-tdim">All variants</span>';
+  var cur={},hasAll=false;
+  if(g)g.rows.forEach(function(r){if(r.variant_sku)cur[String(r.variant_sku).toUpperCase()]=1;else hasAll=true;});
+  var skus=g?g.skus:[];
+  var stale=skus.filter(function(s){return !vars.some(function(v){return String(v).toUpperCase()===String(s).toUpperCase();});});
+  var sum=bulk?'Choose variants':(!skus.length?'All variants':skus.length===1?skus[0]:skus.length+' variants: '+skus.join(', '));
+  var opt=function(val,txt,on){return '<label class="fm-vm-opt"><input type="checkbox" class="fm-vm-chk" value="'+fmEsc(val)+'"'+(on?' checked':'')+' onchange="fmVmTick(this)"> '+txt+'</label>';};
+  var list=opt('','All variants',bulk?false:(hasAll||!skus.length))
+    +vars.map(function(v){var t=fmVarTitle(v);return opt(v,fmEsc(v)+(t?' - '+fmEsc(t):''),!!cur[String(v).toUpperCase()]);}).join('')
+    +stale.map(function(s){return opt(s,fmEsc(s)+' (not on this page)',true);}).join('');
+  return '<details class="fm-vm"><summary class="fm-in fm-vsel'+(skus.length?' on':'')+'" title="'+fmEsc(skus.join(', ')||'Which variants this vehicle fits')+'">'+fmEsc(sum)+'</summary>'
+    +'<div class="fm-vm-box">'+list+'<div class="fm-vm-act"><button type="button" class="fm-btn primary" onclick="fmApplyVarBox(this,'+(bulk?'null':'['+g.ids.map(fmJs).join(',')+']')+')">Apply</button><button type="button" class="fm-link" onclick="fmRefreshCur()">Cancel</button></div></div></details>';
+}
+// "All variants" and specific variants exclude each other; at least one box always stays ticked
+function fmVmTick(el){
+  var box=el.closest('.fm-vm-box');if(!box)return;var all=[].slice.call(box.querySelectorAll('.fm-vm-chk'));
+  if(el.value===''){if(el.checked)all.forEach(function(c){if(c!==el)c.checked=false;});else el.checked=true;}
+  else if(el.checked){all.forEach(function(c){if(c.value==='')c.checked=false;});}
+  else if(!all.some(function(c){return c.checked;}))all[0].checked=true;
+}
+function fmApplyVarBox(btn,ids){
+  var box=btn.closest('.fm-vm-box');if(!box)return;
+  var on=[].slice.call(box.querySelectorAll('.fm-vm-chk:checked')).map(function(c){return c.value;});
+  var vals=on.filter(Boolean),lists;
+  if(ids)lists=[ids];
+  else{
+    if(!on.length){fmToast('Tick the variants first',true);return;}
+    lists=fmFitGroups(FM.sel).filter(function(g){return g.ids.some(function(i){return FM.fsel&&FM.fsel[i];});}).map(function(g){return g.ids;});
+  }
+  if(!lists.length)return;
+  fmSetGroupsVariants(lists,vals);
+}
+// Make each given vehicle fit exactly the chosen variants (none chosen = all variants).
+// Rows are re-used first (changed in place), then extra rows are added or surplus rows removed. One undo step. Never creates a duplicate.
+function fmSetGroupsVariants(lists,vals){
+  var p=fmProd(FM.sel);if(!p)return;
+  if(vals.length&&FM.noVarCol){fmToast('Run fitment_3_variants.sql in Supabase first, then reload',true);fmRefreshCur();return;}
+  var want=vals.length?vals.slice():[null],wantK={};
+  want.forEach(function(w){wantK[String(w||'').toUpperCase()]=w;});
+  var mine={};lists.forEach(function(l){l.forEach(function(i){mine[i]=1;});});
+  var taken={};FM.fits.forEach(function(x){if(x.handle===p.handle&&!mine[x.id])taken[fmVKey(x)+'|'+String(x.variant_sku||'').toUpperCase()+'|'+fmQ(x)]=1;});
+  var skipped=0,patches=[],adds=[],dels=[];
+  lists.forEach(function(ids){
+    var rows=FM.fits.filter(function(f){return ids.indexOf(f.id)>=0;});if(!rows.length)return;
+    var cur={};rows.forEach(function(r){cur[String(r.variant_sku||'').toUpperCase()]=1;});
+    var drop=rows.filter(function(r){return !(String(r.variant_sku||'').toUpperCase() in wantK);});
+    Object.keys(wantK).filter(function(k){return !(k in cur);}).forEach(function(k){
+      var tk=fmVKey(rows[0])+'|'+k+'|'+fmQ(rows[0]);
+      if(taken[tk]){skipped++;return;}taken[tk]=1;
+      var re=drop.shift();
+      if(re)patches.push({row:re,v:wantK[k]});else adds.push({tpl:rows[0],v:wantK[k]});});
+    drop.forEach(function(r){dels.push(r);});
+  });
+  if(!patches.length&&!adds.length&&!dels.length){fmToast(skipped?'Already listed for that variant - nothing changed':'No change');fmRefreshCur();return;}
+  var label=vals.length?('Fits '+vals.join(', ')):'Fits all variants';
+  fmDo(async function(){
+    if(dels.length)await fmRemove(dels.map(function(r){return r.id;}));
+    var byV={};patches.forEach(function(x){var k=String(x.v||'');(byV[k]=byV[k]||{v:x.v,rows:[]}).rows.push(x.row);});
+    for(var k in byV){var G=byV[k],pn=fmCanonPn(G.v||p.sku)||null;
+      await fmReq('fitments?id=in.('+G.rows.map(function(r){return r.id;}).join(',')+')',{method:'PATCH',body:JSON.stringify({variant_sku:G.v||null,pn:pn})});
+      G.rows.forEach(function(r){r.variant_sku=G.v||null;r.pn=pn;});}
+    if(adds.length){
+      var rows=adds.map(function(a){var t=a.tpl,r={pn:fmCanonPn(a.v||p.sku)||null,handle:p.handle,make:t.make,model:t.model,year_from:t.year_from,year_to:t.year_to,engine:t.engine||'',chassis:t.chassis||'',
+        submodel:((t.chassis||'')+' '+(t.engine||'')).trim()||null,vehicle_id:t.vehicle_id||null,source:'fitment-editor'};
+        if(a.v)r.variant_sku=a.v;if(t.notes)r.notes=t.notes;
+        if(!FM.noExtras){if(t.transmission)r.transmission=t.transmission;if(t.drivetrain)r.drivetrain=t.drivetrain;if(t.engine_code)r.engine_code=t.engine_code;}
+        return r;});
+      var ins=await fmReq('fitments',{method:'POST',body:JSON.stringify(fmUniform(rows))});
+      FM.fits=FM.fits.concat(ins||[]);}
+    FM.fsel={};
+    setTimeout(function(){fmToastUndo(label+(skipped?' ('+skipped+' already listed, skipped)':''),fmUndo);},0);
+  });
+}
+function fmFselGroup(ids,on){FM.fsel=FM.fsel||{};ids.forEach(function(i){if(on)FM.fsel[i]=1;else delete FM.fsel[i];});fmRefreshCur();}
+function fmRemoveGroup(ids){fmDeleteIds(ids,ids.length===1?'Deleted 1 fitment':'Deleted 1 vehicle ('+ids.length+' variants)');}
+function fmGrpReview(rows){var rs=rows.map(function(r){return r.review||'';});return rs.every(function(x){return x==='verified';})?'verified':rs.some(function(x){return x==='needs_review';})?'needs_review':'';}
+function fmReviewCellG(g){if(FM.noReview)return '';var r=fmGrpReview(g.rows),f=g.first;
+  var lab=r==='verified'?'&#10003; Verified':r==='needs_review'?'&#9888; Needs review':'Not reviewed';
+  return '<button class="fm-rev fm-rev--'+(r||'none')+'" title="'+(f.reviewed_by?'Last set by '+fmEsc(f.reviewed_by)+(f.reviewed_at?' on '+fmEsc(new Date(f.reviewed_at).toLocaleDateString()):''):'Click to change')+'" onclick="fmCycleReviewG(['+g.ids.map(fmJs).join(',')+'])">'+lab+'</button>';}
+function fmCycleReviewG(ids){var rows=FM.fits.filter(function(x){return ids.indexOf(x.id)>=0;});if(!rows.length)return;var r=fmGrpReview(rows);fmSetReview(ids,!r?'verified':r==='verified'?'needs_review':null);}
+window.fmVmTick=fmVmTick;window.fmApplyVarBox=fmApplyVarBox;window.fmFselGroup=fmFselGroup;window.fmRemoveGroup=fmRemoveGroup;window.fmCycleReviewG=fmCycleReviewG;window.fmRefreshCur=fmRefreshCur;
 // Change conditions / note on one or more rows. Never creates two identical rows (same vehicle, option and conditions).
 function fmSetRowsField(ids,patch){
   var p=fmProd(FM.sel),rows=FM.fits.filter(function(f){return ids.indexOf(f.id)>=0;});if(!rows.length)return;
@@ -25563,7 +25661,7 @@ function fmClipBar(){var c=FM.clip;if(!c||!c.rows.length)return '';
 window.fmCopyAll=fmCopyAll;window.fmCopySelected=fmCopySelected;window.fmClipClear=fmClipClear;window.fmPasteHere=fmPasteHere;window.fmPasteSelected=fmPasteSelected;
 function fmFitTableHtml(){
   var p=fmProd(FM.sel),fits=fmFitsOf(p.handle).slice().sort(function(a,b){return (a.make+a.model).localeCompare(b.make+b.model,undefined,{numeric:true})||(a.year_from-b.year_from)||String(a.variant_sku||'').localeCompare(String(b.variant_sku||''));});
-  var vars=fmVarsOf(p.handle),showV=vars.length>0||fits.some(function(f){return f.variant_sku;});
+  var vars=fmVarsOf(p.handle),showV=vars.length>0||fits.some(function(f){return f.variant_sku;}),groups=fmFitGroups(p.handle);
   FM.fsel=FM.fsel||{};var ids={};fits.forEach(function(f){ids[f.id]=1;});Object.keys(FM.fsel).forEach(function(k){if(!ids[k])delete FM.fsel[k];});
   var nSel=Object.keys(FM.fsel).length,allOn=fits.length&&nSel===fits.length;
   var note=p.fit_type==='universal'?'<div class="fm-notice">Set to <b>Universal fit</b> - it shows for every vehicle, so the rows below are not used.'+(fits.length?' You can delete them.':'')+'</div>'
@@ -25574,21 +25672,21 @@ function fmFitTableHtml(){
     +(canPaste?'<button class="fm-btn primary" onclick="fmPasteHere(false)" title="Add the copied vehicles to this product">Paste '+c.rows.length+' from '+fmEsc(c.sku||'clipboard')+'</button>'+(fits.length?'<button class="fm-link" onclick="fmPasteHere(true)">Replace with clipboard</button>':''):'')
     +(fits.length?'<button class="fm-link danger" onclick="fmRemoveAll()">Delete all</button>':'')+'</span></div>'+note;
   if(!fits.length)return h+(p.fit_type==='vehicle'?'<div class="fm-empty">No fitment yet - pick a make and model above and press <b>Add fitment</b>.</div>':'');
-  h+='<div class="fm-selbar'+(nSel?' on':'')+'">'+(nSel?'<b>'+nSel+' selected</b>'
-      +(vars.length?'<span class="fm-setv">Fits variant <select class="fm-in fm-vsel" id="fm-bulkv">'+fmVarOptions(vars,'',null)+'</select><button class="fm-btn primary" onclick="fmSetRowsVariant(Object.keys(FM.fsel),document.getElementById(\'fm-bulkv\').value)">Set</button></span>':'')
+  h+='<div class="fm-selbar'+(nSel?' on':'')+'">'+(nSel?'<b>'+groups.filter(function(g){return g.ids.some(function(i){return FM.fsel[i];});}).length+' selected</b>'
+      +(vars.length?'<span class="fm-setv">Fits variants '+fmVarBox(null,vars,true)+'</span>':'')
       +'<span class="fm-setv">'+(FM.noExtras?'':'<select class="fm-in fm-csel" id="fm-bt"><option value="__k">Transmission: keep</option>'+fmOpts(FM_TRANS,'','Any').replace('<option value="">','<option value="">Transmission: ')+'</select><select class="fm-in fm-csel" id="fm-bd"><option value="__k">Drive: keep</option>'+fmOpts(FM_DRIVE,'','Any').replace('<option value="">','<option value="">Drive: ')+'</select>')
         +'<input class="fm-in fm-notein" id="fm-bn" placeholder="Note (blank = keep)"><button class="fm-btn" onclick="fmBulkCond()">Apply</button></span>'
       +(FM.noReview?'':'<button class="fm-btn" onclick="fmSetReview(Object.keys(FM.fsel),\'verified\')">Mark verified</button><button class="fm-btn" onclick="fmSetReview(Object.keys(FM.fsel),\'needs_review\')">Needs review</button>')
       +'<button class="fm-btn" onclick="fmCopySelected()">Copy selected</button><button class="fm-del" onclick="fmDeleteSelected()">Delete selected</button><button class="fm-link" onclick="fmFselAll(false)">Clear selection</button>'
       :'<span class="fm-tdim">Tick rows to copy them, '+(vars.length?'change which variant they fit, or to ':'')+'delete several at once.</span>')+'</div>';
   return h+'<table class="fm-table"><thead><tr><th style="width:34px"><input type="checkbox" title="Select all"'+(allOn?' checked':'')+' onchange="fmFselAll(this.checked)"></th><th>Year</th><th>Make</th><th>Model</th><th>Engine</th><th>Chassis</th>'+(showV?'<th>Variant</th>':'')+'<th>Conditions &amp; note</th>'+(FM.noReview?'':'<th>Review</th>')+'<th>Source</th><th></th></tr></thead><tbody>'
-    +fits.map(function(f){var on=!!FM.fsel[f.id];return '<tr'+(on?' class="fm-trsel"':'')+'><td><input type="checkbox"'+(on?' checked':'')+' onchange="fmFselToggle('+fmJs(f.id)+',this.checked)"></td><td><span class="fm-yr">'+fmYears(f)+'</span></td><td>'+fmEsc(f.make)+'</td><td>'+fmEsc(f.model)+'</td><td>'+fmEsc(f.engine||'')+'</td><td>'+fmEsc(f.chassis||'')+'</td>'
-      +(showV?'<td>'+fmVarCell(f,vars)+'</td>':'')
-      +'<td class="fm-condcell">'+(FM.noExtras?'':'<select class="fm-in fm-csel'+(f.transmission?' on':'')+'" title="Transmission" onchange="fmSetRowsField(['+fmJs(f.id)+'],{transmission:this.value||null})">'+fmOpts(FM_TRANS,f.transmission,'Any trans.')+'</select>'
-        +'<select class="fm-in fm-csel'+(f.drivetrain?' on':'')+'" title="Drive" onchange="fmSetRowsField(['+fmJs(f.id)+'],{drivetrain:this.value||null})">'+fmOpts(FM_DRIVE,f.drivetrain,'Any drive')+'</select>')
-        +'<input class="fm-in fm-notein'+(f.notes?' on':'')+'" placeholder="Note" value="'+fmEsc(f.notes||'')+'" title="'+fmEsc(f.notes||'Shown to shoppers and dealers')+'" onchange="fmSetRowsField(['+fmJs(f.id)+'],{notes:this.value.trim()||null})"></td>'
-      +(FM.noReview?'':'<td>'+fmReviewCell(f)+'</td>')
-      +'<td class="fm-tdim">'+(f.source==='convermax'?'imported':f.source==='fitment-editor'?'custom':fmEsc(f.source||''))+'</td><td style="text-align:right"><button class="fm-del" onclick="fmRemoveOne('+fmJs(f.id)+')">Delete</button></td></tr>';}).join('')+'</tbody></table>';
+    +groups.map(function(g){var f=g.first,ij=g.ids.map(fmJs).join(','),on=g.ids.every(function(i){return !!FM.fsel[i];});return '<tr'+(on?' class="fm-trsel"':'')+'><td><input type="checkbox"'+(on?' checked':'')+' onchange="fmFselGroup(['+ij+'],this.checked)"></td><td><span class="fm-yr">'+fmYears(f)+'</span></td><td>'+fmEsc(f.make)+'</td><td>'+fmEsc(f.model)+'</td><td>'+fmEsc(f.engine||'')+'</td><td>'+fmEsc(f.chassis||'')+'</td>'
+      +(showV?'<td>'+fmVarBox(g,vars)+'</td>':'')
+      +'<td class="fm-condcell">'+(FM.noExtras?'':'<select class="fm-in fm-csel'+(f.transmission?' on':'')+'" title="Transmission" onchange="fmSetRowsField(['+ij+'],{transmission:this.value||null})">'+fmOpts(FM_TRANS,f.transmission,'Any trans.')+'</select>'
+        +'<select class="fm-in fm-csel'+(f.drivetrain?' on':'')+'" title="Drive" onchange="fmSetRowsField(['+ij+'],{drivetrain:this.value||null})">'+fmOpts(FM_DRIVE,f.drivetrain,'Any drive')+'</select>')
+        +'<input class="fm-in fm-notein'+(f.notes?' on':'')+'" placeholder="Note" value="'+fmEsc(f.notes||'')+'" title="'+fmEsc(f.notes||'Shown to shoppers and dealers')+'" onchange="fmSetRowsField(['+ij+'],{notes:this.value.trim()||null})"></td>'
+      +(FM.noReview?'':'<td>'+fmReviewCellG(g)+'</td>')
+      +'<td class="fm-tdim">'+(f.source==='convermax'?'imported':f.source==='fitment-editor'?'custom':fmEsc(f.source||''))+'</td><td style="text-align:right"><button class="fm-del" onclick="fmRemoveGroup(['+ij+'])">Delete</button></td></tr>';}).join('')+'</tbody></table>';
 }
 function fmPick(handle){FM.sel=handle;FM.copyQ='';fmCsReset();FM.addTab='add';FM.fsel={};fmRender._inner();var r=document.querySelector('#fm-root .fm-page');if(r)r.scrollTop=0;}
 window.fmPick=fmPick;window.fmColPick=fmColPick;window.fmColAll=fmColAll;window.fmAddSelected=fmAddSelected;window.fmRefreshAdd=fmRefreshAdd;window.fmListBody=fmListBody;window.fmCsReset=fmCsReset;
