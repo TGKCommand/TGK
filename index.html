@@ -2952,6 +2952,41 @@ html body #view-launch .sidebar .ref-chip.ref-chip.sel{background:var(--sb-teal-
 html body #view-launch .sidebar .sidebar-foot{margin-top:auto!important;padding:10px 14px 14px!important;border-top:1px solid var(--sb-border)!important}
 html body #view-launch .sidebar .sidebar-foot p{font-size:10px!important;color:var(--sb-text3)!important;line-height:1.6!important;margin:0}
 </style>
+<style id="tgk-header-type">
+/* [v7.0] One type style for all header text: DM Sans 13px / 700 / spaced uppercase. Three tones only: muted, normal, active. */
+html body #cc-topbar{--hdr-muted:#9fb0b8;--hdr-text:#c9d1d6;--hdr-active:#ffffff}
+html body #cc-topbar .logo-sub,
+html body #cc-topbar .cx-nav button,
+html body #cc-topbar .cx-nav .bc-t,
+html body #cc-topbar .cx-nav #cc-bc-erp,
+html body #cc-topbar .cx-nav #cc-bc-support,
+html body #cc-topbar .cx-nav #cc-bc-ghost,
+html body #cc-topbar #topbar-user,
+html body #cc-topbar .logout-btn,
+html body #cc-topbar #cc-version-badge,
+html body #cc-breadcrumb #cc-bc-label,
+html body #cc-breadcrumb .cc-bc-btn{font-family:'DM Sans',sans-serif!important;font-size:13px!important;font-weight:700!important;line-height:16px!important;letter-spacing:.08em!important;text-transform:uppercase!important}
+html body #cc-topbar .logo-sub{color:var(--hdr-muted)!important}
+html body #cc-topbar #topbar-user,html body #cc-topbar #cc-version-badge{color:var(--hdr-muted)!important}
+html body #cc-topbar .logout-btn{color:var(--hdr-text)!important}
+html body #cc-breadcrumb #cc-bc-label{color:#14171a!important}
+html body #cc-topbar .cx-search kbd{font-family:'DM Sans',sans-serif!important;font-weight:700!important;font-size:12px!important}
+/* the nav labels carry a 2px underline allowance, which put them 1px above the other header text: rebalance it */
+html body #cc-topbar .cx-nav button,
+html body #cc-topbar .cx-nav #cc-bc-erp,
+html body #cc-topbar .cx-nav #cc-bc-support,
+html body #cc-topbar .cx-nav #cc-bc-ghost,
+html body #cc-topbar .cx-nav .cc-bc-home:not(.cc-bc-jump):not(#cx-x){padding-top:7px!important;padding-bottom:5px!important}
+/* on a phone the user name and version give way, so the header fits (it overflowed before) */
+@media (max-width:430px){html body #cc-topbar>img{width:120px!important;height:auto!important}}
+@media (max-width:380px){html body #cc-topbar>img{width:100px!important}}
+@media (max-width:560px){html body #cc-topbar #topbar-user,html body #cc-topbar #cc-version-badge{display:none!important}html body #cc-topbar .logout-btn{padding:4px 9px!important}}
+/* the dot between the logo and the name becomes a thin divider so it does not add a fourth style */
+html body #cc-topbar .logo-sep{display:none!important}
+html body #cc-topbar .logo-sub{border-left:1px solid rgba(255,255,255,.22)!important;border-right:1px solid rgba(255,255,255,.22)!important;padding:0 16px 0 14px!important;margin:0 8px 0 14px!important;line-height:18px!important}
+/* the theme button's sun glyph follows the same family and tone as the other header controls */
+html body #cc-topbar #cc-theme-btn{font-family:'DM Sans',sans-serif!important;font-size:17px!important;color:var(--hdr-text)!important}
+</style>
 </head>
 <body>
 <div id="cc-login" style="display:none">
@@ -18284,7 +18319,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v6.9';
+var TGK_CC_VERSION='v7.0';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
