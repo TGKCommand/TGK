@@ -18284,7 +18284,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v6.8';
+var TGK_CC_VERSION='v6.9';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -28006,6 +28006,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
       if (n++ < 30) setTimeout(wait, 100);
     })();
   }
+  function looksLikeSku(q) { q = q.trim(); return q.length >= 3 && /^[A-Za-z0-9][A-Za-z0-9._\/ \-]{1,40}$/.test(q) && (/\d/.test(q) || q.indexOf('-') >= 0); }
   function run(q) {
     var t = q.trim().toLowerCase(), words = t.split(/\s+/).filter(Boolean); results = [];
     if (words.length) {
@@ -28015,16 +28016,25 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
       });
       results.sort(function (a, b) { return a.score - b.score; });
       results = results.slice(0, 7);
-      if (t.length >= 2) results.push({ kind: 'part', q: q.trim() });
+      if (t.length >= 2) {
+        /* a part number or SKU opens the ERP's Master Lookup; it goes first and is preselected so Enter opens it */
+        var erp = { kind: 'sku', q: q.trim() };
+        if (looksLikeSku(q)) results.unshift(erp); else results.push(erp);
+        results.push({ kind: 'part', q: q.trim() });
+      }
     }
     sel = results.length ? 0 : -1; paintList(q);
   }
   function paintList(q) {
     if (!q.trim()) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); return; }
-    var h = '<div class="cx-sr-h" aria-hidden="true">Tools</div>', tools = results.filter(function (r) { return r.kind === 'tool'; });
-    if (!tools.length) h = '<div class="cx-sr-none">No tool matches \u201C' + esc(q.trim()) + '\u201D.</div>';
-    else h += results.map(function (r, i) { return r.kind === 'tool' ? opt(i, '<i aria-hidden="true">' + esc(r.it.icon) + '</i><div><b>' + esc(r.it.name) + '</b><br><span>' + esc(r.it.cat) + '</span></div>', '') : ''; }).join('');
-    var pi = results.length - 1; if (results[pi] && results[pi].kind === 'part') h += '<div class="cx-sr-h" aria-hidden="true">Parts</div>' + opt(pi, '<i aria-hidden="true">\uD83D\uDD0E</i><div><b>Find \u201C' + esc(results[pi].q) + '\u201D on Shopify</b><br><span>Search SKU, name or product link in Product Pages</span></div>', ' part');
+    var heads = { sku: 'Part or SKU', tool: 'Tools', part: 'On Shopify' }, last = '', h = '';
+    results.forEach(function (r, i) {
+      if (r.kind !== last) { h += '<div class="cx-sr-h" aria-hidden="true">' + heads[r.kind] + '</div>'; last = r.kind; }
+      if (r.kind === 'tool') h += opt(i, '<i aria-hidden="true">' + esc(r.it.icon) + '</i><div><b>' + esc(r.it.name) + '</b><br><span>' + esc(r.it.cat) + '</span></div>', '');
+      else if (r.kind === 'sku') h += opt(i, '<i aria-hidden="true">\uD83D\uDD0D</i><div><b>Master Lookup: \u201C' + esc(r.q) + '\u201D</b><br><span>Opens it in the ERP: stock, pricing, BOMs, vendors, orders</span></div>', ' part');
+      else h += opt(i, '<i aria-hidden="true">\uD83D\uDD0E</i><div><b>Find \u201C' + esc(r.q) + '\u201D on Shopify</b><br><span>Search SKU, name or product link in Product Pages</span></div>', ' part');
+    });
+    if (!results.length) h = '<div class="cx-sr-none">Keep typing a tool, part number or SKU.</div>';
     list.innerHTML = h; list.hidden = false; input.setAttribute('aria-expanded', 'true'); mark();
   }
   function opt(i, inner, cls) { return '<div class="cx-sr-i' + cls + '" role="option" id="cx-o' + i + '" data-i="' + i + '" aria-selected="false">' + inner + '</div>'; }
@@ -28032,7 +28042,9 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
   function choose(i) {
     var r = results[i]; if (!r) return; var q = input.value;
     input.value = ''; list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.blur();
-    if (r.kind === 'tool') r.it.go(); else findPart(r.q || q);
+    if (r.kind === 'tool') r.it.go();
+    else if (r.kind === 'sku') { if (typeof window.ccOpenErpLookup === 'function') window.ccOpenErpLookup(r.q || q); }
+    else findPart(r.q || q);
   }
   function mountSearch() {
     var tb = $('cc-topbar'); if (!tb || tb.querySelector('.cx-search')) return;
@@ -28204,5 +28216,28 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
   setTimeout(mount,600);setTimeout(mount,1800);
 })();</script>
+<script>/* ===== Header search: open the ERP's Master Lookup for a SKU / part number (v6.9) ===== */
+(function () {
+  'use strict';
+  window.ccOpenErpLookup = function (q) {
+    q = String(q || '').trim(); if (!q) return;
+    var url = (typeof ERP_URL === 'string' && ERP_URL) || 'https://erp.tgkmotorsport.com';
+    var origin = new URL(url).origin, id = String(Date.now()) + Math.random().toString(36).slice(2, 6), tries = 0, done = false;
+    /* if the ERP is already on screen, just ask it; opening it again would reload it and lose what is open there */
+    var viewer = document.getElementById('erp-viewer'), onScreen = !!(viewer && viewer.classList.contains('active'));
+    if (!onScreen && typeof openERP === 'function') openERP();
+    var frame = document.getElementById('erp-frame'); if (!frame) return;
+    function onAck(e) { if (e.origin === origin && e.data && e.data.source === 'TGK_ERP' && e.data.type === 'LOOKUP_OPENED' && e.data.id === id) { done = true; window.removeEventListener('message', onAck); } }
+    window.addEventListener('message', onAck);
+    /* the ERP may still be loading, so ask again until it confirms; it ignores repeats of the same request */
+    (function ask() {
+      if (done || tries > 24) { window.removeEventListener('message', onAck); return; }
+      tries++;
+      try { if (frame.contentWindow) frame.contentWindow.postMessage({ source: 'TGK_CC', type: 'OPEN_LOOKUP', id: id, query: q }, origin); } catch (e) {}
+      setTimeout(ask, tries < 4 ? 500 : 1500);
+    })();
+  };
+})();
+</script>
 </body>
 </html>
