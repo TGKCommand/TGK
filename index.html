@@ -2987,6 +2987,28 @@ html body #cc-topbar .logo-sub{border-left:1px solid rgba(255,255,255,.22)!impor
 /* the theme button's sun glyph follows the same family and tone as the other header controls */
 html body #cc-topbar #cc-theme-btn{font-family:'DM Sans',sans-serif!important;font-size:17px!important;color:var(--hdr-text)!important}
 </style>
+<style id="tgk-v71">
+/* [v7.1] Command Center is the home link (Tools is gone); the crest watermark shows on every view; the turbine always shows; greeting row; result rows */
+html body #cc-topbar .cx-nav .cc-bc-home:not(.cc-bc-jump):not([id]){display:none!important}
+html body #cc-topbar .logo-sub{color:var(--hdr-text,#c9d1d6)!important;border:0!important;border-bottom:2px solid transparent!important;padding:7px 10px 5px!important;margin:0 4px 0 12px!important;cursor:pointer;line-height:16px!important;border-radius:2px;transition:color .12s}
+html body #cc-topbar .logo-sub:hover{color:#fff!important}
+html body #cc-topbar .logo-sub.is-current{color:#fff!important;border-bottom-color:#2cbcb4!important}
+html body #cc-topbar .logo-sub:focus-visible{outline:2px solid #2cbcb4;outline-offset:2px}
+html body #cc-topbar>img{cursor:pointer}
+html body .cc-view,html body #view-home,html[data-theme="dark"] body .cc-view,html[data-theme="dark"] body #view-home{background:transparent!important}
+html body,html[data-theme="dark"] body{background-size:min(640px,86vw) auto!important}
+html body #tw{display:flex!important}
+html body #view-toolbox,html body #view-ideas,html body #view-fbgroups,html[data-theme="dark"] body #view-toolbox,html[data-theme="dark"] body #view-ideas,html[data-theme="dark"] body #view-fbgroups{background:transparent!important}
+/* dark mode: the crest is much stronger on a dark page, so the views tint over it and it stays a quiet watermark */
+html[data-theme="dark"] body .cc-view,html[data-theme="dark"] body #view-home,html[data-theme="dark"] body #view-toolbox,html[data-theme="dark"] body #view-ideas,html[data-theme="dark"] body #view-fbgroups{background:rgba(15,17,19,.78)!important}
+html body .cx-greet{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+html body .cx-greet{min-height:24px}
+@media(min-width:769px){html body #view-home{padding-top:14px!important}html body #view-home .dash-wrap{padding-top:24px!important}}
+html body .cx-greet b{font-size:18px;line-height:24px;font-weight:700;color:var(--text);letter-spacing:.005em}
+html body .cx-greet span{font-size:13px;color:var(--text3)}
+html body .cx-sr-i>div{min-width:0;flex:1}
+html body .cx-sr-i span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
 </head>
 <body>
 <div id="cc-login" style="display:none">
@@ -18319,7 +18341,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.0';
+var TGK_CC_VERSION='v7.1';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -18868,7 +18890,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     root.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('pointermove', function(e){ curX = e.clientX; curY = e.clientY; }, { passive:true });
     if(localStorage.getItem(HIDE_KEY)!=='0'){
-      root.style.display = 'none'; var _tw0=document.getElementById('tw'); if(_tw0)_tw0.style.display='none';
+      root.style.display = 'none'; /* the turbine always shows: it is not part of the AI Guy toggle */
       var btn = document.getElementById('ai-guy-toggle-btn');
       if(btn) btn.classList.add('aig-toggle-off');
     }
@@ -24318,7 +24340,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(!root) return;
     var willHide = root.style.display !== 'none';
     root.style.display = willHide ? 'none' : '';
-    var _tw1=document.getElementById('tw'); if(_tw1)_tw1.style.display = willHide ? 'none' : '';
+    /* the turbine always shows: it is not part of the AI Guy toggle */
     try{ localStorage.setItem(HIDE_KEY, willHide ? '1' : '0'); }catch(e){}
     var btn = document.getElementById('ai-guy-toggle-btn');
     if(btn) btn.classList.toggle('aig-toggle-off', willHide);
@@ -27990,14 +28012,14 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     var more = CAT.loading ? '+' : '', needV = have ? String(legacy + empty) + more : '-', partsV = have ? String(CAT.parts.length) + more : '-';
     var needS, partsS;
     if (CAT.loading) { needS = partsS = 'Scanning... ' + CAT.scanned + ' so far'; }
-    else if (CAT.at) { needS = legacy + ' old format, ' + empty + ' with no description'; partsS = good + ' in the TGK template'; }
-    else if (cfg && cfg.ok) { needS = partsS = CAT.err ? 'Could not read the catalog' : 'Not scanned yet'; }
+    else if (CAT.at) { needS = legacy + ' in the old format, ' + empty + ' missing a description'; partsS = good + ' use the TGK template'; }
+    else if (cfg && cfg.ok) { needS = partsS = CAT.err ? 'Could not read the catalog. Try again.' : 'Scan has not run yet'; }
     else if (cfg) { needS = partsS = 'Connect Shopify first'; }
     else { needS = partsS = 'Checking Shopify...'; }
     var month = backups().filter(function (b) { return Date.now() - new Date(b.at).getTime() < 30 * 864e5; }).length;
-    var link = !cfg ? ['Checking...', 'wait', 'Contacting Shopify', ''] : cfg.ok ? ['Connected', '', esc(cfg.store || ''), ''] : ['Not set up', 'bad', 'Shopify is not connected yet', '<button type="button" class="cx-link" data-cx="setup">Setup steps</button>'];
-    var review = (CAT.at && legacy + empty) ? '<button type="button" class="cx-link" data-cx="hub">Review these parts</button>' : '';
-    return tile('Parts needing a template update', needV, needS, '', review) + tile('Parts on Shopify', partsV, partsS) + tile('Updated in 30 days', String(month), month ? 'Saved from the Command Center' : 'None yet') + tile('Shopify link', link[0], link[2], link[1], link[3]);
+    var link = !cfg ? ['Checking...', 'wait', 'Contacting Shopify', ''] : cfg.ok ? ['Connected', '', esc(cfg.store || ''), ''] : ['Not connected', 'bad', 'Connect Shopify to see live data', '<button type="button" class="cx-link" data-cx="setup">Connect Shopify</button>'];
+    var review = (CAT.at && legacy + empty) ? '<button type="button" class="cx-link" data-cx="hub">Review them</button>' : '';
+    return tile('Parts to update', needV, needS, '', review) + tile('Live on Shopify', partsV, partsS) + tile('Edited in 30 days', String(month), month ? 'Saved from this app' : 'No edits yet') + tile('Shopify connection', link[0], link[2], link[1], link[3]);
   }
   function paintStrip() { var h = $('cx-today'); if (h) h.innerHTML = stripHtml(); }
   function mountStrip() {
@@ -28042,30 +28064,70 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     })();
   }
   function looksLikeSku(q) { q = q.trim(); return q.length >= 3 && /^[A-Za-z0-9][A-Za-z0-9._\/ \-]{1,40}$/.test(q) && (/\d/.test(q) || q.indexOf('-') >= 0); }
+  var toolRes = [], partRes = [], partBusy = false, partTimer = 0, partSeq = 0, partCache = {};
+  function partToken() { try { var ss = (typeof _getSession === 'function') ? _getSession() : null; return ss && ss.access_token ? ss.access_token : ''; } catch (e) { return ''; } }
+  /* ask the ERP's parts and finished goods for matches (the same signed-in session the ERP uses) */
+  function fetchParts(q) {
+    var key = q.trim().toLowerCase(); if (partCache[key]) return Promise.resolve(partCache[key]);
+    var tok = partToken(); if (!tok || typeof SB_AUTH_URL === 'undefined') return Promise.resolve([]);
+    var clean = q.trim().replace(/[*,()%]/g, ' ').replace(/\s+/g, ' ').trim(); if (clean.length < 2) return Promise.resolve([]);
+    var pat = '*' + encodeURIComponent(clean) + '*', or = 'or=(pn.ilike.' + pat + ',new_sku.ilike.' + pat + ',description.ilike.' + pat + ')';
+    function get(table, type) {
+      return fetch(SB_AUTH_URL + '/rest/v1/' + table + '?select=pn,new_sku,description&' + or + '&limit=8', { headers: { apikey: SB_ANON_KEY, Authorization: 'Bearer ' + tok } })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (rows) { return Array.isArray(rows) ? rows.map(function (x) { return { type: type, pn: x.pn, sku: x.new_sku || x.pn, desc: x.description || '' }; }) : []; })
+        .catch(function () { return []; });
+    }
+    return Promise.all([get('assemblies', 'assembly'), get('parts', 'part')]).then(function (a) {
+      var all = a[0].concat(a[1]);
+      all.forEach(function (p) { var sk = (p.sku || '').toLowerCase(); p.rank = (sk === key || (p.pn || '').toLowerCase() === key) ? 0 : (sk.indexOf(key) === 0 ? 1 : 2); });
+      all.sort(function (x, y) { return x.rank - y.rank; });
+      partCache[key] = all.slice(0, 6); return partCache[key];
+    });
+  }
+  /* put the tool, part, ERP and Shopify results in order (a SKU-shaped search puts the parts first) */
+  function compose(q) {
+    var t = q.trim().toLowerCase(), qq = q.trim(); results = [];
+    if (t.length >= 2) {
+      var parts = partRes.map(function (p) { return { kind: 'pn', q: qq, p: p }; });
+      var erp = { kind: 'sku', q: qq }, shop = { kind: 'part', q: qq };
+      results = looksLikeSku(q) ? parts.concat([erp], toolRes, [shop]) : toolRes.concat(parts, [erp, shop]);
+    } else results = toolRes.slice();
+    if (!results.length) sel = -1; else if (sel < 0 || sel >= results.length) sel = 0;
+    paintList(q);
+  }
   function run(q) {
-    var t = q.trim().toLowerCase(), words = t.split(/\s+/).filter(Boolean); results = [];
+    var t = q.trim().toLowerCase(), words = t.split(/\s+/).filter(Boolean); toolRes = [];
     if (words.length) {
       idx.forEach(function (it) {
         var hay = (it.name + ' ' + it.cat + ' ' + it.desc).toLowerCase(), ok = words.every(function (w) { return hay.indexOf(w) >= 0; });
-        if (ok) results.push({ kind: 'tool', it: it, score: it.name.toLowerCase().indexOf(words[0]) === 0 ? 0 : it.name.toLowerCase().indexOf(words[0]) > 0 ? 1 : 2 });
+        if (ok) toolRes.push({ kind: 'tool', it: it, score: it.name.toLowerCase().indexOf(words[0]) === 0 ? 0 : it.name.toLowerCase().indexOf(words[0]) > 0 ? 1 : 2 });
       });
-      results.sort(function (a, b) { return a.score - b.score; });
-      results = results.slice(0, 7);
-      if (t.length >= 2) {
-        /* a part number or SKU opens the ERP's Master Lookup; it goes first and is preselected so Enter opens it */
-        var erp = { kind: 'sku', q: q.trim() };
-        if (looksLikeSku(q)) results.unshift(erp); else results.push(erp);
-        results.push({ kind: 'part', q: q.trim() });
-      }
+      toolRes.sort(function (a, b) { return a.score - b.score; }); toolRes = toolRes.slice(0, 7);
     }
-    sel = results.length ? 0 : -1; paintList(q);
+    sel = 0; partRes = partCache[t] || []; partBusy = false; clearTimeout(partTimer); var seq = ++partSeq;
+    compose(q);
+    if (t.length >= 2 && !partCache[t]) {
+      partBusy = true; compose(q);
+      partTimer = setTimeout(function () {
+        fetchParts(q).then(function (rows) {
+          if (seq !== partSeq) return; partBusy = false; partRes = rows;
+          if (input.value.trim().toLowerCase() === t) compose(q);
+        });
+      }, 160);
+    }
   }
   function paintList(q) {
     if (!q.trim()) { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); return; }
-    var heads = { sku: 'Part or SKU', tool: 'Tools', part: 'On Shopify' }, last = '', h = '';
+    var heads = { pn: 'Parts and SKUs', sku: 'Parts and SKUs', tool: 'Tools', part: 'On Shopify' }, last = '', h = '', t = q.trim().toLowerCase();
     results.forEach(function (r, i) {
-      if (r.kind !== last) { h += '<div class="cx-sr-h" aria-hidden="true">' + heads[r.kind] + '</div>'; last = r.kind; }
+      var hd = heads[r.kind];
+      if (hd !== last) {
+        h += '<div class="cx-sr-h" aria-hidden="true">' + hd + '</div>'; last = hd;
+        if (hd === 'Parts and SKUs' && t.length >= 2 && !partRes.length) h += '<div class="cx-sr-none">' + (partBusy ? 'Searching the ERP...' : 'No part or SKU matches in the ERP yet.') + '</div>';
+      }
       if (r.kind === 'tool') h += opt(i, '<i aria-hidden="true">' + esc(r.it.icon) + '</i><div><b>' + esc(r.it.name) + '</b><br><span>' + esc(r.it.cat) + '</span></div>', '');
+      else if (r.kind === 'pn') h += opt(i, '<i aria-hidden="true">\uD83D\uDD29</i><div><b>' + esc(r.p.sku) + '</b><br><span>' + esc((r.p.type === 'assembly' ? 'Finished good' : 'Part') + (r.p.desc ? ' \u00B7 ' + r.p.desc : '')) + '</span></div>', ' part');
       else if (r.kind === 'sku') h += opt(i, '<i aria-hidden="true">\uD83D\uDD0D</i><div><b>Master Lookup: \u201C' + esc(r.q) + '\u201D</b><br><span>Opens it in the ERP: stock, pricing, BOMs, vendors, orders</span></div>', ' part');
       else h += opt(i, '<i aria-hidden="true">\uD83D\uDD0E</i><div><b>Find \u201C' + esc(r.q) + '\u201D on Shopify</b><br><span>Search SKU, name or product link in Product Pages</span></div>', ' part');
     });
@@ -28078,6 +28140,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     var r = results[i]; if (!r) return; var q = input.value;
     input.value = ''; list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.blur();
     if (r.kind === 'tool') r.it.go();
+    else if (r.kind === 'pn') { if (typeof window.ccOpenErpLookup === 'function') window.ccOpenErpLookup(r.p.pn); }
     else if (r.kind === 'sku') { if (typeof window.ccOpenErpLookup === 'function') window.ccOpenErpLookup(r.q || q); }
     else findPart(r.q || q);
   }
@@ -28251,27 +28314,125 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount);else mount();
   setTimeout(mount,600);setTimeout(mount,1800);
 })();</script>
-<script>/* ===== Header search: open the ERP's Master Lookup for a SKU / part number (v6.9) ===== */
+<script>/* ===== Header search: open the ERP's Master Lookup for a SKU / part number (v7.1) ===== */
 (function () {
   'use strict';
+  var LK = 0;
+  function notice(msg, sku) {
+    var n = document.getElementById('cc-lk-notice');
+    if (!n) { n = document.createElement('div'); n.id = 'cc-lk-notice'; n.setAttribute('role', 'status'); n.style.cssText = 'position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(560px,92vw);background:#14171a;color:#fff;border:1px solid #5a6670;border-left:4px solid #e8731c;border-radius:6px;padding:12px 14px;font:500 13px/1.45 "DM Sans",sans-serif;z-index:100000;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.4)'; document.body.appendChild(n); }
+    n.innerHTML = '<span style="flex:1"></span><button type="button" data-a="copy" style="background:#e8731c;color:#14171a;border:0;border-radius:4px;padding:6px 10px;font:700 12px \'DM Sans\',sans-serif;cursor:pointer">Copy SKU</button><button type="button" data-a="x" aria-label="Dismiss" style="background:transparent;color:#c9d1d6;border:1px solid #5a6670;border-radius:4px;padding:5px 9px;cursor:pointer">x</button>';
+    n.firstChild.textContent = msg; n.style.display = 'flex';
+    n.onclick = function (e) { var a = e.target && e.target.getAttribute && e.target.getAttribute('data-a'); if (a === 'copy') { try { navigator.clipboard.writeText(sku); } catch (x) {} } if (a) n.style.display = 'none'; };
+    clearTimeout(n.__t); n.__t = setTimeout(function () { n.style.display = 'none'; }, 20000);
+  }
   window.ccOpenErpLookup = function (q) {
     q = String(q || '').trim(); if (!q) return;
     var url = (typeof ERP_URL === 'string' && ERP_URL) || 'https://erp.tgkmotorsport.com';
-    var origin = new URL(url).origin, id = String(Date.now()) + Math.random().toString(36).slice(2, 6), tries = 0, done = false;
-    /* if the ERP is already on screen, just ask it; opening it again would reload it and lose what is open there */
+    var origin = new URL(url).origin, id = String(Date.now()) + Math.random().toString(36).slice(2, 6), tries = 0, done = false, mine = ++LK;
     var viewer = document.getElementById('erp-viewer'), onScreen = !!(viewer && viewer.classList.contains('active'));
+    /* if the ERP is already on screen, just ask it; opening it again would reload it and lose what is open there */
     if (!onScreen && typeof openERP === 'function') openERP();
     var frame = document.getElementById('erp-frame'); if (!frame) return;
-    function onAck(e) { if (e.origin === origin && e.data && e.data.source === 'TGK_ERP' && e.data.type === 'LOOKUP_OPENED' && e.data.id === id) { done = true; window.removeEventListener('message', onAck); } }
-    window.addEventListener('message', onAck);
-    /* the ERP may still be loading, so ask again until it confirms; it ignores repeats of the same request */
-    (function ask() {
-      if (done || tries > 24) { window.removeEventListener('message', onAck); return; }
-      tries++;
-      try { if (frame.contentWindow) frame.contentWindow.postMessage({ source: 'TGK_CC', type: 'OPEN_LOOKUP', id: id, query: q }, origin); } catch (e) {}
-      setTimeout(ask, tries < 4 ? 500 : 1500);
-    })();
+    /* a cold start also carries the SKU in the ERP's address, so it works even if the ERP misses the message */
+    if (!onScreen) { try { frame.src = url.replace(/\/+$/, '') + '/?lookup=' + encodeURIComponent(q); } catch (e) {} }
+    function post() { try { if (frame.contentWindow) frame.contentWindow.postMessage({ source: 'TGK_CC', type: 'OPEN_LOOKUP', id: id, query: q }, origin); } catch (e) {} }
+    function finish() { done = true; window.removeEventListener('message', onMsg); }
+    function onMsg(e) {
+      if (mine !== LK) { finish(); return; }
+      if (e.origin !== origin || !e.data || e.data.source !== 'TGK_ERP') return;
+      if (e.data.type === 'READY') post();
+      if (e.data.type === 'LOOKUP_OPENED' && e.data.id === id) finish();
+    }
+    window.addEventListener('message', onMsg);
+    (function ask() { if (done || mine !== LK || tries > 40) return; tries++; post(); setTimeout(ask, tries < 4 ? 500 : 1500); })();
+    /* if nothing answers, say so plainly instead of failing silently */
+    setTimeout(function () {
+      if (done || mine !== LK) return; finish();
+      notice('The ERP did not open the lookup for \u201C' + q + '\u201D. It may need the latest ERP version (v23.87 or newer), or it is still loading.', q);
+    }, onScreen ? 9000 : 45000);
   };
+})();
+</script>
+<script>/* ===== v7.1: dashboard wording, greeting, and the Command Center home link ===== */
+(function () {
+  'use strict';
+  function $(id) { return document.getElementById(id); }
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var DESC = {
+    'New Product': 'Guided page builder', 'Product Pages': 'Edit live pages safely', 'Template Library': 'Reusable page blocks',
+    'Convert Existing': 'Update old descriptions', 'Social Engine': 'Posts and calendar', 'Idea Generator': 'What to build next',
+    'FB Group Finder': 'Find groups by vehicle', 'Box Selector': 'Best shipping box', 'Fitment': 'Vehicle fitment data',
+    'SKU Manager': 'Part and assembly SKUs', 'Team Calendar': 'Time off and deadlines', 'Harness Builder': 'Wiring harness designs',
+    'Toolbox': 'Your external tools', 'Notes': 'SOPs and build notes', 'Project Workflow': 'Kanban board for builds',
+    'Arcade': 'Autocross survival game', 'Time Attack': 'Daily autocross racing'
+  };
+  var SECT = { 'AI-Powered Tools': 'Marketing & Research', 'Project Management': 'Projects', 'Entertainment': 'Downtime' };
+  var HERO = {
+    erp: ['\u25CF Operations', 'Inventory, purchasing, sales orders and every SKU, in one place.'],
+    support: ['\u25CF Customer support', 'Tickets, live chat and email, plus warranty and shipping-error queues.'],
+    ghost: ['\u25CF ECU tuning', 'Review tuning applications, message customers and send tunes.']
+  };
+  function setText(el, t) { if (el && el.textContent !== t) el.textContent = t; }
+  function applyCopy() {
+    [].forEach.call(document.querySelectorAll('#view-home .mod-card'), function (c) {
+      var n = c.querySelector('.mod-card-name'), d = c.querySelector('.mod-card-desc'); if (!n) return;
+      var k = n.textContent.trim(); if (DESC[k] === undefined) return;
+      if (!d) { d = document.createElement('div'); d.className = 'mod-card-desc'; n.parentNode.insertBefore(d, n.nextSibling); }
+      if (d.textContent === DESC[k]) return;
+      if (!d.hasAttribute('data-was')) d.setAttribute('data-was', d.textContent);
+      var was = d.getAttribute('data-was'); if (was && !c.getAttribute('title')) c.setAttribute('title', was);
+      d.textContent = DESC[k];
+    });
+    [].forEach.call(document.querySelectorAll('#view-home .dash-section-lbl'), function (l) {
+      [].forEach.call(l.childNodes, function (nd) { if (nd.nodeType === 3) { var v = nd.nodeValue.trim(); if (SECT[v] && nd.nodeValue !== SECT[v]) nd.nodeValue = SECT[v]; } });
+    });
+    Object.keys(HERO).forEach(function (k) {
+      var h = document.querySelector('#view-home .' + k + '-hero'); if (!h) return;
+      setText(h.querySelector('[class$="-hero-label"]'), HERO[k][0]); setText(h.querySelector('[class$="-hero-desc"]'), HERO[k][1]);
+      setText(h.querySelector('[class$="-badge"]'), 'Database online');
+    });
+    var sb = $('erp-send-product-btn'); if (sb && !sb.getAttribute('title')) sb.setAttribute('title', 'Available once a product is ready in New Product');
+  }
+  function greet() {
+    var w = document.querySelector('#view-home .dash-wrap'); if (!w) return;
+    var g = $('cx-greet'); if (!g) { g = document.createElement('div'); g.id = 'cx-greet'; g.className = 'cx-greet'; w.insertBefore(g, w.firstChild); }
+    var u = (($('topbar-user') || {}).textContent || '').trim().split('@')[0].split(/[.\s_\-]+/)[0], nm = u ? u.charAt(0).toUpperCase() + u.slice(1).toLowerCase() : '';
+    var hr = new Date().getHours(), part = hr < 5 ? 'Working late' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+    var date = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    var html = '<b>' + esc(part + (nm ? ', ' + nm : '')) + '</b><span>' + esc(date) + '</span>';
+    if (g.getAttribute('data-k') !== html) { g.setAttribute('data-k', html); g.innerHTML = html; }
+  }
+  /* Command Center (the name in the header) is the link back to the dashboard; the old Tools button stays hidden and does the work */
+  function homeBtn() { return document.querySelector('.cx-nav > .cc-bc-home:not([id])'); }
+  function goHome() { var b = homeBtn(); if (b) b.click(); else if (typeof showView === 'function') showView('home'); }
+  function syncHome() {
+    var b = homeBtn(), ls = document.querySelector('#cc-topbar .logo-sub'); if (!b || !ls) return;
+    var on = b.classList.contains('on'); ls.classList.toggle('is-current', on);
+    if (on) ls.setAttribute('aria-current', 'page'); else ls.removeAttribute('aria-current');
+  }
+  var watching = false;
+  function mountHome() {
+    var ls = document.querySelector('#cc-topbar .logo-sub');
+    if (ls && !ls.__home) {
+      ls.__home = 1; ls.setAttribute('role', 'link'); ls.setAttribute('tabindex', '0'); ls.setAttribute('title', 'Back to the Command Center dashboard'); ls.setAttribute('aria-label', 'Command Center dashboard');
+      ls.addEventListener('click', goHome);
+      ls.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goHome(); } });
+    }
+    var img = document.querySelector('#cc-topbar > img');
+    if (img && !img.__home) { img.__home = 1; img.setAttribute('title', 'Command Center dashboard'); img.addEventListener('click', goHome); }
+    var b = homeBtn(); if (b && !watching && window.MutationObserver) { watching = true; new MutationObserver(syncHome).observe(b, { attributes: true, attributeFilter: ['class'] }); }
+    syncHome();
+  }
+  function lift() { var tw = $('tw'); if (tw && tw.parentNode !== document.body) document.body.appendChild(tw); }
+  function all() { try { lift(); applyCopy(); greet(); mountHome(); } catch (e) {} }
+  function init() {
+    all(); [400, 1200, 2500].forEach(function (ms) { setTimeout(all, ms); });
+    var v = $('view-home'); if (v && window.MutationObserver) { var t = 0; new MutationObserver(function () { clearTimeout(t); t = setTimeout(all, 80); }).observe(v, { childList: true, subtree: true, characterData: true }); }
+    setInterval(greet, 60000);
+    var u = $('topbar-user'); if (u && window.MutationObserver) new MutationObserver(greet).observe(u, { childList: true, characterData: true, subtree: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 </script>
 </body>
