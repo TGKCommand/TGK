@@ -3060,6 +3060,8 @@ html[data-theme="dark"] body #view-home .mc-gray{color:#b4bec5!important}
 <style id="tgk-v73-mobile">
 /* [v7.3] phone pass: usable header and menu, phone search, no squeezed layouts, thumb-sized controls */
 #cx-search-btn,#cx-search-close,#cx-drawer-actions{display:none}
+html body #tw{display:none!important}
+html body.cx-on-home #tw{display:flex!important}
 @media(max-width:768px){
 button,a,[onclick],select,input,label{touch-action:manipulation}
 button,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not([type=hidden]),textarea{min-height:40px}
@@ -28756,7 +28758,17 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
       sb.insertBefore(d, sb.firstChild);
     }
   }
-  function init() { mount(); [500, 1500, 3000].forEach(function (ms) { setTimeout(mount, ms); }); }
+  /* the turbine belongs to the dashboard only: shown while the dashboard is on screen, hidden on every other page and tool */
+  function syncTw() {
+    var v = $('#view-home'), m = $('#cc-main'), lg = $('#cc-login');
+    var on = !!(v && v.classList.contains('active') && m && getComputedStyle(m).display !== 'none' && !(lg && getComputedStyle(lg).display !== 'none'));
+    document.body.classList.toggle('cx-on-home', on);
+  }
+  function init() {
+    mount(); syncTw(); [500, 1500, 3000].forEach(function (ms) { setTimeout(mount, ms); });
+    setInterval(syncTw, 200);
+    ['#view-home', '#cc-main', '#cc-login'].forEach(function (s) { var e = $(s); if (e && window.MutationObserver) new MutationObserver(syncTw).observe(e, { attributes: true, attributeFilter: ['class', 'style'] }); });
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 </script>
