@@ -25366,6 +25366,17 @@ function fmRenderCategories(){
 var FM_LP_ST={new:['Not created','dim'],intro:['Needs intro','warn'],review:['To review','warn'],approved:['Approved','info'],stale:['Out of date','dim'],live:['Live','ok']};
 var FM_LP_SIM=0.4;   // intros that share this much of their wording (3-word phrases) are flagged as near-copies. Different wording scores near 0; the same sentence with only the car swapped scores about 0.9
 function fmLpS(){return FM.lp||(FM.lp={view:'table',rq:null,sel:{},drafts:{},filter:'all',all:false,ai:{},both:false});}
+// the short platform name ("B9") and the models ("A4 · S4 · A5 · S5") the website's Shop by platform dropdowns show
+function fmLpNames(o){
+  var seen={},ms=[];(o.vs||[]).forEach(function(v){var m=String(v.model||'').trim();if(m&&!seen[m.toLowerCase()]){seen[m.toLowerCase()]=1;ms.push(m);}});
+  o.models=ms.slice(0,6).join(' \u00b7 ');
+  var t=String(o.title||'').trim(),mk=String(o.make||'').trim();
+  var first=t.split(/\s+/)[0].toLowerCase(),al={vw:'volkswagen',mb:'mercedes-benz',merc:'mercedes-benz',mercedes:'mercedes-benz',chevy:'chevrolet'};
+  var cut=!mk?0:(t.toLowerCase().indexOf(mk.toLowerCase())===0?mk.length:(al[first]===mk.toLowerCase()?first.length:0));
+  var p=cut?t.slice(cut).replace(/^[\s\-\u2013:]+/,'').trim():t;
+  p=p.replace(/\s*\([^)]*\)\s*$/,'').trim();
+  o.platform=p||t;
+}
 function fmLpCommon(a){var c={},b='',n=0;a.forEach(function(x){if(!x)return;c[x]=(c[x]||0)+1;if(c[x]>n){n=c[x];b=x;}});return b;}
 function fmLpHash(o){var s=JSON.stringify(o),h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
 function fmLpSentences(t){return String(t||'').trim().split(/(?<=[.!?])\s+/).filter(Boolean).length;}
@@ -25383,15 +25394,16 @@ function fmLpMerge(d,s){var out=Object.assign({},d);if(s)Object.keys(s).forEach(
 function fmLpPayload(o,L){
   var by=FM._lpBy||{};
   var rel=(L.related||[]).map(function(sl){var r=by[sl];return (r&&r.rec&&r.rec.collection_handle)?{title:r.title,url:'/collections/'+r.rec.collection_handle}:null;}).filter(Boolean);
-  return {slug:o.slug,heading:String(L.heading||'').trim(),intro:String(L.intro||'').trim(),seo_title:String(L.seo_title||'').trim(),seo_description:String(L.seo_desc||'').trim(),make:String(L.make||'').trim(),years:String(L.years||'').trim(),engine:String(L.engine||'').trim(),drivetrain:String(L.drivetrain||'').trim(),related:rel};
+  return {slug:o.slug,heading:String(L.heading||'').trim(),intro:String(L.intro||'').trim(),seo_title:String(L.seo_title||'').trim(),seo_description:String(L.seo_desc||'').trim(),make:String(L.make||'').trim(),years:String(L.years||'').trim(),engine:String(L.engine||'').trim(),drivetrain:String(L.drivetrain||'').trim(),related:rel,platform:String(o.platform||''),models:String(o.models||'')};
 }
 // identifies the exact text of a page (used for "approved" and "synced"); the more-cars list counts by name, so a page appearing later does not undo an approval
 function fmLpDigest(o,L){return fmLpHash({h:String(L.heading||'').trim(),i:String(L.intro||'').trim(),t:String(L.seo_title||'').trim(),d:String(L.seo_desc||'').trim(),m:String(L.make||'').trim(),y:String(L.years||'').trim(),e:String(L.engine||'').trim(),v:String(L.drivetrain||'').trim(),r:(L.related||[]).slice()});}
+function fmLpLegacyHash(o){var pl=fmLpPayload(o,o.saved);delete pl.platform;delete pl.models;return fmLpHash(pl);}
 function fmLpStatus(o){
   var rec=o.rec,ld=rec&&rec.landing;
   if(!rec||!rec.collection_handle)return 'new';
   if(!ld||!ld.intro)return 'intro';
-  if(ld.synced_at&&(ld.synced_hash===o.digest||ld.synced_hash===fmLpHash(fmLpPayload(o,o.saved))))return (rec.products!==o.handles.length||ld.synced_products!==o.handles.length)?'stale':'live';
+  if(ld.synced_at&&(ld.synced_hash===o.digest||ld.synced_hash===fmLpLegacyHash(o)))return (rec.products!==o.handles.length||ld.synced_products!==o.handles.length||ld.synced_v!==2)?'stale':'live';
   if(ld.approved_hash===o.digest)return 'approved';
   return 'review';
 }
@@ -25422,7 +25434,7 @@ function fmLpChecks(o,L,rows){
 }
 function fmLpRows(){
   var rows=fmPlatformSources(),rk=FM.rank||{},by={};
-  rows.forEach(function(o){o.make=fmLpCommon(o.vs.map(function(v){return v.make;}));o.score=0;o.handles.forEach(function(h){var r=rk[h];if(r)o.score+=1/r;});by[o.slug]=o;});
+  rows.forEach(function(o){o.make=fmLpCommon(o.vs.map(function(v){return v.make;}));fmLpNames(o);o.score=0;o.handles.forEach(function(h){var r=rk[h];if(r)o.score+=1/r;});by[o.slug]=o;});
   var ranked=rows.filter(function(o){return o.score>0&&o.handles.length;}).sort(function(a,b){return b.score-a.score;});
   rows.forEach(function(o){o.pos=0;});ranked.forEach(function(o,i){o.pos=i+1;});
   rows.sort(function(a,b){if(a.pos&&b.pos)return a.pos-b.pos;if(a.pos)return -1;if(b.pos)return 1;return a.title.localeCompare(b.title);});
@@ -25449,7 +25461,7 @@ async function fmLpSaveRow(o,landing){return fmLpSaveRowFull({slug:o.slug,title:
 function fmLpLanding(o,L,extra){
   var old=(o.rec&&o.rec.landing)||{};
   return Object.assign({heading:L.heading,make:L.make,years:L.years,engine:L.engine,drivetrain:L.drivetrain,intro:L.intro,seo_title:L.seo_title,seo_desc:L.seo_desc,related:L.related||[],
-    synced_at:old.synced_at||null,synced_hash:old.synced_hash||null,synced_products:old.synced_products==null?null:old.synced_products,
+    synced_at:old.synced_at||null,synced_hash:old.synced_hash||null,synced_products:old.synced_products==null?null:old.synced_products,synced_v:old.synced_v||null,
     approved_hash:old.approved_hash||null,approved_at:old.approved_at||null,approved_by:old.approved_by||null},extra||{});
 }
 async function fmLpCreateOne(o){
@@ -25463,7 +25475,7 @@ async function fmLpSyncCore(o,L){
   await fmLpSaveRowFull(rec); // the page exists now: keep the text even if the next step fails
   var u=await fmLpEdge('shopify-landing',Object.assign({action:'update_platform_collection',template_suffix:'vehicle'},fmLpPayload(o,L)));
   var dg=fmLpDigest(o,L);
-  rec.landing=fmLpLanding(o,L,{synced_at:new Date().toISOString(),synced_hash:dg,synced_products:j.products,approved_hash:dg,approved_at:(o.rec&&o.rec.landing&&o.rec.landing.approved_at)||new Date().toISOString(),approved_by:FM.me});
+  rec.landing=fmLpLanding(o,L,{synced_at:new Date().toISOString(),synced_hash:dg,synced_products:j.products,synced_v:2,approved_hash:dg,approved_at:(o.rec&&o.rec.landing&&o.rec.landing.approved_at)||new Date().toISOString(),approved_by:FM.me});
   await fmLpSaveRowFull(rec);
   return {sync:j,update:u};
 }
