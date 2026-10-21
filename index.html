@@ -25061,7 +25061,12 @@ function fmPlatformSources(){ // saved groups + catalog Platform values
   var out=[];(FM.groups||[]).forEach(function(g){out.push({title:g.name,vs:fmGroupVehicles(g)});});
   var pl={};FM.vehicles.forEach(function(v){if(v.platform&&v.active!==false)(pl[v.platform]=pl[v.platform]||[]).push(v);});
   Object.keys(pl).sort().forEach(function(k){if(!out.some(function(o){return o.title.toLowerCase()===k.toLowerCase();}))out.push({title:k,vs:pl[k]});});
-  return out.map(function(o){var keys={};o.vs.forEach(function(v){keys[fmVKey(v)]=1;});var hs={};FM.fits.forEach(function(f){var p=f.handle&&fmProd(f.handle);if(p&&p.fit_type==='vehicle'&&keys[fmVKey(f)])hs[f.handle]=1;});
+  // Work out once, for every fitment, whether it belongs to a vehicle-type product and which vehicle it is for.
+  // (It used to search the whole product list for every fitment, once for every platform.)
+  var pm=Object.create(null),P=FM.products;for(var pi=P.length-1;pi>=0;pi--)pm[P[pi].handle]=P[pi];
+  var fits=FM.fits,nf=fits.length,okf=new Array(nf),vkf=new Array(nf);
+  for(var fi=0;fi<nf;fi++){var ff=fits[fi],pp=ff.handle&&pm[ff.handle];okf[fi]=!!(pp&&pp.handle===ff.handle&&pp.fit_type==='vehicle');vkf[fi]=okf[fi]?fmVKey(ff):'';}
+  return out.map(function(o){var keys={};o.vs.forEach(function(v){keys[fmVKey(v)]=1;});var hs={};for(var j=0;j<nf;j++){if(okf[j]&&keys[vkf[j]])hs[fits[j].handle]=1;}
     o.handles=Object.keys(hs);o.slug=o.title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');o.rec=(FM.ppages||[]).find(function(r){return r.slug===o.slug;});return o;});
 }
 async function fmSyncPlatform(slug){
@@ -25781,9 +25786,24 @@ function fmUniform(rows){var keys={};rows.forEach(function(r){Object.keys(r).for
 function fmVarsOf(handle){var v=FM.vars&&FM.vars[handle];return v&&v.length>1?v:[];}
 window.fmLoadVariants=fmLoadVariants;
 // ---------- derived data ----------
-function fmFitsOf(handle){return FM.fits.filter(function(f){return f.handle===handle;});}
-function fmProd(handle){return FM.products.find(function(p){return p.handle===handle;});}
-function fmVKey(o){return [o.make,o.model,o.year_from,o.year_to,o.engine||'',o.chassis||''].join('|').toLowerCase();}
+function fmFitsOf(handle){
+  var rc=FM._rc; // while a screen is being drawn nothing changes, so index the fitments by handle once instead of scanning them for every call
+  if(rc){var m=rc.f;if(!m){m=rc.f=Object.create(null);var F=FM.fits;for(var i=0;i<F.length;i++){var h=F[i].handle;(m[h]||(m[h]=[])).push(F[i]);}}
+    return (m[handle]||[]).filter(function(f){return f.handle===handle;});}
+  return FM.fits.filter(function(f){return f.handle===handle;});
+}
+function fmProd(handle){
+  var rc=FM._rc;
+  if(rc&&handle!=null){var m=rc.p;if(!m){m=rc.p=Object.create(null);var P=FM.products;for(var i=P.length-1;i>=0;i--)m[P[i].handle]=P[i];} // backwards, so the first product with a handle wins, like find()
+    var p=m[handle];return (p&&p.handle===handle)?p:undefined;}
+  return FM.products.find(function(p){return p.handle===handle;});
+}
+function fmVKey(o){
+  var rc=FM._rc,c=rc&&(rc.v||(rc.v=new Map())),v;
+  if(c){v=c.get(o);if(v!==undefined)return v;}
+  v=[o.make,o.model,o.year_from,o.year_to,o.engine||'',o.chassis||''].join('|').toLowerCase();
+  if(c)c.set(o,v);return v;
+}
 function fmYears(o){return o.year_from===o.year_to?String(o.year_from):o.year_from+' - '+o.year_to;}
 function fmCounts(){var c={};FM.fits.forEach(function(f){if(f.handle)c[f.handle]=(c[f.handle]||0)+1;});return c;}
 function fmPlatforms(){var m={};FM.vehicles.forEach(function(v){if(v.active!==false&&v.platform)(m[v.platform]=m[v.platform]||[]).push(v);});return m;}
@@ -26959,6 +26979,33 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
 // open/refresh when the view is shown
 (function(){var _sv=window.showView;window.showView=function(n){var r=_sv.apply(this,arguments);if(n==='fitment')fmOpen();return r;};})();
 
+
+/* Speed: while a screen is being drawn, nothing is edited. So the helpers above (fmProd, fmFitsOf, fmVKey) keep a per-redraw index,
+   and the heavy calculations that the tab bar and the screens ask for several times (duplicates, overlaps, Checks, ...) are worked
+   out once per redraw instead of 2 to 7 times. Everything is thrown away when the redraw ends, so edits, undo and imports never
+   see a stale one. */
+(function(){
+  var inner=fmRender._inner;
+  fmRender._inner=function(){FM._rc={};try{return inner.apply(this,arguments);}finally{FM._rc=null;}};
+  function memo(name,keyFn){
+    var f=window[name];if(typeof f!=='function')return;
+    window[name]=function(){
+      var rc=FM._rc;if(!rc)return f.apply(this,arguments);
+      var m=rc['m_'+name]||(rc['m_'+name]=new Map()),k=keyFn?keyFn.apply(null,arguments):'';
+      if(m.has(k))return m.get(k);
+      var v=f.apply(this,arguments);m.set(k,v);return v;
+    };
+  }
+  memo('fmCanonPn',function(x){return x;});
+  ['fmPageDupGroups','fmOverlapGroups','fmCounts','fmSkuPages','fmSpellings','fmShopIssues','fmChecks'].forEach(function(n){memo(n);});
+  memo('fmLegacyCovered',function(l){return l.map(function(x){return x.id;}).join(',');});
+  memo('fmListRows');
+  /* the lighter refreshes (typing in a search box, opening a row) get the same treatment as a full redraw */
+  ['fmRefreshList','fmRefreshCur','fmRefreshAdd'].forEach(function(n){
+    var f=window[n];if(typeof f!=='function')return;
+    window[n]=function(){if(FM._rc)return f.apply(this,arguments);FM._rc={};try{return f.apply(this,arguments);}finally{FM._rc=null;}};
+  });
+})();
 </script>
 <script id="tgk-tpl-js">
 /* ============================================================================
