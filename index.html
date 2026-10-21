@@ -18034,7 +18034,8 @@ document.addEventListener('DOMContentLoaded', function() {
         kind:  kind,
         id:    id,
         label: labelFn(r),
-        ts:    r[tsField] || new Date().toISOString()
+        ts:    r[tsField] || new Date().toISOString(),
+        ref:   { order: (kind === 'orders') ? String(r.order_number || r.name || r.order_no || '').replace(/^#/, '') : '' }
       });
       added = true;
       // Let the AI Guy react to the real thing (he ignores the initial backlog on first load).
@@ -18085,13 +18086,13 @@ document.addEventListener('DOMContentLoaded', function() {
         banner.classList.add('show');
         banner.innerHTML =
           '<span class="nb-dot"></span>' +
-          '<span class="nb-msg">' + esc(n.label) + '</span>' +
+          '<span class="nb-msg" role="button" tabindex="0" data-notif-act="open" data-notif-kind="' + n.kind + '" data-notif-id="' + esc(n.id) + '">' + esc(n.label) + '</span>' +
           itemButtons(n);
       } else {
         banner.classList.add('show');
         banner.innerHTML =
           '<span class="nb-dot"></span>' +
-          '<span class="nb-msg">' + count + ' new notifications</span>' +
+          '<span class="nb-msg" role="button" tabindex="0" data-notif-act="panel">' + count + ' new notifications</span>' +
           '<button class="nb-btn" data-notif-act="panel">View all</button>' +
           '<button class="nb-x" title="Dismiss all" data-notif-act="dismissAll">&times;</button>';
       }
@@ -18118,7 +18119,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var items = active.slice().sort(function(a,b){ return (a.ts||'') < (b.ts||'') ? 1 : -1; });
     list.innerHTML = items.map(function(n){
       var s = SOURCES[n.kind] || {};
-      return '<div class="ccnp-item">' +
+      return '<div class="ccnp-item" role="button" tabindex="0" data-notif-act="open" data-notif-kind="' + n.kind + '" data-notif-id="' + esc(n.id) + '">' +
         '<span class="ccnp-tag ccnp-' + n.kind + '">' + (s.tag || '') + '</span>' +
         '<div class="ccnp-body"><div class="ccnp-lbl">' + esc(n.label) + '</div>' +
           '<div class="ccnp-time">' + relTime(n.ts) + '</div></div>' +
@@ -18192,6 +18193,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (p) p.classList.remove('show');
   }
 
+  // ---- Open the exact thing a notification is about -----------------------
+  // Hands the item to window.ccOpenItem (defined next to the ERP lookup code), which opens the right tool and asks
+  // it to show that item. If that is not available, or the tool does not understand, the tool simply opens as before.
+  function openItem(kind, id){
+    var n = active.filter(function(x){ return x.kind === kind && x.id === id; })[0] || {};
+    var src = SOURCES[kind] || {};
+    var order = (n.ref && n.ref.order) || '';
+    if (kind === 'orders' && !order){            // notifications saved before this change: read it from the label
+      var m = String(n.label || '').match(/#\s*([A-Za-z0-9\-]+)/); if (m) order = m[1];
+    }
+    if (typeof window.ccOpenItem === 'function') window.ccOpenItem({ tool: src.tool || 'erp', kind: kind, id: id, ref: order, label: n.label || '' });
+    else openTool(kind);
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var t = e.target && e.target.closest ? e.target.closest('[data-notif-act][role="button"]') : null;
+    if (t && t === e.target){ e.preventDefault(); t.click(); }
+  });
+
   // ---- One delegated click handler (no inline JS on the buttons) ---------
   document.addEventListener('click', function(e){
     var b = e.target.closest ? e.target.closest('[data-notif-act]') : null;
@@ -18199,7 +18219,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var act  = b.getAttribute('data-notif-act');
       var kind = b.getAttribute('data-notif-kind');
       var id   = b.getAttribute('data-notif-id');
-      if (act === 'open')            { openTool(kind); dismiss(kind, id); closePanel(); }
+      if (act === 'open')            { openItem(kind, id); dismiss(kind, id); closePanel(); }
       else if (act === 'dismiss')    { dismiss(kind, id); }
       else if (act === 'dismissAll') { dismissAll(); }
       else if (act === 'panel')      { togglePanel(); }
@@ -29237,6 +29257,124 @@ html:not([data-theme="dark"]) body #cc-breadcrumb:not(#x) #cc-bc-actions .cc-bc-
 html:not([data-theme="dark"]) body #cc-breadcrumb:not(#x) #cc-bc-actions .cc-bc-btn:hover{border-color:#b42318!important;color:#b42318!important}
 @media (max-width:768px){html:not([data-theme="dark"]) body #cc-breadcrumb:not(#x){height:auto!important;min-height:44px!important;padding:4px 14px!important}
 html:not([data-theme="dark"]) body #cc-breadcrumb:not(#x) #cc-bc-actions .cc-bc-btn{height:34px!important;min-height:34px!important;padding:0 12px!important}}
+
+/* ===== Notifications: a slim quiet strip, a small dot instead of orange highlights, a calmer dropdown ===== */
+html{--nt-bg:#f4f6f7;--nt-line:#dfe3e6;--nt-text:#3b444b;--nt-link:#0b7f77;--nt-x:#9aa3ab;--nt-hover:#f7f9fa;--nt-time:#7b858c;--nt-tag:#4a545c;--nt-tagline:#c9ccd1;--nt-head:#22272b;--nt-h:#14171a}
+html[data-theme="dark"]{--nt-bg:rgba(255,255,255,.045);--nt-line:rgba(255,255,255,.09);--nt-text:#c3cbd0;--nt-link:#5fd6cf;--nt-x:#7d838a;--nt-hover:rgba(255,255,255,.04);--nt-time:#7d838a;--nt-tag:#aab3ba;--nt-tagline:#3a4850;--nt-head:#e6eaed;--nt-h:#fff}
+html body #cc-notif-banner.show{display:flex!important;align-items:center;gap:6px;min-height:0!important;height:30px;padding:0 20px!important;border:0!important;border-bottom:1px solid var(--nt-line)!important;background:var(--nt-bg)!important}
+html body #cc-notif-banner .nb-dot{display:inline-block!important;flex:none;width:7px;height:7px;border-radius:50%;background:#e8731c!important;margin-right:8px}
+html body #cc-notif-banner .nb-msg{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px!important;font-weight:600!important;color:var(--nt-text)!important;cursor:pointer}
+html body #cc-notif-banner .nb-btn{background:transparent!important;color:var(--nt-link)!important;font-size:13px!important;font-weight:600!important;letter-spacing:0!important;text-transform:none!important;padding:0 6px!important;border:0!important;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+html body #cc-notif-banner .nb-btn:hover{background:transparent!important;color:var(--nt-h)!important}
+html body #cc-notif-banner .nb-x{font-size:18px!important;min-width:24px;min-height:24px;color:var(--nt-x)!important}
+/* tabs and cards that have something waiting: a small orange dot, not orange text and outlines */
+html body #cc-topbar .cx-nav>button.cc-notif-hot:not(#cx-x){color:#c9d1d6!important;border-bottom-color:transparent!important}
+html body #cc-topbar .cx-nav>button.cc-notif-hot:not(#cx-x)::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#e8731c;margin-left:7px;vertical-align:middle;position:relative;top:-1px}
+html:not([data-theme="dark"]) body #view-home #erp-hero-card.cc-notif-hot,html:not([data-theme="dark"]) body #view-home #support-hero-card.cc-notif-hot{outline:0!important;position:relative!important}
+html:not([data-theme="dark"]) body #view-home #erp-hero-card.cc-notif-hot::before,html:not([data-theme="dark"]) body #view-home #support-hero-card.cc-notif-hot::before{content:""!important;display:block!important;position:absolute!important;top:12px!important;right:12px!important;left:auto!important;bottom:auto!important;width:8px!important;height:8px!important;border-radius:50%!important;background:#e8731c!important;z-index:3!important}
+html[data-theme="dark"] body #erp-hero-card.cc-notif-hot,html[data-theme="dark"] body #support-hero-card.cc-notif-hot{outline:1px solid rgba(232,115,28,.55)!important;outline-offset:-1px}
+/* the dropdown */
+@media (min-width:769px){html body #cc-notif-panel{width:400px!important}}
+html body #cc-notif-panel{border:1px solid var(--nt-line)!important;box-shadow:0 8px 24px rgba(20,23,26,.12)!important;overflow:hidden}
+html body #cc-notif-panel .ccnp-head{padding:10px 14px!important;font-size:13px!important;font-weight:700!important;letter-spacing:.1em!important;background:var(--nt-bg)!important;color:var(--nt-head)!important;border-bottom:1px solid var(--nt-line)!important}
+html body #cc-notif-panel .ccnp-clear{background:transparent!important;border:0!important;color:var(--nt-link)!important;font-size:12.5px!important;font-weight:600!important;text-transform:none!important;letter-spacing:0!important;padding:2px 4px!important;text-decoration:underline;text-underline-offset:3px}
+html body #cc-notif-panel .ccnp-clear:hover{background:transparent!important;color:var(--nt-h)!important}
+html body #cc-notif-panel .ccnp-item{padding:10px 14px!important;gap:12px;border-bottom:1px solid var(--nt-line)!important}
+html body #cc-notif-panel .ccnp-item:hover{background:var(--nt-hover)}
+html body #cc-notif-panel .ccnp-item .ccnp-lbl{font-size:14px!important;font-weight:600!important}
+html body #cc-notif-panel .ccnp-item .ccnp-time{font-size:12px!important;color:var(--nt-time)!important}
+html body #cc-notif-panel .ccnp-item .ccnp-tag{min-width:0!important;font-size:10.5px!important;font-weight:700!important;letter-spacing:.08em;padding:2px 7px!important;background:transparent!important;color:var(--nt-tag)!important;border:1px solid var(--nt-tagline)}
+html body #cc-notif-panel .ccnp-item .ccnp-open{background:transparent!important;border:0!important;color:var(--nt-link)!important;font-size:13px!important;font-weight:600!important;text-transform:none!important;letter-spacing:0!important;padding:2px 4px!important;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+html body #cc-notif-panel .ccnp-item .ccnp-open:hover{background:transparent!important;color:var(--nt-h)!important}
+html body #cc-notif-panel .ccnp-item .ccnp-x{font-size:18px!important;color:var(--nt-x)!important;min-width:24px;min-height:24px}
+html body #cc-notif-panel .ccnp-status{background:var(--nt-bg)!important;color:var(--nt-time)!important;border-top:1px solid var(--nt-line)!important}
+html body #cc-notif-panel .ccnp-status.bad{background:rgba(232,115,28,.12)!important;color:#a8470a!important;font-weight:600}
+html[data-theme="dark"] body #cc-notif-panel .ccnp-status.bad{color:#ffa968!important}
+/* phones: a little taller for touch, and the dropdown sits just under the strip (an older phone rule pins it 52px from the top) */
+@media (max-width:768px){
+  html body #cc-notif-banner.show{height:36px!important;min-height:36px!important;padding:0 14px!important}
+  html body #cc-notif-banner .nb-btn{min-height:32px;display:inline-flex;align-items:center}
+  html body #cc-notif-banner .nb-x{min-width:32px;min-height:32px}
+  html body #cc-notif-panel{top:var(--cc-np-top,102px)!important}
+}
 </style>
+<script id="cc-open-item">
+/* ===== Notifications: open the exact order, ticket or email (v7.4) =====
+   The notifications code (openItem) hands every clicked notification to window.ccOpenItem({tool, kind, id, ref, label}).
+   This opens the right tool (not again if it is already on screen, so nothing open there is lost) and asks it to show that
+   item with an OPEN_ITEM message, the same way the part lookup works. The tool answers ITEM_OPENED; until then this keeps
+   asking. If it never answers, the tool simply stays open as before and a short notice says why. */
+(function () {
+  'use strict';
+  var SEQ = 0;
+  var NAME = { orders: 'order', tickets: 'ticket', livechat: 'chat', warranty: 'warranty claim', shiperrors: 'shipping error', orderemails: 'email', supportemails: 'email' };
+  var TOOLS = {
+    erp: { name: 'ERP', viewer: 'erp-viewer', frame: 'erp-frame',
+      open: function () { if (typeof openERP === 'function') openERP(); },
+      url: function () { return (typeof ERP_URL === 'string' && ERP_URL) || 'https://erp.tgkmotorsport.com'; } },
+    support: { name: 'Support Center', viewer: 'support-viewer', frame: 'support-frame',
+      open: function () { if (typeof openSupportCenter === 'function') openSupportCenter(); },
+      url: function () { return (typeof SUPPORT_URL === 'string' && SUPPORT_URL) || 'https://support.tgkmotorsport.com'; } }
+  };
+  function notice(msg, copy) {
+    var n = document.getElementById('cc-item-notice');
+    if (!n) {
+      n = document.createElement('div'); n.id = 'cc-item-notice'; n.setAttribute('role', 'status');
+      n.style.cssText = 'position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(560px,92vw);background:#14171a;color:#fff;border:1px solid #5a6670;border-left:4px solid #e8731c;border-radius:2px;padding:12px 14px;font:500 13px/1.45 "Saira Semi Condensed","DM Sans",sans-serif;z-index:100000;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+      document.body.appendChild(n);
+    }
+    n.innerHTML = '<span style="flex:1"></span>' + (copy ? '<button type="button" data-a="copy" style="background:#e8731c;color:#14171a;border:0;border-radius:2px;padding:6px 10px;font:700 12px inherit;cursor:pointer">Copy number</button>' : '') + '<button type="button" data-a="x" aria-label="Dismiss" style="background:transparent;color:#c9d1d6;border:1px solid #5a6670;border-radius:2px;padding:5px 9px;cursor:pointer">x</button>';
+    n.firstChild.textContent = msg; n.style.display = 'flex';
+    n.onclick = function (e) { var a = e.target && e.target.getAttribute && e.target.getAttribute('data-a'); if (a === 'copy') { try { navigator.clipboard.writeText(copy); } catch (x) {} } if (a) n.style.display = 'none'; };
+    clearTimeout(n.__t); n.__t = setTimeout(function () { n.style.display = 'none'; }, 20000);
+  }
+  function ccOpenItem(it) {
+    it = it || {};
+    var T = TOOLS[it.tool]; if (!T) return;
+    var url = T.url(), origin; try { origin = new URL(url).origin; } catch (e) { return; }
+    var viewer = document.getElementById(T.viewer), onScreen = !!(viewer && viewer.classList.contains('active'));
+    if (!onScreen) T.open();
+    var frame = document.getElementById(T.frame); if (!frame) return;
+    var kind = String(it.kind || ''), item = String(it.id == null ? '' : it.id), ref = String(it.ref || ''), label = String(it.label || '');
+    var nonce = String(Date.now()) + Math.random().toString(36).slice(2, 6), tries = 0, done = false, mine = ++SEQ;
+    if (!onScreen) { /* a cold start also carries the item in the tool's address, so it works even if the message is missed */
+      try { frame.src = url.replace(/\/+$/, '') + '/?' + ((kind === 'orders' && ref) ? 'order=' + encodeURIComponent(ref) : 'open=' + encodeURIComponent(kind + ':' + item)); } catch (e) {}
+    }
+    function post() { try { if (frame.contentWindow) frame.contentWindow.postMessage({ source: 'TGK_CC', type: 'OPEN_ITEM', id: nonce, kind: kind, item: item, ref: ref, label: label }, origin); } catch (e) {} }
+    function finish() { done = true; window.removeEventListener('message', onMsg); }
+    function onMsg(e) {
+      if (mine !== SEQ) { finish(); return; }
+      var d = e && e.data;
+      if (e.origin !== origin || !d || (d.source !== 'TGK_ERP' && d.source !== 'TGK_SUPPORT')) return;
+      if (d.type === 'READY') post();
+      if (d.type === 'ITEM_OPENED' && d.id === nonce) finish();
+    }
+    window.addEventListener('message', onMsg);
+    (function ask() { if (done) return; if (mine !== SEQ) { finish(); return; } if (tries > 40) return; tries++; post(); setTimeout(ask, tries < 4 ? 500 : 1500); })();
+    /* if nothing answers, say so plainly instead of failing silently */
+    setTimeout(function () {
+      if (done || mine !== SEQ) return; finish();
+      notice(kind === 'orders' && ref
+        ? 'The ERP opened, but it could not jump to order #' + ref + '. It may need the latest ERP version, or it is still loading.'
+        : 'The ' + T.name + ' opened, but it could not jump to that ' + (NAME[kind] || 'item') + '. It may need the latest ' + T.name + ' version, or it is still loading.',
+        kind === 'orders' ? ref : '');
+    }, onScreen ? ccOpenItem.warmMs : ccOpenItem.coldMs);
+  }
+  ccOpenItem.warmMs = 8000; ccOpenItem.coldMs = 40000;
+  window.ccOpenItem = ccOpenItem;
+})();
+
+/* Phones: an older CSS rule pins the notifications dropdown 52px from the top, which put it behind the strip.
+   Follow the position the notifications code works out for it instead (just under whatever is on screen). */
+(function () {
+  'use strict';
+  function wire() {
+    var p = document.getElementById('cc-notif-panel'); if (!p || p.__ntw) return; p.__ntw = 1;
+    new MutationObserver(function () { var t = p.style.top; if (t && p.style.getPropertyValue('--cc-np-top') !== t) p.style.setProperty('--cc-np-top', t); }).observe(p, { attributes: true, attributeFilter: ['style', 'class'] });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
+
+</script>
 </body>
 </html>
