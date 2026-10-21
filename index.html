@@ -24654,6 +24654,36 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 })();
 </script>
 
+<style id="fm-lp-css">
+/* Fitment > Coverage > Landing pages for Google */
+.fm-lp{padding:14px 16px}
+.fm-lp-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+.fm-lp-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fm-st{display:inline-block;font:700 11px var(--font);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:2px;white-space:nowrap}
+.fm-st--ok{background:rgba(44,188,180,.16);color:#0b7f77}.fm-st--warn{background:rgba(232,115,28,.15);color:#a8470a}
+.fm-st--info{background:transparent;border:1px solid var(--teal,#2cbcb4);color:#0b7f77}.fm-st--dim{background:#eef0f2;border:1px solid var(--border);color:#5b646b}
+[data-theme="dark"] .fm-lp-open>td,[data-theme="dark"] .fm-lp-edit>td{background:rgba(255,255,255,.045)}
+[data-theme="dark"] .fm-st--dim{background:rgba(255,255,255,.08);border-color:transparent;color:#9aa3ab}
+[data-theme="dark"] .fm-st--ok,[data-theme="dark"] .fm-st--info{color:#5fd6cf}[data-theme="dark"] .fm-st--warn{color:#ffa462}
+.fm-chip.on{background:#22272b;color:#fff;border-color:#22272b}
+.fm-lp td,.fm-lp th{vertical-align:middle}
+.fm-lp .fm-platwrap{max-height:none}
+.fm-lp-open>td{background:#f4f8f8}
+.fm-lp-edit>td{background:#f4f8f8;padding:0 14px 16px!important;border-top:0}
+.fm-lp-form{border-top:3px solid transparent;border-image:linear-gradient(90deg,#e8731c 0 26%,transparent 26% 27.5%,#2cbcb4 27.5% 32%,transparent 32%) 1;padding-top:14px;display:grid;gap:12px}
+.fm-lp-form label{display:grid;gap:5px;font:700 11px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--text2)}
+.fm-lp-lab{display:block}
+.fm-lp-form label .fm-tdim{font-weight:400;letter-spacing:0;text-transform:none;margin-left:6px}
+.fm-lp-grid4{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:10px}
+.fm-lp-grid2{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.fm-lp-form textarea.fm-in{resize:vertical;line-height:1.5;font-size:14px}
+.fm-lp-aid{display:flex;align-items:center;gap:12px;margin-top:4px;text-transform:none;letter-spacing:0;font-weight:400}
+.fm-lp-rel{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fm-lp-rel select.fm-in{background:var(--card-bg);color:var(--text);border:1px solid var(--border2)}
+.fm-lp-foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media (max-width:900px){.fm-lp-grid4,.fm-lp-grid2{grid-template-columns:1fr 1fr}}
+</style>
+
 <script>
 /* ==================================================================================================
    FITMENT (v5.2) - one place to manage vehicle fitment. Reads/writes the same Supabase tables the ERP
@@ -25241,17 +25271,259 @@ function fmRenderCategories(){
   }
   return '<div class="fm-cx">'+head+'</div><div class="fm-pad fm-cx-body">'+body+'</div></div>'; // head opened .fm-cx-head; '</div>' closes it, then the scrolling body, then .fm-cat
 }
-function fmRenderPlatforms(){
-  var src=fmPlatformSources();
-  var nSyn=src.filter(function(o){return o.rec;}).length;
-  return '<details class="fm-card fm-plat"'+((FM.cov&&FM.cov.platOpen)?' open':'')+' ontoggle="FM.cov=FM.cov||{};FM.cov.platOpen=this.open"><summary class="fm-cardh"><b>Platform pages for Google</b><span class="fm-tdim" style="font-size:12.5px">'+src.length+' platform'+(src.length!==1?'s':'')+' &middot; '+nSyn+' with a Shopify page &middot; click to open</span></summary>'
-    +'<div class="fm-tdim" style="font-size:12.5px;padding:2px 14px 8px">Each saved group or catalog Platform can become a real Shopify collection page (e.g. /collections/audi-c7-rs7-parts) that Google can index. Press Sync after fitment changes.</div>'
-    +(src.length>8?'<div style="padding:0 14px 8px"><input class="fm-in" style="min-width:260px" type="search" placeholder="Find a platform page" aria-label="Find a platform page" oninput="fmPlatFind(this.value)"></div>':'')
-    +(FM.ppages===null?'<div class="fm-msg small">Run <b>fitment_8_staff.sql</b> in Supabase to turn this on.</div>':!src.length?'<div class="fm-colhint">Save a vehicle group (Products &gt; a product &gt; Groups) or set a Platform on catalog vehicles first.</div>'
-    :'<div class="fm-platwrap"><table class="fm-table"><thead><tr><th>Platform</th><th class="fm-tnum">Vehicles</th><th class="fm-tnum">Products</th><th>Shopify page</th><th></th></tr></thead><tbody>'
-      +src.map(function(o){return '<tr><td><b>'+fmEsc(o.title)+'</b></td><td class="fm-tnum">'+o.vs.length+'</td><td class="fm-tnum">'+o.handles.length+'</td><td>'+(o.rec&&o.rec.collection_handle?'<a href="https://tgkmotorsport.com/collections/'+fmEsc(o.rec.collection_handle)+'" target="_blank" rel="noopener">/collections/'+fmEsc(o.rec.collection_handle)+'</a> <span class="fm-tdim">synced '+fmEsc(new Date(o.rec.synced_at).toLocaleDateString())+(o.rec.products!==o.handles.length?' - '+o.handles.length+' now, '+o.rec.products+' last sync':'')+'</span>':'<span class="fm-tdim">not created yet</span>')+'</td>'
-        +'<td style="text-align:right"><button class="fm-btn'+(o.rec?'':' primary')+'" onclick="fmSyncPlatform('+fmJs(o.slug).replace(/"/g,'&quot;')+')"'+(o.handles.length?'':' disabled')+'>'+(o.rec?'Sync':'Create page')+'</button></td></tr>';}).join('')+'</tbody></table></div>')+'</details>';
+// ===================== Landing pages for Google (v5.3) =====================
+// Each platform becomes a real vehicle landing page: heading, vehicle details, intro, search text and a "more cars" list.
+// The text is kept on fit_platform_pages.landing (jsonb, added by fitment_9_landing.sql). "Sync" runs the existing
+// shopify-orders sync (collection + product tags) and then shopify-landing > update_platform_collection (template + text).
+// AI drafts are only ever saved as drafts marked "Review draft"; nothing reaches Shopify until a person has read it.
+var FM_LP_ST={new:['Not created','dim'],intro:['Needs intro','warn'],review:['Review draft','warn'],ready:['Ready to sync','info'],stale:['Out of date','dim'],live:['Live','ok']};
+function fmLpS(){return FM.lp||(FM.lp={open:null,sel:{},drafts:{},filter:'all',all:false,ai:{}});}
+function fmLpCommon(a){var c={},b='',n=0;a.forEach(function(x){if(!x)return;c[x]=(c[x]||0)+1;if(c[x]>n){n=c[x];b=x;}});return b;}
+function fmLpHash(o){var s=JSON.stringify(o),h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
+function fmLpSentences(t){return String(t||'').trim().split(/(?<=[.!?])\s+/).filter(Boolean).length;}
+function fmLpTitleTag(t){var sfx=' | TGK Motorsport',s=t+' Performance Parts'+sfx;if(s.length<=60)return s;s=t+' Parts'+sfx;if(s.length<=60)return s;return t.slice(0,60-sfx.length).replace(/[\s,(-]+$/,'')+sfx;}
+function fmLpDefaults(o,rows){
+  var vs=o.vs||[],years='',y1=9999,y2=0;
+  vs.forEach(function(v){if(+v.year_from)y1=Math.min(y1,+v.year_from);if(+v.year_to)y2=Math.max(y2,+v.year_to);});
+  if(y1<9999&&y2>0)years=(y1===y2)?String(y1):y1+'\u2013'+y2;
+  var eng={};vs.forEach(function(v){if(v.engine)eng[v.engine]=1;});var engs=Object.keys(eng);
+  var rel=rows.filter(function(r){return r.slug!==o.slug&&r.make&&r.make===o.make&&r.rec&&r.rec.collection_handle;}).slice(0,4).map(function(r){return r.slug;});
+  return {heading:o.title+' performance parts',make:o.make||'',years:years,engine:(engs.length&&engs.length<=2)?engs.join(' / '):'',drivetrain:'',intro:'',seo_title:fmLpTitleTag(o.title),seo_desc:'',related:rel};
 }
+function fmLpMerge(d,s){var out=Object.assign({},d);if(s)Object.keys(s).forEach(function(k){if(s[k]!==undefined&&s[k]!==null)out[k]=s[k];});return out;}
+function fmLpPayload(o,L){
+  var by=FM._lpBy||{};
+  var rel=(L.related||[]).map(function(sl){var r=by[sl];return (r&&r.rec&&r.rec.collection_handle)?{title:r.title,url:'/collections/'+r.rec.collection_handle}:null;}).filter(Boolean);
+  return {slug:o.slug,heading:String(L.heading||'').trim(),intro:String(L.intro||'').trim(),seo_title:String(L.seo_title||'').trim(),seo_description:String(L.seo_desc||'').trim(),make:String(L.make||'').trim(),years:String(L.years||'').trim(),engine:String(L.engine||'').trim(),drivetrain:String(L.drivetrain||'').trim(),related:rel};
+}
+function fmLpStatus(o){
+  var rec=o.rec,ld=rec&&rec.landing;
+  if(!rec||!rec.collection_handle)return 'new';
+  if(!ld||!ld.intro)return 'intro';
+  if(ld.ai_unreviewed)return 'review';
+  if(!ld.synced_at||ld.synced_hash!==fmLpHash(fmLpPayload(o,o.saved)))return 'ready';
+  if(rec.products!==o.handles.length||ld.synced_products!==o.handles.length)return 'stale';
+  return 'live';
+}
+function fmLpRows(){
+  var rows=fmPlatformSources(),rk=FM.rank||{},by={};
+  rows.forEach(function(o){o.make=fmLpCommon(o.vs.map(function(v){return v.make;}));o.score=0;o.handles.forEach(function(h){var r=rk[h];if(r)o.score+=1/r;});by[o.slug]=o;});
+  var ranked=rows.filter(function(o){return o.score>0&&o.handles.length;}).sort(function(a,b){return b.score-a.score;});
+  rows.forEach(function(o){o.pos=0;});ranked.forEach(function(o,i){o.pos=i+1;});
+  rows.sort(function(a,b){if(a.pos&&b.pos)return a.pos-b.pos;if(a.pos)return -1;if(b.pos)return 1;return a.title.localeCompare(b.title);});
+  FM._lpBy=by;FM._lpRows=rows;
+  rows.forEach(function(o){o.D=fmLpDefaults(o,rows);o.saved=fmLpMerge(o.D,o.rec&&o.rec.landing);});
+  rows.forEach(function(o){o.st=fmLpStatus(o);});
+  return rows;
+}
+function fmLpErr(e){
+  var m=String((e&&e.message)||e);
+  if(/landing/i.test(m)&&/column|schema cache|does not exist/i.test(m))return 'Run fitment_9_landing.sql in Supabase first';
+  if(/not deployed|Function not found|NOT_FOUND/i.test(m)||(e&&e.status===404&&/shopify-landing/.test(m)))return 'The shopify-landing function is not deployed yet (see landing-pages-setup.md)';
+  return m;
+}
+async function fmLpEdge(fn,body){
+  var s=(typeof _ccFreshSession==='function')?await _ccFreshSession():null,tok=s&&s.access_token;
+  var r=await fetch(TGK_SB_URL+'/functions/v1/'+fn,{method:'POST',headers:{'Content-Type':'application/json',apikey:TGK_SB_KEY,Authorization:'Bearer '+(tok||TGK_SB_KEY)},body:JSON.stringify(body)});
+  var t=await r.text(),j={};try{j=t?JSON.parse(t):{};}catch(e){}
+  if(!r.ok||j.error||j.ok===false){var err=new Error(j.error||(r.status===404?('function "'+fn+'" is not deployed'):('HTTP '+r.status)));err.status=r.status;throw err;}
+  return j;
+}
+async function fmLpSaveRowFull(rec){return _fmRawReq('fit_platform_pages?on_conflict=slug',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rec)});}
+async function fmLpSaveRow(o,landing){return fmLpSaveRowFull({slug:o.slug,title:o.title,vehicle_ids:o.vs.map(function(v){return v.id;}),landing:landing});}
+function fmLpLanding(o,L,extra){
+  var old=(o.rec&&o.rec.landing)||{};
+  return Object.assign({heading:L.heading,make:L.make,years:L.years,engine:L.engine,drivetrain:L.drivetrain,intro:L.intro,seo_title:L.seo_title,seo_desc:L.seo_desc,related:L.related||[],
+    synced_at:old.synced_at||null,synced_hash:old.synced_hash||null,synced_products:old.synced_products==null?null:old.synced_products,ai_unreviewed:false},extra||{});
+}
+async function fmLpSyncCore(o,L){
+  var j=await fmLpEdge('shopify-orders',{action:'sync_platform_collection',slug:o.slug,title:o.title,handles:o.handles,description:String(L.seo_desc||L.intro||'').slice(0,300)});
+  var rec={slug:o.slug,title:o.title,vehicle_ids:o.vs.map(function(v){return v.id;}),collection_handle:j.collection_handle,products:j.products,synced_at:new Date().toISOString(),synced_by:FM.me,landing:fmLpLanding(o,L,{})};
+  await fmLpSaveRowFull(rec); // the page exists now: keep the text even if the next step fails
+  var payload=fmLpPayload(o,L);
+  var u=await fmLpEdge('shopify-landing',Object.assign({action:'update_platform_collection',template_suffix:'vehicle'},payload));
+  rec.landing=fmLpLanding(o,L,{synced_at:new Date().toISOString(),synced_hash:fmLpHash(payload),synced_products:j.products,ai_unreviewed:false});
+  await fmLpSaveRowFull(rec);
+  return {sync:j,update:u};
+}
+// ---- AI draft (plain, factual, no hype) ----
+var FM_LP_BAD=/\b(unleash|elevate|ultimate|premium|perfect|game[- ]chang\w*|revolutionary|unmatched|supercharge|dominate|next level|cutting[- ]edge|world[- ]class|best[- ]in[- ]class)\b/i;
+function fmLpParse(t){t=String(t||'').replace(/```json|```/g,'');var a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<=a)return null;try{return JSON.parse(t.slice(a,b+1));}catch(e){return null;}}
+function fmLpCheck(j){
+  var i=String(j.intro||'').trim(),d=String(j.description||'').trim();
+  if(!i||!d)return 'the intro or the description was missing';
+  var n=fmLpSentences(i);if(n<2||n>3)return 'the intro had '+n+' sentences (needs 2 or 3)';
+  if(i.length>460)return 'the intro was too long';
+  if(d.length<80||d.length>155)return 'the description was '+d.length+' characters (needs 80 to 155)';
+  var all=i+' '+d;
+  if(/!/.test(all))return 'it used an exclamation mark';
+  if(FM_LP_BAD.test(all))return 'it used a hype word';
+  if(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/u.test(all))return 'it used an emoji';
+  return '';
+}
+async function fmLpAIGen(o){
+  var veh={};o.vs.forEach(function(v){veh[[v.make,v.model,(v.year_from===v.year_to?v.year_from:v.year_from+'-'+v.year_to),v.engine||''].join(' ').replace(/\s+/g,' ').trim()]=1;});
+  var cats={};o.handles.forEach(function(h){var p=fmProd(h),c=p&&String(p.category||'').split('>').pop().trim();if(c)cats[c]=(cats[c]||0)+1;});
+  var catList=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];}).slice(0,8);
+  var prompt=['You write the short intro for a parts landing page at TGK Motorsport, which makes performance parts for European cars.',
+    'Use only these facts and add nothing else.','Platform: '+o.title,'Vehicles: '+Object.keys(veh).slice(0,14).join('; '),'Kinds of parts on the page: '+(catList.join(', ')||'none listed'),'',
+    'Write two things.','1) intro: two or three plain sentences saying which cars the parts are matched to and which kinds of parts are here.',
+    '2) description: a search-result description of 90 to 150 characters, same rules.',
+    'Rules: plain gearhead voice. No hype words, no claims about power, speed, handling or quality, no numbers except model years from the facts, no exclamation marks, no emojis, nothing about price, shipping or warranty.',
+    'Reply with JSON only: {"intro":"...","description":"..."}'].join('\n');
+  var bad='';
+  for(var attempt=0;attempt<2;attempt++){
+    var j=fmLpParse(await callAI(prompt,700));
+    bad=j?fmLpCheck(j):'the reply was not valid JSON';
+    if(!bad)return {intro:String(j.intro).trim(),description:String(j.description).trim()};
+    prompt+='\n\nYour last answer was rejected because '+bad+'. Fix that and answer again with JSON only.';
+  }
+  throw new Error('The AI draft did not pass the checks ('+bad+'). Press Draft again or write it by hand.');
+}
+// ---- the panel ----
+function fmLpChip(f,label,n,S){return '<span class="fm-chip'+(S.filter===f?' on':'')+'" onclick="fmLpFilter(\''+f+'\')">'+label+(n!=null?' '+n:'')+'</span>';}
+function fmLpEdit(o,S){
+  var L=S.drafts[o.slug]||o.saved,sl=o.slug,by=FM._lpBy||{};
+  var rel=(L.related||[]).map(function(rs){var r=by[rs];return r?'<span class="fm-chip">'+fmEsc(r.title)+' <b onclick="fmLpRel(\''+sl+'\',\'del\',\''+rs+'\')" style="cursor:pointer">&times;</b></span>':'';}).join('');
+  var opts=(FM._lpRows||[]).filter(function(r){return r.slug!==sl&&r.rec&&r.rec.collection_handle&&(L.related||[]).indexOf(r.slug)<0;}).map(function(r){return '<option value="'+fmEsc(r.slug)+'">'+fmEsc(r.title)+'</option>';}).join('');
+  var f=function(k,label,hint,extra){return '<label><span class="fm-lp-lab">'+label+(hint?' <span class="fm-tdim">'+hint+'</span>':'')+'</span><input class="fm-in" value="'+fmEsc(L[k]||'')+'" oninput="fmLpField(\''+sl+'\',\''+k+'\',this.value)"'+(extra||'')+'></label>';};
+  var ni=fmLpSentences(L.intro);
+  return '<tr class="fm-lp-edit" data-for="'+sl+'"><td colspan="8"><div class="fm-lp-form">'
+   +'<div class="fm-lp-grid4">'+f('heading','Page heading','')+f('make','Make','')+f('years','Years','')+f('engine','Engine','')+f('drivetrain','Drivetrain','')+'</div>'
+   +'<label class="fm-lp-wide"><span class="fm-lp-lab">Intro <span class="fm-tdim">shown under the heading</span> <span class="fm-tdim" id="fmlp-c-'+sl+'-intro">'+ni+' sentence'+(ni===1?'':'s')+'</span></span>'
+   +'<textarea class="fm-in" rows="3" oninput="fmLpField(\''+sl+'\',\'intro\',this.value)">'+fmEsc(L.intro||'')+'</textarea>'
+   +'<div class="fm-lp-aid"><button class="fm-btn" onclick="fmLpAI(\''+sl+'\')"'+(S.ai[sl]?' disabled':'')+'>'+(S.ai[sl]?'Writing...':(L.intro?'Draft again with AI':'Draft with AI'))+'</button><span class="fm-tdim">Drafted by AI from your fitment data. Read it, fix anything that is not right, then save.</span></div></label>'
+   +'<div class="fm-lp-grid2"><label><span class="fm-lp-lab">Search title <span class="fm-tdim" id="fmlp-c-'+sl+'-seo_title">'+String(L.seo_title||'').length+' of 60</span></span><input class="fm-in" value="'+fmEsc(L.seo_title||'')+'" oninput="fmLpField(\''+sl+'\',\'seo_title\',this.value)"></label>'
+   +'<label><span class="fm-lp-lab">Search description <span class="fm-tdim" id="fmlp-c-'+sl+'-seo_desc">'+String(L.seo_desc||'').length+' of 155</span></span><input class="fm-in" value="'+fmEsc(L.seo_desc||'')+'" oninput="fmLpField(\''+sl+'\',\'seo_desc\',this.value)"></label></div>'
+   +'<div class="fm-lp-rel"><span class="fm-tdim">More cars on this platform (shown as tiles)</span>'+rel+(opts?'<select class="fm-in" style="width:auto;max-width:240px" onchange="fmLpRel(\''+sl+'\',\'add\',this.value)"><option value="">+ add</option>'+opts+'</select>':'')+'</div>'
+   +'<div class="fm-lp-foot"><button class="fm-btn" onclick="fmLpSave(\''+sl+'\',false)">Save draft</button><button class="fm-btn primary" onclick="fmLpSave(\''+sl+'\',true)">Save and sync to Shopify</button><span class="fm-tdim">Sets the vehicle page template, the heading, details, intro and search text, then updates the parts.</span></div>'
+   +'</div></td></tr>';
+}
+function fmRenderPlatforms(){
+  var S=fmLpS(),rows=fmLpRows(),cnt={};
+  var kc=fmLpCounts();
+  rows.forEach(function(o){cnt[o.st]=(cnt[o.st]||0)+1;});
+  var needLanding=FM.ppages&&FM.ppages.length&&!('landing' in FM.ppages[0]);
+  var shown=rows.filter(function(o){return S.filter==='all'||o.st===S.filter;});
+  var cap=(S.all||S.filter!=='all')?1e9:12;
+  var chips=fmLpChip('all','All',rows.length,S)+['new','intro','review','ready','stale','live'].filter(function(k){return cnt[k];}).map(function(k){return fmLpChip(k,FM_LP_ST[k][0],cnt[k],S);}).join('');
+  var body=shown.map(function(o,i){
+    var st=FM_LP_ST[o.st],h=o.rec&&o.rec.collection_handle,hide=i>=cap;
+    var page=h?'<a href="https://tgkmotorsport.com/collections/'+fmEsc(h)+'" target="_blank" rel="noopener">/collections/'+fmEsc(h)+'</a> <span class="fm-tdim">'+(o.st==='stale'?o.handles.length+' now, '+o.rec.products+' at last sync':'synced '+fmEsc(new Date(o.rec.synced_at).toLocaleDateString()))+'</span>':'<span class="fm-tdim">not created yet</span>';
+    var btns=(o.st==='new')?'<button class="fm-btn primary" onclick="fmSyncPlatform(\''+o.slug+'\')"'+(o.handles.length?'':' disabled')+'>Create page</button>'
+      :'<button class="fm-btn'+((o.st==='intro'||o.st==='review')?' primary':'')+'" onclick="fmLpOpen(\''+o.slug+'\')">'+(S.open===o.slug?'Close':'Edit')+'</button>'+((o.st==='ready'||o.st==='stale'||o.st==='live')?' <button class="fm-btn'+(o.st==='live'?'':' primary')+'" onclick="fmLpSyncOne(\''+o.slug+'\')">Sync</button>':'');
+    return '<tr data-slug="'+o.slug+'" data-q="'+fmEsc((o.title+' '+(h||'')).toLowerCase())+'" class="fm-lp-row'+(S.open===o.slug?' fm-lp-open':'')+(hide?' fm-lp-cap':'')+'"'+(hide?' style="display:none"':'')+'>'
+      +'<td><input type="checkbox" aria-label="Select '+fmEsc(o.title)+'" '+(S.sel[o.slug]?'checked ':'')+'onchange="fmLpSel(\''+o.slug+'\',this.checked)"></td>'
+      +'<td class="fm-tnum fm-tdim">'+(o.pos?'#'+o.pos:'-')+'</td><td><b>'+fmEsc(o.title)+'</b></td><td class="fm-tnum">'+o.vs.length+'</td><td class="fm-tnum">'+o.handles.length+'</td>'
+      +'<td><span class="fm-st fm-st--'+st[1]+'">'+st[0]+'</span></td><td>'+page+'</td><td style="text-align:right;white-space:nowrap">'+btns+'</td></tr>'+(S.open===o.slug?fmLpEdit(o,S):'');
+  }).join('');
+  var more=shown.length>cap?'<tr class="fm-lp-moretr"><td colspan="8" class="fm-tdim" style="text-align:center;padding:10px">'+(shown.length-cap)+' more platform'+(shown.length-cap!==1?'s':'')+' &middot; <a href="#" onclick="fmLpShowAll();return false">show all</a></td></tr>':'';
+  var nLive=cnt.live||0;
+  return '<details class="fm-card fm-plat fm-lp" id="fm-lp"'+((FM.cov&&FM.cov.platOpen===false)?'':' open')+' ontoggle="FM.cov=FM.cov||{};FM.cov.platOpen=this.open">'
+   +'<summary class="fm-cardh"><b>Landing pages for Google</b><span class="fm-tdim" style="font-size:12.5px">'+rows.length+' platform'+(rows.length!==1?'s':'')+' &middot; '+nLive+' live'+(cnt.intro?' &middot; '+cnt.intro+' need an intro':'')+(cnt.review?' &middot; '+cnt.review+' to review':'')+(cnt.stale?' &middot; '+cnt.stale+' out of date':'')+(cnt.new?' &middot; '+cnt.new+' not created':'')+'</span></summary>'
+   +'<div class="fm-tdim" style="font-size:12.5px;padding:0 0 10px">Each platform becomes a real Shopify page with its own heading, intro and fitment-matched parts. Review the text, then sync. Press Sync again after fitment changes.</div>'
+   +(FM.ppages===null?'<div class="fm-msg small">Run <b>fitment_8_staff.sql</b> in Supabase to turn this on.</div>'
+   :needLanding?'<div class="fm-msg small">Run <b>fitment_9_landing.sql</b> in Supabase to turn on landing pages.</div>'
+   :!rows.length?'<div class="fm-colhint">Save a vehicle group (Products &gt; a product &gt; Groups) or set a Platform on catalog vehicles first.</div>'
+   :'<div class="fm-lp-bar"><div class="fm-chips" style="padding:0">'+chips+'</div><div class="fm-lp-actions">'
+     +'<input class="fm-in" style="width:190px" type="search" placeholder="Find a platform" aria-label="Find a platform" oninput="fmLpFind(this.value)">'
+     +'<button class="fm-btn" onclick="fmLpTop(20)">Select top 20 by sales</button><button class="fm-btn" id="fm-lp-bdraft" onclick="fmLpDraftSel()">Draft intros with AI'+(kc.draft?' ('+kc.draft+')':'')+'</button><button class="fm-btn primary" id="fm-lp-bsync" onclick="fmLpSyncSel()">Sync selected'+(kc.sync?' ('+kc.sync+')':'')+'</button></div></div>'
+     +'<div class="fm-platwrap"><table class="fm-table"><thead><tr><th style="width:26px"></th><th class="fm-tnum">Sales</th><th>Platform</th><th class="fm-tnum">Vehicles</th><th class="fm-tnum">Products</th><th>Status</th><th>Shopify page</th><th></th></tr></thead><tbody>'+body+more+'</tbody></table></div>')
+   +'</details>';
+}
+function fmLpCounts(){
+  var S=fmLpS(),rows=FM._lpRows||[],c={sel:0,draft:0,sync:0};
+  rows.forEach(function(o){if(!S.sel[o.slug])return;c.sel++;var ld=o.rec&&o.rec.landing;if(!o.handles.length)return;if(!(ld&&ld.intro))c.draft++;else if(!ld.ai_unreviewed)c.sync++;});
+  return c;
+}
+function fmLpUI(){
+  var c=fmLpCounts(),d=document.getElementById('fm-lp-bdraft'),s=document.getElementById('fm-lp-bsync');
+  if(d)d.textContent='Draft intros with AI'+(c.draft?' ('+c.draft+')':'');if(s)s.textContent='Sync selected'+(c.sync?' ('+c.sync+')':'');
+}
+window.fmLpFilter=function(f){var S=fmLpS();S.filter=f;S.open=null;fmRender();};
+window.fmLpShowAll=function(){fmLpS().all=true;fmRender();};
+window.fmLpFind=function(v){var q=String(v||'').toLowerCase().trim();[].forEach.call(document.querySelectorAll('#fm-lp .fm-lp-row'),function(tr){var m=!q||tr.getAttribute('data-q').indexOf(q)>=0;tr.style.display=(m&&(q||!tr.classList.contains('fm-lp-cap')))?'':'none';var ed=tr.nextElementSibling;if(ed&&ed.classList.contains('fm-lp-edit'))ed.style.display=m?'':'none';});var mo=document.querySelector('#fm-lp .fm-lp-moretr');if(mo)mo.style.display=q?'none':'';};
+window.fmLpSel=function(slug,on){var S=fmLpS();if(on)S.sel[slug]=1;else delete S.sel[slug];fmLpUI();};
+window.fmLpTop=function(n){
+  var S=fmLpS(),rows=(FM._lpRows||[]).filter(function(o){return o.pos&&o.pos<=n&&o.handles.length;});
+  if(!rows.length){fmToast('Sales ranking is not available yet - open Products once so it loads, or refresh the sales rank',true);return;}
+  S.sel={};rows.forEach(function(o){S.sel[o.slug]=1;});S.filter='all';S.all=true;fmRender();fmToast('Selected the top '+rows.length+' platforms by sales');
+};
+window.fmLpOpen=function(slug){var S=fmLpS();S.open=(S.open===slug)?null:slug;if(S.open&&!S.drafts[slug]){var o=(FM._lpBy||{})[slug];if(o)S.drafts[slug]=Object.assign({},o.saved);}fmRender();};
+window.fmLpField=function(slug,k,v){
+  var S=fmLpS(),o=(FM._lpBy||{})[slug];if(!o)return;
+  var d=S.drafts[slug]||(S.drafts[slug]=Object.assign({},o.saved));d[k]=v;if(k==='seo_desc')d.seo_auto=false;
+  var set=function(id,t,bad){var e=document.getElementById('fmlp-c-'+slug+'-'+id);if(e){e.textContent=t;e.style.color=bad?'#b42318':'';}};
+  var tl=String(d.seo_title||'').length,dl=String(d.seo_desc||'').length,n=fmLpSentences(d.intro);
+  set('seo_title',tl+' of 60',tl>60);set('seo_desc',dl+' of 155',dl>155);set('intro',n+' sentence'+(n===1?'':'s'),n<2||n>4);
+};
+window.fmLpRel=function(slug,op,rs){
+  var S=fmLpS(),o=(FM._lpBy||{})[slug];if(!o||!rs)return;
+  var d=S.drafts[slug]||(S.drafts[slug]=Object.assign({},o.saved));d.related=(d.related||[]).slice();
+  if(op==='del')d.related=d.related.filter(function(x){return x!==rs;});else if(d.related.indexOf(rs)<0&&d.related.length<8)d.related.push(rs);
+  fmRender();
+};
+window.fmLpAI=async function(slug){
+  var S=fmLpS(),o=(FM._lpBy||{})[slug];if(!o)return;
+  if(!o.handles.length){fmToast('No products fit this platform yet',true);return;}
+  var d=S.drafts[slug]||(S.drafts[slug]=Object.assign({},o.saved));S.ai[slug]=true;fmRender();
+  try{var a=await fmLpAIGen(o);d.intro=a.intro;if(!d.seo_desc||d.seo_auto!==false){d.seo_desc=a.description;d.seo_auto=true;}fmToast('Draft written - read it before you save');}
+  catch(e){fmToast(fmLpErr(e),true);}
+  S.ai[slug]=false;fmRender();
+};
+window.fmLpSave=async function(slug,sync){
+  var S=fmLpS(),o=(FM._lpBy||{})[slug];if(!o)return;
+  var L=S.drafts[slug]||o.saved;
+  if(!String(L.heading||'').trim()){fmToast('Give the page a heading first',true);return;}
+  if(sync&&!String(L.intro||'').trim()){fmToast('Write the intro first (or press Draft with AI)',true);return;}
+  if(FM.ppages===null){fmToast('Run fitment_8_staff.sql in Supabase first',true);return;}
+  if(sync&&!o.handles.length){fmToast('No products fit this platform yet',true);return;}
+  FM._busy=(FM._busy||0)+1;fmBusyUI();
+  try{
+    if(sync){await fmLpSyncCore(o,L);}else{await fmLpSaveRow(o,fmLpLanding(o,L,{}));}
+    delete S.drafts[slug];if(sync)S.open=null;
+    await fmLoadGroups();
+    fmToast(sync?('Synced /collections/'+slug+'-parts as a vehicle page'):'Draft saved');
+  }catch(e){fmToast('Could not '+(sync?'sync':'save')+': '+fmLpErr(e),true);}
+  FM._busy--;fmBusyUI();fmRender();
+};
+window.fmLpSyncOne=async function(slug){
+  var o=(FM._lpBy||{})[slug];if(!o)return;
+  if(!o.rec||!o.rec.landing||!o.rec.landing.intro){fmLpOpen(slug);return;}
+  FM._busy=(FM._busy||0)+1;fmBusyUI();
+  try{await fmLpSyncCore(o,o.saved);await fmLoadGroups();fmToast('Synced /collections/'+slug+'-parts');}
+  catch(e){fmToast('Could not sync: '+fmLpErr(e),true);}
+  FM._busy--;fmBusyUI();fmRender();
+};
+window.fmLpDraftSel=async function(){
+  var S=fmLpS(),rows=FM._lpRows||[];
+  var todo=rows.filter(function(o){return S.sel[o.slug]&&o.handles.length&&!(o.rec&&o.rec.landing&&o.rec.landing.intro);});
+  if(!todo.length){fmToast('Tick the platforms that still need an intro first',true);return;}
+  if(!confirm('Draft intros for '+todo.length+' platform'+(todo.length>1?'s':'')+' with AI?\n\nThey are saved as drafts marked "Review draft". Nothing goes to Shopify until you have read each one and synced it.'))return;
+  FM._busy=(FM._busy||0)+1;fmBusyUI();var ok=0,fail=[];
+  for(var i=0;i<todo.length;i++){
+    var o=todo[i];fmToast('Drafting '+(i+1)+' of '+todo.length+': '+o.title);
+    try{var a=await fmLpAIGen(o);var L=Object.assign({},o.saved,{intro:a.intro,seo_desc:o.saved.seo_desc||a.description});await fmLpSaveRow(o,fmLpLanding(o,L,{ai_unreviewed:true}));ok++;}
+    catch(e){fail.push(o.title+': '+fmLpErr(e));}
+  }
+  try{await fmLoadGroups();}catch(e){}
+  FM._busy--;fmBusyUI();fmRender();
+  fmToast('Drafted '+ok+' intro'+(ok!==1?'s':'')+'. Open each one to read it.'+(fail.length?' Could not draft '+fail.length+': '+fail[0]:''),!!fail.length&&!ok);
+};
+window.fmLpSyncSel=async function(){
+  var S=fmLpS(),rows=FM._lpRows||[],ready=[],noIntro=0,review=0;
+  rows.forEach(function(o){if(!S.sel[o.slug])return;var ld=o.rec&&o.rec.landing;if(!o.handles.length)return;if(!(ld&&ld.intro))noIntro++;else if(ld.ai_unreviewed)review++;else ready.push(o);});
+  if(!ready.length){fmToast('Nothing ready to sync in the selection'+(noIntro?' - '+noIntro+' need an intro':'')+(review?(noIntro?', ':' - ')+review+' still need review':''),true);return;}
+  if(!confirm('Sync '+ready.length+' page'+(ready.length>1?'s':'')+' to Shopify?\n\nEach one gets the vehicle page template and its text, and its parts are updated.'+((noIntro||review)?'\n\nSkipped: '+(noIntro?noIntro+' without an intro':'')+(noIntro&&review?', ':'')+(review?review+' AI drafts not yet reviewed':'')+'.':'')))return;
+  FM._busy=(FM._busy||0)+1;fmBusyUI();var ok=0,fail=[];
+  for(var i=0;i<ready.length;i++){
+    var o=ready[i];fmToast('Syncing '+(i+1)+' of '+ready.length+': '+o.title);
+    try{await fmLpSyncCore(o,o.saved);ok++;}catch(e){fail.push(o.title+': '+fmLpErr(e));}
+  }
+  try{await fmLoadGroups();}catch(e){}
+  FM._busy--;fmBusyUI();fmRender();
+  fmToast('Synced '+ok+' of '+ready.length+'.'+(fail.length?' Failed: '+fail[0]+(fail.length>1?' (+'+(fail.length-1)+' more)':''):''),!!fail.length);
+};
 window.fmPlatFind=function(v){var q=String(v||'').toLowerCase().trim();[].forEach.call(document.querySelectorAll('.fm-platwrap tbody tr'),function(tr){tr.style.display=(!q||tr.textContent.toLowerCase().indexOf(q)>=0)?'':'none';});};
 window.fmSyncPlatform=fmSyncPlatform;
 // ===================== Supplier spreadsheets: map their columns to ours =====================
