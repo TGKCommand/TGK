@@ -14897,9 +14897,10 @@ var _srchQ='';
 window.pwSearch=function(q){_srchQ=(q||'').toLowerCase();pwRenderBoard();};
 window.pwRenderBoard=function(){
   var S=_gs();
-  var tot=Object.keys(S.tasks).length;
-  var act=S.cols.reduce(function(n,c){return c.name==='In Progress'?n+c.tasks.length:n;},0);
-  var dn=S.cols.reduce(function(n,c){return c.name==='Done'?n+c.tasks.length:n;},0);
+  var _vis=function(id){var t=S.tasks[id];return t&&_inSub(t);};
+  var tot=Object.keys(S.tasks).filter(_vis).length;
+  var act=S.cols.reduce(function(n,c){return c.name==='In Progress'?n+c.tasks.filter(_vis).length:n;},0);
+  var dn=S.cols.reduce(function(n,c){return c.name==='Done'?n+c.tasks.filter(_vis).length:n;},0);
   var sEl=document.getElementById('pw-hdr-stats');
   if(sEl)sEl.innerHTML='<span class="pw-sp pw-sp-b">'+tot+' Total</span><span class="pw-sp pw-sp-t">'+act+' Active</span><span class="pw-sp pw-sp-g">'+dn+' Done</span>';
   var kb=document.getElementById('pw-kanban');if(!kb)return;
@@ -14919,6 +14920,7 @@ window.pwRenderBoard=function(){
     if(_filters.priority)tasks=tasks.filter(function(t){return t.priority===_filters.priority;});
     if(_filters.assignee)tasks=tasks.filter(function(t){return t.assignee===_filters.assignee;});
     if(_filters.tag)tasks=tasks.filter(function(t){return(t.tags||[]).indexOf(_filters.tag)>=0;});
+    tasks=tasks.filter(_inSub);
     var _colEl=_mkCol(col,tasks);kb.appendChild(_colEl);
     (function(){
       var live=tasks.filter(function(t){return t.sku&&t.sku.status==='active';}).length;
@@ -14934,7 +14936,7 @@ window.pwRenderBoard=function(){
   var btn=document.createElement('button');
   btn.className='pw-add-stage';btn.innerHTML='<span style="font-size:var(--t-xl)">+</span> Add Stage';
   btn.onclick=pwAddStage;kb.appendChild(btn);
-  _renderFilterBar();
+  _renderFilterBar();_renderDock();
 };
 function _mkCol(col,tasks){
   var el=document.createElement('div');
@@ -15050,6 +15052,10 @@ function _mkCard(task,colId){
   el.addEventListener('dragend',function(){window._pwDragging=false;this.classList.remove('dragging');document.querySelectorAll('.pw-col-body.dov').forEach(function(b){b.classList.remove('dov');});});
   el.setAttribute('data-taskid', task.id);
   el.setAttribute('data-colid', colId);
+  var _cb=document.createElement('label');_cb.className='pw-card-sel';_cb.title='Select';_cb.innerHTML='<input type="checkbox"'+(_sel[task.id]?' checked':'')+'>';
+  _cb.addEventListener('click',function(e){e.stopPropagation();});
+  _cb.querySelector('input').addEventListener('change',function(){if(this.checked)_sel[task.id]=1;else delete _sel[task.id];el.classList.toggle('pw-sel',this.checked);_renderDock();});
+  el.appendChild(_cb);if(_sel[task.id])el.classList.add('pw-sel');
   return el;
 }
 
@@ -15084,7 +15090,7 @@ window.pwDoModal=function(){
       tags=((document.getElementById('pwm-tags')||{}).value||'').split(',').map(function(t){return t.trim();}).filter(Boolean),
       due=(document.getElementById('pwm-due')||{}).value||'';
   var S=_gs(),id=_uid();
-  var tpl=_pwTpl?TASK_TEMPLATES.find(function(t){return t.id===_pwTpl;}):null;S.tasks[id]={id:id,title:title,priority:pri,assignee:asgn,tags:tags,deadline:due,progress:0,description:tpl?tpl.description:'',logs:[{id:_uid(),type:'action',text:'Task created'+(tpl?' from template: '+tpl.name:''),user:_myId(),ts:_now()}],vehicle:{},files:[],customTabs:[],subtasks:tpl&&tpl.subtasks?tpl.subtasks.map(function(s){return{id:'st_'+_uid(),title:s,done:false};}):[], activities:_defaultActivities(),bom:tpl&&tpl.bom?JSON.parse(JSON.stringify(tpl.bom)):[],sku:{num:'',cat:tpl?tpl.cat:'',msrp:'',wholesale:'',cost:'',barcode:'',status:'draft',weight:''},blockedBy:[],stageEnteredAt:_now(),updates:[]};
+  var tpl=_pwTpl?TASK_TEMPLATES.find(function(t){return t.id===_pwTpl;}):null;S.tasks[id]={id:id,title:title,priority:pri,assignee:asgn,tags:tags,deadline:due,progress:0,description:tpl?tpl.description:'',logs:[{id:_uid(),type:'action',text:'Task created'+(tpl?' from template: '+tpl.name:''),user:_myId(),ts:_now()}],vehicle:{},files:[],customTabs:[],subtasks:tpl&&tpl.subtasks?tpl.subtasks.map(function(s){return{id:'st_'+_uid(),title:s,done:false};}):[], activities:_defaultActivities(),bom:tpl&&tpl.bom?JSON.parse(JSON.stringify(tpl.bom)):[],sku:{num:'',cat:tpl?tpl.cat:'',msrp:'',wholesale:'',cost:'',barcode:'',status:'draft',weight:''},blockedBy:[],stageEnteredAt:_now(),updates:[],sub:_newTaskSub()};
   var col=S.cols.find(function(c){return c.id===colId;})||S.cols[0];if(col)col.tasks.push(id);
   _ccLog('Task created: '+title,'task',id,null,{title:title,stage:(col&&col.name)||''});_save();pwCloseModal();pwRenderBoard();
 };
@@ -15107,6 +15113,7 @@ window.pwEditCard=function(taskId){
   if(ttl){ttl.value=task.title;ttl.style.height='auto';setTimeout(function(){ttl.style.height=ttl.scrollHeight+'px';},0);}
   // Stage select
   var colSel=document.getElementById('pw-ep-col');if(colSel)colSel.innerHTML=S.cols.map(function(c){return'<option value="'+c.id+'"'+(c.id===curColId?' selected':'')+'>'+_esc(c.name)+'</option>';}).join('');
+  var subSel=document.getElementById('pw-ep-sub');if(subSel){var _cs=_taskSub(task);subSel.innerHTML='<option value="">Unfiled</option>'+_subsOf(S).map(function(x){return'<option value="'+x.id+'"'+(x.id===_cs?' selected':'')+'>'+_esc(x.name)+'</option>';}).join('');}
   // Priority select
   var priSel=document.getElementById('pw-ep-pri');
   if(priSel){
@@ -15190,6 +15197,7 @@ window.pwSaveEP=function(){
   // Priority
   var np=(document.getElementById('pw-ep-pri')||{}).value||task.priority;
   if(np!==task.priority){_la(task,'Priority: '+(PRI[task.priority]||{}).label+' \u2192 '+(PRI[np]||{}).label);task.priority=np;}
+  var nsub=(document.getElementById('pw-ep-sub')||{}).value;if(nsub!==undefined&&(nsub||'')!==_taskSub(task)){_la(task,'Filed under '+(nsub?_subName(nsub):'Unfiled'));task.sub=nsub;}
   // Other fields
   var asgn=(document.getElementById('pw-ep-asgn')||{}).value;if(asgn!==undefined&&asgn!==task.assignee){var m=_mem(asgn);_la(task,'Assigned to '+(m?m.name:'Unassigned'));task.assignee=asgn;}
   var due=(document.getElementById('pw-ep-due')||{}).value;if(due!==undefined)task.deadline=due;
@@ -16818,8 +16826,12 @@ window.pwCtxMenu=function(x,y,taskId,colId){
       +'<span class="pw-av" style="background:'+mem.color+';width:18px;height:18px;font-size:7px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff">'+_esc(mem.initials)+'</span> '
       +_esc(mem.name)+(mem.id===task.assignee?' <span class="ic ic-check"></span>':'')+'</button>';}).join('');
 
+  var _curSub=_taskSub(task);
+  var subItems='<button class="pw-ctx-item" onclick="_ctxSub(\'none\')">'+(_curSub?'':'<span class="ic ic-check"></span>')+'Unfiled</button>'
+    +_subsOf(S).map(function(x){return'<button class="pw-ctx-item" onclick="_ctxSub(\''+x.id+'\')">'+(x.id===_curSub?'<span class="ic ic-check"></span>':'')+_esc(x.name)+'</button>';}).join('');
   m.innerHTML=
     '<button class="pw-ctx-item pw-ctx-has-sub">📋 Move to stage <span style="margin-left:auto;opacity:.5">›</span><div class="pw-ctx-sub">'+stageItems+'</div></button>'
+    +'<button class="pw-ctx-item pw-ctx-has-sub">📁 File under sub-project <span style="margin-left:auto;opacity:.5">›</span><div class="pw-ctx-sub">'+subItems+'</div></button>'
     +'<button class="pw-ctx-item pw-ctx-has-sub"><span class="ic ic-target"></span>Set priority <span style="margin-left:auto;opacity:.5">›</span><div class="pw-ctx-sub">'+priItems+'</div></button>'
     +'<button class="pw-ctx-item pw-ctx-has-sub">👤 Assign to <span style="margin-left:auto;opacity:.5">›</span><div class="pw-ctx-sub">'+asnItems+'</div></button>'
     +'<div class="pw-ctx-sep"></div>'
@@ -17078,13 +17090,17 @@ window.pwSetMemberRole = function(id, role){
 function _hexA(h,a){h=String(h||'#2ABFAA').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return'rgba('+r+','+g+','+b+','+a+')';}
 
 window.pwShowDash=function(){
-  var C=_gc();C.active='';
-  var brd=document.getElementById('pw-board'),det=document.getElementById('pw-detail'),dash=document.getElementById('pw-dash'),ep=document.getElementById('pw-ep-ov');
-  if(det){det.classList.remove('open');det.innerHTML='';}
-  if(ep)ep.classList.remove('open');
-  if(brd)brd.classList.add('hidden');
-  if(dash)dash.classList.remove('hidden');
-  pwRenderDash();
+  var C=_gc();C.active='';_subSel='all';_selMode=false;_sel={};
+  _closePanels();_show('pw-dash');pwRenderDash();
+};
+/* a project now opens onto its sub-projects (a car or a job each); a sub-project opens that project's workflow filtered to it */
+window.pwShowSubs=function(){
+  var b=_activeBoard();if(!b){pwShowDash();return;}
+  _selMode=false;_sel={};_closePanels();_show('pw-subs');pwRenderSubs();
+};
+window.pwBack=function(){
+  var brd=document.getElementById('pw-board');
+  if(brd&&!brd.classList.contains('hidden'))pwShowSubs();else pwShowDash();
 };
 
 window.pwRenderDash=function(){
@@ -17119,16 +17135,17 @@ window.pwRenderDash=function(){
 window.pwOpenBoard=function(id){
   var C=_gc();
   if(!C.boards.filter(function(b){return b.id===id;}).length)return;
-  C.active=id;
-  var brd=document.getElementById('pw-board'),dash=document.getElementById('pw-dash');
-  if(dash)dash.classList.add('hidden');
-  if(brd)brd.classList.remove('hidden');
-  var b=_activeBoard(),nm=document.getElementById('pw-hdr-boardname');
-  if(nm&&b)nm.textContent=b.name;
+  C.active=id;_subSel='all';
+  pwShowSubs();_updateBell();
+};
+window.pwOpenSub=function(sel){
+  _subSel=sel||'all';_selMode=false;_sel={};
+  _show('pw-board');_syncBoardName();
   _srchQ='';var si=document.getElementById('pw-search');if(si)si.value='';
   _undoStack=[];if(typeof _updateUndoBtn==='function')_updateUndoBtn();
   pwRenderBoard();_updateBell();
 };
+window.pwDockGo=function(sel){_subSel=sel||'all';_sel={};_syncBoardName();pwRenderBoard();};
 
 window.pwNewBoard=function(){
   var name=prompt('New project name:');
@@ -17169,20 +17186,194 @@ window.pwDeleteBoard=function(id,ev){
 
 /* Re-render whichever view is currently on screen (used after remote sync). */
 function pwRefreshView(){
-  var brd=document.getElementById('pw-board');
+  var brd=document.getElementById('pw-board'),sbs=document.getElementById('pw-subs');
   if(brd&&!brd.classList.contains('hidden')&&_gc().active&&_activeBoard())pwRenderBoard();
+  else if(sbs&&!sbs.classList.contains('hidden')&&_gc().active&&_activeBoard())pwRenderSubs();
   else pwRenderDash();
 }
+
+
+/* ═══ SUB-PROJECTS ═══════════════════════════════════════════════════════════════════════════════════
+   A project (board) can hold sub-projects, one per car or job. A sub-project opens the project's own workflow (the same stages)
+   showing only its tasks. A task belongs to at most one: task.sub = a sub-project id, or '' for Unfiled. The list lives in the
+   board's data (data.subs), so it is saved, synced and undone together with the tasks. */
+var _subSel='all',_selMode=false,_sel={};
+var SUB_PAL=[['#2ABFAA','&#128663;'],['#185FA5','&#128665;'],['#E07B28','&#127950;'],['#6554C0','&#128663;'],['#00875A','&#128665;'],['#B91C1C','&#127950;']];
+function _subsOf(S){S=S||_gs();if(!Array.isArray(S.subs))S.subs=[];return S.subs;}
+function _taskSub(t){if(!t||!t.sub)return'';return _subsOf().some(function(x){return x.id===t.sub;})?t.sub:'';}
+function _inSub(t){if(_subSel==='all')return true;var s=_taskSub(t);return _subSel==='none'?s==='':s===_subSel;}
+function _subName(id){var s=_subsOf().filter(function(x){return x.id===id;})[0];return s?s.name:'';}
+function _newTaskSub(){return(_subSel&&_subSel!=='all'&&_subSel!=='none')?_subSel:'';}
+function _subCounts(){var S=_gs(),c={all:0,none:0};Object.keys(S.tasks).forEach(function(k){c.all++;var s=_taskSub(S.tasks[k]);if(!s)c.none++;else c[s]=(c[s]||0)+1;});return c;}
+function _show(which){['pw-dash','pw-subs','pw-board'].forEach(function(id){var el=document.getElementById(id);if(el)el.classList.toggle('hidden',id!==which);});}
+function _closePanels(){var det=document.getElementById('pw-detail'),ep=document.getElementById('pw-ep-ov');if(det){det.classList.remove('open');det.innerHTML='';}if(ep)ep.classList.remove('open');}
+function _syncBoardName(){var b=_activeBoard(),nm=document.getElementById('pw-hdr-boardname');if(!nm||!b)return;var tail=_subSel==='all'?'All tasks':(_subSel==='none'?'Unfiled':_subName(_subSel));nm.textContent=b.name+(tail?' \u203A '+tail:'');}
+
+/* the sub-project screen: one card per car or job, plus Unfiled and All tasks */
+window.pwRenderSubs=function(){
+  var b=_activeBoard(),grid=document.getElementById('pw-subs-grid');if(!b||!grid)return;
+  var S=b.data,subs=_subsOf(S),all=Object.keys(S.tasks).map(function(k){return S.tasks[k];});
+  var ttl=document.getElementById('pw-subs-title');if(ttl)ttl.textContent=b.name;
+  function stats(match){
+    var list=all.filter(match),n=list.length,done=list.filter(function(t){return(t.progress||0)>=100;}).length;
+    var avg=n?Math.round(list.reduce(function(a,t){return a+(t.progress||0);},0)/n):0,top=null,used=0;
+    S.cols.forEach(function(c){var k=c.tasks.filter(function(id){return S.tasks[id]&&match(S.tasks[id]);}).length;if(k)used++;if(k&&(!top||k>top.k))top={name:c.name,k:k};});
+    return{n:n,done:done,avg:avg,top:top,used:used};
+  }
+  function card(o){
+    var st=o.st,desc=o.desc||(st.n?(st.top?'Most in '+st.top.name+' ('+st.top.k+')':''):'No tasks yet \u2014 open it and add the first one');
+    return '<div class="pw-pcard" style="--pc:'+o.color+'" data-sel="'+o.sel+'" onclick="pwOpenSub(this.dataset.sel)">'+(o.acts||'')
+      +'<div class="pw-pcard-icon" style="background:'+_hexA(o.color,0.13)+';color:'+o.color+'">'+o.icon+'</div>'
+      +'<div class="pw-pcard-name">'+_esc(o.name)+'</div><div class="pw-pcard-desc">'+_esc(desc)+'</div>'
+      +'<div class="pw-pcard-meta"><span><b>'+st.n+'</b> tasks</span><span><b>'+st.done+'</b> done</span><span><b>'+st.used+'</b> stages</span></div>'
+      +'<div class="pw-pcard-bar"><div class="pw-pcard-bar-fill" style="width:'+st.avg+'%"></div></div>'
+      +'<div class="pw-pcard-foot"><span class="pw-pcard-open">'+o.open+' &#8594;</span><span class="pw-pcard-open">'+st.avg+'%</span></div></div>';
+  }
+  var h='';
+  subs.forEach(function(sb){
+    var acts='<div class="pw-pcard-acts"><button class="pw-pcard-act" title="Rename" onclick="pwRenameSub(\''+sb.id+'\',event)">&#9998;</button><button class="pw-pcard-act del" title="Delete (its tasks go back to Unfiled)" onclick="pwDeleteSub(\''+sb.id+'\',event)">&#128465;</button></div>';
+    h+=card({sel:sb.id,name:sb.name,icon:sb.icon||'&#128663;',color:sb.color||'#2ABFAA',st:stats(function(t){return _taskSub(t)===sb.id;}),acts:acts,open:'Open workflow'});
+  });
+  var nNone=all.filter(function(t){return!_taskSub(t);}).length;
+  if(nNone||!subs.length)h+=card({sel:'none',name:'Unfiled',icon:'&#128229;',color:'#6B778C',st:stats(function(t){return!_taskSub(t);}),desc:nNone?'Not filed under a car or job yet. Open it, then drag each task onto a sub-project, or tick many and use Move.':'Everything is filed.',open:'Open'});
+  h+=card({sel:'all',name:'All tasks',icon:'&#128450;',color:'#185FA5',st:stats(function(){return true;}),desc:'Every task in '+b.name+', across all sub-projects.',open:'Open board'});
+  h+='<div class="pw-pcard pw-pcard-new" onclick="pwNewSub()"><div class="pw-pcard-new-plus">+</div><div class="pw-pcard-new-lbl">New Sub-project</div></div>';
+  grid.innerHTML=h;
+};
+window.pwNewSub=function(){
+  var b=_activeBoard();if(!b)return'';
+  var name=prompt('Sub-project name (a car or a job, for example "Audi B9 S4"):');
+  if(!name||!name.trim())return'';
+  var S=_gs(),subs=_subsOf(S),pick=SUB_PAL[subs.length%SUB_PAL.length];
+  var sb={id:_uid(),name:name.trim(),icon:pick[1],color:pick[0],created:_now()};
+  subs.push(sb);_save();
+  var sbs=document.getElementById('pw-subs');
+  if(sbs&&!sbs.classList.contains('hidden'))pwRenderSubs();else pwRenderBoard();
+  return sb.id;
+};
+window.pwRenameSub=function(id,ev){
+  if(ev)ev.stopPropagation();
+  var S=_gs(),sb=_subsOf(S).filter(function(x){return x.id===id;})[0];if(!sb)return;
+  var nn=prompt('Rename sub-project:',sb.name);if(nn===null)return;nn=nn.trim();if(!nn)return;
+  sb.name=nn;_save();pwRenderSubs();
+};
+window.pwDeleteSub=function(id,ev){
+  if(ev)ev.stopPropagation();
+  var S=_gs(),sb=_subsOf(S).filter(function(x){return x.id===id;})[0];if(!sb)return;
+  var n=Object.keys(S.tasks).filter(function(k){return S.tasks[k].sub===id;}).length;
+  if(!confirm('Delete sub-project "'+sb.name+'"?'+(n?'\n\nIts '+n+' task'+(n===1?'':'s')+' go back to Unfiled. Nothing else is deleted.':'')))return;
+  Object.keys(S.tasks).forEach(function(k){if(S.tasks[k].sub===id)S.tasks[k].sub='';});
+  S.subs=_subsOf(S).filter(function(x){return x.id!==id;});if(_subSel===id)_subSel='all';
+  _save();pwRenderSubs();
+};
+
+/* filing: put tasks under a sub-project ('' = Unfiled) */
+function _fileTo(ids,dest){
+  var S=_gs(),n=0,name=dest?_subName(dest):'Unfiled';
+  ids.forEach(function(id){var t=S.tasks[id];if(!t||_taskSub(t)===dest)return;t.sub=dest;_la(t,'Filed under '+name);n++;});
+  if(!n)return 0;
+  _sel={};_save();pwRenderBoard();
+  _pwInd('Filed '+n+' task'+(n===1?'':'s')+' under '+name);
+  return n;
+}
+window._ctxSub=function(subId){
+  if(!_ctxTaskId)return;
+  _fileTo([_ctxTaskId],subId==='none'?'':subId);_closeCtx();
+};
+
+/* the bar above the board: jump between sub-projects, drop a card on one to file it, tick cards and move them in bulk */
+function _renderDock(){
+  var d=document.getElementById('pw-dock'),kb=document.getElementById('pw-kanban');if(!d)return;
+  if(kb)kb.classList.toggle('pw-selmode',_selMode);
+  var S=_gs(),subs=_subsOf(S),c=_subCounts();
+  function chip(sel,label,n,dot){
+    return '<button class="pw-dchip'+(_subSel===sel?' on':'')+'" data-sel="'+sel+'" onclick="pwDockGo(this.dataset.sel)" ondragover="pwDockOver(event,this)" ondragleave="pwDockLeave(this)" ondrop="pwDockDrop(event,this)" title="'+(sel==='all'?'Show every task':'Click to open. Drop a task here to file it.')+'">'
+      +(dot?'<span class="pw-dchip-dot" style="background:'+dot+'"></span>':'')+'<span class="pw-dchip-n">'+_esc(label)+'</span><b>'+n+'</b></button>';
+  }
+  var h='<span class="pw-dock-lbl">Sub-project</span>'+chip('all','All',c.all,'')+chip('none','Unfiled',c.none,'#97A0AF');
+  subs.forEach(function(sb){h+=chip(sb.id,sb.name,c[sb.id]||0,sb.color||'#2ABFAA');});
+  h+='<button class="pw-dchip pw-dchip-new" onclick="pwNewSub()" title="New sub-project">+ New</button>';
+  var picked=Object.keys(_sel).filter(function(id){return S.tasks[id];}).length;
+  h+='<span class="pw-dock-sp"></span>';
+  if(_selMode)h+='<button class="pw-dock-btn" onclick="pwSelectShown()">Select all shown</button>';
+  h+='<button class="pw-dock-btn'+(_selMode?' on':'')+'" onclick="pwToggleSelect()">'+(_selMode?'Done selecting'+(picked?' ('+picked+')':''):'Select')+'</button>';
+  h+='<button class="pw-dock-btn pw-dock-move" onclick="pwMoveMenu(this,event)">'+(picked?'Move '+picked+' selected':'Move all shown')+' &#9662;</button>';
+  d.innerHTML=h;
+}
+window.pwDockOver=function(e,el){if(!_dragId||el.dataset.sel==='all')return;e.preventDefault();el.classList.add('dov');};
+window.pwDockLeave=function(el){el.classList.remove('dov');};
+window.pwDockDrop=function(e,el){
+  e.preventDefault();el.classList.remove('dov');
+  var sel=el.dataset.sel;if(sel==='all'||!_dragId)return;
+  var multi=_sel[_dragId]&&Object.keys(_sel).length>1;
+  var ids=multi?Object.keys(_sel):[_dragId];_dragId=null;
+  _fileTo(ids,sel==='none'?'':sel);
+};
+window.pwToggleSelect=function(){_selMode=!_selMode;if(!_selMode)_sel={};pwRenderBoard();};
+function _shownIds(){return[].map.call(document.querySelectorAll('#pw-kanban .pw-card'),function(c){return c.getAttribute('data-taskid');}).filter(Boolean);}
+window.pwSelectShown=function(){_shownIds().forEach(function(id){_sel[id]=1;});pwRenderBoard();};
+function _moveScope(){var S=_gs(),ids=Object.keys(_sel).filter(function(id){return S.tasks[id];});return ids.length?{ids:ids,kind:'selected'}:{ids:_shownIds(),kind:'shown'};}
+function _mmClose(){var m=document.getElementById('pw-move-menu');if(m)m.classList.remove('open');}
+window.pwMoveMenu=function(btn,ev){
+  if(ev)ev.stopPropagation();
+  var m=document.getElementById('pw-move-menu');if(!m)return;
+  if(m.classList.contains('open')){m.classList.remove('open');return;}
+  var sc=_moveScope(),subs=_subsOf(_gs());
+  var h='<div class="pw-mm-h">Move '+sc.ids.length+' '+sc.kind+' task'+(sc.ids.length===1?'':'s')+' to</div>';
+  if(!sc.ids.length)h+='<div class="pw-mm-h" style="text-transform:none;letter-spacing:0">Nothing to move here.</div>';
+  else{
+    if(_subSel!=='none')h+='<button class="pw-mm-i" onclick="pwMoveTo(\'\')"><span class="pw-dchip-dot" style="background:#97A0AF"></span>Unfiled</button>';
+    subs.forEach(function(sb){if(sb.id===_subSel)return;h+='<button class="pw-mm-i" data-id="'+sb.id+'" onclick="pwMoveTo(this.dataset.id)"><span class="pw-dchip-dot" style="background:'+(sb.color||'#2ABFAA')+'"></span>'+_esc(sb.name)+'</button>';});
+    h+='<button class="pw-mm-i pw-mm-new" onclick="pwMoveTo(\'__new\')">+ New sub-project&hellip;</button>';
+  }
+  m.innerHTML=h;var r=btn.getBoundingClientRect();m.style.top=(r.bottom+6)+'px';m.style.right=Math.max(8,window.innerWidth-r.right)+'px';m.style.left='auto';m.classList.add('open');
+  setTimeout(function(){document.addEventListener('click',_mmClose,{once:true});},0);
+};
+window.pwMoveTo=function(dest){
+  var sc=_moveScope();_mmClose();if(!sc.ids.length)return;
+  if(dest==='__new'){var nid=pwNewSub();if(!nid)return;dest=nid;}
+  var name=dest?_subName(dest):'Unfiled';
+  if(sc.kind==='shown'&&sc.ids.length>1&&!confirm('Move all '+sc.ids.length+' tasks shown to "'+name+'"?'))return;
+  _fileTo(sc.ids,dest);
+};
 
 })(); /* end PW IIFE */
 
 </script>
 
 
+<style id="pw-subs-css">
+/* sub-projects: the screen, the filing bar, the tick boxes and the move menu */
+#pw-subs{display:flex;flex-direction:column;height:100%;background:var(--bg3)}
+#pw-subs.hidden{display:none}
+.pw-dock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 18px;background:#fff;border-bottom:1px solid #E8EBF0;flex-shrink:0}
+.pw-dock-lbl{font-size:var(--t-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#97A0AF;margin-right:2px}
+.pw-dchip{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border:1.5px solid #DFE1E6;border-radius:15px;background:#fff;font-size:var(--t-sm);font-weight:600;color:#42526E;cursor:pointer;font-family:inherit;transition:background .12s,border-color .12s,box-shadow .12s}
+.pw-dchip:hover{border-color:#2ABFAA}
+.pw-dchip b{background:#EEF0F3;border-radius:9px;padding:0 7px;font-size:var(--t-xs);color:#5E6C84;line-height:18px}
+.pw-dchip.on{background:#1e2022;border-color:#1e2022;color:#fff}.pw-dchip.on b{background:#2ABFAA;color:#14171a}
+.pw-dchip.dov{border-color:#2ABFAA;background:rgba(42,191,170,.14);box-shadow:0 0 0 3px rgba(42,191,170,.28)}
+.pw-dchip-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pw-dchip-new{border-style:dashed;color:#6B778C}
+.pw-dock-sp{flex:1}
+.pw-dock-btn{height:30px;padding:0 13px;border-radius:var(--r-md);border:1.5px solid #DFE1E6;background:#fff;font-size:var(--t-sm);font-weight:700;color:#42526E;cursor:pointer;font-family:inherit}
+.pw-dock-btn:hover{border-color:#2ABFAA}.pw-dock-btn.on{background:#2ABFAA;border-color:#2ABFAA;color:#14171a}
+.pw-dock-move{background:#E07B28;border-color:#E07B28;color:#14171a}.pw-dock-move:hover{background:#f08a35;border-color:#f08a35}
+.pw-card{position:relative}
+.pw-card-sel{display:none;position:absolute;top:8px;right:8px;z-index:3;width:24px;height:24px;background:#fff;border:1.5px solid #C1C7D0;border-radius:5px;align-items:center;justify-content:center;cursor:pointer}
+#pw-kanban.pw-selmode .pw-card-sel{display:flex}
+.pw-card-sel input{margin:0;width:16px;height:16px;cursor:pointer;accent-color:#2ABFAA}
+.pw-card.pw-sel{outline:2px solid #2ABFAA;outline-offset:-2px;background:#F0FBF9}
+.pw-move-menu{position:fixed;z-index:9000;display:none;min-width:250px;max-height:380px;overflow:auto;background:#fff;border:1px solid #DFE1E6;border-radius:var(--r-md);box-shadow:0 10px 30px rgba(0,0,0,.2);padding:6px}
+.pw-move-menu.open{display:block}
+.pw-mm-h{font-size:var(--t-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6B778C;padding:8px 10px 6px}
+.pw-mm-i{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 10px;border:0;background:none;border-radius:var(--r-md);cursor:pointer;font-size:var(--t-md);color:#172B4D;font-family:inherit}
+.pw-mm-i:hover{background:#F0F2F5}.pw-mm-new{color:#0b7f77;font-weight:700}
+</style>
 <div id="view-projects" class="cc-view">
   <div id="pw-board">
     <div class="pw-hdr">
-      <button class="pw-back-btn" onclick="pwShowDash()" title="All projects">&#8592;</button>
+      <button class="pw-back-btn" onclick="pwBack()" title="Back">&#8592;</button>
       <span class="pw-hdr-brand" id="pw-hdr-boardname">Projects</span>
       <div class="pw-hdr-div"></div>
       <div id="pw-hdr-stats" style="display:flex;gap:6px"></div>
@@ -17203,6 +17394,8 @@ function pwRefreshView(){
       </div>
       <button class="pw-hdr-btn" onclick="pwOpenTemplateModal()">+ New Task</button>
     </div>
+    <div id="pw-dock" class="pw-dock"></div>
+    <div id="pw-move-menu" class="pw-move-menu"></div>
     <div id="pw-filter-bar" class="pw-filter-bar" style="display:none"></div>
     <div class="pw-kw">
       <div id="pw-wm"></div>
@@ -17218,6 +17411,17 @@ function pwRefreshView(){
       <button class="pw-hdr-btn" onclick="pwNewBoard()">+ New Project</button>
     </div>
     <div class="pw-dash-scroll"><div id="pw-dash-grid" class="pw-dash-grid"></div></div>
+  </div>
+  <div id="pw-subs" class="hidden">
+    <div class="pw-hdr">
+      <button class="pw-back-btn" onclick="pwShowDash()" title="All projects">&#8592;</button>
+      <span class="pw-hdr-brand" id="pw-subs-title">Project</span>
+      <div class="pw-hdr-div"></div>
+      <span class="pw-dash-sub">Pick a car or job to open its workflow</span>
+      <div style="flex:1"></div>
+      <button class="pw-hdr-btn" onclick="pwNewSub()">+ New Sub-project</button>
+    </div>
+    <div class="pw-dash-scroll"><div id="pw-subs-grid" class="pw-dash-grid"></div></div>
   </div>
   <div id="pw-detail"></div>
   <!-- Context menu -->
@@ -17242,6 +17446,7 @@ function pwRefreshView(){
             <div class="pw-ep-field"><label class="pw-ep-lbl">Stage</label><select class="pw-ep-sel" id="pw-ep-col"></select></div>
             <div class="pw-ep-field"><label class="pw-ep-lbl">Priority</label><select class="pw-ep-sel" id="pw-ep-pri"></select></div>
           </div>
+          <div class="pw-ep-field"><label class="pw-ep-lbl">Sub-project (car or job)</label><select class="pw-ep-sel" id="pw-ep-sub"></select></div>
           <div class="pw-ep-2col">
             <div class="pw-ep-field"><label class="pw-ep-lbl">Assignee</label><select class="pw-ep-sel" id="pw-ep-asgn"></select></div>
             <div class="pw-ep-field"><label class="pw-ep-lbl">Deadline</label><input type="date" class="pw-ep-sel" id="pw-ep-due"></div>
