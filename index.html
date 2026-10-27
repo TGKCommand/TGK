@@ -17210,9 +17210,20 @@ function _closePanels(){var det=document.getElementById('pw-detail'),ep=document
 function _syncBoardName(){var b=_activeBoard(),nm=document.getElementById('pw-hdr-boardname');if(!nm||!b)return;var tail=_subSel==='all'?'All tasks':(_subSel==='none'?'Unfiled':_subName(_subSel));nm.textContent=b.name+(tail?' \u203A '+tail:'');}
 
 /* the sub-project screen: one card per car or job, plus Unfiled and All tasks */
+/* ═══ CATEGORIES (sub-project screen) ═══════════════════════════════════════════════════════════════
+   Sub-projects are grouped under categories you make yourself (Cars, Engines, Chassis, ...). The list lives in the board's
+   data (data.cats) and each sub-project carries sb.cat = a category id, or '' for Uncategorized. Order is the array order:
+   categories by data.cats, tiles inside a category by their position in data.subs. Drag a tile to move or reorder it, drag a
+   category header to reorder categories. */
+var CAT_PAL=['#2ABFAA','#185FA5','#E07B28','#6554C0','#00875A','#B91C1C','#00B8D9','#6D28D9'];
+function _catsOf(S){S=S||_gs();if(!Array.isArray(S.cats))S.cats=[];return S.cats;}
+function _catById(id){return _catsOf().filter(function(c){return c.id===id;})[0]||null;}
+function _subCat(sb){if(!sb||!sb.cat)return'';return _catById(sb.cat)?sb.cat:'';}
+var _sdrag=null;
+
 window.pwRenderSubs=function(){
   var b=_activeBoard(),grid=document.getElementById('pw-subs-grid');if(!b||!grid)return;
-  var S=b.data,subs=_subsOf(S),all=Object.keys(S.tasks).map(function(k){return S.tasks[k];});
+  var S=b.data,subs=_subsOf(S),cats=_catsOf(S),all=Object.keys(S.tasks).map(function(k){return S.tasks[k];});
   var ttl=document.getElementById('pw-subs-title');if(ttl)ttl.textContent=b.name;
   function stats(match){
     var list=all.filter(match),n=list.length,done=list.filter(function(t){return(t.progress||0)>=100;}).length;
@@ -17222,35 +17233,154 @@ window.pwRenderSubs=function(){
   }
   function card(o){
     var st=o.st,desc=o.desc||(st.n?(st.top?'Most in '+st.top.name+' ('+st.top.k+')':''):'No tasks yet \u2014 open it and add the first one');
-    return '<div class="pw-pcard" style="--pc:'+o.color+'" data-sel="'+o.sel+'" onclick="pwOpenSub(this.dataset.sel)">'+(o.acts||'')
+    return '<div class="pw-pcard" style="--pc:'+o.color+'"'+(o.drag?' draggable="true" data-sub="'+o.sel+'"':'')+' data-sel="'+o.sel+'" onclick="pwOpenSub(this.dataset.sel)">'+(o.acts||'')
       +'<div class="pw-pcard-icon" style="background:'+_hexA(o.color,0.13)+';color:'+o.color+'">'+o.icon+'</div>'
       +'<div class="pw-pcard-name">'+_esc(o.name)+'</div><div class="pw-pcard-desc">'+_esc(desc)+'</div>'
       +'<div class="pw-pcard-meta"><span><b>'+st.n+'</b> tasks</span><span><b>'+st.done+'</b> done</span><span><b>'+st.used+'</b> stages</span></div>'
       +'<div class="pw-pcard-bar"><div class="pw-pcard-bar-fill" style="width:'+st.avg+'%"></div></div>'
       +'<div class="pw-pcard-foot"><span class="pw-pcard-open">'+o.open+' &#8594;</span><span class="pw-pcard-open">'+st.avg+'%</span></div></div>';
   }
-  var h='';
-  subs.forEach(function(sb){
+  function tile(sb){
     var acts='<div class="pw-pcard-acts"><button class="pw-pcard-act" title="Rename" onclick="pwRenameSub(\''+sb.id+'\',event)">&#9998;</button><button class="pw-pcard-act del" title="Delete (its tasks go back to Unfiled)" onclick="pwDeleteSub(\''+sb.id+'\',event)">&#128465;</button></div>';
-    h+=card({sel:sb.id,name:sb.name,icon:sb.icon||'&#128663;',color:sb.color||'#2ABFAA',st:stats(function(t){return _taskSub(t)===sb.id;}),acts:acts,open:'Open workflow'});
-  });
+    return card({sel:sb.id,name:sb.name,icon:sb.icon||'&#128663;',color:sb.color||'#2ABFAA',st:stats(function(t){return _taskSub(t)===sb.id;}),acts:acts,open:'Open workflow',drag:true});
+  }
+  function section(cat){
+    var id=cat?cat.id:'',list=subs.filter(function(s){return _subCat(s)===id;}),col=cat?(cat.color||'#2ABFAA'):'#97A0AF';
+    var hd;
+    if(cat){
+      hd='<div class="pw-cat-hd" draggable="true" title="Drag to reorder categories"><span class="pw-cat-grip">&#10303;</span>'
+        +'<span class="pw-cat-dot" style="background:'+col+'"></span><span class="pw-cat-name">'+_esc(cat.name)+'</span><span class="pw-cat-n">'+list.length+'</span><span class="pw-cat-sp"></span>'
+        +'<button class="pw-cat-btn" title="Rename category" data-cat="'+id+'" onclick="pwRenameCat(this.dataset.cat,event)">&#9998;</button>'
+        +'<button class="pw-cat-btn del" title="Delete category (its tiles become Uncategorized)" data-cat="'+id+'" onclick="pwDeleteCat(this.dataset.cat,event)">&#128465;</button></div>';
+    }else{
+      hd='<div class="pw-cat-hd pw-cat-hd-none"><span class="pw-cat-dot" style="background:'+col+'"></span><span class="pw-cat-name">Uncategorized</span><span class="pw-cat-n">'+list.length+'</span>'
+        +(cats.length&&list.length?'<span class="pw-cat-note">Drag these into a category</span>':'')+'</div>';
+    }
+    return '<section class="pw-cat'+(cat?'':' pw-cat-none')+'" data-cat="'+id+'" style="--cc:'+col+'">'+hd
+      +'<div class="pw-dash-grid pw-cat-grid">'+list.map(tile).join('')
+      +'<div class="pw-pcard pw-pcard-new" data-cat="'+id+'" onclick="pwNewSub(this.dataset.cat)"><div class="pw-pcard-new-plus">+</div><div class="pw-pcard-new-lbl">New Sub-project</div></div></div></section>';
+  }
   var nNone=all.filter(function(t){return!_taskSub(t);}).length;
-  if(nNone||!subs.length)h+=card({sel:'none',name:'Unfiled',icon:'&#128229;',color:'#6B778C',st:stats(function(t){return!_taskSub(t);}),desc:nNone?'Not filed under a car or job yet. Open it, then drag each task onto a sub-project, or tick many and use Move.':'Everything is filed.',open:'Open'});
-  h+=card({sel:'all',name:'All tasks',icon:'&#128450;',color:'#185FA5',st:stats(function(){return true;}),desc:'Every task in '+b.name+', across all sub-projects.',open:'Open board'});
-  h+='<div class="pw-pcard pw-pcard-new" onclick="pwNewSub()"><div class="pw-pcard-new-plus">+</div><div class="pw-pcard-new-lbl">New Sub-project</div></div>';
+  var h='<div class="pw-cat-quick"><span class="pw-dock-lbl">Views</span>'
+    +'<button class="pw-dchip" data-sel="all" onclick="pwOpenSub(this.dataset.sel)">All tasks <b>'+all.length+'</b></button>'
+    +'<button class="pw-dchip" data-sel="none" onclick="pwOpenSub(this.dataset.sel)"><span class="pw-dchip-dot" style="background:#97A0AF"></span>Unfiled tasks <b>'+nNone+'</b></button>'
+    +'<span class="pw-dock-sp"></span><button class="pw-dock-btn" onclick="pwNewCat()">+ New Category</button></div>';
+  if(!cats.length)h+='<div class="pw-cat-hint">Make categories for the different things you track here (Cars, Engines, Chassis, ...), then drag tiles into them.</div>';
+  cats.forEach(function(c){h+=section(c);});
+  if(!cats.length||subs.some(function(s){return!_subCat(s);}))h+=section(null);
   grid.innerHTML=h;
+  if(!grid._catDnd){grid._catDnd=1;_sdBind(grid);}
 };
-window.pwNewSub=function(){
+
+window.pwNewSub=function(cat){
   var b=_activeBoard();if(!b)return'';
-  var name=prompt('Sub-project name (a car or a job, for example "Audi B9 S4"):');
+  var name=prompt('Sub-project name (a car, an engine, a chassis or a job, for example "Audi B9 S4"):');
   if(!name||!name.trim())return'';
   var S=_gs(),subs=_subsOf(S),pick=SUB_PAL[subs.length%SUB_PAL.length];
   var sb={id:_uid(),name:name.trim(),icon:pick[1],color:pick[0],created:_now()};
+  if(typeof cat==='string'&&cat&&_catById(cat))sb.cat=cat;
   subs.push(sb);_save();
   var sbs=document.getElementById('pw-subs');
   if(sbs&&!sbs.classList.contains('hidden'))pwRenderSubs();else pwRenderBoard();
   return sb.id;
 };
+
+window.pwNewCat=function(){
+  var name=prompt('New category name (for example "Cars", "Engines", "Chassis"):');
+  if(!name||!name.trim())return;
+  var cats=_catsOf();
+  cats.push({id:_uid(),name:name.trim(),color:CAT_PAL[cats.length%CAT_PAL.length],created:_now()});
+  _save();pwRenderSubs();
+};
+window.pwRenameCat=function(id,ev){
+  if(ev)ev.stopPropagation();
+  var c=_catById(id);if(!c)return;
+  var nn=prompt('Rename category:',c.name);if(nn===null)return;nn=nn.trim();if(!nn)return;
+  c.name=nn;_save();pwRenderSubs();
+};
+window.pwDeleteCat=function(id,ev){
+  if(ev)ev.stopPropagation();
+  var S=_gs(),c=_catById(id);if(!c)return;
+  var n=_subsOf(S).filter(function(s){return s.cat===id;}).length;
+  if(!confirm('Delete category "'+c.name+'"?'+(n?'\n\nIts '+n+' tile'+(n===1?'':'s')+' become Uncategorized. Nothing else is deleted.':'')))return;
+  _subsOf(S).forEach(function(s){if(s.cat===id)s.cat='';});
+  S.cats=_catsOf(S).filter(function(x){return x.id!==id;});
+  _save();pwRenderSubs();
+};
+
+/* drag and drop: tiles (move between categories, reorder) and category headers (reorder) */
+function _sdKey(list){return list.map(function(x){return x.id+':'+(x.cat||'');}).join('|');}
+function _sdMoveTile(id,destCat,beforeId){
+  var S=_gs(),subs=_subsOf(S),sb=subs.filter(function(x){return x.id===id;})[0];if(!sb)return;
+  var was=_sdKey(subs),i=subs.indexOf(sb),at=-1,k;
+  subs.splice(i,1);sb.cat=destCat||'';
+  if(beforeId){for(k=0;k<subs.length;k++){if(subs[k].id===beforeId){at=k;break;}}}
+  if(at<0){var last=-1;for(k=0;k<subs.length;k++){if(_subCat(subs[k])===(destCat||''))last=k;}at=last>=0?last+1:subs.length;}
+  subs.splice(at,0,sb);
+  if(_sdKey(subs)===was)return;
+  _save();pwRenderSubs();
+  var cn=destCat&&_catById(destCat)?_catById(destCat).name:'Uncategorized';
+  _pwInd('Moved "'+sb.name+'" to '+cn);
+}
+function _sdMoveCat(id,targetId,pos){
+  var cats=_catsOf(),c=cats.filter(function(x){return x.id===id;})[0];if(!c||id===targetId)return;
+  var was=_sdKey(cats),k,ti=-1;
+  cats.splice(cats.indexOf(c),1);
+  if(targetId){for(k=0;k<cats.length;k++){if(cats[k].id===targetId){ti=k;break;}}}
+  if(ti<0)cats.push(c);else cats.splice(pos==='after'?ti+1:ti,0,c);
+  if(_sdKey(cats)===was)return;
+  _save();pwRenderSubs();
+}
+function _sdClear(){
+  [].forEach.call(document.querySelectorAll('#pw-subs-grid .pw-ins-before,#pw-subs-grid .pw-ins-after,#pw-subs-grid .pw-cat-over,#pw-subs-grid .pw-cins-before,#pw-subs-grid .pw-cins-after,#pw-subs-grid .pw-dragging'),function(el){
+    el.classList.remove('pw-ins-before','pw-ins-after','pw-cat-over','pw-cins-before','pw-cins-after','pw-dragging');
+  });
+}
+function _sdTarget(e){
+  var sect=e.target&&e.target.closest?e.target.closest('.pw-cat'):null;if(!sect||!_sdrag)return null;
+  var cat=sect.getAttribute('data-cat')||'';
+  if(_sdrag.kind==='cat'){
+    var r=sect.getBoundingClientRect();
+    return{sect:sect,cat:cat,pos:(!cat||e.clientY<r.top+r.height/2)?'before':'after'};
+  }
+  var tiles=[].filter.call(sect.querySelectorAll('.pw-cat-grid .pw-pcard[data-sub]'),function(t){return t.getAttribute('data-sub')!==_sdrag.id;});
+  var before=null,i,r2;
+  for(i=0;i<tiles.length;i++){r2=tiles[i].getBoundingClientRect();if(e.clientY<r2.top||(e.clientY<r2.bottom&&e.clientX<r2.left+r2.width/2)){before=tiles[i];break;}}
+  return{sect:sect,cat:cat,tiles:tiles,before:before};
+}
+function _sdBind(grid){
+  grid.addEventListener('dragstart',function(e){
+    var tl=e.target.closest?e.target.closest('.pw-pcard[data-sub]'):null,hd=e.target.closest?e.target.closest('.pw-cat-hd[draggable="true"]'):null;
+    if(tl)_sdrag={kind:'tile',id:tl.getAttribute('data-sub'),el:tl};
+    else if(hd){var sc=hd.closest('.pw-cat');_sdrag={kind:'cat',id:sc.getAttribute('data-cat'),el:sc};}
+    else return;
+    try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',_sdrag.id);}catch(x){}
+    var el=_sdrag.el;setTimeout(function(){if(el)el.classList.add('pw-dragging');},0);
+  });
+  grid.addEventListener('dragover',function(e){
+    if(!_sdrag)return;
+    var t=_sdTarget(e);
+    [].forEach.call(grid.querySelectorAll('.pw-ins-before,.pw-ins-after,.pw-cat-over,.pw-cins-before,.pw-cins-after'),function(el){el.classList.remove('pw-ins-before','pw-ins-after','pw-cat-over','pw-cins-before','pw-cins-after');});
+    if(!t)return;
+    e.preventDefault();try{e.dataTransfer.dropEffect='move';}catch(x){}
+    if(_sdrag.kind==='cat'){
+      if(t.cat!==_sdrag.id)t.sect.classList.add(t.pos==='before'?'pw-cins-before':'pw-cins-after');
+    }else{
+      t.sect.classList.add('pw-cat-over');
+      if(t.before)t.before.classList.add('pw-ins-before');
+      else if(t.tiles.length)t.tiles[t.tiles.length-1].classList.add('pw-ins-after');
+    }
+  });
+  grid.addEventListener('drop',function(e){
+    if(!_sdrag)return;
+    var t=_sdTarget(e),d=_sdrag;_sdrag=null;_sdClear();
+    if(!t)return;
+    e.preventDefault();
+    if(d.kind==='cat')_sdMoveCat(d.id,t.cat,t.pos);
+    else _sdMoveTile(d.id,t.cat,t.before?t.before.getAttribute('data-sub'):'');
+  });
+  grid.addEventListener('dragend',function(){_sdrag=null;_sdClear();});
+}
 window.pwRenameSub=function(id,ev){
   if(ev)ev.stopPropagation();
   var S=_gs(),sb=_subsOf(S).filter(function(x){return x.id===id;})[0];if(!sb)return;
@@ -17369,6 +17499,29 @@ window.pwMoveTo=function(dest){
 .pw-mm-h{font-size:var(--t-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6B778C;padding:8px 10px 6px}
 .pw-mm-i{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 10px;border:0;background:none;border-radius:var(--r-md);cursor:pointer;font-size:var(--t-md);color:#172B4D;font-family:inherit}
 .pw-mm-i:hover{background:#F0F2F5}.pw-mm-new{color:#0b7f77;font-weight:700}
+/* categories on the sub-project screen */
+#pw-subs-grid.pw-cat-wrap{display:block;max-width:1180px;margin:0 auto}
+.pw-cat-quick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.pw-cat-hint{background:rgba(42,191,170,.08);border:1.5px dashed #2ABFAA;border-radius:var(--r-md);padding:12px 16px;margin-bottom:22px;font-size:var(--t-md);color:#42526E}
+.pw-cat{position:relative;margin-bottom:30px;padding:0 0 4px;border-radius:var(--r-md);transition:background .12s}
+.pw-cat-hd{display:flex;align-items:center;gap:10px;padding:6px 2px 10px;margin-bottom:14px;border-bottom:2px solid var(--cc,#DFE1E6);cursor:grab;user-select:none}
+.pw-cat-hd-none{cursor:default}
+.pw-cat-grip{color:#B3BAC5;font-size:var(--t-lg);line-height:1}
+.pw-cat-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.pw-cat-name{font-size:var(--t-xl);font-weight:700;color:var(--text);letter-spacing:-.01em}
+.pw-cat-n{background:#EEF0F3;border-radius:10px;padding:0 9px;font-size:var(--t-sm);font-weight:700;color:#5E6C84;line-height:20px}
+.pw-cat-note{font-size:var(--t-sm);color:#97A0AF;font-weight:600}
+.pw-cat-sp{flex:1}
+.pw-cat-btn{width:28px;height:28px;border-radius:var(--r-md);border:none;background:transparent;cursor:pointer;font-size:var(--t-md);color:#97A0AF;display:flex;align-items:center;justify-content:center;font-family:var(--font)}
+.pw-cat-btn:hover{background:#E4E7EC;color:var(--text)}.pw-cat-btn.del:hover{background:rgba(248,113,113,.14);color:var(--red)}
+.pw-cat-grid{max-width:none;margin:0;min-height:60px}
+.pw-pcard[data-sub]{cursor:pointer}
+.pw-dragging{opacity:.4}
+.pw-cat.pw-cat-over{background:rgba(42,191,170,.07);outline:2px dashed #2ABFAA;outline-offset:8px}
+.pw-pcard.pw-ins-before{box-shadow:-8px 0 0 0 #2ABFAA}
+.pw-pcard.pw-ins-after{box-shadow:8px 0 0 0 #2ABFAA}
+.pw-cat.pw-cins-before::before,.pw-cat.pw-cins-after::after{content:'';position:absolute;left:0;right:0;height:4px;border-radius:2px;background:#2ABFAA;z-index:3}
+.pw-cat.pw-cins-before::before{top:-17px}.pw-cat.pw-cins-after::after{bottom:-17px}
 </style>
 <div id="view-projects" class="cc-view">
   <div id="pw-board">
@@ -17417,11 +17570,12 @@ window.pwMoveTo=function(dest){
       <button class="pw-back-btn" onclick="pwShowDash()" title="All projects">&#8592;</button>
       <span class="pw-hdr-brand" id="pw-subs-title">Project</span>
       <div class="pw-hdr-div"></div>
-      <span class="pw-dash-sub">Pick a car or job to open its workflow</span>
+      <span class="pw-dash-sub">Open a tile for its workflow &middot; drag tiles between categories</span>
       <div style="flex:1"></div>
+      <button class="pw-hdr-btn" onclick="pwNewCat()">+ New Category</button>
       <button class="pw-hdr-btn" onclick="pwNewSub()">+ New Sub-project</button>
     </div>
-    <div class="pw-dash-scroll"><div id="pw-subs-grid" class="pw-dash-grid"></div></div>
+    <div class="pw-dash-scroll"><div id="pw-subs-grid" class="pw-cat-wrap"></div></div>
   </div>
   <div id="pw-detail"></div>
   <!-- Context menu -->
