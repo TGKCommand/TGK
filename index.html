@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.9';
+var TGK_CC_VERSION='v7.10';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -30874,7 +30874,7 @@ html[data-theme="dark"] .sk-band{display:none!important}
 })();
 </script>
 <style id="ct-style">
-/* ===== Custom Tools + Organizer (Command Center v7.9) ===== */
+/* ===== Custom Tools + Organizer (Command Center v7.10) ===== */
 /* Universal dashboard grid: every category is full width with the same card size, so categories can be reordered freely (the old layout pinned Projects and Downtime into half-width columns) */
 html body #view-home#view-home .dash-wrap>.dash-section-block{grid-column:1/-1!important}
 html body #view-home#view-home .dash-wrap .dash-section-block .mod-grid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))!important}
@@ -31805,22 +31805,69 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
   }
 
   /* ------------------------------------------------------------ Team calendar tile on the home strip */
-  var CAL_KEY = 'tgk_cal_summary_v1', cal = null, calPulled = 0;
+  var cal = null, calErr = '', calTypes = null, calTypesAt = 0, calMonths = {}, calPulled = 0;
+  var OFF_RE = /time.?off|vacation|pto|leave|holiday|sick|out of office|ooo|day off/i;
   function ymd(d) { var m = d.getMonth() + 1, dd = d.getDate(); return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd; }
+  /* the calendar's own tables (calendar_events, calendar_event_types), read with the signed-in session */
+  async function calGet(path) {
+    var base = (typeof SB_AUTH_URL !== 'undefined') ? SB_AUTH_URL : TGK_SB_URL, authKey = (typeof SB_ANON_KEY !== 'undefined') ? SB_ANON_KEY : TGK_SB_KEY;
+    var anon = (typeof TGK_SB_JWT !== 'undefined') ? TGK_SB_JWT : authKey;   /* table queries use the JWT-style anon key, like the calendar itself */
+    var sess = (typeof _getSession === 'function') ? _getSession() : null, url = base + '/rest/v1/' + path;
+    var hdr = function (tok) { return { apikey: anon, Authorization: 'Bearer ' + (tok || anon) }; };
+    var r = await fetch(url, { headers: hdr(sess && sess.access_token) });
+    if ((r.status === 401 || r.status === 403) && sess && sess.refresh_token) {
+      try {
+        var rr = await fetch(base + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: authKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: sess.refresh_token }) });
+        if (rr.ok) { var nd = await rr.json(); if (typeof _setSession === 'function') _setSession({ access_token: nd.access_token, refresh_token: nd.refresh_token, email: sess.email }); r = await fetch(url, { headers: hdr(nd.access_token) }); }
+      } catch (e) {}
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+  function personName(row) { var n = row.member_name || (row.member_email ? String(row.member_email).split('@')[0] : ''); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; }
+  function normEvent(row) {
+    var t = calTypes && calTypes[row.type], label = (t && t.label) || row.type || '';
+    var off = row.type === 'timeoff' || OFF_RE.test(label) || OFF_RE.test(String(row.type || ''));
+    return { id: row.id, date: row.start_date, end: row.end_date || row.start_date, who: personName(row), title: row.title || '', off: off, type: row.type };
+  }
+  function rebuildCal() {
+    var seen = {}, out = [];
+    Object.keys(calMonths).forEach(function (k) { calMonths[k].rows.forEach(function (r) { var key = r.id != null ? r.id : r.start_date + r.title; if (!seen[key]) { seen[key] = 1; out.push(normEvent(r)); } }); });
+    cal = { events: out };
+  }
+  async function loadMonth(y, mo, force) {
+    var key = y + '-' + mo, now = Date.now(), m = calMonths[key];
+    if (m && !force && now - m.at < 120000) return;
+    var from = ymd(new Date(y, mo, 1)), to = ymd(new Date(y, mo + 1, 0));
+    var rows = await calGet('calendar_events?select=id,type,title,start_date,end_date,member_email,member_name&end_date=gte.' + from + '&start_date=lte.' + to + '&order=start_date.asc&limit=500');
+    calMonths[key] = { at: now, rows: Array.isArray(rows) ? rows : [] };
+  }
+  async function pullCal(force) {
+    var now = Date.now(); if (!force && now - calPulled < 60000) return; calPulled = now;
+    var sess = (typeof _getSession === 'function') ? _getSession() : null; if (!sess || !sess.access_token) return;
+    try {
+      if (!calTypes || now - calTypesAt > 600000) {
+        try { var tr = await calGet('calendar_event_types?select=id,label,requires_person'); calTypes = {}; (tr || []).forEach(function (t) { calTypes[t.id] = t; }); calTypesAt = now; } catch (e) { calTypes = calTypes || {}; }
+      }
+      var d = new Date(), nx = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      await loadMonth(d.getFullYear(), d.getMonth(), force); await loadMonth(nx.getFullYear(), nx.getMonth(), force);
+      calErr = ''; rebuildCal(); ensureCalTile(); var ff = q('#ct-cal-fly.on'); if (ff) { ff.innerHTML = flyHtml(); placeFly(); }
+    } catch (e) { calErr = String(e && e.message || e); try { console.warn('Calendar tile could not read the schedule:', calErr); } catch (x) {} ensureCalTile(); var f2 = q('#ct-cal-fly.on'); if (f2) { f2.innerHTML = flyHtml(); placeFly(); } }
+  }
   function calText() {
-    if (!cal || !Array.isArray(cal.events)) return { v: 'Open', s: 'See who is off and what is coming up this week' };
+    if (!cal || !Array.isArray(cal.events)) return calErr ? { v: 'Open', s: 'Schedule not available here yet - open the calendar' } : { v: 'Open', s: 'Loading the schedule\u2026' };
     var now = new Date(), today = ymd(now), week = [], off = [], i, e;
-    var wk = new Date(now.getTime() + 7 * 864e5), last = ymd(wk);
+    var last = ymd(new Date(now.getTime() + 7 * 864e5));
     for (i = 0; i < cal.events.length; i++) {
-      e = cal.events[i]; if (!e || !e.date) continue; var end = e.end || e.date, isOff = /off|leave|vacation|pto/i.test(String(e.kind || ''));
-      if (e.date <= today && end >= today) { if (isOff) off.push(e.who || 'Someone'); }
+      e = cal.events[i]; if (!e || !e.date) continue; var end = e.end || e.date;
+      if (e.date <= today && end >= today) { if (e.off) off.push(e.who || 'Someone'); }
       else if (e.date > today && e.date <= last) week.push(e);
     }
     var v = off.length === 0 ? 'All in today' : (off.length === 1 ? off[0] + ' off today' : off.length + ' off today');
     var sub = off.length > 1 ? 'Off: ' + off.slice(0, 3).join(', ') : '';
     week.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     var wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    var parts = week.slice(0, 2).map(function (x) { var d = new Date(x.date + 'T12:00:00'); return wd[d.getDay()] + ' ' + (/off|leave|vacation|pto/i.test(String(x.kind || '')) && x.who ? x.who + ' off' : (x.title || x.who || 'Event')); });
+    var parts = week.slice(0, 2).map(function (x) { var d = new Date(x.date + 'T12:00:00'); return wd[d.getDay()] + ' ' + (x.off ? (x.who || 'Someone') + ' off' : (x.title || x.who || 'Event')); });
     var more = week.length > 2 ? ' +' + (week.length - 2) + ' more' : '';
     var tail = parts.length ? 'This week: ' + parts.join(' \u00B7 ') + more : 'Nothing else on the calendar this week';
     return { v: v, s: sub ? sub + ' \u00B7 ' + tail : tail };
@@ -31842,20 +31889,15 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
     var strip = q('#cx-today'); if (!strip || strip._ctw || !window.MutationObserver) return; strip._ctw = 1;
     new MutationObserver(function () { if (!q('#ct-cal-tile', strip) || strip.firstElementChild.id !== 'ct-cal-tile') ensureCalTile(); }).observe(strip, { childList: true });
   }
-  async function pullCal() {
-    if (typeof sbGet !== 'function') return; var now = Date.now(); if (now - calPulled < 60000) return; calPulled = now;
-    var d = await sbGet(CAL_KEY); if (d && Array.isArray(d.events)) { cal = d; ensureCalTile(); var ff = q('#ct-cal-fly.on'); if (ff) { ff.innerHTML = flyHtml(); placeFly(); } }
-  }
 
   /* ------------------------------------------------------------ calendar flyout (hover preview, like the Windows clock) */
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var fly = { month: null, showT: 0, hideT: 0 };
-  function isOffKind(k) { return /off|leave|vacation|pto/i.test(String(k || '')); }
   function evMap(y, mo) {
     var map = {}; if (!cal || !Array.isArray(cal.events)) return map;
     cal.events.forEach(function (e) {
       if (!e || !e.date) return; var s = new Date(e.date + 'T12:00:00'), en = new Date((e.end || e.date) + 'T12:00:00'); if (isNaN(s) || isNaN(en)) return;
-      var off = isOffKind(e.kind), d = new Date(s), n = 0;
+      var off = !!e.off, d = new Date(s), n = 0;
       for (; d <= en && n < 62; d.setDate(d.getDate() + 1), n++) {
         if (d.getFullYear() !== y || d.getMonth() !== mo) continue;
         var k = ymd(d), o = map[k] || (map[k] = { off: 0, ev: 0, t: [] }); if (off) o.off++; else o.ev++;
@@ -31869,7 +31911,7 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
     var now = new Date(), today = ymd(now), last = ymd(new Date(now.getTime() + 7 * 864e5)), wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     cal.events.forEach(function (e) {
       if (!e || !e.date) return; var end = e.end || e.date; if (end < today || e.date > last) return;
-      var off = isOffKind(e.kind), start = e.date < today ? today : e.date, d = new Date(start + 'T12:00:00');
+      var off = !!e.off, start = e.date < today ? today : e.date, d = new Date(start + 'T12:00:00');
       out.push({ date: start, when: start === today ? 'Today' : wd[d.getDay()] + ' ' + d.getDate(), text: off ? (e.who || 'Someone') + ' off' : (e.title || e.who || 'Event'), off: off });
     });
     out.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
@@ -31889,7 +31931,7 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
     var up = upcoming();
     if (cal && Array.isArray(cal.events)) {
       h += '<div class="cf-up"><div class="cf-uh">Next 7 days</div>' + (up.length ? up.slice(0, 5).map(function (x) { return '<div class="cf-ui"><span class="cf-w">' + esc(x.when) + '</span><s class="' + (x.off ? 'off' : 'ev') + '"></s><span class="cf-t">' + esc(x.text) + '</span></div>'; }).join('') + (up.length > 5 ? '<div class="cf-more">+ ' + (up.length - 5) + ' more</div>' : '') : '<div class="cf-none">Nothing on the calendar</div>') + '</div>';
-    } else h += '<div class="cf-up"><div class="cf-none">Events show here once the calendar shares its schedule.</div></div>';
+    } else h += '<div class="cf-up"><div class="cf-none">' + (calErr ? 'Could not read the calendar from here (' + esc(calErr) + '). Open it to check.' : 'Loading the schedule\u2026') + '</div></div>';
     h += '<div class="cf-ft"><button type="button" data-cf="open">Open calendar</button></div>';
     return h;
   }
@@ -31918,10 +31960,11 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
         else if (a === 'today') fly.month = null;
         else if (a === 'open') { hideFly(0); if (window.openCal) window.openCal(); return; }
         f.innerHTML = flyHtml(); placeFly();
+        var mm = fly.month || new Date(); loadMonth(mm.getFullYear(), mm.getMonth(), false).then(function () { rebuildCal(); if (f.classList.contains('on')) { f.innerHTML = flyHtml(); placeFly(); } }).catch(function () {});
       });
     }
     fly.month = fly.month && f.classList.contains('on') ? fly.month : null;
-    f.innerHTML = flyHtml(); f.classList.add('on'); placeFly();
+    f.innerHTML = flyHtml(); f.classList.add('on'); placeFly(); pullCal(false);
   }
   function hideFly(ms) { clearTimeout(fly.hideT); fly.hideT = setTimeout(function () { var f = q('#ct-cal-fly'); if (f) f.classList.remove('on'); }, ms == null ? 0 : ms); }
   function wireTileHover() {
@@ -31957,10 +32000,10 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
       window[n] = function () { hideCT(false); return f.apply(this, arguments); };
     });
     var sv = window.showView;
-    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); hideFly(0); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); ensureCalTile(); pullCal(); } else nativeBar(name); return r; };
+    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); hideFly(0); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); ensureCalTile(); pullCal(false); } else nativeBar(name); return r; };
     ['closeERP', 'closeSupportCenter', 'closeGhostTuning', 'closeNotes', 'closeSKU', 'closeCal', 'closeTimeAttack', 'closeHarnessBuilder'].forEach(function (n) {
       var f = window[n]; if (typeof f !== 'function') return;
-      window[n] = function () { var r = f.apply(this, arguments); restoreBar(); return r; };
+      window[n] = function () { var r = f.apply(this, arguments); restoreBar(); if (n === 'closeCal') setTimeout(function () { pullCal(true); }, 400); return r; };
     });
     var rd = window.renderDashboard;
     if (typeof rd === 'function') { _rd = rd; window.renderDashboard = function () { var r = rd.apply(this, arguments); paint(); return r; }; }
@@ -31971,7 +32014,8 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
     };
     window.__ctRestoreBar = restoreBar;
     window.openCustomTool = openCustomTool; window.closeCustomTool = closeCustomTool; window.openCustomToolsManager = openManager;
-    paint(); pull(true); ensureCalTile(); watchStrip(); pullCal();
+    paint(); pull(true); ensureCalTile(); watchStrip(); pullCal(true);
+    setInterval(function () { var hv = q('#view-home'); if (hv && hv.classList.contains('active') && !q('#cal-viewer.active')) pullCal(true); }, 300000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
