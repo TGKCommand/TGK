@@ -3436,7 +3436,7 @@ html.cx-sopen #cx-search-close{display:inline-flex;align-items:center;background
   <div class="dash-section-block" id="dsec-fun">
     <div class="dash-section-lbl">Entertainment</div>
     <div class="mod-grid">
-      <div class="mod-card ac-teal" onclick="openTimeAttack()" data-mid="timeattack"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127937;</div><div class="mod-card-name">Time Attack</div><div class="mod-card-cat">Fun &middot; Daily Course &middot; Leaderboard</div><div class="mod-card-desc">Drive the real TGK fleet &mdash; S6, CC, Touareg, X5 M50i &mdash; on a new autocross course every day. Sim physics, ghosts, daily board.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-teal">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
+      <div class="mod-card ac-teal" onclick="openTimeAttack()" data-mid="timeattack"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127937;</div><div class="mod-card-name">Time Attack</div><div class="mod-card-cat">Fun &middot; Daily Course &middot; Leaderboard</div><div class="mod-card-desc">Drive the real TGK fleet &mdash; S6, CC, Touareg, X5 M50i &mdash; on a new autocross course every day. Sim physics, ghosts, daily board.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-red" onclick="showView('arcade')" data-mid="arcade"><div class="mod-card-icon" style="background:rgba(248,113,113,.1)">&#127918;</div><div class="mod-card-name">Arcade</div><div class="mod-card-cat">Fun &middot; Break Time &middot; Game</div><div class="mod-card-desc">Take a break &mdash; TGK Autocross Survival Challenge. Compete for the leaderboard.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-red">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
   </div>
@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.6';
+var TGK_CC_VERSION='v7.8';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -29594,7 +29594,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
       any = any || on;
     });
     var home = document.querySelector('.cx-nav > .cc-bc-home:not([id])'), hv = $('view-home');
-    if (home) { var on2 = !any && !!(hv && hv.classList.contains('active')); home.classList.toggle('on', on2); if (on2) home.setAttribute('aria-current', 'page'); else home.removeAttribute('aria-current'); }
+    if (home) { var on2 = !any;   /* Command Center stays highlighted on every screen except ERP / Support / Ghost */ home.classList.toggle('on', on2); if (on2) home.setAttribute('aria-current', 'page'); else home.removeAttribute('aria-current'); }
   }
   /* the strip under the header is only for tools that put a Close button or actions in it (ERP, Support, Ghost...) */
   function syncBc() { var bc = $('cc-breadcrumb'), a = $('cc-bc-actions'); if (bc) bc.classList.toggle('cx-bc-on', !!(a && a.children.length)); }
@@ -30874,7 +30874,10 @@ html[data-theme="dark"] .sk-band{display:none!important}
 })();
 </script>
 <style id="ct-style">
-/* ===== Custom Tools + Organizer (Command Center v7.6) ===== */
+/* ===== Custom Tools + Organizer (Command Center v7.8) ===== */
+/* Universal dashboard grid: every category is full width with the same card size, so categories can be reordered freely (the old layout pinned Projects and Downtime into half-width columns) */
+html body #view-home#view-home .dash-wrap>.dash-section-block{grid-column:1/-1!important}
+html body #view-home#view-home .dash-wrap .dash-section-block .mod-grid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))!important}
 #ct-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
 #ct-viewer.active{display:flex}
 #ct-frame{width:100%;flex:1;border:none;background:#fff}
@@ -30971,6 +30974,15 @@ html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
 #ct-lay .lay-r.chk{flex-direction:row}
 #ct-ov button,#ct-lay button{text-transform:none;letter-spacing:normal}
 #ct-ov .ct-btn{text-transform:uppercase;letter-spacing:.07em}
+
+/* Team calendar: lives on the home strip, not as a tool card */
+html body #view-home#view-home .mod-card[data-mid="calendar"]{display:none!important}
+html body #view-home#view-home .cx-today{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:1100px){html body #view-home#view-home .cx-today{grid-template-columns:repeat(2,minmax(0,1fr))}html body #view-home#view-home .cx-today .ct-cal{grid-column:1/-1}}
+@media (max-width:560px){html body #view-home#view-home .cx-today{grid-template-columns:1fr}}
+html body #view-home#view-home .cx-tile.ct-cal{cursor:pointer}
+html body #view-home#view-home .cx-tile.ct-cal .cx-v{font-size:22px!important;font-weight:700!important;line-height:1.2!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body #view-home#view-home .cx-tile.ct-cal:hover{border-color:#2ABFAA!important}
 </style>
 <script id="ct-script">
 /* ============================================================================
@@ -31180,7 +31192,7 @@ html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
   function biNode(b) { return q('#view-home .mod-card[data-mid="' + b.mid + '"]'); }
   function items() {
     capture(); var out = [];
-    BI.forEach(function (b) { var nd = biNode(b); if (!nd || nd.classList.contains('wt-gone')) return; out.push({ key: 'b:' + b.mid, b: b, nat: b.nat, node: nd }); });
+    BI.forEach(function (b) { var nd = biNode(b); if (!nd || nd.classList.contains('wt-gone') || b.mid === 'calendar') return;   /* calendar now lives on the home strip */ out.push({ key: 'b:' + b.mid, b: b, nat: b.nat, node: nd }); });
     db.tools.forEach(function (t, i) { out.push({ key: 'c:' + t.id, t: t, nat: 1000 + i }); });
     return out;
   }
@@ -31263,7 +31275,8 @@ html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
     capture();
     var wrap = q('#view-home .dash-wrap'); if (!wrap) return;
     qa('.ct-card').forEach(function (n) { if (!n.closest('#ct-ov')) n.parentNode.removeChild(n); });
-    var st = q('#ct-spacing-style'); if (!st) { st = document.createElement('style'); st.id = 'ct-spacing-style'; document.head.appendChild(st); }
+    var st = q('#ct-spacing-style'); if (!st) { st = document.createElement('style'); st.id = 'ct-spacing-style'; }
+    if (st.parentNode !== document.body || st.nextSibling) document.body.appendChild(st);   /* after the base styles, so spacing wins */
     st.textContent = spacingCss();
     /* custom section blocks: one per section, created once, removed when the section is deleted */
     qa('.ct-sec').forEach(function (b) { if (!db.sections.some(function (s) { return 'dsec-' + s.id === b.id; })) b.parentNode.removeChild(b); });
@@ -31357,6 +31370,7 @@ html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
     if (viewer) viewer.classList.remove('active');
     if (bc) bc.classList.remove('visible');
     var acts = q('#cc-bc-actions'); if (acts) acts.innerHTML = '';
+    if (window.__ctRestoreBar) window.__ctRestoreBar();
   }
   function sendAuth() {
     var f = q('#ct-frame'); if (!f || !f.contentWindow || !f.dataset.url) return;
@@ -31742,6 +31756,69 @@ html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
       if (changed) { rev++; db.org.cardOrder = co; save(); }
     }, 0);
   });
+  /* ------------------------------------------------------------ same breadcrumb + Close on every module */
+  var VIEW_LABEL = { launch: 'Product Launch', box: 'Box Selector', social: 'Social Engine', ideas: 'Idea Generator', fbgroups: 'FB Group Finder',
+    toolbox: 'Toolbox', arcade: 'Arcade', fitment: 'Fitment', projects: 'Projects' };
+  function nativeBar(name) {
+    if (!name || name === 'home') return;
+    var lbl = q('#cc-breadcrumb #cc-bc-label'), acts = q('#cc-bc-actions'), bc = q('#cc-breadcrumb'); if (!acts || !bc) return;
+    var cur = lbl ? lbl.textContent.trim() : '';
+    if (lbl && (VIEW_LABEL[name] || !cur || cur.toLowerCase() === name.toLowerCase())) lbl.textContent = VIEW_LABEL[name] || (name.charAt(0).toUpperCase() + name.slice(1));
+    acts.innerHTML = '<button class="cc-bc-btn" onclick="showView(\'home\')" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> ' + esc(lbl ? lbl.textContent : name) + '</span></button>';
+    bc.classList.add('visible');
+  }
+  function restoreBar() {   /* after an embedded tool closes on top of a built-in screen, put that screen's bar back */
+    var v = q('.cc-view.active'); if (v && v.id && v.id !== 'view-home' && !q('#erp-viewer.active, #support-viewer.active, #ghost-viewer.active, #notes-viewer.active, #sku-viewer.active, #cal-viewer.active, #ta-viewer.active, #hb-viewer.active, #ct-viewer.active')) nativeBar(v.id.replace(/^view-/, ''));
+  }
+
+  /* ------------------------------------------------------------ Team calendar tile on the home strip */
+  var CAL_KEY = 'tgk_cal_summary_v1', cal = null, calPulled = 0;
+  function ymd(d) { var m = d.getMonth() + 1, dd = d.getDate(); return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd; }
+  function calText() {
+    if (!cal || !Array.isArray(cal.events)) return { v: 'Open', s: 'See who is off and what is coming up this week' };
+    var now = new Date(), today = ymd(now), week = [], off = [], i, e;
+    var wk = new Date(now.getTime() + 7 * 864e5), last = ymd(wk);
+    for (i = 0; i < cal.events.length; i++) {
+      e = cal.events[i]; if (!e || !e.date) continue; var end = e.end || e.date, isOff = /off|leave|vacation|pto/i.test(String(e.kind || ''));
+      if (e.date <= today && end >= today) { if (isOff) off.push(e.who || 'Someone'); }
+      else if (e.date > today && e.date <= last) week.push(e);
+    }
+    var v = off.length === 0 ? 'All in today' : (off.length === 1 ? off[0] + ' off today' : off.length + ' off today');
+    var sub = off.length > 1 ? 'Off: ' + off.slice(0, 3).join(', ') : '';
+    week.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var parts = week.slice(0, 2).map(function (x) { var d = new Date(x.date + 'T12:00:00'); return wd[d.getDay()] + ' ' + (/off|leave|vacation|pto/i.test(String(x.kind || '')) && x.who ? x.who + ' off' : (x.title || x.who || 'Event')); });
+    var more = week.length > 2 ? ' +' + (week.length - 2) + ' more' : '';
+    var tail = parts.length ? 'This week: ' + parts.join(' \u00B7 ') + more : 'Nothing else on the calendar this week';
+    return { v: v, s: sub ? sub + ' \u00B7 ' + tail : tail };
+  }
+  function ensureCalTile() {
+    var strip = q('#cx-today'); if (!strip) return;
+    var t = q('#ct-cal-tile', strip), c = calText();
+    if (!t) {
+      t = document.createElement('div'); t.id = 'ct-cal-tile'; t.className = 'cx-tile ct-cal'; t.setAttribute('role', 'button'); t.tabIndex = 0;
+      t.innerHTML = '<b>Team calendar</b><div class="cx-v"></div><div class="cx-s"></div><button type="button" class="cx-link">Open calendar</button>';
+      strip.appendChild(t);
+    } else if (t !== strip.lastElementChild) strip.appendChild(t);
+    var v = q('.cx-v', t), s = q('.cx-s', t);
+    if (v.textContent !== c.v) v.textContent = c.v;
+    if (s.textContent !== c.s) s.textContent = c.s;
+  }
+  function watchStrip() {
+    var strip = q('#cx-today'); if (!strip || strip._ctw || !window.MutationObserver) return; strip._ctw = 1;
+    new MutationObserver(function () { if (!q('#ct-cal-tile', strip) || strip.lastElementChild.id !== 'ct-cal-tile') ensureCalTile(); }).observe(strip, { childList: true });
+  }
+  async function pullCal() {
+    if (typeof sbGet !== 'function') return; var now = Date.now(); if (now - calPulled < 60000) return; calPulled = now;
+    var d = await sbGet(CAL_KEY); if (d && Array.isArray(d.events)) { cal = d; ensureCalTile(); }
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('#ct-cal-tile'); if (t && typeof window.openCal === 'function') window.openCal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.id === 'ct-cal-tile' && typeof window.openCal === 'function') { e.preventDefault(); window.openCal(); }
+  });
+
   function hideCT(restore) {
     var v = q('#ct-viewer'); if (!v || !v.classList.contains('active')) return;
     v.classList.remove('active');
@@ -31758,7 +31835,11 @@ html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
       window[n] = function () { hideCT(false); return f.apply(this, arguments); };
     });
     var sv = window.showView;
-    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); } return r; };
+    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); ensureCalTile(); pullCal(); } else nativeBar(name); return r; };
+    ['closeERP', 'closeSupportCenter', 'closeGhostTuning', 'closeNotes', 'closeSKU', 'closeCal', 'closeTimeAttack', 'closeHarnessBuilder'].forEach(function (n) {
+      var f = window[n]; if (typeof f !== 'function') return;
+      window[n] = function () { var r = f.apply(this, arguments); restoreBar(); return r; };
+    });
     var rd = window.renderDashboard;
     if (typeof rd === 'function') { _rd = rd; window.renderDashboard = function () { var r = rd.apply(this, arguments); paint(); return r; }; }
     var bcast = window._ccBroadcastToFrames;
@@ -31766,8 +31847,9 @@ html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
       bcast.apply(this, arguments);
       try { var f = q('#ct-frame'); if (f && f.dataset.url && f.contentWindow) { var o = new URL(f.dataset.url).origin; if (CT_TRUST.test(o)) f.contentWindow.postMessage(msg, o); } } catch (e) {}
     };
+    window.__ctRestoreBar = restoreBar;
     window.openCustomTool = openCustomTool; window.closeCustomTool = closeCustomTool; window.openCustomToolsManager = openManager;
-    paint(); pull(true);
+    paint(); pull(true); ensureCalTile(); watchStrip(); pullCal();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
