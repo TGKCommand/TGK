@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.8';
+var TGK_CC_VERSION='v7.9';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -30874,7 +30874,7 @@ html[data-theme="dark"] .sk-band{display:none!important}
 })();
 </script>
 <style id="ct-style">
-/* ===== Custom Tools + Organizer (Command Center v7.8) ===== */
+/* ===== Custom Tools + Organizer (Command Center v7.9) ===== */
 /* Universal dashboard grid: every category is full width with the same card size, so categories can be reordered freely (the old layout pinned Projects and Downtime into half-width columns) */
 html body #view-home#view-home .dash-wrap>.dash-section-block{grid-column:1/-1!important}
 html body #view-home#view-home .dash-wrap .dash-section-block .mod-grid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))!important}
@@ -30983,6 +30983,39 @@ html body #view-home#view-home .cx-today{grid-template-columns:repeat(5,minmax(0
 html body #view-home#view-home .cx-tile.ct-cal{cursor:pointer}
 html body #view-home#view-home .cx-tile.ct-cal .cx-v{font-size:22px!important;font-weight:700!important;line-height:1.2!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html body #view-home#view-home .cx-tile.ct-cal:hover{border-color:#2ABFAA!important}
+
+/* calendar flyout: flat, 2px corners, gunmetal header bar, teal for today */
+#ct-cal-fly{position:fixed;z-index:99970;width:300px;background:#fff;color:#22272b;border:1px solid #c9ccd1;border-radius:2px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:none;font-family:inherit;font-size:13px}
+#ct-cal-fly.on{display:block}
+html[data-theme="dark"] #ct-cal-fly{background:#171b1e;color:#dfe5e9;border-color:#2b3136}
+#ct-cal-fly .cf-hd{display:flex;align-items:center;justify-content:space-between;padding:9px 10px 9px 12px;background:#22272b;color:#fff;border-bottom:3px solid #2ABFAA}
+#ct-cal-fly .cf-hd b{font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+#ct-cal-fly .cf-hd span{display:flex;gap:4px}
+#ct-cal-fly .cf-hd button{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:2px;height:24px;min-width:24px;padding:0 7px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-transform:none;letter-spacing:normal}
+#ct-cal-fly .cf-hd button:hover{border-color:#2ABFAA;color:#2ABFAA}
+#ct-cal-fly .cf-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:10px 10px 6px}
+#ct-cal-fly .cf-grid i{font-style:normal}
+#ct-cal-fly .cf-wd{text-align:center;font-size:11px;font-weight:700;color:#7b8590;padding-bottom:2px}
+#ct-cal-fly .cf-d{position:relative;height:32px;display:flex;align-items:center;justify-content:center;border-radius:2px;font-weight:600;cursor:pointer}
+#ct-cal-fly .cf-d:hover{background:#eef0f2}
+html[data-theme="dark"] #ct-cal-fly .cf-d:hover{background:#20262a}
+#ct-cal-fly .cf-d.now{background:#2ABFAA;color:#06231f;font-weight:800}
+#ct-cal-fly .cf-d u{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;gap:3px;text-decoration:none}
+#ct-cal-fly s{display:inline-block;width:5px;height:5px;border-radius:50%;text-decoration:none}
+#ct-cal-fly s.off{background:#E07B28}
+#ct-cal-fly s.ev{background:#2ABFAA}
+#ct-cal-fly .cf-d.now s.ev{background:#22272b}
+#ct-cal-fly .cf-up{padding:8px 12px 4px;border-top:1px solid #E4E7EC}
+html[data-theme="dark"] #ct-cal-fly .cf-up{border-color:#2b3136}
+#ct-cal-fly .cf-uh{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7b8590;margin-bottom:4px}
+#ct-cal-fly .cf-ui{display:flex;align-items:center;gap:8px;padding:2px 0}
+#ct-cal-fly .cf-w{width:52px;color:#7b8590;font-weight:700;font-size:12px;flex:none}
+#ct-cal-fly .cf-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ct-cal-fly .cf-none,#ct-cal-fly .cf-more{color:#7b8590;font-size:12px;padding:2px 0 4px}
+#ct-cal-fly .cf-ft{padding:6px 12px 10px}
+#ct-cal-fly .cf-ft button{width:100%;padding:8px;border:1px solid #c9ccd1;border-radius:2px;background:#fff;color:#22272b;font:inherit;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;cursor:pointer}
+#ct-cal-fly .cf-ft button:hover{border-color:#2ABFAA;color:#0b7f77}
+html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5e9;border-color:#2b3136}
 </style>
 <script id="ct-script">
 /* ============================================================================
@@ -31733,7 +31766,7 @@ html body #view-home#view-home .cx-tile.ct-cal:hover{border-color:#2ABFAA!import
   }
 
   /* ------------------------------------------------------------ events + wiring into the existing page */
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (q('#ct-ov.on')) closeManager(); else { var p = q('#ct-lay.on'); if (p) p.classList.remove('on'); } } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hideFly(0); if (q('#ct-ov.on')) closeManager(); else { var p = q('#ct-lay.on'); if (p) p.classList.remove('on'); } } });
   document.addEventListener('click', function (e) {
     var ed = e.target.closest && e.target.closest('[data-ctedit]');
     if (ed) { e.preventDefault(); e.stopPropagation(); openManager(ed.getAttribute('data-ctedit')); return; }
@@ -31798,22 +31831,111 @@ html body #view-home#view-home .cx-tile.ct-cal:hover{border-color:#2ABFAA!import
     if (!t) {
       t = document.createElement('div'); t.id = 'ct-cal-tile'; t.className = 'cx-tile ct-cal'; t.setAttribute('role', 'button'); t.tabIndex = 0;
       t.innerHTML = '<b>Team calendar</b><div class="cx-v"></div><div class="cx-s"></div><button type="button" class="cx-link">Open calendar</button>';
-      strip.appendChild(t);
-    } else if (t !== strip.lastElementChild) strip.appendChild(t);
+      strip.insertBefore(t, strip.firstChild);
+    } else if (t !== strip.firstElementChild) strip.insertBefore(t, strip.firstChild);
     var v = q('.cx-v', t), s = q('.cx-s', t);
     if (v.textContent !== c.v) v.textContent = c.v;
     if (s.textContent !== c.s) s.textContent = c.s;
+    wireTileHover();
   }
   function watchStrip() {
     var strip = q('#cx-today'); if (!strip || strip._ctw || !window.MutationObserver) return; strip._ctw = 1;
-    new MutationObserver(function () { if (!q('#ct-cal-tile', strip) || strip.lastElementChild.id !== 'ct-cal-tile') ensureCalTile(); }).observe(strip, { childList: true });
+    new MutationObserver(function () { if (!q('#ct-cal-tile', strip) || strip.firstElementChild.id !== 'ct-cal-tile') ensureCalTile(); }).observe(strip, { childList: true });
   }
   async function pullCal() {
     if (typeof sbGet !== 'function') return; var now = Date.now(); if (now - calPulled < 60000) return; calPulled = now;
-    var d = await sbGet(CAL_KEY); if (d && Array.isArray(d.events)) { cal = d; ensureCalTile(); }
+    var d = await sbGet(CAL_KEY); if (d && Array.isArray(d.events)) { cal = d; ensureCalTile(); var ff = q('#ct-cal-fly.on'); if (ff) { ff.innerHTML = flyHtml(); placeFly(); } }
+  }
+
+  /* ------------------------------------------------------------ calendar flyout (hover preview, like the Windows clock) */
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var fly = { month: null, showT: 0, hideT: 0 };
+  function isOffKind(k) { return /off|leave|vacation|pto/i.test(String(k || '')); }
+  function evMap(y, mo) {
+    var map = {}; if (!cal || !Array.isArray(cal.events)) return map;
+    cal.events.forEach(function (e) {
+      if (!e || !e.date) return; var s = new Date(e.date + 'T12:00:00'), en = new Date((e.end || e.date) + 'T12:00:00'); if (isNaN(s) || isNaN(en)) return;
+      var off = isOffKind(e.kind), d = new Date(s), n = 0;
+      for (; d <= en && n < 62; d.setDate(d.getDate() + 1), n++) {
+        if (d.getFullYear() !== y || d.getMonth() !== mo) continue;
+        var k = ymd(d), o = map[k] || (map[k] = { off: 0, ev: 0, t: [] }); if (off) o.off++; else o.ev++;
+        o.t.push(off ? (e.who || 'Someone') + ' off' : (e.title || e.who || 'Event'));
+      }
+    });
+    return map;
+  }
+  function upcoming() {
+    var out = []; if (!cal || !Array.isArray(cal.events)) return out;
+    var now = new Date(), today = ymd(now), last = ymd(new Date(now.getTime() + 7 * 864e5)), wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    cal.events.forEach(function (e) {
+      if (!e || !e.date) return; var end = e.end || e.date; if (end < today || e.date > last) return;
+      var off = isOffKind(e.kind), start = e.date < today ? today : e.date, d = new Date(start + 'T12:00:00');
+      out.push({ date: start, when: start === today ? 'Today' : wd[d.getDay()] + ' ' + d.getDate(), text: off ? (e.who || 'Someone') + ' off' : (e.title || e.who || 'Event'), off: off });
+    });
+    out.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+    return out;
+  }
+  function flyHtml() {
+    var now = new Date(), m = fly.month || new Date(now.getFullYear(), now.getMonth(), 1); fly.month = m;
+    var y = m.getFullYear(), mo = m.getMonth(), lead = new Date(y, mo, 1).getDay(), days = new Date(y, mo + 1, 0).getDate(), map = evMap(y, mo), today = ymd(now), i, h;
+    h = '<div class="cf-hd"><b>' + MONTHS[mo] + ' ' + y + '</b><span><button type="button" data-cf="prev" aria-label="Previous month">\u2039</button><button type="button" data-cf="today">Today</button><button type="button" data-cf="next" aria-label="Next month">\u203A</button></span></div>';
+    h += '<div class="cf-grid">' + ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(function (d) { return '<i class="cf-wd">' + d + '</i>'; }).join('');
+    for (i = 0; i < lead; i++) h += '<i></i>';
+    for (i = 1; i <= days; i++) {
+      var k = y + '-' + (mo + 1 < 10 ? '0' : '') + (mo + 1) + '-' + (i < 10 ? '0' : '') + i, o = map[k];
+      h += '<span class="cf-d' + (k === today ? ' now' : '') + '"' + (o ? ' title="' + esc(o.t.join(' / ')) + '"' : '') + '>' + i + (o ? '<u>' + (o.off ? '<s class="off"></s>' : '') + (o.ev ? '<s class="ev"></s>' : '') + '</u>' : '') + '</span>';
+    }
+    h += '</div>';
+    var up = upcoming();
+    if (cal && Array.isArray(cal.events)) {
+      h += '<div class="cf-up"><div class="cf-uh">Next 7 days</div>' + (up.length ? up.slice(0, 5).map(function (x) { return '<div class="cf-ui"><span class="cf-w">' + esc(x.when) + '</span><s class="' + (x.off ? 'off' : 'ev') + '"></s><span class="cf-t">' + esc(x.text) + '</span></div>'; }).join('') + (up.length > 5 ? '<div class="cf-more">+ ' + (up.length - 5) + ' more</div>' : '') : '<div class="cf-none">Nothing on the calendar</div>') + '</div>';
+    } else h += '<div class="cf-up"><div class="cf-none">Events show here once the calendar shares its schedule.</div></div>';
+    h += '<div class="cf-ft"><button type="button" data-cf="open">Open calendar</button></div>';
+    return h;
+  }
+  function placeFly() {
+    var f = q('#ct-cal-fly'), t = q('#ct-cal-tile'); if (!f || !t) return;
+    var r = t.getBoundingClientRect(), fw = f.offsetWidth, fh = f.offsetHeight, W = window.innerWidth, H = window.innerHeight, left, top;
+    var cl = function (v, lo, hi) { return Math.max(lo, Math.min(v, hi)); };
+    if (r.bottom + 6 + fh <= H - 8) { top = r.bottom + 6; left = cl(r.left, 8, W - fw - 8); }                      /* below the tile */
+    else if (r.top - 6 - fh >= 8) { top = r.top - 6 - fh; left = cl(r.left, 8, W - fw - 8); }                       /* above it */
+    else if (r.right + 8 + fw <= W - 8) { left = r.right + 8; top = cl(r.top, 8, H - fh - 8); }                     /* beside it */
+    else if (r.left - 8 - fw >= 8) { left = r.left - 8 - fw; top = cl(r.top, 8, H - fh - 8); }
+    else { left = cl(r.left, 8, W - fw - 8); top = cl(H - fh - 8, 8, H); }
+    f.style.left = left + 'px'; f.style.top = top + 'px';
+  }
+  function showFly() {
+    clearTimeout(fly.hideT); var f = q('#ct-cal-fly');
+    if (!f) {
+      f = document.createElement('div'); f.id = 'ct-cal-fly'; f.setAttribute('role', 'dialog'); f.setAttribute('aria-label', 'Calendar preview'); document.body.appendChild(f);
+      f.addEventListener('mouseenter', function () { clearTimeout(fly.hideT); });
+      f.addEventListener('mouseleave', function () { hideFly(250); });
+      f.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-cf]'); if (!b) { if (e.target.closest && e.target.closest('.cf-d')) { hideFly(0); if (window.openCal) window.openCal(); } return; }
+        var a = b.getAttribute('data-cf'), m = fly.month || new Date();
+        if (a === 'prev') fly.month = new Date(m.getFullYear(), m.getMonth() - 1, 1);
+        else if (a === 'next') fly.month = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+        else if (a === 'today') fly.month = null;
+        else if (a === 'open') { hideFly(0); if (window.openCal) window.openCal(); return; }
+        f.innerHTML = flyHtml(); placeFly();
+      });
+    }
+    fly.month = fly.month && f.classList.contains('on') ? fly.month : null;
+    f.innerHTML = flyHtml(); f.classList.add('on'); placeFly();
+  }
+  function hideFly(ms) { clearTimeout(fly.hideT); fly.hideT = setTimeout(function () { var f = q('#ct-cal-fly'); if (f) f.classList.remove('on'); }, ms == null ? 0 : ms); }
+  function wireTileHover() {
+    var t = q('#ct-cal-tile'); if (!t || t._hov) return; t._hov = 1;
+    var canHover = !window.matchMedia || window.matchMedia('(hover:hover)').matches;
+    if (canHover) {
+      t.addEventListener('mouseenter', function () { clearTimeout(fly.hideT); clearTimeout(fly.showT); fly.showT = setTimeout(showFly, 180); });
+      t.addEventListener('mouseleave', function () { clearTimeout(fly.showT); hideFly(260); });
+    }
+    t.addEventListener('focus', function () { showFly(); });
+    t.addEventListener('blur', function () { hideFly(200); });
   }
   document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('#ct-cal-tile'); if (t && typeof window.openCal === 'function') window.openCal();
+    var t = e.target.closest && e.target.closest('#ct-cal-tile'); if (t && typeof window.openCal === 'function') { hideFly(0); window.openCal(); }
   });
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.id === 'ct-cal-tile' && typeof window.openCal === 'function') { e.preventDefault(); window.openCal(); }
@@ -31835,7 +31957,7 @@ html body #view-home#view-home .cx-tile.ct-cal:hover{border-color:#2ABFAA!import
       window[n] = function () { hideCT(false); return f.apply(this, arguments); };
     });
     var sv = window.showView;
-    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); ensureCalTile(); pullCal(); } else nativeBar(name); return r; };
+    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); hideFly(0); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); ensureCalTile(); pullCal(); } else nativeBar(name); return r; };
     ['closeERP', 'closeSupportCenter', 'closeGhostTuning', 'closeNotes', 'closeSKU', 'closeCal', 'closeTimeAttack', 'closeHarnessBuilder'].forEach(function (n) {
       var f = window[n]; if (typeof f !== 'function') return;
       window[n] = function () { var r = f.apply(this, arguments); restoreBar(); return r; };
