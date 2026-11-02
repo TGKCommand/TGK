@@ -18780,8 +18780,8 @@ if ('serviceWorker' in navigator) {
 (function(){
   var H = { on: false, depth: 0, ignore: 0, ignoreUntil: 0, root: false, timer: null, hold: 0, modDepth: 0, msgId: 0, pending: null };
   var CLOSERS = { 'erp-viewer':'closeERP', 'support-viewer':'closeSupportCenter', 'ghost-viewer':'closeGhostTuning', 'notes-viewer':'closeNotes',
-                  'sku-viewer':'closeSKU', 'cal-viewer':'closeCal', 'ta-viewer':'closeTimeAttack', 'hb-viewer':'closeHarnessBuilder' };
-  var VIEWER_SEL = '#erp-viewer.active, #support-viewer.active, #ghost-viewer.active, #notes-viewer.active, #sku-viewer.active, #cal-viewer.active, #ta-viewer.active, #hb-viewer.active';
+                  'sku-viewer':'closeSKU', 'cal-viewer':'closeCal', 'ta-viewer':'closeTimeAttack', 'hb-viewer':'closeHarnessBuilder', 'ct-viewer':'closeCustomTool' };
+  var VIEWER_SEL = '#erp-viewer.active, #support-viewer.active, #ghost-viewer.active, #notes-viewer.active, #sku-viewer.active, #cal-viewer.active, #ta-viewer.active, #hb-viewer.active, #ct-viewer.active';
   function toast(msg){
     var t = document.getElementById('cc-back-toast');
     if(!t){ t = document.createElement('div'); t.id = 'cc-back-toast';
@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.4';
+var TGK_CC_VERSION='v7.5';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -30873,5 +30873,456 @@ html[data-theme="dark"] .sk-band{display:none!important}
   [600,1800,4500].forEach(function(ms){ setTimeout(run,ms); });
 })();
 </script>
+<style id="ct-style">
+/* ===== Custom Tools (Command Center v7.5) ===== */
+#ct-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
+#ct-viewer.active{display:flex}
+#ct-frame{width:100%;flex:1;border:none;background:#fff}
+#ct-loading{position:absolute;inset:0;background:var(--bg3,#ECEEF0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#ct-loading.hidden{display:none}
+.ct-card{position:relative}
+.ct-edit{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:2px;border:1px solid rgba(128,138,148,.35);background:rgba(20,24,27,.55);color:#cfd6db;font-size:13px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;z-index:3;padding:0}
+.ct-card:hover .ct-edit,.ct-edit:focus{opacity:1}
+@media (hover:none){.ct-edit{opacity:.6}}
+#ct-ov{position:fixed;inset:0;background:rgba(10,12,14,.62);z-index:99990;display:none;align-items:center;justify-content:center;padding:16px}
+#ct-ov.on{display:flex}
+#ct-ov .ct-modal{background:#fff;color:#22272b;width:min(1040px,100%);max-height:calc(100vh - 32px);border-radius:3px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);font-family:inherit}
+html[data-theme="dark"] #ct-ov .ct-modal{background:#171b1e;color:#dfe5e9}
+#ct-ov .ct-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#22272b;color:#fff;border-bottom:3px solid #2ABFAA;flex-shrink:0}
+#ct-ov .ct-hd-t{font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:14px}
+#ct-ov .ct-x{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:2px;width:30px;height:30px;cursor:pointer;font-size:14px}
+#ct-ov .ct-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;overflow:hidden;flex:1;min-height:0}
+@media (max-width:820px){#ct-ov .ct-body{grid-template-columns:1fr;overflow:auto}}
+#ct-ov .ct-list,#ct-ov .ct-form{overflow:auto;padding:14px 16px;min-height:0}
+#ct-ov .ct-list{border-right:1px solid #E4E7EC}
+html[data-theme="dark"] #ct-ov .ct-list{border-color:#2b3136}
+@media (max-width:820px){#ct-ov .ct-list{border-right:0;border-bottom:1px solid #E4E7EC;overflow:visible}#ct-ov .ct-form{overflow:visible}}
+#ct-ov .ct-h{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7b8590;margin:0 0 8px}
+#ct-ov .ct-grp-h{display:flex;align-items:center;gap:6px;margin:14px 0 6px;padding:6px 8px;background:#eef0f2;border-radius:2px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#3b434a}
+html[data-theme="dark"] #ct-ov .ct-grp-h{background:#20262a;color:#b7c0c7}
+#ct-ov .ct-grp-h .n{margin-left:auto;font-weight:600;color:#8b95a0;letter-spacing:0}
+#ct-ov .ct-grp-h.over,#ct-ov .ct-row.over{outline:2px solid #2ABFAA;outline-offset:-2px}
+#ct-ov .ct-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid #E4E7EC;border-radius:2px;margin-bottom:5px;background:#fff;font-size:13px}
+html[data-theme="dark"] #ct-ov .ct-row{background:#1b2024;border-color:#2b3136}
+#ct-ov .ct-row.drag{opacity:.4}
+#ct-ov .ct-row.off .nm{opacity:.45;text-decoration:line-through}
+#ct-ov .ct-row .gr{cursor:grab;color:#9aa3ad;user-select:none}
+#ct-ov .ct-row .ic{width:24px;text-align:center;font-size:16px}
+#ct-ov .ct-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+#ct-ov .ct-row .nm small{display:block;font-weight:500;color:#8b95a0;overflow:hidden;text-overflow:ellipsis}
+#ct-ov .ct-ib{background:none;border:1px solid #d4d7db;border-radius:2px;min-width:26px;height:26px;cursor:pointer;color:#4b5563;font-size:12px;padding:0 6px;font-family:inherit}
+#ct-ov .ct-ib:hover{border-color:#2ABFAA;color:#2ABFAA}
+#ct-ov .ct-ib.del:hover{border-color:#dc2626;color:#dc2626}
+#ct-ov .ct-empty{color:#8b95a0;font-size:12px;font-style:italic;padding:2px 4px}
+#ct-ov label.f{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b7580;margin:10px 0 4px}
+#ct-ov .f-in{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #c9ccd1;border-radius:2px;font:inherit;font-size:13px;background:#fff;color:#22272b}
+html[data-theme="dark"] #ct-ov .f-in{background:#101315;color:#dfe5e9;border-color:#2b3136}
+#ct-ov textarea.f-in{resize:vertical;min-height:54px}
+#ct-ov .f-hint{font-size:11px;color:#8b95a0;margin-top:3px;word-break:break-all}
+#ct-ov .f-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#ct-ov .ct-picks button{font-size:17px;width:30px;height:30px;border:1px solid #d4d7db;background:#fff;border-radius:2px;cursor:pointer;padding:0}
+#ct-ov .ct-picks button:hover{border-color:#2ABFAA}
+#ct-ov .ct-sw{display:flex;gap:8px}
+#ct-ov .ct-sw label{cursor:pointer}
+#ct-ov .ct-sw input{position:absolute;opacity:0;pointer-events:none}
+#ct-ov .ct-sw span{display:block;width:28px;height:28px;border-radius:2px;border:2px solid transparent;box-shadow:inset 0 0 0 2px #fff}
+#ct-ov .ct-sw input:checked+span{border-color:#22272b}
+#ct-ov .ct-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#ct-ov .ct-btn{padding:9px 16px;border-radius:2px;border:1px solid #c9ccd1;background:#fff;color:#22272b;font:inherit;font-size:12.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;cursor:pointer}
+#ct-ov .ct-btn.pri{background:#2ABFAA;border-color:#2ABFAA;color:#06231f}
+#ct-ov .ct-prev{margin:6px 0 2px}
+#ct-ov .ct-prev .mod-grid{grid-template-columns:1fr!important;padding:0!important}
+#ct-ov .ct-prev .mod-card{cursor:default}
+#ct-ov .ct-err{color:#dc2626;font-size:12px;margin-top:8px;min-height:14px}
+#ct-toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(20,22,24,.94);color:#fff;padding:10px 18px;border-radius:2px;font:600 13px/1.3 system-ui,sans-serif;z-index:100001;pointer-events:none;transition:opacity .2s;opacity:0;max-width:90vw;text-align:center}
+</style>
+<script id="ct-script">
+/* ============================================================================
+   CUSTOM TOOLS (Command Center v7.5)
+   Put an .html file in the GitHub repo, press "+ Add Tool" on the dashboard, and fill in a card.
+   Cards live in Supabase (workspace row "tgk_custom_tools_v1", shared by the team, cached on this
+   device). Tools open in the same inline viewer + breadcrumb ("Close <name>") as ERP / Support /
+   Ghost Tuning. Nothing else in this file is changed by adding a tool.
+   Tools that load from a TGK origin get the signed-in session the same way the Calendar does:
+     parent -> tool : {type:'tgk-identity',email,name} and {source:'TGK_CC',type:'AUTH_TOKEN',...}
+     tool -> parent : {type:'tgk-tool-ready'} (ask for the session again at any time)
+   ASCII-only source.
+   ============================================================================ */
+(function () {
+  'use strict';
+  var CT_KEY = 'tgk_custom_tools_v1', CT_LS = 'tgk_custom_tools_v1_cache';
+  var CT_BASE = 'https://command.tgkmotorsport.com/';
+  var CT_TRUST = /^https:\/\/([a-z0-9-]+\.)*tgkmotorsport\.com$|^https:\/\/tgkcommand\.github\.io$/i;
+  var BUILTIN = [
+    { id: 'web', label: 'Website Tools' }, { id: 'ai', label: 'AI-Powered Tools' }, { id: 'ops', label: 'Operations' },
+    { id: 'proj', label: 'Project Management' }, { id: 'fun', label: 'Entertainment' }
+  ];
+  var ACC = {
+    teal:   { cls: 'ac-teal',   bg: 'rgba(42,191,170,.1)',  sw: '#2ABFAA' },
+    orange: { cls: 'ac-orange', bg: 'rgba(224,123,40,.1)',  sw: '#E07B28' },
+    purple: { cls: 'ac-purple', bg: 'rgba(124,58,237,.1)',  sw: '#7C3AED' },
+    red:    { cls: 'ac-red',    bg: 'rgba(248,113,113,.1)', sw: '#F87171' }
+  };
+  var PICKS = [0x1F527, 0x1F6E0, 0x1F4CA, 0x1F9EE, 0x1F4E6, 0x1F697, 0x1F3C1, 0x1F4CB, 0x1F9FE, 0x1F50D, 0x2699, 0x1F9EA, 0x1F4C8, 0x1F4AC, 0x1F5C2, 0x1F50C, 0x26A1, 0x1F4A1, 0x1F4B0, 0x1F4F7]
+    .map(function (c) { return String.fromCodePoint(c); });
+  var db = { v: 1, sections: [], tools: [] };
+  var editing = null, dragId = null, lastPull = 0, rev = 0;
+
+  function q(s, r) { return (r || document).querySelector(s); }
+  function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+  function toast(msg) {
+    var t = q('#ct-toast'); if (!t) { t = document.createElement('div'); t.id = 'ct-toast'; document.body.appendChild(t); }
+    t.textContent = msg; t.style.opacity = '1'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.opacity = '0'; }, 2600);
+  }
+  function norm(s) {
+    s = s || {};
+    return {
+      v: 1,
+      sections: (Array.isArray(s.sections) ? s.sections : []).filter(function (x) { return x && x.id && x.label; }),
+      tools: (Array.isArray(s.tools) ? s.tools : []).filter(function (t) { return t && t.id && t.name && t.url; })
+    };
+  }
+  function resolveUrl(input) {
+    input = String(input || '').trim(); if (!input) return '';
+    try { var u = new URL(input, CT_BASE); return (u.protocol === 'https:' || u.protocol === 'http:') ? u.href : ''; } catch (e) { return ''; }
+  }
+  function secLabel(id) {
+    var i, a = BUILTIN.concat(db.sections);
+    for (i = 0; i < a.length; i++) if (a[i].id === id) return a[i].label;
+    return 'Operations';
+  }
+  function secKnown(id) { return BUILTIN.concat(db.sections).some(function (s) { return s.id === id; }); }
+  function toolSec(t) { return secKnown(t.section) ? t.section : 'ops'; }
+  function find(id) { for (var i = 0; i < db.tools.length; i++) if (db.tools[i].id === id) return db.tools[i]; return null; }
+
+  /* ------------------------------------------------------------ storage */
+  function loadLocal() { try { var s = JSON.parse(localStorage.getItem(CT_LS)); if (s) db = norm(s); } catch (e) {} }
+  async function save() {
+    try { localStorage.setItem(CT_LS, JSON.stringify(db)); } catch (e) {}
+    if (typeof sbSet !== 'function') { toast('Saved on this device only'); return; }
+    var r = await sbSet(CT_KEY, db);
+    if (!r) toast('Could not reach the server - saved on this device only');
+  }
+  async function pull(force) {
+    if (typeof sbGet !== 'function') return;
+    var now = Date.now(); if (!force && now - lastPull < 30000) return; lastPull = now;
+    var r0 = rev, d = await sbGet(CT_KEY);
+    if (rev !== r0) return;   /* an edit happened while we were fetching - never overwrite it with older data */
+    if (d && Array.isArray(d.tools)) {
+      db = norm(d); try { localStorage.setItem(CT_LS, JSON.stringify(db)); } catch (e) {}
+      refresh(); if (q('#ct-ov.on')) { renderList(); }
+    }
+  }
+
+  /* ------------------------------------------------------------ dashboard cards */
+  function cardHtml(t, preview) {
+    var a = ACC[t.accent] || ACC.teal;
+    var tags = String(t.tags || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 4);
+    var th = tags.map(function (g, i) { return '<span class="mc-tag ' + (i === 0 ? 'mc-live' : 'mc-gray') + '">' + esc(g) + '</span>'; }).join('');
+    return '<div class="mod-card ' + a.cls + ' ct-card"' + (preview ? '' : ' data-ctid="' + esc(t.id) + '" role="button" tabindex="0"') + '>' +
+      (preview ? '' : '<button type="button" class="ct-edit" data-ctedit="' + esc(t.id) + '" title="Edit this card">\u270E</button>') +
+      '<div class="mod-card-icon" style="background:' + a.bg + '">' + esc(t.icon || '\uD83D\uDD27') + '</div>' +
+      '<div class="mod-card-name">' + esc(t.name || 'Tool name') + '</div>' +
+      '<div class="mod-card-cat">' + esc(t.cat || '') + '</div>' +
+      '<div class="mod-card-desc">' + esc(t.desc || '') + '</div>' +
+      '<div class="mod-card-footer"><div class="mod-card-tags">' + th + '</div><span class="mod-card-arrow">' + (t.newTab ? 'Open \u2197' : 'Open \u2192') + '</span></div></div>';
+  }
+  function paint() {
+    qa('.ct-card').forEach(function (n) { if (!n.closest('#ct-ov')) n.parentNode.removeChild(n); });
+    qa('.ct-sec').forEach(function (n) { n.parentNode.removeChild(n); });
+    var vis = db.tools.filter(function (t) { return !t.hidden; });
+    function fill(grid, list) { list.forEach(function (t) { var d = document.createElement('div'); d.innerHTML = cardHtml(t); grid.appendChild(d.firstChild); }); }
+    BUILTIN.forEach(function (b) {
+      var blk = q('#dsec-' + b.id), grid = blk && q('.mod-grid', blk); if (!grid) return;
+      var list = vis.filter(function (t) { return toolSec(t) === b.id; });
+      fill(grid, list); if (list.length) blk.style.display = '';
+    });
+    var anchor = q('#dsec-ext'), parent = anchor ? anchor.parentNode : (q('#dsec-fun') ? q('#dsec-fun').parentNode : null);
+    if (!parent) return;
+    db.sections.forEach(function (s) {
+      var list = vis.filter(function (t) { return t.section === s.id; }); if (!list.length) return;
+      var blk = document.createElement('div'); blk.className = 'dash-section-block ct-sec'; blk.id = 'dsec-' + s.id;
+      blk.innerHTML = '<div class="dash-section-lbl">' + esc(s.label) + '</div><div class="mod-grid"></div>';
+      fill(q('.mod-grid', blk), list);
+      if (anchor) parent.insertBefore(blk, anchor); else parent.appendChild(blk);
+    });
+    ensureButton();
+  }
+  var _rd = null;
+  function refresh() { if (_rd) { _rd(); } paint(); }
+  function ensureButton() {
+    if (q('#ct-add-btn')) return;
+    var anchor = q('#view-home .showall-btn'); if (!anchor) return;
+    var b = document.createElement('button'); b.type = 'button'; b.id = 'ct-add-btn'; b.className = 'filter-btn'; b.textContent = '+ Add Tool';
+    b.addEventListener('click', function () { openManager(null); });
+    anchor.parentNode.insertBefore(b, anchor);
+  }
+
+  /* ------------------------------------------------------------ viewer */
+  var OTHERS = ['erp-viewer', 'support-viewer', 'ghost-viewer', 'notes-viewer', 'sku-viewer', 'cal-viewer', 'ta-viewer', 'hb-viewer'];
+  function ensureViewer() {
+    if (q('#ct-viewer')) return true;
+    var hb = q('#hb-viewer') || q('#ta-viewer'); if (!hb) return false;
+    var v = document.createElement('div'); v.id = 'ct-viewer';
+    v.innerHTML = '<div id="ct-loading"><div class="erp-spinner"></div><div class="erp-loading-text" id="ct-loading-text">Loading&hellip;</div></div>' +
+      '<iframe id="ct-frame" title="Custom tool" allow="clipboard-write; fullscreen" allowfullscreen></iframe>';
+    hb.parentNode.insertBefore(v, hb.nextSibling); return true;
+  }
+  function openCustomTool(id) {
+    var t = find(id); if (!t) return;
+    var url = resolveUrl(t.url); if (!url) { toast('This tool has no valid link - edit the card'); return; }
+    if (t.newTab || !ensureViewer()) { window.open(url, '_blank', 'noopener'); return; }
+    var main = q('#cc-main'), viewer = q('#ct-viewer'), frame = q('#ct-frame'), loading = q('#ct-loading');
+    OTHERS.forEach(function (i) { var v = document.getElementById(i); if (v && v.classList.contains('active')) v.classList.remove('active'); });
+    if (main) main.style.display = 'none';
+    viewer.classList.add('active');
+    var origin = ''; try { origin = new URL(url).origin; } catch (e) {}
+    var trusted = CT_TRUST.test(origin);
+    if (frame.dataset.url !== url) {
+      if (loading) loading.classList.remove('hidden');
+      var lt = q('#ct-loading-text'); if (lt) lt.textContent = 'Loading ' + t.name + '\u2026';
+      if (trusted) frame.removeAttribute('sandbox'); else frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals');
+      frame.dataset.url = url; frame.dataset.tool = t.id; frame.title = t.name;
+      frame.onload = function () { if (loading) loading.classList.add('hidden'); sendAuth(); };
+      frame.src = url;
+    } else if (loading) { loading.classList.add('hidden'); sendAuth(); }
+    var bc = q('#cc-breadcrumb'); if (bc) bc.classList.add('visible');
+    var lbl = q('#cc-bc-label'); if (lbl) lbl.textContent = t.name;
+    var acts = q('#cc-bc-actions');
+    if (acts) acts.innerHTML = '<button class="cc-bc-btn" onclick="closeCustomTool()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> ' + esc(t.name) + '</span></button>';
+    setTimeout(function () { if (loading) loading.classList.add('hidden'); }, 4000);
+  }
+  function closeCustomTool() {
+    var main = q('#cc-main'), viewer = q('#ct-viewer'), bc = q('#cc-breadcrumb');
+    if (main) main.style.display = '';
+    if (viewer) viewer.classList.remove('active');
+    if (bc) bc.classList.remove('visible');
+    var acts = q('#cc-bc-actions'); if (acts) acts.innerHTML = '';
+  }
+  function sendAuth() {
+    var f = q('#ct-frame'); if (!f || !f.contentWindow || !f.dataset.url) return;
+    var origin; try { origin = new URL(f.dataset.url).origin; } catch (e) { return; }
+    if (!CT_TRUST.test(origin)) return;
+    var sess = (typeof _getSession === 'function') ? _getSession() : null;
+    if (!sess || !sess.email) return;
+    try {
+      f.contentWindow.postMessage({ type: 'tgk-identity', email: sess.email, name: String(sess.email).split('@')[0] }, origin);
+      if (sess.access_token) f.contentWindow.postMessage({ source: 'TGK_CC', type: 'AUTH_TOKEN', access_token: sess.access_token, refresh_token: sess.refresh_token || '', email: sess.email }, origin);
+    } catch (e) {}
+  }
+  window.addEventListener('message', function (e) {
+    var f = q('#ct-frame'); if (!f || !e || e.source !== f.contentWindow) return;
+    if (e.data && e.data.type === 'tgk-tool-ready') { var l = q('#ct-loading'); if (l) l.classList.add('hidden'); sendAuth(); }
+  });
+
+  /* ------------------------------------------------------------ manager */
+  function renderList() {
+    var el = q('#ct-list'); if (!el) return;
+    var all = BUILTIN.concat(db.sections), h = '<div class="ct-h">Your tools &middot; drag to reorder or drop on a section</div>';
+    all.forEach(function (s) {
+      var custom = s.id.indexOf('cs_') === 0, list = db.tools.filter(function (t) { return toolSec(t) === s.id; });
+      if (!custom && !list.length && !el.dataset.all) { /* keep built-in headers as drop targets */ }
+      h += '<div class="ct-grp-h" data-sec="' + esc(s.id) + '">' + esc(s.label) + '<span class="n">' + list.length + '</span>' +
+        (custom ? '<button type="button" class="ct-ib" data-act="secup" data-id="' + esc(s.id) + '" title="Move section up">\u25B2</button><button type="button" class="ct-ib" data-act="secdn" data-id="' + esc(s.id) + '" title="Move section down">\u25BC</button><button type="button" class="ct-ib" data-act="secren" data-id="' + esc(s.id) + '" title="Rename">\u270E</button><button type="button" class="ct-ib del" data-act="secdel" data-id="' + esc(s.id) + '" title="Delete section">\u2715</button>' : '') + '</div>';
+      if (!list.length) h += '<div class="ct-empty">No custom tools here</div>';
+      list.forEach(function (t) {
+        h += '<div class="ct-row' + (t.hidden ? ' off' : '') + '" draggable="true" data-id="' + esc(t.id) + '"><span class="gr" title="Drag">\u283F</span><span class="ic">' + esc(t.icon || '\uD83D\uDD27') + '</span>' +
+          '<span class="nm">' + esc(t.name) + '<small>' + esc(t.url) + '</small></span>' +
+          '<button type="button" class="ct-ib" data-act="up" data-id="' + esc(t.id) + '" title="Move up">\u25B2</button>' +
+          '<button type="button" class="ct-ib" data-act="dn" data-id="' + esc(t.id) + '" title="Move down">\u25BC</button>' +
+          '<button type="button" class="ct-ib" data-act="vis" data-id="' + esc(t.id) + '" title="Show or hide on the dashboard">' + (t.hidden ? 'Show' : 'Hide') + '</button>' +
+          '<button type="button" class="ct-ib" data-act="edit" data-id="' + esc(t.id) + '" title="Edit">\u270E</button>' +
+          '<button type="button" class="ct-ib del" data-act="del" data-id="' + esc(t.id) + '" title="Delete">\u2715</button></div>';
+      });
+    });
+    h += '<div class="ct-btns"><button type="button" class="ct-btn" data-act="addsec">+ New section</button></div>';
+    el.innerHTML = h;
+  }
+  function formData() {
+    var v = function (id) { var n = q('#ct-f-' + id); return n ? n.value : ''; };
+    var acc = q('#ct-ov input[name="ct-acc"]:checked');
+    return { name: v('name').trim(), url: v('url').trim(), icon: v('icon').trim(), cat: v('cat').trim(), desc: v('desc').trim(), tags: v('tags').trim(),
+      accent: acc ? acc.value : 'teal', section: v('sec'), newSec: v('newsec').trim(), newTab: !!(q('#ct-f-tab') && q('#ct-f-tab').checked) };
+  }
+  function renderForm(t) {
+    var el = q('#ct-form'); if (!el) return;
+    t = t || { name: '', url: '', icon: '\uD83D\uDD27', cat: '', desc: '', tags: 'Live', accent: 'teal', section: 'ops', newTab: false };
+    var opts = BUILTIN.concat(db.sections).map(function (s) { return '<option value="' + esc(s.id) + '"' + (toolSec(t) === s.id ? ' selected' : '') + '>' + esc(s.label) + '</option>'; }).join('');
+    var sw = Object.keys(ACC).map(function (k) { return '<label title="' + k + '"><input type="radio" name="ct-acc" value="' + k + '"' + ((t.accent || 'teal') === k ? ' checked' : '') + '><span style="background:' + ACC[k].sw + '"></span></label>'; }).join('');
+    var picks = PICKS.map(function (p) { return '<button type="button" data-pick="' + p + '">' + p + '</button>'; }).join('');
+    el.innerHTML = '<div class="ct-h">' + (editing ? 'Edit tool' : 'Add a tool') + '</div>' +
+      '<label class="f">Name</label><input class="f-in" id="ct-f-name" maxlength="40" value="' + esc(t.name) + '" placeholder="Quote Builder">' +
+      '<label class="f">File name or link</label><input class="f-in" id="ct-f-url" value="' + esc(t.url) + '" placeholder="tgk_quote_builder.html">' +
+      '<div class="f-hint" id="ct-url-hint"></div>' +
+      '<label class="f">Icon</label><div class="f-row"><input class="f-in" id="ct-f-icon" maxlength="8" style="width:70px;text-align:center;font-size:18px" value="' + esc(t.icon) + '"><div class="ct-picks f-row" style="gap:4px">' + picks + '</div></div>' +
+      '<label class="f">Subtitle</label><input class="f-in" id="ct-f-cat" maxlength="60" value="' + esc(t.cat) + '" placeholder="Sales &middot; Quotes &middot; Supabase">' +
+      '<label class="f">Description</label><textarea class="f-in" id="ct-f-desc" maxlength="220" placeholder="One or two sentences about what it does.">' + esc(t.desc) + '</textarea>' +
+      '<label class="f">Tags (comma separated, first one is highlighted)</label><input class="f-in" id="ct-f-tags" maxlength="60" value="' + esc(t.tags) + '">' +
+      '<label class="f">Color</label><div class="ct-sw">' + sw + '</div>' +
+      '<label class="f">Section</label><select class="f-in" id="ct-f-sec">' + opts + '<option value="__new">+ New section&hellip;</option></select>' +
+      '<input class="f-in" id="ct-f-newsec" maxlength="40" placeholder="New section name" style="display:none;margin-top:6px">' +
+      '<label class="f" style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:12.5px"><input type="checkbox" id="ct-f-tab"' + (t.newTab ? ' checked' : '') + '> Open in a new browser tab instead (use this if the tool will not load inside the Command Center)</label>' +
+      '<div class="ct-h" style="margin-top:14px">Card preview</div><div class="ct-prev"><div class="mod-grid" id="ct-prev"></div></div>' +
+      '<div class="ct-err" id="ct-err"></div>' +
+      '<div class="ct-btns"><button type="button" class="ct-btn pri" data-act="save">' + (editing ? 'Save changes' : 'Add to dashboard') + '</button>' +
+      '<button type="button" class="ct-btn" data-act="test">Test link</button>' +
+      (editing ? '<button type="button" class="ct-btn" data-act="cancel">Cancel edit</button>' : '') + '</div>';
+    updatePreview();
+  }
+  function updatePreview() {
+    var d = formData(), h = q('#ct-url-hint'), p = q('#ct-prev');
+    if (h) { var u = resolveUrl(d.url); h.textContent = d.url ? (u ? 'Opens: ' + u : 'That is not a valid file name or link') : 'Just the file name works for files in the Command Center GitHub repo (served from command.tgkmotorsport.com).'; }
+    if (p) p.innerHTML = cardHtml({ name: d.name, icon: d.icon, cat: d.cat, desc: d.desc, tags: d.tags, accent: d.accent, newTab: d.newTab }, true);
+    var ns = q('#ct-f-newsec'); if (ns) ns.style.display = d.section === '__new' ? '' : 'none';
+  }
+  function openManager(id) {
+    var ov = q('#ct-ov');
+    if (!ov) {
+      ov = document.createElement('div'); ov.id = 'ct-ov';
+      ov.innerHTML = '<div class="ct-modal" role="dialog" aria-modal="true" aria-label="Custom tools"><div class="ct-hd"><div class="ct-hd-t">Custom Tools</div><button type="button" class="ct-x" data-act="close" aria-label="Close">\u2715</button></div><div class="ct-body"><div class="ct-list" id="ct-list"></div><div class="ct-form" id="ct-form"></div></div></div>';
+      document.body.appendChild(ov); wire(ov);
+    }
+    editing = id || null; ov.classList.add('on'); renderList(); renderForm(editing ? find(editing) : null);
+    pull(true);
+  }
+  function closeManager() { var ov = q('#ct-ov'); if (ov) ov.classList.remove('on'); editing = null; }
+  function moveRel(id, dir) {
+    var t = find(id); if (!t) return; var sec = toolSec(t);
+    var idxs = []; db.tools.forEach(function (x, i) { if (toolSec(x) === sec) idxs.push(i); });
+    var pos = idxs.indexOf(db.tools.indexOf(t)), np = pos + dir; if (np < 0 || np >= idxs.length) return;
+    var a = idxs[pos], b = idxs[np], tmp = db.tools[a]; db.tools[a] = db.tools[b]; db.tools[b] = tmp;
+  }
+  function moveTo(id, before, section) {
+    var t = find(id); if (!t) return;
+    db.tools.splice(db.tools.indexOf(t), 1);
+    if (before) { var bt = find(before); t.section = toolSec(bt); db.tools.splice(db.tools.indexOf(bt), 0, t); }
+    else {
+      t.section = section; var last = -1; db.tools.forEach(function (x, i) { if (toolSec(x) === section) last = i; });
+      if (last < 0) db.tools.push(t); else db.tools.splice(last + 1, 0, t);
+    }
+  }
+  async function commit() { await save(); refresh(); renderList(); }
+  function secMove(id, dir) {
+    var i = -1; db.sections.forEach(function (s, k) { if (s.id === id) i = k; });
+    var j = i + dir; if (i < 0 || j < 0 || j >= db.sections.length) return;
+    var tmp = db.sections[i]; db.sections[i] = db.sections[j]; db.sections[j] = tmp;
+  }
+  async function onAction(act, id) {
+    var t; rev++;
+    if (act === 'close') return closeManager();
+    if (act === 'edit') { editing = id; renderForm(find(id)); var f = q('#ct-form'); if (f) f.scrollTop = 0; return; }
+    if (act === 'cancel') { editing = null; renderForm(null); return; }
+    if (act === 'up' || act === 'dn') { moveRel(id, act === 'up' ? -1 : 1); return commit(); }
+    if (act === 'vis') { t = find(id); if (t) { t.hidden = !t.hidden; } return commit(); }
+    if (act === 'del') {
+      t = find(id); if (!t || !window.confirm('Delete "' + t.name + '" from the dashboard? The file in GitHub is not touched.')) return;
+      db.tools.splice(db.tools.indexOf(t), 1); if (editing === id) { editing = null; renderForm(null); } return commit();
+    }
+    if (act === 'addsec') {
+      var nm = window.prompt('New section name:'); nm = nm && nm.trim(); if (!nm) return;
+      db.sections.push({ id: uid('cs_'), label: nm.slice(0, 40) }); renderForm(editing ? find(editing) : null); return commit();
+    }
+    if (act === 'secup' || act === 'secdn') { secMove(id, act === 'secup' ? -1 : 1); return commit(); }
+    if (act === 'secren') {
+      var s = db.sections.filter(function (x) { return x.id === id; })[0]; if (!s) return;
+      var n2 = window.prompt('Rename section:', s.label); n2 = n2 && n2.trim(); if (!n2) return; s.label = n2.slice(0, 40); renderForm(editing ? find(editing) : null); return commit();
+    }
+    if (act === 'secdel') {
+      var sc = db.sections.filter(function (x) { return x.id === id; })[0]; if (!sc) return;
+      var n = db.tools.filter(function (x) { return x.section === id; }).length;
+      if (!window.confirm('Delete the section "' + sc.label + '"?' + (n ? ' Its ' + n + ' tool(s) move to Operations.' : ''))) return;
+      db.tools.forEach(function (x) { if (x.section === id) x.section = 'ops'; });
+      db.sections = db.sections.filter(function (x) { return x.id !== id; }); renderForm(editing ? find(editing) : null); return commit();
+    }
+    if (act === 'test') { var u = resolveUrl(formData().url); if (u) window.open(u, '_blank', 'noopener'); else showErr('Enter a valid file name or link first.'); return; }
+    if (act === 'save') return saveForm();
+  }
+  function showErr(m) { var e = q('#ct-err'); if (e) e.textContent = m || ''; }
+  async function saveForm() {
+    var d = formData(); rev++;
+    if (!d.name) return showErr('Give the tool a name.');
+    if (!resolveUrl(d.url)) return showErr('Enter the file name (like my_tool.html) or a full https link.');
+    var sec = d.section;
+    if (sec === '__new') {
+      if (!d.newSec) return showErr('Type a name for the new section.');
+      var ex = db.sections.filter(function (s) { return s.label.toLowerCase() === d.newSec.toLowerCase(); })[0];
+      if (ex) sec = ex.id; else { sec = uid('cs_'); db.sections.push({ id: sec, label: d.newSec }); }
+    }
+    var t = editing ? find(editing) : null;
+    if (!t) { t = { id: uid('ct') }; db.tools.push(t); }
+    t.name = d.name; t.url = d.url; t.icon = d.icon || '\uD83D\uDD27'; t.cat = d.cat; t.desc = d.desc; t.tags = d.tags; t.accent = d.accent; t.section = sec; t.newTab = d.newTab;
+    editing = null; await save(); refresh(); renderList(); renderForm(null);
+    showErr(''); toast('Saved: ' + t.name);
+  }
+  function wire(ov) {
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) return closeManager();
+      var p = e.target.closest && e.target.closest('[data-pick]'); if (p) { var i = q('#ct-f-icon'); if (i) { i.value = p.getAttribute('data-pick'); updatePreview(); } return; }
+      var b = e.target.closest && e.target.closest('[data-act]'); if (b) onAction(b.getAttribute('data-act'), b.getAttribute('data-id'));
+    });
+    ov.addEventListener('input', function (e) { if (e.target.closest && e.target.closest('#ct-form')) updatePreview(); });
+    ov.addEventListener('change', function (e) { if (e.target.closest && e.target.closest('#ct-form')) updatePreview(); });
+    ov.addEventListener('dragstart', function (e) {
+      var r = e.target.closest && e.target.closest('.ct-row'); if (!r) return; dragId = r.getAttribute('data-id');
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); } catch (x) {} r.classList.add('drag');
+    });
+    ov.addEventListener('dragend', function () { dragId = null; qa('.ct-row,.ct-grp-h', ov).forEach(function (n) { n.classList.remove('drag', 'over'); }); });
+    ov.addEventListener('dragover', function (e) {
+      if (!dragId) return; var tg = e.target.closest && e.target.closest('.ct-row,.ct-grp-h'); if (!tg) return;
+      e.preventDefault(); qa('.over', ov).forEach(function (n) { n.classList.remove('over'); }); tg.classList.add('over');
+    });
+    ov.addEventListener('drop', function (e) {
+      if (!dragId) return; e.preventDefault();
+      var row = e.target.closest && e.target.closest('.ct-row'), hdr = e.target.closest && e.target.closest('.ct-grp-h');
+      if (row && row.getAttribute('data-id') !== dragId) moveTo(dragId, row.getAttribute('data-id'));
+      else if (hdr) moveTo(dragId, null, hdr.getAttribute('data-sec'));
+      dragId = null; rev++; commit();
+    });
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && q('#ct-ov.on')) closeManager(); });
+  document.addEventListener('click', function (e) {
+    var ed = e.target.closest && e.target.closest('[data-ctedit]');
+    if (ed) { e.preventDefault(); e.stopPropagation(); openManager(ed.getAttribute('data-ctedit')); return; }
+    var c = e.target.closest && e.target.closest('.ct-card[data-ctid]'); if (c) openCustomTool(c.getAttribute('data-ctid'));
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var c = e.target.closest && e.target.closest('.ct-card[data-ctid]'); if (c && e.target === c) { e.preventDefault(); openCustomTool(c.getAttribute('data-ctid')); }
+  });
+
+  /* ------------------------------------------------------------ wiring into the existing page */
+  function hideCT(restore) {
+    var v = q('#ct-viewer'); if (!v || !v.classList.contains('active')) return;
+    v.classList.remove('active');
+    if (restore) {
+      var m = q('#cc-main'); if (m) m.style.display = '';
+      var bc = q('#cc-breadcrumb'); if (bc) bc.classList.remove('visible');
+      var a = q('#cc-bc-actions'); if (a) a.innerHTML = '';
+    }
+  }
+  function boot() {
+    loadLocal();
+    ['openERP', 'openSupportCenter', 'openGhostTuning', 'openNotes', 'openSKU', 'openCal', 'openTimeAttack', 'openHarnessBuilder'].forEach(function (n) {
+      var f = window[n]; if (typeof f !== 'function') return;
+      window[n] = function () { hideCT(false); return f.apply(this, arguments); };
+    });
+    var sv = window.showView;
+    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); } return r; };
+    var rd = window.renderDashboard;
+    if (typeof rd === 'function') { _rd = rd; window.renderDashboard = function () { var r = rd.apply(this, arguments); paint(); return r; }; }
+    var bcast = window._ccBroadcastToFrames;
+    if (typeof bcast === 'function') window._ccBroadcastToFrames = function (msg) {
+      bcast.apply(this, arguments);
+      try { var f = q('#ct-frame'); if (f && f.dataset.url && f.contentWindow) { var o = new URL(f.dataset.url).origin; if (CT_TRUST.test(o)) f.contentWindow.postMessage(msg, o); } } catch (e) {}
+    };
+    window.openCustomTool = openCustomTool; window.closeCustomTool = closeCustomTool; window.openCustomToolsManager = openManager;
+    paint(); pull(true);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+
 </body>
 </html>
