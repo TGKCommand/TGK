@@ -3436,7 +3436,7 @@ html.cx-sopen #cx-search-close{display:inline-flex;align-items:center;background
   <div class="dash-section-block" id="dsec-fun">
     <div class="dash-section-lbl">Entertainment</div>
     <div class="mod-grid">
-      <div class="mod-card ac-teal" onclick="openTimeAttack()" data-mid="timeattack"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127937;</div><div class="mod-card-name">Time Attack</div><div class="mod-card-cat">Fun &middot; Daily Course &middot; Leaderboard</div><div class="mod-card-desc">Drive the real TGK fleet &mdash; S6, CC, Touareg, X5 M50i &mdash; on a new autocross course every day. Sim physics, ghosts, daily board.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
+      <div class="mod-card ac-teal" onclick="openTimeAttack()" data-mid="timeattack"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127937;</div><div class="mod-card-name">Time Attack</div><div class="mod-card-cat">Fun &middot; Daily Course &middot; Leaderboard</div><div class="mod-card-desc">Drive the real TGK fleet &mdash; S6, CC, Touareg, X5 M50i &mdash; on a new autocross course every day. Sim physics, ghosts, daily board.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-teal">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-red" onclick="showView('arcade')" data-mid="arcade"><div class="mod-card-icon" style="background:rgba(248,113,113,.1)">&#127918;</div><div class="mod-card-name">Arcade</div><div class="mod-card-cat">Fun &middot; Break Time &middot; Game</div><div class="mod-card-desc">Take a break &mdash; TGK Autocross Survival Challenge. Compete for the leaderboard.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-red">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
   </div>
@@ -18780,8 +18780,8 @@ if ('serviceWorker' in navigator) {
 (function(){
   var H = { on: false, depth: 0, ignore: 0, ignoreUntil: 0, root: false, timer: null, hold: 0, modDepth: 0, msgId: 0, pending: null };
   var CLOSERS = { 'erp-viewer':'closeERP', 'support-viewer':'closeSupportCenter', 'ghost-viewer':'closeGhostTuning', 'notes-viewer':'closeNotes',
-                  'sku-viewer':'closeSKU', 'cal-viewer':'closeCal', 'ta-viewer':'closeTimeAttack', 'hb-viewer':'closeHarnessBuilder', 'ct-viewer':'closeCustomTool' };
-  var VIEWER_SEL = '#erp-viewer.active, #support-viewer.active, #ghost-viewer.active, #notes-viewer.active, #sku-viewer.active, #cal-viewer.active, #ta-viewer.active, #hb-viewer.active, #ct-viewer.active';
+                  'sku-viewer':'closeSKU', 'cal-viewer':'closeCal', 'ta-viewer':'closeTimeAttack', 'hb-viewer':'closeHarnessBuilder' };
+  var VIEWER_SEL = '#erp-viewer.active, #support-viewer.active, #ghost-viewer.active, #notes-viewer.active, #sku-viewer.active, #cal-viewer.active, #ta-viewer.active, #hb-viewer.active';
   function toast(msg){
     var t = document.getElementById('cc-back-toast');
     if(!t){ t = document.createElement('div'); t.id = 'cc-back-toast';
@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.10';
+var TGK_CC_VERSION='v7.4';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -29594,7 +29594,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
       any = any || on;
     });
     var home = document.querySelector('.cx-nav > .cc-bc-home:not([id])'), hv = $('view-home');
-    if (home) { var on2 = !any;   /* Command Center stays highlighted on every screen except ERP / Support / Ghost */ home.classList.toggle('on', on2); if (on2) home.setAttribute('aria-current', 'page'); else home.removeAttribute('aria-current'); }
+    if (home) { var on2 = !any && !!(hv && hv.classList.contains('active')); home.classList.toggle('on', on2); if (on2) home.setAttribute('aria-current', 'page'); else home.removeAttribute('aria-current'); }
   }
   /* the strip under the header is only for tools that put a Close button or actions in it (ERP, Support, Ghost...) */
   function syncBc() { var bc = $('cc-breadcrumb'), a = $('cc-bc-actions'); if (bc) bc.classList.toggle('cx-bc-on', !!(a && a.children.length)); }
@@ -30873,1153 +30873,109 @@ html[data-theme="dark"] .sk-band{display:none!important}
   [600,1800,4500].forEach(function(ms){ setTimeout(run,ms); });
 })();
 </script>
-<style id="ct-style">
-/* ===== Custom Tools + Organizer (Command Center v7.10) ===== */
-/* Universal dashboard grid: every category is full width with the same card size, so categories can be reordered freely (the old layout pinned Projects and Downtime into half-width columns) */
-html body #view-home#view-home .dash-wrap>.dash-section-block{grid-column:1/-1!important}
-html body #view-home#view-home .dash-wrap .dash-section-block .mod-grid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))!important}
-#ct-viewer{display:none;flex:1;flex-direction:column;overflow:hidden;position:relative}
-#ct-viewer.active{display:flex}
-#ct-frame{width:100%;flex:1;border:none;background:#fff}
-#ct-loading{position:absolute;inset:0;background:var(--bg3,#ECEEF0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
-#ct-loading.hidden{display:none}
-html body #view-home#view-home .ct-hide{display:none!important}
-.ct-card{position:relative}
-.ct-edit{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:2px;border:1px solid rgba(128,138,148,.35);background:rgba(20,24,27,.55);color:#cfd6db;font-size:13px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;z-index:3;padding:0}
-.ct-card:hover .ct-edit,.ct-edit:focus{opacity:1}
-@media (hover:none){.ct-edit{opacity:.6}}
-#ct-ov{position:fixed;inset:0;background:rgba(10,12,14,.62);z-index:99990;display:none;align-items:center;justify-content:center;padding:16px}
-#ct-ov.on{display:flex}
-#ct-ov .ct-modal{background:#fff;color:#22272b;width:min(1120px,100%);max-height:calc(100vh - 32px);height:calc(100vh - 32px);border-radius:3px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);font-family:inherit}
-html[data-theme="dark"] #ct-ov .ct-modal{background:#171b1e;color:#dfe5e9}
-#ct-ov .ct-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#22272b;color:#fff;border-bottom:3px solid #2ABFAA;flex-shrink:0}
-#ct-ov .ct-hd-t{font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:14px}
-#ct-ov .ct-x{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:2px;width:30px;height:30px;cursor:pointer;font-size:14px}
-#ct-ov .ct-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:0;overflow:hidden;flex:1;min-height:0}
-@media (max-width:860px){#ct-ov .ct-body{grid-template-columns:1fr;overflow:auto}#ct-ov .ct-modal{height:auto}}
-#ct-ov .ct-list,#ct-ov .ct-form{overflow:auto;padding:14px 16px;min-height:0}
-#ct-ov .ct-list{border-right:1px solid #E4E7EC}
-html[data-theme="dark"] #ct-ov .ct-list{border-color:#2b3136}
-@media (max-width:860px){#ct-ov .ct-list{border-right:0;border-bottom:1px solid #E4E7EC;overflow:visible}#ct-ov .ct-form{overflow:visible}}
-#ct-ov .ct-h{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7b8590;margin:0 0 8px}
-#ct-ov .ct-grp-h{display:flex;align-items:center;gap:5px;margin:14px 0 6px;padding:6px 8px;background:#eef0f2;border-radius:2px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#3b434a}
-html[data-theme="dark"] #ct-ov .ct-grp-h{background:#20262a;color:#b7c0c7}
-#ct-ov .ct-grp-h .ct-gt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#ct-ov .ct-grp-h.off .ct-gt{opacity:.5;text-decoration:line-through}
-#ct-ov .ct-grp-h .ct-gn{font-weight:600;color:#8b95a0;letter-spacing:0;margin-right:4px}
-#ct-ov .ct-grp-h.over,#ct-ov .ct-row.over{outline:2px solid #2ABFAA;outline-offset:-2px}
-#ct-ov .ct-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid #E4E7EC;border-radius:2px;margin-bottom:5px;background:#fff;font-size:13px}
-html[data-theme="dark"] #ct-ov .ct-row{background:#1b2024;border-color:#2b3136}
-#ct-ov .ct-row.drag{opacity:.4}
-#ct-ov .ct-row.off .ct-nm{opacity:.45;text-decoration:line-through}
-#ct-ov .ct-row .ct-gr{cursor:grab;color:#9aa3ad;user-select:none}
-#ct-ov .ct-row .ct-ico{width:26px;height:24px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#2ABFAA;flex-shrink:0}
-#ct-ov .ct-row .ct-ico svg{width:20px;height:20px}
-#ct-ov .ct-row .ct-ico img{width:22px;height:22px;object-fit:contain}
-#ct-ov .ct-row .ct-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
-#ct-ov .ct-row .ct-nm small{display:block;font-weight:500;color:#8b95a0;overflow:hidden;text-overflow:ellipsis}
-#ct-ov .ct-st{font-weight:900;font-size:15px;width:18px;text-align:center;cursor:help}
-#ct-ov .ct-st.ok{color:#16a34a}
-#ct-ov .ct-st.bad{color:#dc2626}
-#ct-ov .ct-ib,#ct-lay .ct-ib{background:none;border:1px solid #d4d7db;border-radius:2px;min-width:26px;height:26px;cursor:pointer;color:#4b5563;font-size:12px;padding:0 6px;font-family:inherit}
-#ct-ov .ct-ib:hover,#ct-lay .ct-ib:hover{border-color:#2ABFAA;color:#2ABFAA}
-#ct-ov .ct-ib.del:hover{border-color:#dc2626;color:#dc2626}
-#ct-ov .ct-empty{color:#8b95a0;font-size:12px;font-style:italic;padding:2px 4px}
-#ct-ov label.f{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b7580;margin:10px 0 4px}
-#ct-ov .f-in{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #c9ccd1;border-radius:2px;font:inherit;font-size:13px;background:#fff;color:#22272b}
-html[data-theme="dark"] #ct-ov .f-in{background:#101315;color:#dfe5e9;border-color:#2b3136}
-#ct-ov textarea.f-in{resize:vertical;min-height:54px}
-#ct-ov .f-hint{font-size:11px;color:#8b95a0;margin-top:3px;word-break:break-all}
-#ct-ov .f-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#ct-ov .ct-picker{margin-top:6px;border:1px solid #E4E7EC;border-radius:2px;padding:8px;background:#f7f8fa}
-html[data-theme="dark"] #ct-ov .ct-picker{background:#101315;border-color:#2b3136}
-#ct-ov .ct-chip{border:1px solid #d4d7db;background:#fff;color:#4b5563;border-radius:2px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
-#ct-ov .ct-chip.sm{padding:2px 7px;font-size:11px}
-#ct-ov .ct-chip.on{background:#22272b;color:#fff;border-color:#22272b}
-#ct-ov .ct-pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:4px;margin-top:8px;max-height:150px;overflow:auto}
-#ct-ov .ct-pk{height:34px;border:1px solid #d4d7db;background:#fff;border-radius:2px;cursor:pointer;color:#22272b;display:flex;align-items:center;justify-content:center;padding:0}
-#ct-ov .ct-pk.em{font-size:19px}
-#ct-ov .ct-pk:hover{border-color:#2ABFAA;color:#2ABFAA}
-#ct-ov .ct-sw{display:flex;gap:8px}
-#ct-ov .ct-sw label{cursor:pointer}
-#ct-ov .ct-sw input{position:absolute;opacity:0;pointer-events:none}
-#ct-ov .ct-sw span{display:block;width:28px;height:28px;border-radius:2px;border:2px solid transparent;box-shadow:inset 0 0 0 2px #fff}
-#ct-ov .ct-sw input:checked+span{border-color:#22272b}
-#ct-ov .ct-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-#ct-ov .ct-btn{padding:8px 14px;border-radius:2px;border:1px solid #c9ccd1;background:#fff;color:#22272b;font:inherit;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;cursor:pointer}
-#ct-ov .ct-btn.pri{background:#2ABFAA;border-color:#2ABFAA;color:#06231f}
-#ct-ov .ct-btn:disabled{opacity:.6;cursor:wait}
-#ct-ov .ct-prev{margin:6px 0 2px}
-#ct-ov .ct-prev .mod-grid{grid-template-columns:1fr!important;padding:0!important}
-#ct-ov .ct-prev .mod-card{cursor:default}
-#ct-ov .ct-err{color:#dc2626;font-size:12px;margin-top:8px;min-height:14px}
-#ct-lay{position:fixed;right:16px;bottom:16px;width:300px;background:#fff;color:#22272b;border:1px solid #c9ccd1;border-top:3px solid #2ABFAA;border-radius:3px;box-shadow:0 12px 40px rgba(0,0,0,.3);z-index:99980;padding:12px 14px;display:none;font-family:inherit;font-size:13px}
-#ct-lay.on{display:block}
-html[data-theme="dark"] #ct-lay{background:#171b1e;color:#dfe5e9;border-color:#2b3136}
-#ct-lay .lay-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-#ct-lay .lay-pre{display:flex;gap:6px;margin-bottom:8px}
-#ct-lay .lay-r{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;color:#6b7580;margin:9px 0 0;position:relative}
-#ct-lay .lay-r .lay-v{position:absolute;right:0;top:0;color:#22272b;font-family:monospace}
-html[data-theme="dark"] #ct-lay .lay-r .lay-v{color:#dfe5e9}
-#ct-lay .lay-r input[type=range]{width:100%;margin:4px 0 0}
-#ct-lay .lay-r select{display:block;width:100%;margin-top:4px;padding:6px;font:inherit;border:1px solid #c9ccd1;border-radius:2px}
-#ct-lay .lay-r.chk{display:flex;gap:8px;align-items:center;font-size:12.5px;color:inherit;font-weight:600}
-#ct-toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(20,22,24,.94);color:#fff;padding:10px 18px;border-radius:2px;font:600 13px/1.3 system-ui,sans-serif;z-index:100001;pointer-events:none;transition:opacity .2s;opacity:0;max-width:90vw;text-align:center}
+<style id="tgk-dashboard-refine">
+/* ===================================================================================================================
+   DASHBOARD REFINEMENT (Option B): calmer type and rounded cards on the main dashboard, a quieter top bar, and a real
+   breadcrumb trail (Command Center > Support Center) when an app is open. Interface text uses DM Sans (already in this file).
+   - Light theme only, except the hidden "Send current product to ERP" shortcut (hidden in both themes; its function stays).
+   - The tools' own screens are not changed. The dark section bars and the orange/teal accent lines are kept.
+   To revert, delete this style block (id tgk-dashboard-refine) and the small script block that follows it
+   (id tgk-dashboard-refine-js). Appearance only.
+   =================================================================================================================== */
+:root{--rf:'DM Sans',-apple-system,'Segoe UI',sans-serif;--rfh:'DM Sans',-apple-system,'Segoe UI',sans-serif}
+/* ---------- top bar: sentence case, calmer weight ---------- */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logo-sub,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .cx-nav button,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .cx-nav .cc-bc-home{font-family:var(--rf)!important;font-size:14.5px!important;font-weight:600!important;letter-spacing:.003em!important;text-transform:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logo-sub{font-weight:500!important;color:#c3cbd1!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar #topbar-user{font:500 14px var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#c3cbd1!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logout-btn{font:500 13.5px var(--rf)!important;letter-spacing:0!important;text-transform:none!important;border-color:transparent!important;background:transparent!important;color:#c3cbd1!important;border-radius:6px!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logout-btn:hover{background:rgba(255,255,255,.09)!important;color:#fff!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar #cc-version-badge{font:600 12.5px var(--rf)!important;letter-spacing:.02em!important;text-transform:none!important;color:#8f99a1!important}
+/* ---------- breadcrumb: a real trail, quiet text ---------- */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb.visible.cx-bc-on{height:46px!important;padding:0 24px!important;gap:8px!important;background:#fff!important;border-bottom:1px solid #e4e7ec!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail{display:inline-flex;align-items:center;font:500 13.5px/1 var(--rf);color:#667078;background:none;border:0;padding:6px 4px;border-radius:6px;cursor:pointer}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail:hover{color:#0b7f77;background:#f1f6f6}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-chev{display:inline-flex;color:#b4bcc3}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb #cc-bc-label{font:600 14.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#14171a!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb #cc-bc-actions .cc-bc-btn{font:500 13.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#46515a!important;background:transparent!important;border:0!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;height:32px!important;min-height:32px!important;max-height:none!important;padding:0 12px!important;border-radius:6px!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb #cc-bc-actions .cc-bc-btn:hover{background:#f1f3f5!important;color:#14171a!important}
+/* ================= MAIN DASHBOARD: Option B ================= */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .dash-wrap{font-family:var(--rf)}
+/* greeting row */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home #cx-greet b{font:600 28px/1.15 var(--rfh)!important;letter-spacing:-.012em!important;text-transform:none!important;color:#14171a!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home #cx-greet span{font:400 14.5px var(--rf)!important;color:#667078!important;letter-spacing:0!important;text-transform:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .tpl-bar .filter-btn,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .tpl-bar .showall-btn{font:500 13.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;border-radius:8px!important;height:36px!important;padding:0 14px!important;clip-path:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .tpl-bar .filter-btn{background:#fff!important;color:#2b343a!important;border:1px solid #d4d9de!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .tpl-bar .filter-btn:hover{background:#f4f6f7!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .tpl-bar .showall-btn{background:#22272b!important;color:#fff!important;border:1px solid #22272b!important}
+/* the three system cards */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-hero,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-hero,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-hero{border-radius:14px!important;background:#20272c!important;box-shadow:0 1px 2px rgba(16,24,40,.12)!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-hero::after,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-hero::after,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-hero::after{left:16px!important;right:16px!important;width:auto!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-hero-icon,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-hero-icon,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-hero-icon{border-radius:10px!important;background:rgba(255,255,255,.07)!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-hero-label,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-hero-label,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-hero-label{font:500 13px/1.2 var(--rf)!important;letter-spacing:0!important;text-transform:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-hero-name,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-hero-name,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-hero-name{font:600 25px/1.15 var(--rfh)!important;letter-spacing:-.01em!important;text-transform:none!important;color:#fff!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-hero-desc,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-hero-desc,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-hero-desc{font:400 15px/1.5 var(--rf)!important;color:#b7c0c6!important;letter-spacing:0!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-open-btn,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-open-btn,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-open-btn,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-send-btn{font:600 14.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;border-radius:9px!important;height:42px!important;clip-path:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-send-btn{font-weight:500!important;border-color:rgba(255,255,255,.26)!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-badge,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-badge,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-badge{font:500 12.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;border-radius:999px!important;padding:6px 11px!important;background:rgba(255,255,255,.08)!important;color:#c3cbd1!important;border:0!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .erp-status,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .support-status,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .ghost-status{font:400 13px var(--rf)!important;letter-spacing:0!important;text-transform:none!important}
+/* stat tiles */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .cx-tile{border-radius:12px!important;border:1px solid #e4e7ec!important;background:#fff!important;padding:18px 20px!important;box-shadow:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .cx-tile b{font:500 13.5px/1.2 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#667078!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .cx-tile .cx-v{font:600 26px/1.15 var(--rfh)!important;letter-spacing:-.01em!important;color:#14171a!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .cx-tile .cx-s{font:400 13.5px var(--rf)!important;color:#667078!important;letter-spacing:0!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .cx-tile .cx-link{font:600 13.5px var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#0b7f77!important;text-decoration:none!important;padding:0!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .cx-tile .cx-link::after{content:" \2192"}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .cx-tile .cx-link:hover{text-decoration:underline!important}
+/* section headers: KEEP the dark bars exactly as they are today; only round the corners to match the cards */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .dash-section-lbl{border-radius:0!important;clip-path:inset(0 round 6px)!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .dash-section-lbl .wt-lbl-link{border-radius:5px!important}
+/* module cards */
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card{border-radius:12px!important;border:1px solid #e4e7ec!important;background:#fff!important;padding:20px 20px 16px!important;box-shadow:0 1px 2px rgba(16,24,40,.04)!important;clip-path:none!important;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card:hover{border-color:#b7dfdb!important;box-shadow:0 8px 22px rgba(16,24,40,.09)!important;transform:translateY(-1px)}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card::before,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card::after{display:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-icon{width:44px!important;height:44px!important;border-radius:11px!important;background:#eef6f6!important;border:0!important;clip-path:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card.ac-orange .mod-card-icon{background:#fdf1e7!important}html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card.ac-purple .mod-card-icon{background:#f1eefb!important}html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card.ac-red .mod-card-icon{background:#fdeeee!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-name{font:600 17px/1.25 var(--rfh)!important;letter-spacing:-.005em!important;text-transform:none!important;color:#14171a!important;margin-top:14px!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-cat{font:500 13px/1.3 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#7a858d!important;margin-top:3px!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-desc{font:400 14.5px/1.5 var(--rf)!important;color:#4f5a62!important;margin-top:10px!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-footer{border-top:1px solid #eef0f2!important;margin-top:14px!important;padding-top:12px!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mc-tag{font:500 12px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;border-radius:999px!important;padding:5px 10px!important;border:0!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mc-tag.mc-live{background:#e5f6f1!important;color:#0a7a5c!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mc-tag.mc-gray{background:#f1f3f5!important;color:#5d6870!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-arrow::before,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-arrow::after,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-open::before,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-open::after{display:none!important;content:none!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-arrow,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card .mod-card-open{font:600 14px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#0b7f77!important}
+/* the dashboard shortcut "Send current product to ERP" is hidden (both themes); the function and the other ways to send stay */
+html body #view-home #erp-send-product-btn{display:none!important}
+/* narrow phones: give the app name room in the breadcrumb */
+@media (max-width:480px){
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb.visible.cx-bc-on{padding:0 12px!important;gap:4px!important}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail{padding:6px 2px;font-size:13px}
+}
+@media (max-width:380px){
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail{font-size:0}
+html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail::before{content:"Home";font-size:13px}
+}
 
-/* neutralise the site's global input styling inside our panels */
-#ct-ov input[type=checkbox],#ct-lay input[type=checkbox]{-webkit-appearance:auto;appearance:auto;width:16px;height:16px;min-height:0;padding:0;margin:0;flex:none;border:0;box-shadow:none;background:none;accent-color:#2ABFAA}
-#ct-ov input[type=radio],#ct-lay input[type=radio]{-webkit-appearance:auto;appearance:auto}
-#ct-lay input[type=range]{-webkit-appearance:auto;appearance:auto;width:100%;height:18px;min-height:0;padding:0;border:0;background:none;box-shadow:none;accent-color:#2ABFAA;margin:4px 0 0}
-#ct-lay select{width:100%;min-height:0;height:auto;box-shadow:none;background:#fff;color:#22272b}
-#ct-lay .lay-r.chk{flex-direction:row}
-#ct-ov button,#ct-lay button{text-transform:none;letter-spacing:normal}
-#ct-ov .ct-btn{text-transform:uppercase;letter-spacing:.07em}
-
-/* Team calendar: lives on the home strip, not as a tool card */
-html body #view-home#view-home .mod-card[data-mid="calendar"]{display:none!important}
-html body #view-home#view-home .cx-today{grid-template-columns:repeat(5,minmax(0,1fr))}
-@media (max-width:1100px){html body #view-home#view-home .cx-today{grid-template-columns:repeat(2,minmax(0,1fr))}html body #view-home#view-home .cx-today .ct-cal{grid-column:1/-1}}
-@media (max-width:560px){html body #view-home#view-home .cx-today{grid-template-columns:1fr}}
-html body #view-home#view-home .cx-tile.ct-cal{cursor:pointer}
-html body #view-home#view-home .cx-tile.ct-cal .cx-v{font-size:22px!important;font-weight:700!important;line-height:1.2!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-html body #view-home#view-home .cx-tile.ct-cal:hover{border-color:#2ABFAA!important}
-
-/* calendar flyout: flat, 2px corners, gunmetal header bar, teal for today */
-#ct-cal-fly{position:fixed;z-index:99970;width:300px;background:#fff;color:#22272b;border:1px solid #c9ccd1;border-radius:2px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:none;font-family:inherit;font-size:13px}
-#ct-cal-fly.on{display:block}
-html[data-theme="dark"] #ct-cal-fly{background:#171b1e;color:#dfe5e9;border-color:#2b3136}
-#ct-cal-fly .cf-hd{display:flex;align-items:center;justify-content:space-between;padding:9px 10px 9px 12px;background:#22272b;color:#fff;border-bottom:3px solid #2ABFAA}
-#ct-cal-fly .cf-hd b{font-size:13px;letter-spacing:.1em;text-transform:uppercase}
-#ct-cal-fly .cf-hd span{display:flex;gap:4px}
-#ct-cal-fly .cf-hd button{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:2px;height:24px;min-width:24px;padding:0 7px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-transform:none;letter-spacing:normal}
-#ct-cal-fly .cf-hd button:hover{border-color:#2ABFAA;color:#2ABFAA}
-#ct-cal-fly .cf-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:10px 10px 6px}
-#ct-cal-fly .cf-grid i{font-style:normal}
-#ct-cal-fly .cf-wd{text-align:center;font-size:11px;font-weight:700;color:#7b8590;padding-bottom:2px}
-#ct-cal-fly .cf-d{position:relative;height:32px;display:flex;align-items:center;justify-content:center;border-radius:2px;font-weight:600;cursor:pointer}
-#ct-cal-fly .cf-d:hover{background:#eef0f2}
-html[data-theme="dark"] #ct-cal-fly .cf-d:hover{background:#20262a}
-#ct-cal-fly .cf-d.now{background:#2ABFAA;color:#06231f;font-weight:800}
-#ct-cal-fly .cf-d u{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;gap:3px;text-decoration:none}
-#ct-cal-fly s{display:inline-block;width:5px;height:5px;border-radius:50%;text-decoration:none}
-#ct-cal-fly s.off{background:#E07B28}
-#ct-cal-fly s.ev{background:#2ABFAA}
-#ct-cal-fly .cf-d.now s.ev{background:#22272b}
-#ct-cal-fly .cf-up{padding:8px 12px 4px;border-top:1px solid #E4E7EC}
-html[data-theme="dark"] #ct-cal-fly .cf-up{border-color:#2b3136}
-#ct-cal-fly .cf-uh{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7b8590;margin-bottom:4px}
-#ct-cal-fly .cf-ui{display:flex;align-items:center;gap:8px;padding:2px 0}
-#ct-cal-fly .cf-w{width:52px;color:#7b8590;font-weight:700;font-size:12px;flex:none}
-#ct-cal-fly .cf-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#ct-cal-fly .cf-none,#ct-cal-fly .cf-more{color:#7b8590;font-size:12px;padding:2px 0 4px}
-#ct-cal-fly .cf-ft{padding:6px 12px 10px}
-#ct-cal-fly .cf-ft button{width:100%;padding:8px;border:1px solid #c9ccd1;border-radius:2px;background:#fff;color:#22272b;font:inherit;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;cursor:pointer}
-#ct-cal-fly .cf-ft button:hover{border-color:#2ABFAA;color:#0b7f77}
-html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5e9;border-color:#2b3136}
+/* the breadcrumb trail is added by script; keep it out of dark mode (which is unchanged) */
+html[data-theme="dark"] .rf-trail,html[data-theme="dark"] .rf-chev{display:none!important}
 </style>
-<script id="ct-script">
-/* ============================================================================
-   CUSTOM TOOLS + DASHBOARD ORGANIZER (Command Center v7.6)
-   - "+ Add Tool": put an .html file in the GitHub repo, make a card for it.
-   - "Organize": every card (built-in and custom) and every category: reorder, move between
-     categories, rename, hide, check that each one opens.
-   - "Spacing": columns, card width/height, gaps, live on the dashboard.
-   Everything is stored in Supabase (workspace row "tgk_custom_tools_v1", shared by the team,
-   cached on this device). Tools open in the same inline viewer + breadcrumb as ERP / Support.
-   Tools on a TGK origin get the signed-in session the way the Calendar does:
-     parent -> tool : {type:'tgk-identity',email,name} and {source:'TGK_CC',type:'AUTH_TOKEN',...}
-     tool -> parent : {type:'tgk-tool-ready'}
-   ASCII-only source.
-   ============================================================================ */
-(function () {
-  'use strict';
-  var CT_KEY = 'tgk_custom_tools_v1', CT_LS = 'tgk_custom_tools_v1_cache';
-  var CT_BASE = 'https://command.tgkmotorsport.com/';
-  var CT_TRUST = /^https:\/\/([a-z0-9-]+\.)*tgkmotorsport\.com$|^https:\/\/tgkcommand\.github\.io$/i;
-  var BUILTIN = [
-    { id: 'web', label: 'Product Pages' }, { id: 'ai', label: 'Marketing & Research' }, { id: 'ops', label: 'Operations' },
-    { id: 'proj', label: 'Projects' }, { id: 'fun', label: 'Downtime' }
-  ];
-  var OPEN_URL = { openERP: 'ERP_URL', openSupportCenter: 'SUPPORT_URL', openGhostTuning: 'GHOST_URL', openNotes: 'NOTES_URL',
-    openSKU: 'SKU_URL', openCal: 'CAL_URL', openTimeAttack: 'TA_URL', openHarnessBuilder: 'HB_URL' };
-  var ACC = {
-    teal:   { cls: 'ac-teal',   bg: 'rgba(42,191,170,.1)',  sw: '#2ABFAA' },
-    orange: { cls: 'ac-orange', bg: 'rgba(224,123,40,.1)',  sw: '#E07B28' },
-    purple: { cls: 'ac-purple', bg: 'rgba(124,58,237,.1)',  sw: '#7C3AED' },
-    red:    { cls: 'ac-red',    bg: 'rgba(248,113,113,.1)', sw: '#F87171' }
-  };
-
-  /* ---------------------------------------------------------------- icons */
-  var LINE = {
-    wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
-    gear: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18"/>',
-    hammer: '<path d="m14 4 6 6-3 3-6-6z"/><path d="M12 9 4 17a2 2 0 0 0 3 3l8-8"/>',
-    ruler: '<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/>',
-    magnet: '<path d="M5 3v8a7 7 0 0 0 14 0V3h-4v8a3 3 0 0 1-6 0V3z"/><path d="M5 7h4M15 7h4"/>',
-    plug: '<path d="M9 3v5M15 3v5M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v3"/>',
-    bolt: '<path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/>',
-    flame: '<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .3 1.5 1 2.2 2 2.5C11 9 11 6 12 3z"/>',
-    droplet: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
-    thermometer: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0z"/>',
-    wind: '<path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5M3 12h15a3 3 0 1 1-3 3M3 16h7a2.2 2.2 0 1 1-2.2 2.2"/>',
-    turbo: '<circle cx="12" cy="12" r="2"/><path d="M12 10C12 5 15 3 18 4c-1 3-3 5-6 6zM14 12c5 0 7 3 6 6-3-1-5-3-6-6zM12 14c0 5-3 7-6 6 1-3 3-5 6-6zM10 12c-5 0-7-3-6-6 3 1 5 3 6 6z"/>',
-    wheel: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v6.5M12 14.5V21M3.5 9l6 2M14.5 13l6 2M3.5 15l6-2M14.5 11l6-2"/>',
-    brake: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M5.5 6.5l1.4 1.4M17.1 16.1l1.4 1.4M5.5 17.5l1.4-1.4M17.1 7.9l1.4-1.4"/>',
-    spring: '<path d="M8 3h8M8 21h8M12 3v2M12 19v2"/><path d="M7 7l10 1.5L7 12l10 1.5L7 17"/>',
-    engine: '<path d="M4 10v6M20 10v6M7 8h9l2 3v5H7z"/><path d="M9 8V5h5v3M2 13h2M20 13h2"/>',
-    car: '<path d="M5 16v-4l1.8-4.5A2 2 0 0 1 8.7 6h6.6a2 2 0 0 1 1.9 1.5L19 12v4"/><path d="M3 16h18v2.5H3z"/>',
-    truck: '<path d="M3 6h11v10H3z"/><path d="M14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
-    flag: '<path d="M4 21V4M4 5h13l-2 4 2 4H4"/>',
-    stopwatch: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2.5h6"/>',
-    gauge: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1"/>',
-    pulse: '<path d="M2 12h3l2-6 4 12 3-9 2 3h6"/>',
-    box: '<path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>',
-    layers: '<path d="M12 3 3 8l9 5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/>',
-    barchart: '<path d="M3 3v18h18"/><path d="M8 17v-5M13 17V7M18 17v-8"/>',
-    linechart: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
-    pie: '<path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>',
-    calculator: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>',
-    database: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
-    server: '<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>',
-    chip: '<rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/>',
-    monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/>',
-    phone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
-    code: '<path d="m8 8-5 4 5 4M16 8l5 4-5 4M14 5l-4 14"/>',
-    terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/>',
-    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
-    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',
-    message: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 9.5h7M8.5 12.5h4"/>',
-    megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>',
-    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
-    video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/>',
-    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 3-3 4 4"/>',
-    bell: '<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4"/>',
-    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
-    clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/>',
-    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-    book: '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
-    pencil: '<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="m14 7 3 3"/>',
-    palette: '<path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 1.5-2-.6-1.2.2-2.5 1.6-2.5H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r=".8"/><circle cx="10" cy="7.5" r=".8"/><circle cx="14.5" cy="7.5" r=".8"/>',
-    printer: '<path d="M7 9V3h10v6M7 17H4v-7h16v7h-3"/><rect x="7" y="14" width="10" height="7"/>',
-    barcode: '<path d="M4 5v14M7 5v14M11 5v14M14 5v14M18 5v14M20.5 5v14"/>',
-    tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/>',
-    cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11l2-8H6"/>',
-    dollar: '<circle cx="12" cy="12" r="9"/><path d="M14.5 9a2.5 2 0 0 0-2.5-1.5c-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2A2.5 2 0 0 1 9.5 15M12 6v1.5M12 16.5V18"/>',
-    receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
-    card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/>',
-    scale: '<path d="M12 4v16M6 20h12M5 7h14"/><path d="M5 7 2.5 14a3 3 0 0 0 5 0zM19 7l-2.5 7a3 3 0 0 0 5 0z"/>',
-    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
-    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
-    key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/>',
-    shield: '<path d="M12 3 4.5 6v6c0 4.5 3 7.5 7.5 9 4.5-1.5 7.5-4.5 7.5-9V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>',
-    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
-    dashboard: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="11" width="8" height="10" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/>',
-    kanban: '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/>',
-    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
-    rocket: '<path d="M12 3c3 2 5 5 5 9l-2 3H9l-2-3c0-4 2-7 5-9z"/><circle cx="12" cy="9.5" r="1.5"/><path d="M9 15l-2 4 3-1M15 15l2 4-3-1"/>',
-    bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
-    compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
-    pin: '<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
-    flask: '<path d="M9 3h6M10 3v6L4.5 18.5A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.8-2.5L14 9V3"/><path d="M7.5 15h9"/>',
-    atom: '<circle cx="12" cy="12" r="1.5"/><ellipse cx="12" cy="12" rx="9" ry="3.8"/><ellipse cx="12" cy="12" rx="9" ry="3.8" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.8" transform="rotate(120 12 12)"/>',
-    trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8.5 21h7"/>',
-    gamepad: '<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7 10.5v4M5 12.5h4"/><circle cx="16" cy="11.5" r=".7"/><circle cx="18" cy="13.5" r=".7"/>',
-    star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
-    sparkles: '<path d="M12 4l1.8 4.7L18.5 10l-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.3zM18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
-    check: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 9.5"/>',
-    alert: '<path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/>',
-    refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/>',
-    download: '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
-    upload: '<path d="M12 16V4M7 8l5-5 5 5M4 20h16"/>',
-    home: '<path d="m3 11 9-7 9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>'
-  };
-  var EMOJI = [
-    ['Tools', '1F527:wrench,1F6E0+FE0F:tools,1F529:nut bolt,2699+FE0F:gear settings,1FA9B:screwdriver,1F528:hammer,1FA9A:saw,1F9F0:toolbox,1F9F2:magnet,1F50C:plug,1F50B:battery,1F4A1:bulb idea,1F526:flashlight,1F9EF:extinguisher,26A1:bolt power,1F525:fire,1F6E2+FE0F:oil drum,26FD:fuel,1F9EA:test tube,1F52C:microscope,1F4D0:triangle ruler,1F4CF:ruler,1F39B+FE0F:knobs,1F579+FE0F:joystick,26D3+FE0F:chain,1F517:link,1F512:lock,1F511:key,1F6E1+FE0F:shield'],
-    ['Cars', '1F697:car,1F698:car front,1F3CE+FE0F:race car,1F3C1:finish flag,1F699:suv,1F6DE:wheel,1F6E3+FE0F:road,1F6A6:light,23F1+FE0F:stopwatch,1F3C6:trophy,1F947:gold medal,1F50A:sound exhaust,1F32C+FE0F:wind airflow,1F4A8:dash air,1F300:turbo cyclone,1F680:rocket,1F9ED:compass,1F5FA+FE0F:map,1F4CD:pin'],
-    ['Data', '1F4CA:bar chart,1F4C8:chart up,1F4C9:chart down,1F9EE:abacus calculator,1F522:numbers,1F5C4+FE0F:file cabinet,1F4BE:disk save,1F5A5+FE0F:desktop,1F4BB:laptop,1F4E1:antenna,1F9E0:brain,1F916:robot ai,1F50D:search,1F50E:search,1F9EC:dna,1F3AF:target,1F4CC:pushpin,1F3F7+FE0F:label tag,1F5C3+FE0F:card box'],
-    ['Business', '1F4B0:money bag,1F4B5:dollar,1F4B3:credit card,1F9FE:receipt,1F3E6:bank,1F91D:handshake,1F4DE:phone,1F3E2:office,1F3ED:factory,1F6D2:cart,1F6CD+FE0F:shopping bags,1F381:gift,1F4E3:megaphone,1F4E2:loudspeaker,2B50:star,1F3C5:medal,1F48E:gem'],
-    ['Shipping', '1F4E6:package box,1F69A:truck,1F69B:semi truck,2708+FE0F:plane,1F6A2:ship,1F30D:globe europe,1F30E:globe americas,1F5C2+FE0F:dividers,1F4CB:clipboard,1F4DD:memo,1F4E5:inbox,1F4E4:outbox,1F4EC:mailbox,1F9F1:brick,1F4C7:card index,1F516:bookmark,2696+FE0F:scale'],
-    ['Web', '1F310:globe web,1F4AC:chat,1F4E7:email,2709+FE0F:envelope,1F4F1:phone mobile,1F4F7:camera,1F3A5:movie camera,1F3AC:clapper,1F4FA:tv,1F514:bell,1F6F0+FE0F:satellite,1F4F6:signal,1F465:people,1F464:person,1F5E3+FE0F:speaking'],
-    ['Docs', '1F4C4:page,1F4D1:tabs,1F4DA:books,1F4D6:open book,1F4D3:notebook,270F+FE0F:pencil,1F58A+FE0F:pen,1F58C+FE0F:brush,1F3A8:palette art,1F5BC+FE0F:picture,2702+FE0F:scissors,1F4CE:paperclip,1F5D2+FE0F:notepad,1F4C5:calendar,1F5D3+FE0F:calendar spiral,23F0:alarm clock'],
-    ['Science', '1F321+FE0F:thermometer,1F4A7:water drop,2744+FE0F:snowflake,2600+FE0F:sun,1F32A+FE0F:tornado,1F30A:wave,1F9CA:ice,269B+FE0F:atom,1F52D:telescope,1F9EB:petri dish,267B+FE0F:recycle'],
-    ['Fun', '1F3AE:game controller,1F3B2:dice,1F9E9:puzzle,1F3B0:slot machine,1F3B5:music,1F3A7:headphones,1F47E:alien game,1F6F8:ufo,1F9BE:mech arm,1F43A:wolf'],
-    ['Status', '2705:check,274C:cross,26A0+FE0F:warning,2757:exclamation,2753:question,2139+FE0F:info,1F504:refresh,2795:plus,2728:sparkles,1F6A7:construction,1F195:new,1F534:red,1F7E0:orange,1F7E2:green,1F535:blue,1F7E6:blue square,25B6+FE0F:play']
-  ].map(function (c) {
-    return { name: c[0], items: c[1].split(',').map(function (x) {
-      var p = x.split(':'); return { ch: String.fromCodePoint.apply(null, p[0].split('+').map(function (h) { return parseInt(h, 16); })), kw: p[1] };
-    }) };
-  });
-  function svgOf(p, size) { return '<svg viewBox="0 0 24 24" width="' + (size || 22) + '" height="' + (size || 22) + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; }
-
-  var db = { v: 2, sections: [], tools: [], org: null, spacing: null };
-  var editing = null, dragKey = null, lastPull = 0, rev = 0, BI = null, ORIG = {}, LBL = {}, chk = {}, pick = { tab: 'line', cat: 0, q: '' };
-
-  function q(s, r) { return (r || document).querySelector(s); }
-  function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-  function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
-  function toast(msg) {
-    var t = q('#ct-toast'); if (!t) { t = document.createElement('div'); t.id = 'ct-toast'; document.body.appendChild(t); }
-    t.textContent = msg; t.style.opacity = '1'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.opacity = '0'; }, 2600);
-  }
-  function defOrg() { return { secOrder: [], labels: {}, hiddenSecs: [], cardSec: {}, cardOrder: {}, hiddenCards: [] }; }
-  function defSpacing() { return { custom: false, cols: 'auto', minW: 270, gap: 12, secGap: 14, minH: 168, desc: true }; }
-  function norm(s) {
-    s = s || {}; var o = s.org || {}, sp = s.spacing || {}, d = defOrg(), ds = defSpacing(), k;
-    for (k in d) if (o[k] == null) o[k] = d[k];
-    for (k in ds) if (sp[k] == null) sp[k] = ds[k];
-    return {
-      v: 2,
-      sections: (Array.isArray(s.sections) ? s.sections : []).filter(function (x) { return x && x.id && x.label; }),
-      tools: (Array.isArray(s.tools) ? s.tools : []).filter(function (t) { return t && t.id && t.name && t.url; }),
-      org: o, spacing: sp
-    };
-  }
-  db = norm(db);
-  function resolveUrl(input) {
-    input = String(input || '').trim(); if (!input) return '';
-    try { var u = new URL(input, CT_BASE); return (u.protocol === 'https:' || u.protocol === 'http:') ? u.href : ''; } catch (e) { return ''; }
-  }
-  function iconHtml(v) {
-    v = String(v || '').trim();
-    if (!v) v = 'svg:wrench';
-    if (v.indexOf('svg:') === 0) { var p = LINE[v.slice(4)]; return p ? svgOf(p, 22) : esc(v); }
-    if (/^https?:\/\//i.test(v) || /\.(png|jpe?g|gif|svg|webp)(\?.*)?$/i.test(v)) {
-      var u = resolveUrl(v); if (u) return '<img src="' + esc(u) + '" alt="" style="width:100%;height:100%;object-fit:contain;padding:6px;box-sizing:border-box">';
-    }
-    return esc(v);
-  }
-
-  /* ------------------------------------------------------------ storage */
-  function loadLocal() { try { var s = JSON.parse(localStorage.getItem(CT_LS)); if (s) db = norm(s); } catch (e) {} }
-  async function save() {
-    try { localStorage.setItem(CT_LS, JSON.stringify(db)); } catch (e) {}
-    if (typeof sbSet !== 'function') { toast('Saved on this device only'); return; }
-    var r = await sbSet(CT_KEY, db);
-    if (!r) toast('Could not reach the server - saved on this device only');
-  }
-  async function pull(force) {
-    if (typeof sbGet !== 'function') return;
-    var now = Date.now(); if (!force && now - lastPull < 30000) return; lastPull = now;
-    var r0 = rev, d = await sbGet(CT_KEY);
-    if (rev !== r0) return;   /* an edit happened while fetching - never overwrite it with older data */
-    if (d && Array.isArray(d.tools)) {
-      db = norm(d); try { localStorage.setItem(CT_LS, JSON.stringify(db)); } catch (e) {}
-      refresh(); if (q('#ct-ov.on')) { renderList(); }
-    }
-  }
-
-  /* ------------------------------------------------------------ the cards that exist */
-  function capture() {
-    if (BI) return;
-    BI = []; var n = 0;
-    BUILTIN.forEach(function (b) {
-      ORIG[b.id] = b.label;
-      qa('#dsec-' + b.id + ' .mod-grid > .mod-card[data-mid]').forEach(function (c) { BI.push({ mid: c.getAttribute('data-mid'), sec: b.id, nat: n++ }); });
-    });
-  }
-  function biNode(b) { return q('#view-home .mod-card[data-mid="' + b.mid + '"]'); }
-  function items() {
-    capture(); var out = [];
-    BI.forEach(function (b) { var nd = biNode(b); if (!nd || nd.classList.contains('wt-gone') || b.mid === 'calendar') return;   /* calendar now lives on the home strip */ out.push({ key: 'b:' + b.mid, b: b, nat: b.nat, node: nd }); });
-    db.tools.forEach(function (t, i) { out.push({ key: 'c:' + t.id, t: t, nat: 1000 + i }); });
-    return out;
-  }
-  function itemInfo(it) {
-    if (it.t) return { name: it.t.name, icon: iconHtml(it.t.icon), custom: true };
-    var n = q('.mod-card-name', it.node), ic = q('.mod-card-icon', it.node);
-    return { name: n ? n.textContent.trim() : it.b.mid, icon: ic ? ic.innerHTML : '', custom: false };
-  }
-  function secIds() {
-    var known = BUILTIN.map(function (b) { return b.id; }).concat(db.sections.map(function (s) { return s.id; }), ['ext']);
-    var out = [];
-    db.org.secOrder.forEach(function (id) { if (known.indexOf(id) > -1 && out.indexOf(id) < 0) out.push(id); });
-    known.forEach(function (id) {
-      if (out.indexOf(id) > -1) return;
-      var e = out.indexOf('ext'); if (id !== 'ext' && e > -1) out.splice(e, 0, id); else out.push(id);
-    });
-    return out;
-  }
-  function placeIds() { return secIds().filter(function (id) { return id !== 'ext'; }); }
-  function secLabel(id) {
-    if (db.org.labels[id]) return db.org.labels[id];
-    if (id === 'ext') return 'External Tools';
-    var all = BUILTIN.concat(db.sections), i;
-    for (i = 0; i < all.length; i++) if (all[i].id === id) {
-      if (isCustomSec(id)) return all[i].label;
-      var lv = liveLabel(id); return lv && !LBL[id] ? lv : all[i].label;   /* what the dashboard shows today */
-    }
-    return 'Operations';
-  }
-  function isCustomSec(id) { return id.indexOf('cs_') === 0; }
-  function liveLabel(id) { var l = q('#dsec-' + id + ' .dash-section-lbl'), n = l && l.firstChild; return (n && n.nodeType === 3) ? n.nodeValue.trim() : null; }
-  function secOf(it) {
-    var ids = placeIds();
-    if (it.t) return ids.indexOf(it.t.section) > -1 ? it.t.section : 'ops';
-    var o = db.org.cardSec[it.key]; return (o && ids.indexOf(o) > -1) ? o : it.b.sec;
-  }
-  function arrangement() {
-    var m = {}; placeIds().forEach(function (s) { m[s] = []; });
-    items().forEach(function (it) { m[secOf(it)].push(it); });
-    Object.keys(m).forEach(function (s) {
-      var ord = db.org.cardOrder[s] || [];
-      m[s].forEach(function (it, i) { var p = ord.indexOf(it.key); it._p = p > -1 ? p : 100000 + it.nat + i * 0.0001; });
-      m[s].sort(function (a, b) { return a._p - b._p; });
-    });
-    return m;
-  }
-  function find(id) { for (var i = 0; i < db.tools.length; i++) if (db.tools[i].id === id) return db.tools[i]; return null; }
-  function isHiddenCard(it) {
-    if (db.org.hiddenCards.indexOf(it.key) > -1) return true;
-    return !!(it.node && it.node.classList.contains('hidden'));
-  }
-
-  /* ------------------------------------------------------------ dashboard paint */
-  function cardHtml(t, preview) {
-    var a = ACC[t.accent] || ACC.teal;
-    var tags = String(t.tags || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 4);
-    var th = tags.map(function (g, i) { return '<span class="mc-tag ' + (i === 0 ? 'mc-live' : 'mc-gray') + '">' + esc(g) + '</span>'; }).join('');
-    return '<div class="mod-card ' + a.cls + ' ct-card"' + (preview ? '' : ' data-ctid="' + esc(t.id) + '" role="button" tabindex="0"') + '>' +
-      (preview ? '' : '<button type="button" class="ct-edit" data-ctedit="' + esc(t.id) + '" title="Edit this card">\u270E</button>') +
-      '<div class="mod-card-icon" style="background:' + a.bg + '">' + iconHtml(t.icon) + '</div>' +
-      '<div class="mod-card-name">' + esc(t.name || 'Tool name') + '</div>' +
-      '<div class="mod-card-cat">' + esc(t.cat || '') + '</div>' +
-      '<div class="mod-card-desc">' + esc(t.desc || '') + '</div>' +
-      '<div class="mod-card-footer"><div class="mod-card-tags">' + th + '</div><span class="mod-card-arrow">' + (t.newTab ? 'Open \u2197' : 'Open \u2192') + '</span></div></div>';
-  }
-  function spacingCss() {
-    var s = db.spacing; if (!s.custom) return '';
-    var P = 'html body #view-home#view-home .dash-wrap .dash-section-block ', W = 'html body #view-home#view-home .dash-wrap';
-    var cols = s.cols === 'auto' ? 'repeat(auto-fill,minmax(' + s.minW + 'px,1fr))' : 'repeat(' + s.cols + ',minmax(0,1fr))';
-    var css = P + '.mod-grid{grid-template-columns:' + cols + '!important;gap:' + s.gap + 'px!important}' +
-      P + '.mod-card{min-height:' + s.minH + 'px!important}' + W + '{row-gap:' + s.secGap + 'px!important}';
-    if (!s.desc) css += P + '.mod-card-desc{display:none!important}';
-    if (s.cols !== 'auto') {
-      var n = +s.cols, f = function (c) { return P + '.mod-grid{grid-template-columns:repeat(' + c + ',minmax(0,1fr))!important}'; };
-      css += '@media(max-width:1100px){' + f(Math.min(n, 3)) + '}@media(max-width:760px){' + f(Math.min(n, 2)) + '}@media(max-width:520px){' + f(1) + '}';
-    }
-    return css;
-  }
-  function paint() {
-    capture();
-    var wrap = q('#view-home .dash-wrap'); if (!wrap) return;
-    qa('.ct-card').forEach(function (n) { if (!n.closest('#ct-ov')) n.parentNode.removeChild(n); });
-    var st = q('#ct-spacing-style'); if (!st) { st = document.createElement('style'); st.id = 'ct-spacing-style'; }
-    if (st.parentNode !== document.body || st.nextSibling) document.body.appendChild(st);   /* after the base styles, so spacing wins */
-    st.textContent = spacingCss();
-    /* custom section blocks: one per section, created once, removed when the section is deleted */
-    qa('.ct-sec').forEach(function (b) { if (!db.sections.some(function (s) { return 'dsec-' + s.id === b.id; })) b.parentNode.removeChild(b); });
-    var first = q('#dsec-web') || q('#dsec-ai') || q('#dsec-ops');
-    var anchorHost = first ? first.parentNode : wrap;
-    db.sections.forEach(function (s) {
-      if (q('#dsec-' + s.id)) return;
-      var blk = document.createElement('div'); blk.className = 'dash-section-block ct-sec'; blk.id = 'dsec-' + s.id;
-      blk.innerHTML = '<div class="dash-section-lbl">' + esc(s.label) + '</div><div class="mod-grid"></div>';
-      anchorHost.appendChild(blk);
-    });
-    /* order the section blocks */
-    var order = secIds(), blocks = order.map(function (id) { return q('#dsec-' + id); }).filter(Boolean);
-    if (blocks.length) {
-      var anchor = q('#ct-sec-anchor');
-      if (!anchor) { anchor = document.createElement('span'); anchor.id = 'ct-sec-anchor'; anchor.style.display = 'none'; blocks[0].parentNode.insertBefore(anchor, blocks[0]); }
-      var host = anchor.parentNode, frag = document.createDocumentFragment();
-      order.forEach(function (id) { var b = q('#dsec-' + id); if (b && b.parentNode === host) frag.appendChild(b); });
-      host.insertBefore(frag, anchor.nextSibling);
-    }
-    /* place cards */
-    var arr = arrangement();
-    Object.keys(arr).forEach(function (sid) {
-      var blk = q('#dsec-' + sid), grid = blk && q('.mod-grid', blk); if (!grid) return;
-      arr[sid].forEach(function (it) {
-        var node = it.node;
-        if (!node) { var d = document.createElement('div'); d.innerHTML = cardHtml(it.t); node = d.firstChild; }
-        grid.appendChild(node);
-        node.classList.toggle('ct-hide', db.org.hiddenCards.indexOf(it.key) > -1);
-      });
-      var lbl = q('.dash-section-lbl', blk);
-      if (lbl) {
-        var want = isCustomSec(sid) ? secLabel(sid) : (db.org.labels[sid] || null), tn = lbl.firstChild;
-        if (want) { LBL[sid] = 1; if (tn && tn.nodeType === 3) tn.nodeValue = want; else lbl.insertBefore(document.createTextNode(want), lbl.firstChild); }
-        else if (LBL[sid] && ORIG[sid] && tn && tn.nodeType === 3) { tn.nodeValue = ORIG[sid]; delete LBL[sid]; }
-      }
-      var any = qa('.mod-grid > .mod-card', blk).some(function (c) { return !c.classList.contains('hidden') && !c.classList.contains('ct-hide') && !c.classList.contains('wt-gone'); });
-      blk.style.display = (any && db.org.hiddenSecs.indexOf(sid) < 0) ? '' : 'none';
-    });
-    var ext = q('#dsec-ext'); if (ext) ext.classList.toggle('ct-hide', db.org.hiddenSecs.indexOf('ext') > -1);
-    ensureButtons();
-  }
-  var _rd = null;
-  function refresh() { if (_rd) { _rd(); } paint(); }
-  function ensureButtons() {
-    if (q('#ct-add-btn')) return;
-    var anchor = q('#view-home .showall-btn'); if (!anchor) return;
-    [['ct-add-btn', '+ Add Tool', function () { openManager(null); }], ['ct-org-btn', 'Organize', function () { openManager(null, true); }], ['ct-sp-btn', 'Spacing', function () { toggleSpacing(); }]].forEach(function (d) {
-      var b = document.createElement('button'); b.type = 'button'; b.id = d[0]; b.className = 'filter-btn'; b.textContent = d[1];
-      b.addEventListener('click', d[2]); anchor.parentNode.insertBefore(b, anchor);
-    });
-  }
-
-  /* ------------------------------------------------------------ viewer (same pattern as ERP / Support / Ghost) */
-  var OTHERS = ['erp-viewer', 'support-viewer', 'ghost-viewer', 'notes-viewer', 'sku-viewer', 'cal-viewer', 'ta-viewer', 'hb-viewer'];
-  function ensureViewer() {
-    if (q('#ct-viewer')) return true;
-    var hb = q('#hb-viewer') || q('#ta-viewer'); if (!hb) return false;
-    var v = document.createElement('div'); v.id = 'ct-viewer';
-    v.innerHTML = '<div id="ct-loading"><div class="erp-spinner"></div><div class="erp-loading-text" id="ct-loading-text">Loading&hellip;</div></div>' +
-      '<iframe id="ct-frame" title="Custom tool" allow="clipboard-write; fullscreen" allowfullscreen></iframe>';
-    hb.parentNode.insertBefore(v, hb.nextSibling); return true;
-  }
-  function openCustomTool(id) {
-    var t = find(id); if (!t) return;
-    var url = resolveUrl(t.url); if (!url) { toast('This tool has no valid link - edit the card'); return; }
-    if (t.newTab || !ensureViewer()) { window.open(url, '_blank', 'noopener'); return; }
-    var main = q('#cc-main'), viewer = q('#ct-viewer'), frame = q('#ct-frame'), loading = q('#ct-loading');
-    OTHERS.forEach(function (i) { var v = document.getElementById(i); if (v && v.classList.contains('active')) v.classList.remove('active'); });
-    if (main) main.style.display = 'none';
-    viewer.classList.add('active');
-    var origin = ''; try { origin = new URL(url).origin; } catch (e) {}
-    var trusted = CT_TRUST.test(origin);
-    if (frame.dataset.url !== url) {
-      if (loading) loading.classList.remove('hidden');
-      var lt = q('#ct-loading-text'); if (lt) lt.textContent = 'Loading ' + t.name + '\u2026';
-      if (trusted) frame.removeAttribute('sandbox'); else frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals');
-      frame.dataset.url = url; frame.dataset.tool = t.id; frame.title = t.name;
-      frame.onload = function () { if (loading) loading.classList.add('hidden'); sendAuth(); };
-      frame.src = url;
-    } else if (loading) { loading.classList.add('hidden'); sendAuth(); }
-    var bc = q('#cc-breadcrumb'); if (bc) bc.classList.add('visible');
-    var lbl = q('#cc-bc-label'); if (lbl) lbl.textContent = t.name;
-    var acts = q('#cc-bc-actions');
-    if (acts) acts.innerHTML = '<button class="cc-bc-btn" onclick="closeCustomTool()" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> ' + esc(t.name) + '</span></button>';
-    setTimeout(function () { if (loading) loading.classList.add('hidden'); }, 4000);
-  }
-  function closeCustomTool() {
-    var main = q('#cc-main'), viewer = q('#ct-viewer'), bc = q('#cc-breadcrumb');
-    if (main) main.style.display = '';
-    if (viewer) viewer.classList.remove('active');
-    if (bc) bc.classList.remove('visible');
-    var acts = q('#cc-bc-actions'); if (acts) acts.innerHTML = '';
-    if (window.__ctRestoreBar) window.__ctRestoreBar();
-  }
-  function sendAuth() {
-    var f = q('#ct-frame'); if (!f || !f.contentWindow || !f.dataset.url) return;
-    var origin; try { origin = new URL(f.dataset.url).origin; } catch (e) { return; }
-    if (!CT_TRUST.test(origin)) return;
-    var sess = (typeof _getSession === 'function') ? _getSession() : null;
-    if (!sess || !sess.email) return;
-    try {
-      f.contentWindow.postMessage({ type: 'tgk-identity', email: sess.email, name: String(sess.email).split('@')[0] }, origin);
-      if (sess.access_token) f.contentWindow.postMessage({ source: 'TGK_CC', type: 'AUTH_TOKEN', access_token: sess.access_token, refresh_token: sess.refresh_token || '', email: sess.email }, origin);
-    } catch (e) {}
-  }
-  window.addEventListener('message', function (e) {
-    var f = q('#ct-frame'); if (!f || !e || e.source !== f.contentWindow) return;
-    if (e.data && e.data.type === 'tgk-tool-ready') { var l = q('#ct-loading'); if (l) l.classList.add('hidden'); sendAuth(); }
-  });
-
-  /* ------------------------------------------------------------ checks: does each card open? */
-  async function ping(url) {
-    var ctl = ('AbortController' in window) ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 9000);
-    try {
-      var r = await fetch(url, { method: 'HEAD', cache: 'no-store', signal: ctl && ctl.signal });
-      if (r.status === 405 || r.status === 501) r = await fetch(url, { method: 'GET', cache: 'no-store', signal: ctl && ctl.signal });
-      clearTimeout(to);
-      return r.ok ? { ok: true, msg: 'Loads (HTTP ' + r.status + ')' } : { ok: false, msg: 'HTTP ' + r.status + (r.status === 404 ? ' - file not found at ' + url : ' - the server refused it') };
-    } catch (e) {
-      try { await fetch(url, { mode: 'no-cors', cache: 'no-store', signal: ctl && ctl.signal }); clearTimeout(to); return { ok: true, msg: 'Reachable (this site does not let the dashboard read its status)' }; }
-      catch (e2) { clearTimeout(to); return { ok: false, msg: 'Could not reach ' + url }; }
-    }
-  }
-  function builtinTarget(it) {
-    var oc = it.node.getAttribute('onclick') || '', m = /^\s*([A-Za-z_$][\w$]*)\s*\(\s*(?:'([^']*)')?/.exec(oc);
-    if (!m) return { ok: false, msg: 'This card has no click action' };
-    var fn = m[1], arg = m[2];
-    if (fn === 'showView') return document.getElementById('view-' + arg) ? { ok: true, msg: 'Opens the built-in "' + arg + '" screen' } : { ok: false, msg: 'Screen "view-' + arg + '" is missing' };
-    if (typeof window[fn] !== 'function') return { ok: false, msg: 'Function ' + fn + '() is missing' };
-    if (OPEN_URL[fn]) { var u = window[OPEN_URL[fn]]; return u ? { ok: true, url: u, msg: 'Opens ' + u } : { ok: false, msg: OPEN_URL[fn] + ' is not set' }; }
-    return { ok: true, msg: 'Opens via ' + fn + '()' };
-  }
-  async function checkAll() {
-    var list = items(), btn = q('#ct-chk-btn'), done = 0, bad = 0;
-    if (btn) { btn.disabled = true; btn.textContent = 'Checking\u2026'; }
-    chk = {};
-    await Promise.all(list.map(async function (it) {
-      var r;
-      if (it.t) {
-        var u = resolveUrl(it.t.url);
-        r = u ? await ping(u) : { ok: false, msg: 'Not a valid file name or link' };
-      } else {
-        r = builtinTarget(it);
-        if (r.ok && r.url) { var p = await ping(r.url); r = { ok: p.ok, msg: p.ok ? r.msg + ' - ' + p.msg : p.msg }; }
-      }
-      chk[it.key] = r; done++; if (!r.ok) bad++;
-    }));
-    if (btn) { btn.disabled = false; btn.textContent = 'Check all tools'; }
-    renderList();
-    var s = q('#ct-chk-sum'); if (s) s.textContent = bad ? (bad + ' of ' + done + ' need attention - hover the red marks') : ('All ' + done + ' tools respond');
-  }
-
-  /* ------------------------------------------------------------ organizer (left pane) */
-  function renderList() {
-    var el = q('#ct-list'); if (!el) return;
-    var arr = arrangement(), order = secIds(), h = '';
-    h += '<div class="ct-btns" style="margin:0 0 6px"><button type="button" class="ct-btn" id="ct-chk-btn" data-act="check">Check all tools</button>' +
-      '<button type="button" class="ct-btn" data-act="spacing">Spacing\u2026</button><button type="button" class="ct-btn" data-act="addsec">+ New category</button></div>' +
-      '<div class="f-hint" id="ct-chk-sum" style="margin:0 0 4px"></div>' +
-      '<div class="ct-h">All tools &middot; drag to reorder, or drop on a category</div>';
-    order.forEach(function (sid) {
-      var custom = isCustomSec(sid), hidden = db.org.hiddenSecs.indexOf(sid) > -1;
-      h += '<div class="ct-grp-h' + (hidden ? ' off' : '') + '" data-sec="' + esc(sid) + '"><span class="ct-gt">' + esc(secLabel(sid)) + '</span><span class="ct-gn">' + (arr[sid] ? arr[sid].length : '') + '</span>' +
-        '<button type="button" class="ct-ib" data-act="secup" data-id="' + esc(sid) + '" title="Move category up">\u25B2</button>' +
-        '<button type="button" class="ct-ib" data-act="secdn" data-id="' + esc(sid) + '" title="Move category down">\u25BC</button>' +
-        '<button type="button" class="ct-ib" data-act="secvis" data-id="' + esc(sid) + '" title="Show or hide this whole category">' + (hidden ? 'Show' : 'Hide') + '</button>' +
-        (sid === 'ext' ? '' : '<button type="button" class="ct-ib" data-act="secren" data-id="' + esc(sid) + '" title="Rename">\u270E</button>') +
-        (custom ? '<button type="button" class="ct-ib del" data-act="secdel" data-id="' + esc(sid) + '" title="Delete category">\u2715</button>' : '') + '</div>';
-      if (sid === 'ext') { h += '<div class="ct-empty">Your pinned Toolbox links (managed in Toolbox)</div>'; return; }
-      if (!arr[sid].length) h += '<div class="ct-empty">Empty - drop a tool here</div>';
-      arr[sid].forEach(function (it) {
-        var inf = itemInfo(it), hid = isHiddenCard(it), c = chk[it.key];
-        h += '<div class="ct-row' + (hid ? ' off' : '') + '" draggable="true" data-key="' + esc(it.key) + '"><span class="ct-gr" title="Drag">\u283F</span><span class="ct-ico">' + inf.icon + '</span>' +
-          '<span class="ct-nm">' + esc(inf.name) + (inf.custom ? '<small>' + esc(it.t.url) + '</small>' : '<small>built-in</small>') + '</span>' +
-          (c ? '<span class="ct-st ' + (c.ok ? 'ok' : 'bad') + '" title="' + esc(c.msg) + '">' + (c.ok ? '\u2713' : '\u2717') + '</span>' : '') +
-          '<button type="button" class="ct-ib" data-act="up" data-id="' + esc(it.key) + '" title="Move up">\u25B2</button>' +
-          '<button type="button" class="ct-ib" data-act="dn" data-id="' + esc(it.key) + '" title="Move down">\u25BC</button>' +
-          '<button type="button" class="ct-ib" data-act="vis" data-id="' + esc(it.key) + '" title="Show or hide on the dashboard">' + (hid ? 'Show' : 'Hide') + '</button>' +
-          '<button type="button" class="ct-ib" data-act="open" data-id="' + esc(it.key) + '" title="Close this window and open the tool to make sure it works">Open</button>' +
-          (inf.custom ? '<button type="button" class="ct-ib" data-act="edit" data-id="' + esc(it.key) + '" title="Edit">\u270E</button><button type="button" class="ct-ib del" data-act="del" data-id="' + esc(it.key) + '" title="Delete">\u2715</button>' : '') + '</div>';
-      });
-    });
-    h += '<div class="ct-btns"><button type="button" class="ct-btn" data-act="reset">Reset arrangement</button></div>';
-    var keep = el.scrollTop; el.innerHTML = h; el.scrollTop = keep;
-    var sum = q('#ct-chk-sum'); if (sum && Object.keys(chk).length) { var bad = Object.keys(chk).filter(function (k) { return !chk[k].ok; }).length; sum.textContent = bad ? bad + ' need attention - hover the red marks' : 'All ' + Object.keys(chk).length + ' tools respond'; }
-  }
-  function writeOrder(arr) {   /* freeze the current arrangement (keys only) */
-    var co = {}; Object.keys(arr).forEach(function (s) { co[s] = arr[s].map(function (it) { return it.key; }); });
-    db.org.cardOrder = co;
-  }
-  function moveCard(key, beforeKey, sec) {
-    var arr = arrangement(), moved = null;
-    Object.keys(arr).forEach(function (s) { arr[s] = arr[s].filter(function (it) { if (it.key === key) { moved = it; return false; } return true; }); });
-    if (!moved) return;
-    var target = sec;
-    if (beforeKey) Object.keys(arr).forEach(function (s) { arr[s].forEach(function (it) { if (it.key === beforeKey) target = s; }); });
-    var list = arr[target], idx = list.length;
-    if (beforeKey) list.forEach(function (it, i) { if (it.key === beforeKey) idx = i; });
-    list.splice(idx, 0, moved);
-    if (moved.t) moved.t.section = target; else if (target === moved.b.sec) delete db.org.cardSec[moved.key]; else db.org.cardSec[moved.key] = target;
-    writeOrder(arr);
-  }
-  function nudge(key, dir) {
-    var arr = arrangement(), s, i;
-    for (s in arr) { i = -1; arr[s].forEach(function (it, k) { if (it.key === key) i = k; }); if (i < 0) continue;
-      var j = i + dir; if (j < 0 || j >= arr[s].length) return; var t = arr[s][i]; arr[s][i] = arr[s][j]; arr[s][j] = t; writeOrder(arr); return; }
-  }
-  function secNudge(id, dir) {
-    var o = secIds(), i = o.indexOf(id), j = i + dir; if (i < 0 || j < 0 || j >= o.length) return;
-    var t = o[i]; o[i] = o[j]; o[j] = t; db.org.secOrder = o;
-  }
-  async function commit() { await save(); refresh(); renderList(); }
-
-  /* ------------------------------------------------------------ form (right pane) + icon picker */
-  function formData() {
-    var v = function (id) { var n = q('#ct-f-' + id); return n ? n.value : ''; };
-    var acc = q('#ct-ov input[name="ct-acc"]:checked');
-    return { name: v('name').trim(), url: v('url').trim(), icon: v('icon').trim(), cat: v('cat').trim(), desc: v('desc').trim(), tags: v('tags').trim(),
-      accent: acc ? acc.value : 'teal', section: v('sec'), newSec: v('newsec').trim(), newTab: !!(q('#ct-f-tab') && q('#ct-f-tab').checked) };
-  }
-  function pickerHtml() {
-    var tabs = [['line', 'Line icons'], ['emoji', 'Emoji'], ['image', 'Image']].map(function (t) { return '<button type="button" class="ct-chip' + (pick.tab === t[0] ? ' on' : '') + '" data-ptab="' + t[0] + '">' + t[1] + '</button>'; }).join('');
-    var h = '<div class="f-row" style="gap:6px">' + tabs + '<input class="f-in" id="ct-pick-q" placeholder="Search icons" style="flex:1;min-width:90px;padding:5px 8px" value="' + esc(pick.q) + '"></div>';
-    if (pick.tab === 'emoji') h += '<div class="f-row" style="gap:4px;margin-top:6px">' + EMOJI.map(function (c, i) { return '<button type="button" class="ct-chip sm' + (pick.cat === i ? ' on' : '') + '" data-pcat="' + i + '">' + esc(c.name) + '</button>'; }).join('') + '</div>';
-    h += '<div class="ct-pick-grid" id="ct-pick-grid">' + pickGrid() + '</div>';
-    return h;
-  }
-  function pickGrid() {
-    var s = pick.q.trim().toLowerCase();
-    if (pick.tab === 'image') return '<div class="f-hint" style="padding:6px">Type a picture into the Icon box above: a file in the GitHub repo (<b>icons/flow.png</b>) or a full link. PNG, SVG, JPG or WebP. It is shown inside the icon square.</div>';
-    if (pick.tab === 'line') {
-      var ks = Object.keys(LINE).filter(function (k) { return !s || k.indexOf(s) > -1; });
-      return ks.map(function (k) { return '<button type="button" class="ct-pk" data-pick="svg:' + k + '" title="' + k + '">' + svgOf(LINE[k], 22) + '</button>'; }).join('') || '<div class="ct-empty">No match</div>';
-    }
-    var list = [];
-    if (s) EMOJI.forEach(function (c) { c.items.forEach(function (x) { if (x.kw.indexOf(s) > -1) list.push(x); }); }); else list = EMOJI[pick.cat].items;
-    return list.map(function (x) { return '<button type="button" class="ct-pk em" data-pick="' + esc(x.ch) + '" title="' + esc(x.kw) + '">' + esc(x.ch) + '</button>'; }).join('') || '<div class="ct-empty">No match</div>';
-  }
-  function renderForm(t) {
-    var el = q('#ct-form'); if (!el) return;
-    t = t || { name: '', url: '', icon: 'svg:wrench', cat: '', desc: '', tags: 'Live', accent: 'teal', section: 'ops', newTab: false };
-    var ids = placeIds(), cur = ids.indexOf(t.section) > -1 ? t.section : 'ops';
-    var opts = ids.map(function (id) { return '<option value="' + esc(id) + '"' + (cur === id ? ' selected' : '') + '>' + esc(secLabel(id)) + '</option>'; }).join('');
-    var sw = Object.keys(ACC).map(function (k) { return '<label title="' + k + '"><input type="radio" name="ct-acc" value="' + k + '"' + ((t.accent || 'teal') === k ? ' checked' : '') + '><span style="background:' + ACC[k].sw + '"></span></label>'; }).join('');
-    el.innerHTML = '<div class="ct-h">' + (editing ? 'Edit tool' : 'Add a tool') + '</div>' +
-      '<label class="f">Name</label><input class="f-in" id="ct-f-name" maxlength="40" value="' + esc(t.name) + '" placeholder="Quote Builder">' +
-      '<label class="f">File name or link</label><input class="f-in" id="ct-f-url" value="' + esc(t.url) + '" placeholder="tgk_quote_builder.html">' +
-      '<div class="f-hint" id="ct-url-hint"></div>' +
-      '<label class="f">Icon</label><input class="f-in" id="ct-f-icon" maxlength="120" value="' + esc(t.icon) + '" placeholder="pick below, or paste an emoji / image link">' +
-      '<div class="ct-picker" id="ct-picker">' + pickerHtml() + '</div>' +
-      '<label class="f">Subtitle</label><input class="f-in" id="ct-f-cat" maxlength="60" value="' + esc(t.cat) + '" placeholder="Sales &middot; Quotes &middot; Supabase">' +
-      '<label class="f">Description</label><textarea class="f-in" id="ct-f-desc" maxlength="220" placeholder="One or two sentences about what it does.">' + esc(t.desc) + '</textarea>' +
-      '<label class="f">Tags (comma separated, first one is highlighted)</label><input class="f-in" id="ct-f-tags" maxlength="60" value="' + esc(t.tags) + '">' +
-      '<label class="f">Color</label><div class="ct-sw">' + sw + '</div>' +
-      '<label class="f">Category</label><select class="f-in" id="ct-f-sec">' + opts + '<option value="__new">+ New category&hellip;</option></select>' +
-      '<input class="f-in" id="ct-f-newsec" maxlength="40" placeholder="New category name" style="display:none;margin-top:6px">' +
-      '<label class="f" style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:12.5px"><input type="checkbox" id="ct-f-tab"' + (t.newTab ? ' checked' : '') + '> Open in a new browser tab instead (use this if the tool will not load inside the Command Center)</label>' +
-      '<div class="ct-h" style="margin-top:14px">Card preview</div><div class="ct-prev"><div class="mod-grid" id="ct-prev"></div></div>' +
-      '<div class="ct-err" id="ct-err"></div>' +
-      '<div class="ct-btns"><button type="button" class="ct-btn pri" data-act="save">' + (editing ? 'Save changes' : 'Add to dashboard') + '</button>' +
-      '<button type="button" class="ct-btn" data-act="test">Test link</button>' +
-      (editing ? '<button type="button" class="ct-btn" data-act="cancel">Cancel edit</button>' : '') + '</div>';
-    updatePreview();
-  }
-  function updatePreview() {
-    var d = formData(), h = q('#ct-url-hint'), p = q('#ct-prev');
-    if (h) { var u = resolveUrl(d.url); h.textContent = d.url ? (u ? 'Opens: ' + u : 'That is not a valid file name or link') : 'Just the file name works for files in the Command Center GitHub repo (served from command.tgkmotorsport.com).'; }
-    if (p) p.innerHTML = cardHtml({ name: d.name, icon: d.icon, cat: d.cat, desc: d.desc, tags: d.tags, accent: d.accent, newTab: d.newTab }, true);
-    var ns = q('#ct-f-newsec'); if (ns) ns.style.display = d.section === '__new' ? '' : 'none';
-  }
-
-  /* ------------------------------------------------------------ manager modal + actions */
-  function openManager(id, organize) {
-    var ov = q('#ct-ov');
-    if (!ov) {
-      ov = document.createElement('div'); ov.id = 'ct-ov';
-      ov.innerHTML = '<div class="ct-modal" role="dialog" aria-modal="true" aria-label="Organize tools"><div class="ct-hd"><div class="ct-hd-t">Tools &amp; Dashboard Layout</div><button type="button" class="ct-x" data-act="close" aria-label="Close">\u2715</button></div><div class="ct-body"><div class="ct-list" id="ct-list"></div><div class="ct-form" id="ct-form"></div></div></div>';
-      document.body.appendChild(ov); wire(ov);
-    }
-    var sp = q('#ct-lay'); if (sp) sp.classList.remove('on');
-    editing = id || null; ov.classList.add('on'); renderList(); renderForm(editing ? find(editing) : null);
-    ov.classList.toggle('org', !!organize);
-    pull(true);
-  }
-  function closeManager() { var ov = q('#ct-ov'); if (ov) ov.classList.remove('on'); editing = null; }
-  function toggleHide(key) {
-    var it = items().filter(function (x) { return x.key === key; })[0]; if (!it) return;
-    if (isHiddenCard(it)) {
-      var i = db.org.hiddenCards.indexOf(key); if (i > -1) db.org.hiddenCards.splice(i, 1);
-      if (it.b && it.node && it.node.classList.contains('hidden') && typeof layout !== 'undefined' && layout && layout.visible && layout.visible.indexOf(it.b.mid) < 0) {
-        layout.visible.push(it.b.mid); try { saveLayout(); } catch (e) {}
-      }
-    } else db.org.hiddenCards.push(key);
-  }
-  function openCard(key) {
-    closeManager();
-    if (key.indexOf('c:') === 0) return openCustomTool(key.slice(2));
-    var it = items().filter(function (x) { return x.key === key; })[0]; if (it && it.node) it.node.click();
-  }
-  function showErr(m) { var e = q('#ct-err'); if (e) e.textContent = m || ''; }
-  async function onAction(act, id) {
-    var t; rev++;
-    if (act === 'close') return closeManager();
-    if (act === 'edit') { editing = id.slice(2); renderForm(find(editing)); var f = q('#ct-form'); if (f) f.scrollTop = 0; return; }
-    if (act === 'cancel') { editing = null; renderForm(null); return; }
-    if (act === 'up' || act === 'dn') { nudge(id, act === 'up' ? -1 : 1); return commit(); }
-    if (act === 'vis') { toggleHide(id); return commit(); }
-    if (act === 'open') return openCard(id);
-    if (act === 'check') return checkAll();
-    if (act === 'spacing') return toggleSpacing();
-    if (act === 'del') {
-      t = find(id.slice(2)); if (!t || !window.confirm('Delete "' + t.name + '" from the dashboard? The file in GitHub is not touched.')) return;
-      db.tools.splice(db.tools.indexOf(t), 1); delete chk[id];
-      Object.keys(db.org.cardOrder).forEach(function (s) { db.org.cardOrder[s] = db.org.cardOrder[s].filter(function (k) { return k !== id; }); });
-      if (editing === t.id) { editing = null; renderForm(null); } return commit();
-    }
-    if (act === 'addsec') {
-      var nm = window.prompt('New category name:'); nm = nm && nm.trim(); if (!nm) return;
-      db.sections.push({ id: uid('cs_'), label: nm.slice(0, 40) }); renderForm(editing ? find(editing) : null); return commit();
-    }
-    if (act === 'secup' || act === 'secdn') { secNudge(id, act === 'secup' ? -1 : 1); return commit(); }
-    if (act === 'secvis') { var hi = db.org.hiddenSecs.indexOf(id); if (hi > -1) db.org.hiddenSecs.splice(hi, 1); else db.org.hiddenSecs.push(id); return commit(); }
-    if (act === 'secren') {
-      var n2 = window.prompt('Rename category (leave empty to restore the original name):', secLabel(id)); if (n2 == null) return; n2 = n2.trim().slice(0, 40);
-      if (isCustomSec(id)) { var s = db.sections.filter(function (x) { return x.id === id; })[0]; if (!s || !n2) return; s.label = n2; }
-      else if (n2) db.org.labels[id] = n2; else delete db.org.labels[id];
-      renderForm(editing ? find(editing) : null); return commit();
-    }
-    if (act === 'secdel') {
-      var sc = db.sections.filter(function (x) { return x.id === id; })[0]; if (!sc) return;
-      var n = db.tools.filter(function (x) { return x.section === id; }).length;
-      if (!window.confirm('Delete the category "' + sc.label + '"?' + (n ? ' Its ' + n + ' tool(s) move to Operations.' : ''))) return;
-      db.tools.forEach(function (x) { if (x.section === id) x.section = 'ops'; });
-      db.sections = db.sections.filter(function (x) { return x.id !== id; });
-      db.org.secOrder = db.org.secOrder.filter(function (x) { return x !== id; }); delete db.org.cardOrder[id]; delete db.org.labels[id];
-      db.org.hiddenSecs = db.org.hiddenSecs.filter(function (x) { return x !== id; });
-      renderForm(editing ? find(editing) : null); return commit();
-    }
-    if (act === 'reset') {
-      if (!window.confirm('Put every built-in card and category back in its original place, order and name? Your custom tools stay.')) return;
-      var keepSec = db.org; db.org = defOrg(); void keepSec; return commit();
-    }
-    if (act === 'test') { var u = resolveUrl(formData().url); if (u) window.open(u, '_blank', 'noopener'); else showErr('Enter a valid file name or link first.'); return; }
-    if (act === 'save') return saveForm();
-  }
-  async function saveForm() {
-    var d = formData(); rev++;
-    if (!d.name) return showErr('Give the tool a name.');
-    if (!resolveUrl(d.url)) return showErr('Enter the file name (like my_tool.html) or a full https link.');
-    var sec = d.section;
-    if (sec === '__new') {
-      if (!d.newSec) return showErr('Type a name for the new category.');
-      var ex = db.sections.filter(function (s) { return s.label.toLowerCase() === d.newSec.toLowerCase(); })[0];
-      if (ex) sec = ex.id; else { sec = uid('cs_'); db.sections.push({ id: sec, label: d.newSec }); }
-    }
-    var t = editing ? find(editing) : null;
-    if (!t) { t = { id: uid('ct') }; db.tools.push(t); }
-    t.name = d.name; t.url = d.url; t.icon = d.icon || 'svg:wrench'; t.cat = d.cat; t.desc = d.desc; t.tags = d.tags; t.accent = d.accent; t.section = sec; t.newTab = d.newTab;
-    editing = null; await save(); refresh(); renderList(); renderForm(null);
-    showErr(''); toast('Saved: ' + t.name);
-  }
-  function wire(ov) {
-    ov.addEventListener('click', function (e) {
-      if (e.target === ov) return closeManager();
-      var x = e.target.closest && e.target.closest('[data-ptab]'); if (x) { pick.tab = x.getAttribute('data-ptab'); rePick(); return; }
-      x = e.target.closest && e.target.closest('[data-pcat]'); if (x) { pick.cat = +x.getAttribute('data-pcat'); pick.q = ''; rePick(); return; }
-      x = e.target.closest && e.target.closest('[data-pick]'); if (x) { var i = q('#ct-f-icon'); if (i) { i.value = x.getAttribute('data-pick'); updatePreview(); } return; }
-      var b = e.target.closest && e.target.closest('[data-act]'); if (b) onAction(b.getAttribute('data-act'), b.getAttribute('data-id'));
-    });
-    ov.addEventListener('input', function (e) {
-      if (e.target.id === 'ct-pick-q') { pick.q = e.target.value; var g = q('#ct-pick-grid'); if (g) g.innerHTML = pickGrid(); return; }
-      if (e.target.closest && e.target.closest('#ct-form')) updatePreview();
-    });
-    ov.addEventListener('change', function (e) { if (e.target.closest && e.target.closest('#ct-form')) updatePreview(); });
-    ov.addEventListener('dragstart', function (e) {
-      var r = e.target.closest && e.target.closest('.ct-row'); if (!r) return; dragKey = r.getAttribute('data-key');
-      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragKey); } catch (x) {} r.classList.add('drag');
-    });
-    ov.addEventListener('dragend', function () { dragKey = null; qa('.ct-row,.ct-grp-h', ov).forEach(function (n) { n.classList.remove('drag', 'over'); }); });
-    ov.addEventListener('dragover', function (e) {
-      if (!dragKey) return; var tg = e.target.closest && e.target.closest('.ct-row,.ct-grp-h'); if (!tg) return;
-      e.preventDefault(); qa('.over', ov).forEach(function (n) { n.classList.remove('over'); }); tg.classList.add('over');
-    });
-    ov.addEventListener('drop', function (e) {
-      if (!dragKey) return; e.preventDefault();
-      var row = e.target.closest && e.target.closest('.ct-row'), hdr = e.target.closest && e.target.closest('.ct-grp-h');
-      rev++;
-      if (row && row.getAttribute('data-key') !== dragKey) moveCard(dragKey, row.getAttribute('data-key'));
-      else if (hdr && hdr.getAttribute('data-sec') !== 'ext') moveCard(dragKey, null, hdr.getAttribute('data-sec'));
-      dragKey = null; commit();
-    });
-  }
-  function rePick() { var p = q('#ct-picker'); if (p) p.innerHTML = pickerHtml(); }
-
-  /* ------------------------------------------------------------ spacing panel (floats over the live dashboard) */
-  var spTimer = null;
-  function spacingDefaults() {
-    var g = q('#view-home .dash-section-block .mod-grid'), w = q('#view-home .dash-wrap'), c = q('#view-home .mod-card:not(.ct-hide)'), s = db.spacing;
-    if (s.custom) return;
-    try {
-      if (g) s.gap = Math.round(parseFloat(getComputedStyle(g).columnGap)) || s.gap;
-      if (w) s.secGap = Math.round(parseFloat(getComputedStyle(w).rowGap)) || s.secGap;
-      if (c) s.minH = Math.round(parseFloat(getComputedStyle(c).minHeight)) || 0;
-    } catch (e) {}
-  }
-  function buildSpacing() {
-    var p = q('#ct-lay');
-    if (!p) {
-      p = document.createElement('div'); p.id = 'ct-lay'; document.body.appendChild(p);
-      p.addEventListener('input', function () { readSpacing(); });
-      p.addEventListener('change', function () { readSpacing(); });
-      p.addEventListener('click', function (e) {
-        var b = e.target.closest && e.target.closest('[data-sp]'); if (!b) return; var a = b.getAttribute('data-sp');
-        if (a === 'done') { p.classList.remove('on'); return; }
-        if (a === 'open') { p.classList.remove('on'); openManager(null, true); return; }
-        rev++;
-        if (a === 'reset') db.spacing = defSpacing();
-        else if (a === 'compact') db.spacing = { custom: true, cols: 'auto', minW: 220, gap: 8, secGap: 8, minH: 0, desc: true };
-        else if (a === 'roomy') db.spacing = { custom: true, cols: 'auto', minW: 320, gap: 20, secGap: 28, minH: 190, desc: true };
-        spacingDefaults(); fillSpacing(); applySpacing(true);
-      });
-    }
-    spacingDefaults();
-    p.innerHTML = '<div class="lay-hd"><b>Dashboard spacing</b><button type="button" class="ct-ib" data-sp="done">Done</button></div>' +
-      '<div class="lay-pre"><button type="button" class="ct-ib" data-sp="compact">Compact</button><button type="button" class="ct-ib" data-sp="roomy">Roomy</button><button type="button" class="ct-ib" data-sp="reset">Original</button></div>' +
-      '<label class="lay-r">Cards per row<select id="sp-cols"><option value="auto">Auto (fit to width)</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>' +
-      sl('minW', 'Card width (Auto only)', 180, 420) + sl('gap', 'Gap between cards', 0, 32) + sl('secGap', 'Space between categories', 0, 64) + sl('minH', 'Card height (0 = fit text)', 0, 260) +
-      '<label class="lay-r chk"><input type="checkbox" id="sp-desc"> Show card descriptions</label>' +
-      '<div class="lay-pre" style="margin-top:8px"><button type="button" class="ct-ib" data-sp="open">Organize tools\u2026</button></div>';
-    fillSpacing();
-  }
-  function sl(id, label, mn, mx) { return '<label class="lay-r">' + label + '<span class="lay-v" id="spv-' + id + '"></span><input type="range" id="sp-' + id + '" min="' + mn + '" max="' + mx + '" step="1"></label>'; }
-  function fillSpacing() {
-    var s = db.spacing, set = function (id, v) { var n = q('#sp-' + id); if (n) n.value = v; var o = q('#spv-' + id); if (o) o.textContent = v + 'px'; };
-    var c = q('#sp-cols'); if (c) c.value = String(s.cols);
-    set('minW', s.minW); set('gap', s.gap); set('secGap', s.secGap); set('minH', s.minH);
-    var d = q('#sp-desc'); if (d) d.checked = !!s.desc;
-    var m = q('#sp-minW'); if (m) m.disabled = s.cols !== 'auto';
-  }
-  function readSpacing() {
-    var g = function (id) { var n = q('#sp-' + id); return n ? n.value : ''; };
-    rev++;
-    db.spacing = { custom: true, cols: g('cols') || 'auto', minW: +g('minW'), gap: +g('gap'), secGap: +g('secGap'), minH: +g('minH'), desc: !!(q('#sp-desc') && q('#sp-desc').checked) };
-    fillSpacing(); applySpacing(false);
-  }
-  function applySpacing(now) {
-    var st = q('#ct-spacing-style'); if (st) st.textContent = spacingCss();
-    clearTimeout(spTimer); spTimer = setTimeout(function () { save(); }, now ? 0 : 700);
-  }
-  function toggleSpacing() {
-    var p = q('#ct-lay'); if (p && p.classList.contains('on')) { p.classList.remove('on'); return; }
-    closeManager(); buildSpacing(); q('#ct-lay').classList.add('on');
-  }
-
-  /* ------------------------------------------------------------ events + wiring into the existing page */
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { hideFly(0); if (q('#ct-ov.on')) closeManager(); else { var p = q('#ct-lay.on'); if (p) p.classList.remove('on'); } } });
-  document.addEventListener('click', function (e) {
-    var ed = e.target.closest && e.target.closest('[data-ctedit]');
-    if (ed) { e.preventDefault(); e.stopPropagation(); openManager(ed.getAttribute('data-ctedit')); return; }
-    var c = e.target.closest && e.target.closest('.ct-card[data-ctid]'); if (c) openCustomTool(c.getAttribute('data-ctid'));
-  });
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    var c = e.target.closest && e.target.closest('.ct-card[data-ctid]'); if (c && e.target === c) { e.preventDefault(); openCustomTool(c.getAttribute('data-ctid')); }
-  });
-  /* the dashboard's own drag-to-reorder: remember the new order so it survives a refresh */
-  document.addEventListener('drop', function (e) {
-    if (!(e.target.closest && e.target.closest('#view-home .mod-card'))) return;
-    setTimeout(function () {
-      var co = db.org.cardOrder || {}, changed = false;
-      placeIds().forEach(function (sid) {
-        var blk = q('#dsec-' + sid); if (!blk) return;
-        var keys = qa('.mod-grid > .mod-card', blk).map(function (c) { return c.getAttribute('data-mid') ? 'b:' + c.getAttribute('data-mid') : (c.getAttribute('data-ctid') ? 'c:' + c.getAttribute('data-ctid') : null); }).filter(Boolean);
-        if (JSON.stringify(co[sid] || []) !== JSON.stringify(keys)) { co[sid] = keys; changed = true; }
-      });
-      if (changed) { rev++; db.org.cardOrder = co; save(); }
-    }, 0);
-  });
-  /* ------------------------------------------------------------ same breadcrumb + Close on every module */
-  var VIEW_LABEL = { launch: 'Product Launch', box: 'Box Selector', social: 'Social Engine', ideas: 'Idea Generator', fbgroups: 'FB Group Finder',
-    toolbox: 'Toolbox', arcade: 'Arcade', fitment: 'Fitment', projects: 'Projects' };
-  function nativeBar(name) {
-    if (!name || name === 'home') return;
-    var lbl = q('#cc-breadcrumb #cc-bc-label'), acts = q('#cc-bc-actions'), bc = q('#cc-breadcrumb'); if (!acts || !bc) return;
-    var cur = lbl ? lbl.textContent.trim() : '';
-    if (lbl && (VIEW_LABEL[name] || !cur || cur.toLowerCase() === name.toLowerCase())) lbl.textContent = VIEW_LABEL[name] || (name.charAt(0).toUpperCase() + name.slice(1));
-    acts.innerHTML = '<button class="cc-bc-btn" onclick="showView(\'home\')" style="background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:var(--red)">&#x2715; Close<span class="bc-long"> ' + esc(lbl ? lbl.textContent : name) + '</span></button>';
-    bc.classList.add('visible');
-  }
-  function restoreBar() {   /* after an embedded tool closes on top of a built-in screen, put that screen's bar back */
-    var v = q('.cc-view.active'); if (v && v.id && v.id !== 'view-home' && !q('#erp-viewer.active, #support-viewer.active, #ghost-viewer.active, #notes-viewer.active, #sku-viewer.active, #cal-viewer.active, #ta-viewer.active, #hb-viewer.active, #ct-viewer.active')) nativeBar(v.id.replace(/^view-/, ''));
-  }
-
-  /* ------------------------------------------------------------ Team calendar tile on the home strip */
-  var cal = null, calErr = '', calTypes = null, calTypesAt = 0, calMonths = {}, calPulled = 0;
-  var OFF_RE = /time.?off|vacation|pto|leave|holiday|sick|out of office|ooo|day off/i;
-  function ymd(d) { var m = d.getMonth() + 1, dd = d.getDate(); return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd; }
-  /* the calendar's own tables (calendar_events, calendar_event_types), read with the signed-in session */
-  async function calGet(path) {
-    var base = (typeof SB_AUTH_URL !== 'undefined') ? SB_AUTH_URL : TGK_SB_URL, authKey = (typeof SB_ANON_KEY !== 'undefined') ? SB_ANON_KEY : TGK_SB_KEY;
-    var anon = (typeof TGK_SB_JWT !== 'undefined') ? TGK_SB_JWT : authKey;   /* table queries use the JWT-style anon key, like the calendar itself */
-    var sess = (typeof _getSession === 'function') ? _getSession() : null, url = base + '/rest/v1/' + path;
-    var hdr = function (tok) { return { apikey: anon, Authorization: 'Bearer ' + (tok || anon) }; };
-    var r = await fetch(url, { headers: hdr(sess && sess.access_token) });
-    if ((r.status === 401 || r.status === 403) && sess && sess.refresh_token) {
-      try {
-        var rr = await fetch(base + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: authKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: sess.refresh_token }) });
-        if (rr.ok) { var nd = await rr.json(); if (typeof _setSession === 'function') _setSession({ access_token: nd.access_token, refresh_token: nd.refresh_token, email: sess.email }); r = await fetch(url, { headers: hdr(nd.access_token) }); }
-      } catch (e) {}
-    }
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  }
-  function personName(row) { var n = row.member_name || (row.member_email ? String(row.member_email).split('@')[0] : ''); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; }
-  function normEvent(row) {
-    var t = calTypes && calTypes[row.type], label = (t && t.label) || row.type || '';
-    var off = row.type === 'timeoff' || OFF_RE.test(label) || OFF_RE.test(String(row.type || ''));
-    return { id: row.id, date: row.start_date, end: row.end_date || row.start_date, who: personName(row), title: row.title || '', off: off, type: row.type };
-  }
-  function rebuildCal() {
-    var seen = {}, out = [];
-    Object.keys(calMonths).forEach(function (k) { calMonths[k].rows.forEach(function (r) { var key = r.id != null ? r.id : r.start_date + r.title; if (!seen[key]) { seen[key] = 1; out.push(normEvent(r)); } }); });
-    cal = { events: out };
-  }
-  async function loadMonth(y, mo, force) {
-    var key = y + '-' + mo, now = Date.now(), m = calMonths[key];
-    if (m && !force && now - m.at < 120000) return;
-    var from = ymd(new Date(y, mo, 1)), to = ymd(new Date(y, mo + 1, 0));
-    var rows = await calGet('calendar_events?select=id,type,title,start_date,end_date,member_email,member_name&end_date=gte.' + from + '&start_date=lte.' + to + '&order=start_date.asc&limit=500');
-    calMonths[key] = { at: now, rows: Array.isArray(rows) ? rows : [] };
-  }
-  async function pullCal(force) {
-    var now = Date.now(); if (!force && now - calPulled < 60000) return; calPulled = now;
-    var sess = (typeof _getSession === 'function') ? _getSession() : null; if (!sess || !sess.access_token) return;
-    try {
-      if (!calTypes || now - calTypesAt > 600000) {
-        try { var tr = await calGet('calendar_event_types?select=id,label,requires_person'); calTypes = {}; (tr || []).forEach(function (t) { calTypes[t.id] = t; }); calTypesAt = now; } catch (e) { calTypes = calTypes || {}; }
-      }
-      var d = new Date(), nx = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-      await loadMonth(d.getFullYear(), d.getMonth(), force); await loadMonth(nx.getFullYear(), nx.getMonth(), force);
-      calErr = ''; rebuildCal(); ensureCalTile(); var ff = q('#ct-cal-fly.on'); if (ff) { ff.innerHTML = flyHtml(); placeFly(); }
-    } catch (e) { calErr = String(e && e.message || e); try { console.warn('Calendar tile could not read the schedule:', calErr); } catch (x) {} ensureCalTile(); var f2 = q('#ct-cal-fly.on'); if (f2) { f2.innerHTML = flyHtml(); placeFly(); } }
-  }
-  function calText() {
-    if (!cal || !Array.isArray(cal.events)) return calErr ? { v: 'Open', s: 'Schedule not available here yet - open the calendar' } : { v: 'Open', s: 'Loading the schedule\u2026' };
-    var now = new Date(), today = ymd(now), week = [], off = [], i, e;
-    var last = ymd(new Date(now.getTime() + 7 * 864e5));
-    for (i = 0; i < cal.events.length; i++) {
-      e = cal.events[i]; if (!e || !e.date) continue; var end = e.end || e.date;
-      if (e.date <= today && end >= today) { if (e.off) off.push(e.who || 'Someone'); }
-      else if (e.date > today && e.date <= last) week.push(e);
-    }
-    var v = off.length === 0 ? 'All in today' : (off.length === 1 ? off[0] + ' off today' : off.length + ' off today');
-    var sub = off.length > 1 ? 'Off: ' + off.slice(0, 3).join(', ') : '';
-    week.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-    var wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    var parts = week.slice(0, 2).map(function (x) { var d = new Date(x.date + 'T12:00:00'); return wd[d.getDay()] + ' ' + (x.off ? (x.who || 'Someone') + ' off' : (x.title || x.who || 'Event')); });
-    var more = week.length > 2 ? ' +' + (week.length - 2) + ' more' : '';
-    var tail = parts.length ? 'This week: ' + parts.join(' \u00B7 ') + more : 'Nothing else on the calendar this week';
-    return { v: v, s: sub ? sub + ' \u00B7 ' + tail : tail };
-  }
-  function ensureCalTile() {
-    var strip = q('#cx-today'); if (!strip) return;
-    var t = q('#ct-cal-tile', strip), c = calText();
-    if (!t) {
-      t = document.createElement('div'); t.id = 'ct-cal-tile'; t.className = 'cx-tile ct-cal'; t.setAttribute('role', 'button'); t.tabIndex = 0;
-      t.innerHTML = '<b>Team calendar</b><div class="cx-v"></div><div class="cx-s"></div><button type="button" class="cx-link">Open calendar</button>';
-      strip.insertBefore(t, strip.firstChild);
-    } else if (t !== strip.firstElementChild) strip.insertBefore(t, strip.firstChild);
-    var v = q('.cx-v', t), s = q('.cx-s', t);
-    if (v.textContent !== c.v) v.textContent = c.v;
-    if (s.textContent !== c.s) s.textContent = c.s;
-    wireTileHover();
-  }
-  function watchStrip() {
-    var strip = q('#cx-today'); if (!strip || strip._ctw || !window.MutationObserver) return; strip._ctw = 1;
-    new MutationObserver(function () { if (!q('#ct-cal-tile', strip) || strip.firstElementChild.id !== 'ct-cal-tile') ensureCalTile(); }).observe(strip, { childList: true });
-  }
-
-  /* ------------------------------------------------------------ calendar flyout (hover preview, like the Windows clock) */
-  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  var fly = { month: null, showT: 0, hideT: 0 };
-  function evMap(y, mo) {
-    var map = {}; if (!cal || !Array.isArray(cal.events)) return map;
-    cal.events.forEach(function (e) {
-      if (!e || !e.date) return; var s = new Date(e.date + 'T12:00:00'), en = new Date((e.end || e.date) + 'T12:00:00'); if (isNaN(s) || isNaN(en)) return;
-      var off = !!e.off, d = new Date(s), n = 0;
-      for (; d <= en && n < 62; d.setDate(d.getDate() + 1), n++) {
-        if (d.getFullYear() !== y || d.getMonth() !== mo) continue;
-        var k = ymd(d), o = map[k] || (map[k] = { off: 0, ev: 0, t: [] }); if (off) o.off++; else o.ev++;
-        o.t.push(off ? (e.who || 'Someone') + ' off' : (e.title || e.who || 'Event'));
-      }
-    });
-    return map;
-  }
-  function upcoming() {
-    var out = []; if (!cal || !Array.isArray(cal.events)) return out;
-    var now = new Date(), today = ymd(now), last = ymd(new Date(now.getTime() + 7 * 864e5)), wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    cal.events.forEach(function (e) {
-      if (!e || !e.date) return; var end = e.end || e.date; if (end < today || e.date > last) return;
-      var off = !!e.off, start = e.date < today ? today : e.date, d = new Date(start + 'T12:00:00');
-      out.push({ date: start, when: start === today ? 'Today' : wd[d.getDay()] + ' ' + d.getDate(), text: off ? (e.who || 'Someone') + ' off' : (e.title || e.who || 'Event'), off: off });
-    });
-    out.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
-    return out;
-  }
-  function flyHtml() {
-    var now = new Date(), m = fly.month || new Date(now.getFullYear(), now.getMonth(), 1); fly.month = m;
-    var y = m.getFullYear(), mo = m.getMonth(), lead = new Date(y, mo, 1).getDay(), days = new Date(y, mo + 1, 0).getDate(), map = evMap(y, mo), today = ymd(now), i, h;
-    h = '<div class="cf-hd"><b>' + MONTHS[mo] + ' ' + y + '</b><span><button type="button" data-cf="prev" aria-label="Previous month">\u2039</button><button type="button" data-cf="today">Today</button><button type="button" data-cf="next" aria-label="Next month">\u203A</button></span></div>';
-    h += '<div class="cf-grid">' + ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(function (d) { return '<i class="cf-wd">' + d + '</i>'; }).join('');
-    for (i = 0; i < lead; i++) h += '<i></i>';
-    for (i = 1; i <= days; i++) {
-      var k = y + '-' + (mo + 1 < 10 ? '0' : '') + (mo + 1) + '-' + (i < 10 ? '0' : '') + i, o = map[k];
-      h += '<span class="cf-d' + (k === today ? ' now' : '') + '"' + (o ? ' title="' + esc(o.t.join(' / ')) + '"' : '') + '>' + i + (o ? '<u>' + (o.off ? '<s class="off"></s>' : '') + (o.ev ? '<s class="ev"></s>' : '') + '</u>' : '') + '</span>';
-    }
-    h += '</div>';
-    var up = upcoming();
-    if (cal && Array.isArray(cal.events)) {
-      h += '<div class="cf-up"><div class="cf-uh">Next 7 days</div>' + (up.length ? up.slice(0, 5).map(function (x) { return '<div class="cf-ui"><span class="cf-w">' + esc(x.when) + '</span><s class="' + (x.off ? 'off' : 'ev') + '"></s><span class="cf-t">' + esc(x.text) + '</span></div>'; }).join('') + (up.length > 5 ? '<div class="cf-more">+ ' + (up.length - 5) + ' more</div>' : '') : '<div class="cf-none">Nothing on the calendar</div>') + '</div>';
-    } else h += '<div class="cf-up"><div class="cf-none">' + (calErr ? 'Could not read the calendar from here (' + esc(calErr) + '). Open it to check.' : 'Loading the schedule\u2026') + '</div></div>';
-    h += '<div class="cf-ft"><button type="button" data-cf="open">Open calendar</button></div>';
-    return h;
-  }
-  function placeFly() {
-    var f = q('#ct-cal-fly'), t = q('#ct-cal-tile'); if (!f || !t) return;
-    var r = t.getBoundingClientRect(), fw = f.offsetWidth, fh = f.offsetHeight, W = window.innerWidth, H = window.innerHeight, left, top;
-    var cl = function (v, lo, hi) { return Math.max(lo, Math.min(v, hi)); };
-    if (r.bottom + 6 + fh <= H - 8) { top = r.bottom + 6; left = cl(r.left, 8, W - fw - 8); }                      /* below the tile */
-    else if (r.top - 6 - fh >= 8) { top = r.top - 6 - fh; left = cl(r.left, 8, W - fw - 8); }                       /* above it */
-    else if (r.right + 8 + fw <= W - 8) { left = r.right + 8; top = cl(r.top, 8, H - fh - 8); }                     /* beside it */
-    else if (r.left - 8 - fw >= 8) { left = r.left - 8 - fw; top = cl(r.top, 8, H - fh - 8); }
-    else { left = cl(r.left, 8, W - fw - 8); top = cl(H - fh - 8, 8, H); }
-    f.style.left = left + 'px'; f.style.top = top + 'px';
-  }
-  function showFly() {
-    clearTimeout(fly.hideT); var f = q('#ct-cal-fly');
-    if (!f) {
-      f = document.createElement('div'); f.id = 'ct-cal-fly'; f.setAttribute('role', 'dialog'); f.setAttribute('aria-label', 'Calendar preview'); document.body.appendChild(f);
-      f.addEventListener('mouseenter', function () { clearTimeout(fly.hideT); });
-      f.addEventListener('mouseleave', function () { hideFly(250); });
-      f.addEventListener('click', function (e) {
-        var b = e.target.closest && e.target.closest('[data-cf]'); if (!b) { if (e.target.closest && e.target.closest('.cf-d')) { hideFly(0); if (window.openCal) window.openCal(); } return; }
-        var a = b.getAttribute('data-cf'), m = fly.month || new Date();
-        if (a === 'prev') fly.month = new Date(m.getFullYear(), m.getMonth() - 1, 1);
-        else if (a === 'next') fly.month = new Date(m.getFullYear(), m.getMonth() + 1, 1);
-        else if (a === 'today') fly.month = null;
-        else if (a === 'open') { hideFly(0); if (window.openCal) window.openCal(); return; }
-        f.innerHTML = flyHtml(); placeFly();
-        var mm = fly.month || new Date(); loadMonth(mm.getFullYear(), mm.getMonth(), false).then(function () { rebuildCal(); if (f.classList.contains('on')) { f.innerHTML = flyHtml(); placeFly(); } }).catch(function () {});
-      });
-    }
-    fly.month = fly.month && f.classList.contains('on') ? fly.month : null;
-    f.innerHTML = flyHtml(); f.classList.add('on'); placeFly(); pullCal(false);
-  }
-  function hideFly(ms) { clearTimeout(fly.hideT); fly.hideT = setTimeout(function () { var f = q('#ct-cal-fly'); if (f) f.classList.remove('on'); }, ms == null ? 0 : ms); }
-  function wireTileHover() {
-    var t = q('#ct-cal-tile'); if (!t || t._hov) return; t._hov = 1;
-    var canHover = !window.matchMedia || window.matchMedia('(hover:hover)').matches;
-    if (canHover) {
-      t.addEventListener('mouseenter', function () { clearTimeout(fly.hideT); clearTimeout(fly.showT); fly.showT = setTimeout(showFly, 180); });
-      t.addEventListener('mouseleave', function () { clearTimeout(fly.showT); hideFly(260); });
-    }
-    t.addEventListener('focus', function () { showFly(); });
-    t.addEventListener('blur', function () { hideFly(200); });
-  }
-  document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('#ct-cal-tile'); if (t && typeof window.openCal === 'function') { hideFly(0); window.openCal(); }
-  });
-  document.addEventListener('keydown', function (e) {
-    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.id === 'ct-cal-tile' && typeof window.openCal === 'function') { e.preventDefault(); window.openCal(); }
-  });
-
-  function hideCT(restore) {
-    var v = q('#ct-viewer'); if (!v || !v.classList.contains('active')) return;
-    v.classList.remove('active');
-    if (restore) {
-      var m = q('#cc-main'); if (m) m.style.display = '';
-      var bc = q('#cc-breadcrumb'); if (bc) bc.classList.remove('visible');
-      var a = q('#cc-bc-actions'); if (a) a.innerHTML = '';
-    }
-  }
-  function boot() {
-    loadLocal();
-    ['openERP', 'openSupportCenter', 'openGhostTuning', 'openNotes', 'openSKU', 'openCal', 'openTimeAttack', 'openHarnessBuilder'].forEach(function (n) {
-      var f = window[n]; if (typeof f !== 'function') return;
-      window[n] = function () { hideCT(false); return f.apply(this, arguments); };
-    });
-    var sv = window.showView;
-    if (typeof sv === 'function') window.showView = function (name) { hideCT(true); hideFly(0); var r = sv.apply(this, arguments); if (name === 'home') { paint(); pull(false); ensureCalTile(); pullCal(false); } else nativeBar(name); return r; };
-    ['closeERP', 'closeSupportCenter', 'closeGhostTuning', 'closeNotes', 'closeSKU', 'closeCal', 'closeTimeAttack', 'closeHarnessBuilder'].forEach(function (n) {
-      var f = window[n]; if (typeof f !== 'function') return;
-      window[n] = function () { var r = f.apply(this, arguments); restoreBar(); if (n === 'closeCal') setTimeout(function () { pullCal(true); }, 400); return r; };
-    });
-    var rd = window.renderDashboard;
-    if (typeof rd === 'function') { _rd = rd; window.renderDashboard = function () { var r = rd.apply(this, arguments); paint(); return r; }; }
-    var bcast = window._ccBroadcastToFrames;
-    if (typeof bcast === 'function') window._ccBroadcastToFrames = function (msg) {
-      bcast.apply(this, arguments);
-      try { var f = q('#ct-frame'); if (f && f.dataset.url && f.contentWindow) { var o = new URL(f.dataset.url).origin; if (CT_TRUST.test(o)) f.contentWindow.postMessage(msg, o); } } catch (e) {}
-    };
-    window.__ctRestoreBar = restoreBar;
-    window.openCustomTool = openCustomTool; window.closeCustomTool = closeCustomTool; window.openCustomToolsManager = openManager;
-    paint(); pull(true); ensureCalTile(); watchStrip(); pullCal(true);
-    setInterval(function () { var hv = q('#view-home'); if (hv && hv.classList.contains('active') && !q('#cal-viewer.active')) pullCal(true); }, 300000);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+<script id="tgk-dashboard-refine-js">
+/* Adds "Command Center >" in front of the open app's name in the breadcrumb bar. Safe to run repeatedly. */
+(function(){
+  if(window.__tgkRefineBc)return; window.__tgkRefineBc=1;
+  function add(){
+    var bc=document.getElementById('cc-breadcrumb'),lab=document.getElementById('cc-bc-label');
+    if(!bc||!lab||!lab.parentNode||bc.querySelector('.rf-trail'))return;
+    var a=document.createElement('button'); a.type='button'; a.className='rf-trail'; a.textContent='Command Center';
+    a.addEventListener('click',function(){ try{ showView('home'); }catch(e){} });
+    var c=document.createElement('span'); c.className='rf-chev'; c.setAttribute('aria-hidden','true');
+    c.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+    lab.parentNode.insertBefore(a,lab); lab.parentNode.insertBefore(c,lab);
+  }
+  add(); document.addEventListener('DOMContentLoaded',add);
+  var bc=document.getElementById('cc-breadcrumb'); if(bc&&window.MutationObserver){ try{ new MutationObserver(add).observe(bc,{childList:true}); }catch(e){} }
+  setTimeout(add,800); setTimeout(add,2500);
 })();
 </script>
-
 </body>
 </html>
