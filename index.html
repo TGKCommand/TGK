@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.11';
+var TGK_CC_VERSION='v7.13';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -32023,29 +32023,16 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
 
 <style id="tgk-dashboard-refine">
 /* ===================================================================================================================
-   DASHBOARD REFINEMENT (Option B): calmer type and rounded cards on the main dashboard, a quieter top bar, and a real
-   breadcrumb trail (Command Center > Support Center) when an app is open. Interface text uses DM Sans (already in this file).
-   - Light theme only, except the hidden "Send current product to ERP" shortcut (hidden in both themes; its function stays).
-   - The tools' own screens are not changed. The dark section bars and the orange/teal accent lines are kept.
+   DASHBOARD REFINEMENT: calmer type and rounded cards on the main dashboard, a quieter top bar, and a tidier user area
+   (avatar + name, Sign out button, equal icon buttons) from 769px wide up, and a unified navigation (same type on all tabs, icons from 1360px, nothing wraps). Text uses the file's embedded Saira (the name
+   "DM Sans" in this file is an alias of it).
+   - The dashboard changes are light theme only; the user area applies in both themes (the top bar is dark in both).
+   - The "Send current product to ERP" shortcut is hidden in both themes (its function and the other ways to send stay).
+   - The breadcrumb bar and the tools' own screens are NOT changed. The dark section bars and accent lines are kept.
    To revert, delete this style block (id tgk-dashboard-refine) and the small script block that follows it
    (id tgk-dashboard-refine-js). Appearance only.
    =================================================================================================================== */
-:root{--rf:'DM Sans',-apple-system,'Segoe UI',sans-serif;--rfh:'DM Sans',-apple-system,'Segoe UI',sans-serif}
-/* ---------- top bar: sentence case, calmer weight ---------- */
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logo-sub,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .cx-nav button,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .cx-nav .cc-bc-home{font-family:var(--rf)!important;font-size:14.5px!important;font-weight:600!important;letter-spacing:.003em!important;text-transform:none!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logo-sub{font-weight:500!important;color:#c3cbd1!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar #topbar-user{font:500 14px var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#c3cbd1!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logout-btn{font:500 13.5px var(--rf)!important;letter-spacing:0!important;text-transform:none!important;border-color:transparent!important;background:transparent!important;color:#c3cbd1!important;border-radius:6px!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar .logout-btn:hover{background:rgba(255,255,255,.09)!important;color:#fff!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-topbar #cc-version-badge{font:600 12.5px var(--rf)!important;letter-spacing:.02em!important;text-transform:none!important;color:#8f99a1!important}
-/* ---------- breadcrumb: a real trail, quiet text ---------- */
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb.visible.cx-bc-on{height:46px!important;padding:0 24px!important;gap:8px!important;background:#fff!important;border-bottom:1px solid #e4e7ec!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail{display:inline-flex;align-items:center;font:500 13.5px/1 var(--rf);color:#667078;background:none;border:0;padding:6px 4px;border-radius:6px;cursor:pointer}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail:hover{color:#0b7f77;background:#f1f6f6}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-chev{display:inline-flex;color:#b4bcc3}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb #cc-bc-label{font:600 14.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#14171a!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb #cc-bc-actions .cc-bc-btn{font:500 13.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#46515a!important;background:transparent!important;border:0!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;height:32px!important;min-height:32px!important;max-height:none!important;padding:0 12px!important;border-radius:6px!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb #cc-bc-actions .cc-bc-btn:hover{background:#f1f3f5!important;color:#14171a!important}
+:root{--rf:'Saira Semi Condensed','Arial Narrow',sans-serif;--rfh:'Saira Semi Condensed','Arial Narrow',sans-serif}
 /* ================= MAIN DASHBOARD: Option B ================= */
 html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .dash-wrap{font-family:var(--rf)}
 /* greeting row */
@@ -32094,35 +32081,77 @@ html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card
 html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card-arrow,html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #view-home .mod-card .mod-card-open{font:600 14px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;color:#0b7f77!important}
 /* the dashboard shortcut "Send current product to ERP" is hidden (both themes); the function and the other ways to send stay */
 html body #view-home #erp-send-product-btn{display:none!important}
-/* narrow phones: give the app name room in the breadcrumb */
-@media (max-width:480px){
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb.visible.cx-bc-on{padding:0 12px!important;gap:4px!important}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail{padding:6px 2px;font-size:13px}
+/* ---------- user area (Option A): avatar + name, a Sign out button, three equal icon buttons, version pill. 769px and wider (below that the file's own compact top bar) ---------- */
+html:root:not(#rf1):not(#rf2) body #cc-topbar .rf-avatar,html:root:not(#rf1):not(#rf2) body #cc-topbar .rf-div{display:none}
+@media (min-width:769px){
+html:root:not(#rf1):not(#rf2) body #cc-topbar #topbar-user{display:inline-flex!important;align-items:center;font:600 14px/1 var(--rf)!important;color:#fff!important;text-transform:capitalize!important;letter-spacing:0!important}
+html:root:not(#rf1):not(#rf2) body #cc-topbar .rf-avatar{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#2cbcb4;color:#0d1a1b;font:700 13.5px/1 var(--rf);flex:none;margin-right:9px}
+html:root:not(#rf1):not(#rf2) body #cc-topbar .rf-avatar:empty{display:none}
+html:root:not(#rf1):not(#rf2) body #cc-topbar .rf-div{display:inline-block;width:1px;height:24px;background:rgba(255,255,255,.16);margin-left:14px;flex:none}
+html:root:not(#rf1):not(#rf2) body #cc-topbar #logout-btn{height:34px!important;min-height:0!important;padding:0 14px!important;border:1px solid rgba(255,255,255,.24)!important;border-radius:8px!important;background:transparent!important;color:#e6ecef!important;font:500 13.5px/1 var(--rf)!important;letter-spacing:0!important;text-transform:none!important;margin-left:14px!important}
+html:root:not(#rf1):not(#rf2) body #cc-topbar #logout-btn:hover{background:rgba(255,255,255,.09)!important;color:#fff!important}
+html:root:not(#rf1):not(#rf2) body #cc-topbar #cc-theme-btn,html:root:not(#rf1):not(#rf2) body #cc-topbar #cx-sound-btn,html:root:not(#rf1):not(#rf2) body #cc-topbar #ai-guy-toggle-btn{width:34px!important;height:34px!important;min-width:34px!important;min-height:0!important;padding:0!important;border-radius:8px!important;border:1px solid rgba(255,255,255,.18)!important;background:transparent!important;align-items:center;justify-content:center;margin-left:8px!important}
+html:root:not(#rf1):not(#rf2) body #cc-topbar #cc-theme-btn:hover,html:root:not(#rf1):not(#rf2) body #cc-topbar #cx-sound-btn:hover,html:root:not(#rf1):not(#rf2) body #cc-topbar #ai-guy-toggle-btn:hover{background:rgba(255,255,255,.09)!important}
+html:root:not(#rf1):not(#rf2) body #cc-topbar #cc-version-badge{font:500 12px/1 var(--rf)!important;padding:5px 9px!important;border-radius:999px!important;background:rgba(255,255,255,.07)!important;color:#9fb0b8!important;margin-left:8px!important;letter-spacing:.01em!important}
 }
-@media (max-width:380px){
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail{font-size:0}
-html:root:not([data-theme="dark"]):not(#rf1):not(#rf2) body #cc-breadcrumb .rf-trail::before{content:"Home";font-size:13px}
+/* ---------- top bar navigation: one tab style, a marker that follows the open tab, icons from 1360px, labels never wrap ---------- */
+@media (min-width:769px){
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump{font:600 14.5px/1 'Saira Semi Condensed','Arial Narrow',sans-serif!important;letter-spacing:.003em!important;text-transform:none!important;color:#b9c3c9!important;cursor:pointer}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub{border:0!important;box-shadow:none!important;display:flex!important;align-items:center;align-self:stretch!important;height:auto!important;padding:0 14px!important;margin:0!important;position:relative}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub:hover,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump:hover,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub.is-current,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump.on{color:#fff!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav{display:flex!important;align-items:stretch;height:auto!important;margin:0!important;gap:0!important;align-self:stretch!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump{display:inline-flex!important;align-items:center;align-self:stretch!important;height:auto!important;padding:0 14px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;position:relative}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub::after,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump::after{content:""!important;position:absolute!important;left:14px!important;right:14px!important;width:auto!important;bottom:-3px!important;height:3px!important;background:#2cbcb4!important;display:none}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub.is-current::after,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump.on::after{display:block!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub:not(.is-current):hover::after,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump:not(.on):hover::after{display:block!important;background:rgba(255,255,255,.28)!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump:focus-visible{outline:2px solid #2cbcb4;outline-offset:-6px;border-radius:8px!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar::after{background:linear-gradient(90deg,#e8731c 0,#e8731c 207px,transparent 207px)!important}
+html[data-theme="dark"]:root:not(#n1):not(#n2):not(#n3) body #cc-topbar{border-bottom-color:rgba(255,255,255,.10)!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-search{border-radius:8px!important;height:36px!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.05)!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-search input{background:transparent!important;border:0!important;border-radius:8px!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-search kbd{border-radius:5px!important}
 }
-
-/* the breadcrumb trail is added by script; keep it out of dark mode (which is unchanged) */
-html[data-theme="dark"] .rf-trail,html[data-theme="dark"] .rf-chev{display:none!important}
+@media (min-width:1360px){
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub::before{content:"";display:inline-block;width:16px;height:16px;margin-right:8px;flex:none;background:currentColor;opacity:.75;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='7' height='7' x='3' y='3' rx='1'/><rect width='7' height='7' x='14' y='3' rx='1'/><rect width='7' height='7' x='14' y='14' rx='1'/><rect width='7' height='7' x='3' y='14' rx='1'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='7' height='7' x='3' y='3' rx='1'/><rect width='7' height='7' x='14' y='3' rx='1'/><rect width='7' height='7' x='14' y='14' rx='1'/><rect width='7' height='7' x='3' y='14' rx='1'/></svg>") center/contain no-repeat}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub.is-current::before,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub.on::before{background:#2cbcb4;opacity:1}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-erp::before{content:"";display:inline-block;width:16px;height:16px;margin-right:8px;flex:none;background:currentColor;opacity:.75;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 2 9 5-9 5-9-5 9-5z'/><path d='m3 12 9 5 9-5'/><path d='m3 17 9 5 9-5'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 2 9 5-9 5-9-5 9-5z'/><path d='m3 12 9 5 9-5'/><path d='m3 17 9 5 9-5'/></svg>") center/contain no-repeat}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-erp.is-current::before,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-erp.on::before{background:#2cbcb4;opacity:1}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-support::before{content:"";display:inline-block;width:16px;height:16px;margin-right:8px;flex:none;background:currentColor;opacity:.75;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>") center/contain no-repeat}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-support.is-current::before,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-support.on::before{background:#2cbcb4;opacity:1}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-ghost::before{content:"";display:inline-block;width:16px;height:16px;margin-right:8px;flex:none;background:currentColor;opacity:.75;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 14 4-4'/><path d='M3.34 19a10 10 0 1 1 17.32 0'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 14 4-4'/><path d='M3.34 19a10 10 0 1 1 17.32 0'/></svg>") center/contain no-repeat}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-ghost.is-current::before,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-bc-ghost.on::before{background:#2cbcb4;opacity:1}
+}
+@media (min-width:769px){
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #logout-btn,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #topbar-user,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-version-badge{white-space:nowrap!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump{flex:none!important}
+}
+@media (min-width:769px) and (max-width:1099px){ html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #cc-version-badge{display:none!important} }
+@media (min-width:769px) and (max-width:999px){ html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #topbar-user,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .rf-avatar,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .rf-div{display:none!important} html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar #logout-btn{margin-left:10px!important} }
+@media (min-width:769px) and (max-width:829px){
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump{padding:0 10px!important}
+html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .logo-sub::after,html:root:not(#n1):not(#n2):not(#n3) body #cc-topbar .cx-nav button.cc-bc-jump::after{left:10px!important;right:10px!important}
+}
 </style>
 <script id="tgk-dashboard-refine-js">
-/* Adds "Command Center >" in front of the open app's name in the breadcrumb bar. Safe to run repeatedly. */
+/* Adds the avatar (first letter of the signed-in name) and a divider in the top bar. Safe to run repeatedly. */
 (function(){
-  if(window.__tgkRefineBc)return; window.__tgkRefineBc=1;
-  function add(){
-    var bc=document.getElementById('cc-breadcrumb'),lab=document.getElementById('cc-bc-label');
-    if(!bc||!lab||!lab.parentNode||bc.querySelector('.rf-trail'))return;
-    var a=document.createElement('button'); a.type='button'; a.className='rf-trail'; a.textContent='Command Center';
-    a.addEventListener('click',function(){ try{ showView('home'); }catch(e){} });
-    var c=document.createElement('span'); c.className='rf-chev'; c.setAttribute('aria-hidden','true');
-    c.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
-    lab.parentNode.insertBefore(a,lab); lab.parentNode.insertBefore(c,lab);
+  if(window.__tgkRefineUser)return; window.__tgkRefineUser=1;
+  function sync(){
+    var u=document.getElementById('topbar-user'); if(!u||!u.parentNode)return;
+    var a=u.parentNode.querySelector(':scope>.rf-avatar');
+    if(!a){ a=document.createElement('span'); a.className='rf-avatar'; a.setAttribute('aria-hidden','true'); u.parentNode.insertBefore(a,u); }
+    var n=(u.textContent||'').trim(), ch=n?n.charAt(0).toUpperCase():''; if(a.textContent!==ch)a.textContent=ch;
+    var lo=document.getElementById('logout-btn');
+    if(lo&&lo.parentNode){
+      var d=lo.parentNode.querySelector(':scope>.rf-div');
+      if(!d){ d=document.createElement('span'); d.className='rf-div'; d.setAttribute('aria-hidden','true'); lo.parentNode.insertBefore(d,lo); }
+      var shown=getComputedStyle(lo).display!=='none'; var want=shown?'':'none'; if(d.style.display!==want)d.style.display=want;
+    }
   }
-  add(); document.addEventListener('DOMContentLoaded',add);
-  var bc=document.getElementById('cc-breadcrumb'); if(bc&&window.MutationObserver){ try{ new MutationObserver(add).observe(bc,{childList:true}); }catch(e){} }
-  setTimeout(add,800); setTimeout(add,2500);
+  sync(); document.addEventListener('DOMContentLoaded',sync);
+  var u=document.getElementById('topbar-user'), lb=document.getElementById('logout-btn');
+  if(window.MutationObserver){ try{ if(u)new MutationObserver(sync).observe(u,{childList:true,characterData:true,subtree:true}); if(lb)new MutationObserver(sync).observe(lb,{attributes:true,attributeFilter:['style']}); }catch(e){} }
+  setTimeout(sync,800); setTimeout(sync,2500);
 })();
 </script>
 </body>
