@@ -632,6 +632,17 @@ table.tb th .tb-c{font-weight:700}
 .tb-x:hover{color:var(--red)}
 .tb-bar{display:flex;gap:6px;align-items:center;margin-top:5px}
 .tb-n{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-left:auto}
+.tb-rg{border:none!important;width:20px;min-width:20px;padding:0;text-align:center;vertical-align:middle}
+.tb-grip,.tb-corner-h{display:inline-flex;align-items:center;justify-content:center;width:18px;height:16px;color:var(--text3);cursor:grab;font-size:12px;line-height:1;user-select:none;border-radius:4px;opacity:0;transition:opacity .1s,background .1s}
+.tb-corner-h{margin:0 auto}
+.tb-wrap:hover .tb-grip,.tb-wrap:hover .tb-corner-h{opacity:.5}
+.tb-grip:hover,.tb-corner-h:hover{opacity:1!important;background:rgba(13,148,136,.16);color:var(--teal)}
+.tb-grip:active{cursor:grabbing}
+.tb-cell.tb-src{opacity:.38}
+.tb-cell.tb-ins-t{box-shadow:inset 0 3px 0 var(--teal)}
+.tb-cell.tb-ins-b{box-shadow:inset 0 -3px 0 var(--teal)}
+.tb-cell.tb-ins-l{box-shadow:inset 3px 0 0 var(--teal)}
+.tb-cell.tb-ins-r{box-shadow:inset -3px 0 0 var(--teal)}
 .toc{flex:1;background:var(--bg2);border-radius:var(--r-lg);padding:11px 14px;margin:6px 0;border-left:3px solid var(--teal)}
 .toc-h{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
 .toc-i{display:block;font-size:12.5px;color:var(--text2);text-decoration:none;padding:2px 0;cursor:pointer}
@@ -1424,7 +1435,7 @@ body.dark #lt-app .modal-footer{background:var(--bg3)}
 <div id="toast"></div>
 
 <script>
-const TGK_NOTES_VERSION='v1.75';
+const TGK_NOTES_VERSION='v1.76';
 const SUPABASE_URL="https://piamamighqiielfztgic.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -4107,21 +4118,30 @@ function ensureTable(bl){
 function tableBlockHTML(bl){
   ensureTable(bl);
   const cols=bl.rows[0].length;
+  const bid=bl.id;
+  const tag=(r)=>(bl.head&&r===0)?'th':'td';
+  // top bar: corner grip (drags the WHOLE table) + one grip per column (drags that column with all its data)
+  const topbar='<tr class="tb-colbar tb-coltop"><td class="tb-rg"><span class="bk-handle tb-corner-h" draggable="true" onclick="event.stopPropagation();openBlockMenu(\''+bid+'\',event.clientX,event.clientY)" title="Drag to move the whole table, click for options">\u283f</span></td>'
+    +bl.rows[0].map((_,c)=>'<td><span class="tb-grip" draggable="true" data-tbd="col" data-c="'+c+'" title="Drag to move this column">\u283f</span></td>').join('')
+    +'<td></td></tr>';
   const body=bl.rows.map((row,r)=>
-    '<tr>'+row.map((cell,c)=>
-      '<'+((bl.head&&r===0)?'th':'td')+' class="tb-cell">'
+    '<tr data-r="'+r+'">'
+    // row grip (the pinned header row has none)
+    +'<td class="tb-rg">'+((bl.head&&r===0)?'':'<span class="tb-grip" draggable="true" data-tbd="row" data-r="'+r+'" title="Drag to move this row">\u283f</span>')+'</td>'
+    +row.map((cell,c)=>
+      '<'+tag(r)+' class="tb-cell" data-r="'+r+'" data-c="'+c+'">'
       +'<div class="tb-c" contenteditable="true" spellcheck="true" data-tr="'+r+'" data-tc="'+c+'">'+((typeof richHTML==='function')?richHTML(cell||''):esc(cell||''))+'</div>'
-      +'</'+((bl.head&&r===0)?'th':'td')+'>').join('')
-    +'<td class="tb-act"><button class="tb-x" title="Delete this row" onclick="tblRowDel(\''+bl.id+'\','+r+')">&times;</button></td></tr>').join('');
-  const colDel='<tr class="tb-colbar">'+bl.rows[0].map((_,c)=>
-      '<td><button class="tb-x" title="Delete this column" onclick="tblColDel(\''+bl.id+'\','+c+')">&times;</button></td>').join('')
+      +'</'+tag(r)+'>').join('')
+    +'<td class="tb-act"><button class="tb-x" title="Delete this row" onclick="tblRowDel(\''+bid+'\','+r+')">&times;</button></td></tr>').join('');
+  const colDel='<tr class="tb-colbar"><td></td>'+bl.rows[0].map((_,c)=>
+      '<td><button class="tb-x" title="Delete this column" onclick="tblColDel(\''+bid+'\','+c+')">&times;</button></td>').join('')
     +'<td></td></tr>';
   return '<div class="tb-wrap">'
-    +'<table class="tb"><tbody>'+body+colDel+'</tbody></table>'
+    +'<table class="tb"><tbody>'+topbar+body+colDel+'</tbody></table>'
     +'<div class="tb-bar">'
-      +'<button class="nx-b sm" onclick="tblRowAdd(\''+bl.id+'\')">+ Row</button>'
-      +'<button class="nx-b sm" onclick="tblColAdd(\''+bl.id+'\')">+ Column</button>'
-      +'<button class="nx-b sm" onclick="tblHead(\''+bl.id+'\')">'+(bl.head?'No header row':'Header row')+'</button>'+'<button class="nx-b sm danger" onclick="delBlock(\''+bl.id+'\')">Delete table</button>'
+      +'<button class="nx-b sm" onclick="tblRowAdd(\''+bid+'\')">+ Row</button>'
+      +'<button class="nx-b sm" onclick="tblColAdd(\''+bid+'\')">+ Column</button>'
+      +'<button class="nx-b sm" onclick="tblHead(\''+bid+'\')">'+(bl.head?'No header row':'Header row')+'</button>'+'<button class="nx-b sm danger" onclick="delBlock(\''+bid+'\')">Delete table</button>'
       +'<span class="tb-n">'+bl.rows.length+' \u00d7 '+cols+'</span>'
     +'</div></div>';
 }
@@ -4165,6 +4185,81 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'){e.preventDefault();e.stopPropagation();}   // keep cells single-line
   e.stopPropagation();                                            // never reach the block editor
 },true);
+
+/* ---------- drag rows / columns inside a table (data moves with them) ---------- */
+var _tbDrag=null;
+function tblMove(bid,kind,from,to,after){
+  const bl=tblBlock(bid);if(!bl||to<0||from<0)return;ensureTable(bl);
+  let dest=to+(after?1:0);
+  if(kind==='row'){
+    if(bl.head&&from===0)return;          // header row stays pinned on top
+    if(bl.head&&dest<1)dest=1;
+    if(dest>from)dest--;
+    if(dest===from)return;
+    const m=bl.rows.splice(from,1)[0];bl.rows.splice(dest,0,m);
+  }else{
+    if(dest>from)dest--;
+    if(dest===from)return;
+    bl.rows.forEach(r=>{const m=r.splice(from,1)[0];r.splice(dest,0,m);});
+  }
+  renderBlocks();markDirty();
+}
+function _tbClear(){
+  document.querySelectorAll('.tb-ins-t,.tb-ins-b,.tb-ins-l,.tb-ins-r').forEach(x=>x.classList.remove('tb-ins-t','tb-ins-b','tb-ins-l','tb-ins-r'));
+}
+function _tbEnd(){
+  _tbClear();
+  document.querySelectorAll('.tb-src').forEach(x=>x.classList.remove('tb-src'));
+  _tbDrag=null;
+}
+document.addEventListener('dragstart',function(e){
+  const g=e.target.closest&&e.target.closest('.tb-grip');
+  if(!g)return;
+  const host=g.closest('.bk');if(!host)return;
+  const kind=g.getAttribute('data-tbd');
+  const from=Number(g.getAttribute(kind==='row'?'data-r':'data-c'));
+  _tbDrag={bid:host.getAttribute('data-bid'),kind:kind,from:from,to:-1,after:false,host:host};
+  try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','');}catch(_){}
+  // dim what is being dragged (next tick so the drag ghost stays solid)
+  setTimeout(function(){
+    if(!_tbDrag)return;
+    host.querySelectorAll('.tb-cell[data-'+(kind==='row'?'r':'c')+'="'+from+'"]').forEach(x=>x.classList.add('tb-src'));
+  },0);
+},true);
+document.addEventListener('dragover',function(e){
+  if(!_tbDrag)return;
+  const cell=e.target.closest&&e.target.closest('.tb-cell');
+  if(!cell||cell.closest('.bk')!==_tbDrag.host)return;
+  e.preventDefault();
+  try{e.dataTransfer.dropEffect='move';}catch(_){}
+  _tbClear();
+  const rc=cell.getBoundingClientRect(),host=_tbDrag.host,bl=tblBlock(_tbDrag.bid);
+  if(_tbDrag.kind==='row'){
+    const r=Number(cell.getAttribute('data-r'));
+    let after=e.clientY>rc.top+rc.height/2;
+    if(bl&&bl.head&&r===0)after=true;
+    _tbDrag.to=r;_tbDrag.after=after;
+    host.querySelectorAll('.tb-cell[data-r="'+r+'"]').forEach(x=>x.classList.add(after?'tb-ins-b':'tb-ins-t'));
+  }else{
+    const c=Number(cell.getAttribute('data-c'));
+    const after=e.clientX>rc.left+rc.width/2;
+    _tbDrag.to=c;_tbDrag.after=after;
+    host.querySelectorAll('.tb-cell[data-c="'+c+'"]').forEach(x=>x.classList.add(after?'tb-ins-r':'tb-ins-l'));
+  }
+},true);
+document.addEventListener('drop',function(e){
+  if(!_tbDrag)return;
+  const d=_tbDrag;
+  const cell=e.target.closest&&e.target.closest('.tb-cell');
+  if(cell&&cell.closest('.bk')===d.host){
+    e.preventDefault();e.stopPropagation();
+    _tbEnd();
+    tblMove(d.bid,d.kind,d.from,d.to,d.after);
+    return;
+  }
+  _tbEnd();
+},true);
+document.addEventListener('dragend',_tbEnd,true);
 
 /* ---------- table of contents ---------- */
 function tocHTML(){
