@@ -11041,7 +11041,7 @@ function tllibImportJSON(input) {
         try { existingLib = JSON.parse(localStorage.getItem('tgk_fbg_library_v1')) || []; } catch(ex) {}
         var carsAdded = 0, groupsAdded = 0;
         data.fbgLibrary.forEach(function(importedCar) {
-          if (!importedCar.key || !importedCar.make) return;
+          if (!importedCar.key || (!importedCar.make && !importedCar.model)) return;
           var localCar = existingLib.find(function(c){ return c.key === importedCar.key; });
           if (!localCar) {
             existingLib.push(importedCar);
@@ -12565,7 +12565,7 @@ window.addEventListener('resize', function(){
 <style>
 /* ── FB Group Finder Layout ── */
 .fbg-main-panel{flex:1;overflow-y:auto;padding:28px 32px;display:flex;flex-direction:column;min-width:0}
-.fbg-library-panel{width:320px;flex-shrink:0;background:#0a0c0e;border-left:1px solid #1e2022;display:flex;flex-direction:column;overflow:hidden}
+.fbg-library-panel{width:var(--fbg-lib-w,320px);flex-shrink:0;background:#0a0c0e;border-left:1px solid #1e2022;display:flex;flex-direction:column;overflow:hidden}
 
 /* ── Tabs ── */
 .fbg-tabs{display:flex;border-bottom:1px solid #1e2022;flex-shrink:0}
@@ -12635,7 +12635,7 @@ window.addEventListener('resize', function(){
 .fbg-card.selected{border-color:#2ABFAA!important;background:#0d1f1d!important}
 .fbg-checkbox{width:18px;height:18px;border:2px solid #3a3d40;border-radius:var(--r-sm);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;background:#1a1c1e;margin-top:13px;user-select:none}
 .fbg-checkbox.checked{background:#2ABFAA;border-color:#2ABFAA}
-.fbg-checkbox.checked::after{content:'<span class="ic ic-check"></span>';font-size:var(--t-sm);color:#0a1412;font-weight:900;line-height:1}
+.fbg-checkbox.checked::after{content:'✓';font-size:var(--t-sm);color:#0a1412;font-weight:900;line-height:1}
 .fbg-sel-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#0d1f1d;border:1px solid #2ABFAA;border-radius:var(--r-md);margin-bottom:12px}
 .fbg-sel-bar-txt{font-size:var(--t-sm);color:#2ABFAA;flex:1;font-weight:600}
 .fbg-sel-all{font-size:var(--t-sm);color:#aaa;background:none;border:1px solid #2e3032;border-radius:var(--r-sm);padding:3px 10px;cursor:pointer;font-family:'DM Sans',system-ui,sans-serif;transition:all .12s}
@@ -12714,64 +12714,107 @@ window.addEventListener('resize', function(){
 .fbg-new-car-btn:hover{border-color:#2ABFAA;color:#2ABFAA;background:rgba(42,191,170,.05)}
 .fbg-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#2ABFAA;color:#0a1412;font-size:var(--t-sm);font-weight:700;padding:8px 20px;border-radius:var(--r-md);z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .fbg-toast.show{opacity:1}
+/* ── v2: template kinds (car / chassis / product), resizable sidebar ── */
+.fbg-count-select.fbg-kind-select{width:128px}
+.fbg-cache-note{font-size:var(--t-xs);color:#777;white-space:nowrap}
+.fbg-open-btn.fbg-open-primary{border-color:#2ABFAA;color:#2ABFAA;background:rgba(42,191,170,.08)}
+.fbg-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.fbg-chip{height:26px;padding:0 10px;font-size:var(--t-xs);font-weight:600;border:1px solid #1a1a1a;border-radius:13px;background:#111315;color:#aaa;cursor:pointer;font-family:'DM Sans',system-ui,sans-serif;transition:all .12s}
+.fbg-chip b{font-family:'DM Mono',monospace;font-weight:500;margin-left:4px;color:#777}
+.fbg-chip:hover{border-color:#2ABFAA}
+.fbg-chip.on{background:#0d1f1d;border-color:#2ABFAA;color:#2ABFAA}
+.fbg-chip.on b{color:#2ABFAA}
+.fbg-car-name-wrap{flex:1;min-width:0}
+.fbg-car-name-wrap .fbg-car-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbg-car-kind{font-size:var(--t-xs);color:#777;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.fbg-car-foot{display:flex;justify-content:flex-end;margin-top:4px}
+.fbg-car-foot .fbg-car-delete-btn{float:none}
+.fbg-none{font-size:var(--t-sm);color:#aaa;text-align:center;padding:8px 0}
+.fbg-modal-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.fbg-hint{font-size:var(--t-xs);color:#777;line-height:1.5;margin:2px 0 6px}
+.fbg-seg{display:flex;gap:4px;padding:3px;background:#1a1c1e;border:1px solid #2e3032;border-radius:var(--r-md);margin-bottom:12px}
+.fbg-seg button{flex:1;height:32px;font-size:var(--t-sm);font-weight:600;border:none;border-radius:var(--r-sm);background:transparent;color:#aaa;cursor:pointer;font-family:'DM Sans',system-ui,sans-serif;transition:all .12s}
+.fbg-seg button:hover{color:#ddd}
+.fbg-seg button.on{background:#0d1f1d;color:#2ABFAA;box-shadow:inset 0 0 0 1px #2ABFAA}
+.fbg-new-wrap{display:none;margin-top:12px;padding:12px;background:#0f1113;border:1px solid #2e3032;border-radius:var(--r-md)}
+.fbg-new-wrap.show{display:block}
+select.fbg-modal-input{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.fbg-resizer{flex-shrink:0;width:7px;margin:0 -3px 0 -4px;position:relative;z-index:5;cursor:col-resize;touch-action:none;outline:none}
+.fbg-resizer::before{content:'';position:absolute;top:0;bottom:0;left:3px;width:2px;background:transparent;transition:background .15s}
+.fbg-resizer::after{content:'';position:absolute;top:50%;left:1px;width:5px;height:36px;margin-top:-18px;border-radius:3px;background:#3a3d40;opacity:0;transition:opacity .15s}
+.fbg-resizer:hover::before,.fbg-resizer:focus-visible::before,.fbg-resizer.dragging::before{background:#2ABFAA}
+.fbg-resizer:hover::after,.fbg-resizer:focus-visible::after,.fbg-resizer.dragging::after{opacity:1}
+body.fbg-resizing{cursor:col-resize!important;user-select:none;-webkit-user-select:none}
+body.fbg-resizing iframe{pointer-events:none}
+@media (max-width:768px){.fbg-resizer{display:none}.fbg-search-row{flex-wrap:wrap}.fbg-search-row .fbg-input{flex:1 1 100%;order:3}}
 </style>
 
 <!-- Left: search + results -->
 <div class="fbg-main-panel">
   <div class="fbg-header">
     <div class="fbg-title">Facebook Group Finder</div>
-    <div class="fbg-sub">Search any vehicle — AI uses live web search to find real communities. Save groups to car templates in the library →</div>
+    <div class="fbg-sub">Search by car, chassis or product — AI uses live web search to find real communities. Save groups to templates in the library →</div>
   </div>
 
   <div class="fbg-search-row">
-    <input class="fbg-input" id="fbg-search" placeholder="e.g. 2016 Audi S6, BMW M3 E46, C8 Corvette..." />
+    <select id="fbg-kind" class="fbg-count-select fbg-kind-select" aria-label="Search type">
+      <option value="car">Car</option>
+      <option value="chassis">Chassis</option>
+      <option value="product">Product</option>
+    </select>
+    <input class="fbg-input" id="fbg-search" placeholder="e.g. 2016 Audi S6, BMW M3 E46, C8 Corvette..." autocomplete="off" />
     <select id="fbg-count" class="fbg-count-select">
       <option value="5">5 results</option>
       <option value="10" selected>10 results</option>
       <option value="20">20 results</option>
     </select>
-    <button class="fbg-btn" onclick="fbgSearch()">Search</button>
+    <button class="fbg-btn" id="fbg-go">Search</button>
   </div>
 
   <!-- Save bar — visible when results are showing -->
   <div class="fbg-save-bar" id="fbg-save-bar">
     <span class="fbg-save-lbl">Results for:</span>
-    <span id="fbg-save-bar-label" style="font-size:var(--t-sm);color:#ccc;font-weight:600;flex:1"></span>
-    <button class="fbg-save-url-btn" onclick="fbgSaveSelectedToLibrary()">＋ Save selected to car</button>
-    <button class="fbg-save-template-btn" onclick="fbgSaveAllAsTemplate()"><span class="ic ic-save"></span>Save as template</button>
+    <span id="fbg-save-bar-label" style="font-size:var(--t-sm);color:#ccc;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span class="fbg-cache-note" id="fbg-cache-note"></span>
+    <button class="fbg-save-url-btn" id="fbg-refresh" style="display:none">↻ Refresh</button>
+    <button class="fbg-save-template-btn" id="fbg-save-btn"><span class="ic ic-save"></span>Save to template</button>
   </div>
 
   <div id="fbg-results">
     <div class="fbg-empty">
       <div class="fbg-empty-icon">&#128101;</div>
       <div class="fbg-empty-title">Find your audience</div>
-      <div class="fbg-empty-sub">Type a vehicle above to search the web for<br>real active Facebook groups for that platform.</div>
+      <div class="fbg-empty-sub">Pick Car, Chassis or Product above, then type what to look for<br>— or open a saved template and hit Search.</div>
     </div>
   </div>
 </div>
 
+<!-- Drag handle: resize the library sidebar -->
+<div class="fbg-resizer" id="fbg-resizer" role="separator" aria-orientation="vertical" aria-label="Resize template library" tabindex="0" title="Drag to resize · double-click to reset"></div>
+
 <!-- Right: library panel -->
-<div class="fbg-library-panel">
+<div class="fbg-library-panel" id="fbg-library">
   <div class="fbg-tabs">
-    <button class="fbg-tab active" onclick="fbgSwitchLibTab('cars')" id="fbg-lib-tab-cars"><span class="ic ic-car"></span>Car Library</button>
-    <button class="fbg-tab" onclick="fbgSwitchLibTab('add')" id="fbg-lib-tab-add">＋ Add URL</button>
+    <button class="fbg-tab active" id="fbg-lib-tab-cars"><span class="ic ic-car"></span>Templates</button>
+    <button class="fbg-tab" id="fbg-lib-tab-add">＋ Add URL</button>
   </div>
 
-  <!-- Tab: Car Library -->
+  <!-- Tab: Template library -->
   <div class="fbg-tab-content active" id="fbg-lib-cars">
     <div class="fbg-lib-header">
-      <div class="fbg-lib-title">Saved Car Templates</div>
-      <div class="fbg-lib-sub">Click a car to see its linked groups. Click a car name to load its groups as a search.</div>
-      <input class="fbg-lib-search" id="fbg-lib-filter" placeholder="Filter cars..." oninput="fbgRenderLibrary()" />
+      <div class="fbg-lib-title">Saved Templates</div>
+      <div class="fbg-lib-sub">Organise groups by car, chassis or product. Open a template to see its groups, or hit Search to re-run it.</div>
+      <input class="fbg-lib-search" id="fbg-lib-filter" placeholder="Filter templates or groups..." autocomplete="off" />
+      <div class="fbg-chips" id="fbg-chips"></div>
     </div>
     <div style="display:flex;gap:6px;width:calc(100% - 20px);margin:0 10px 10px;flex-shrink:0">
-      <button class="fbg-new-car-btn" style="flex:1;margin:0;width:auto" onclick="fbgOpenNewCarModal()">＋ Add Car</button>
-      
+      <button class="fbg-new-car-btn" id="fbg-new-tpl" style="flex:1;margin:0;width:auto">＋ New Template</button>
+      <button class="fbg-new-car-btn" id="fbg-export-lib" style="flex:0 0 auto;margin:0;width:auto;padding:0 14px" title="Download the whole library as CSV">⬇ CSV</button>
     </div>
     <div class="fbg-car-list" id="fbg-car-list">
       <div class="fbg-lib-empty">
         <div class="fbg-lib-empty-icon"><span class="ic ic-car"></span></div>
-        <div class="fbg-lib-empty-txt">No cars saved yet.<br>Search a vehicle, then save results as a template.</div>
+        <div class="fbg-lib-empty-txt">No templates saved yet.<br>Search a car, chassis or product, then save the results to a template.</div>
       </div>
     </div>
   </div>
@@ -12780,35 +12823,18 @@ window.addEventListener('resize', function(){
   <div class="fbg-tab-content" id="fbg-lib-add" style="padding:16px;gap:12px">
     <div>
       <div style="font-size:var(--t-md);font-weight:700;color:#ccc;margin-bottom:4px">Manually Add a Group URL</div>
-      <div style="font-size:var(--t-sm);color:#777;line-height:1.6;margin-bottom:14px">Paste any Facebook group URL and link it to a saved car.</div>
+      <div style="font-size:var(--t-sm);color:#777;line-height:1.6;margin-bottom:14px">Paste any Facebook group URL and link it to a saved template.</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <input class="fbg-add-url-input" id="fbg-manual-name" placeholder="Group name (e.g. Audi S6 Owners)" />
       <input class="fbg-add-url-input" id="fbg-manual-url" placeholder="https://www.facebook.com/groups/..." />
       <input class="fbg-add-url-input" id="fbg-manual-members" placeholder="Members (optional, e.g. 12000)" type="number" />
       <select class="fbg-add-url-input" id="fbg-manual-car" style="cursor:pointer;-webkit-appearance:none;appearance:none">
-        <option value="">— Select a car template —</option>
+        <option value="">— Select a template —</option>
       </select>
-      <button class="fbg-modal-save" style="height:38px;font-size:var(--t-sm)" onclick="fbgManualAddUrl()">Save Group</button>
+      <button class="fbg-modal-save" id="fbg-manual-save" style="height:38px;font-size:var(--t-sm)">Save Group</button>
     </div>
     <div id="fbg-manual-msg" style="font-size:var(--t-sm);color:#2ABFAA;display:none;margin-top:4px"></div>
-  </div>
-</div>
-
-<!-- New Car Modal -->
-<div class="fbg-modal-overlay" id="fbg-car-modal">
-  <div class="fbg-modal">
-    <div class="fbg-modal-title">Add New Car</div>
-    <div class="fbg-modal-sub">Enter the year, make, and model to create a template.</div>
-    <div class="fbg-modal-row">
-      <input class="fbg-modal-input" id="fbg-car-year" placeholder="Year" maxlength="4" />
-      <input class="fbg-modal-input" id="fbg-car-make" placeholder="Make" />
-      <input class="fbg-modal-input" id="fbg-car-model" placeholder="Model" />
-    </div>
-    <div class="fbg-modal-btns">
-      <button class="fbg-modal-cancel" onclick="fbgCloseCarModal()">Cancel</button>
-      <button class="fbg-modal-save" onclick="fbgSaveNewCar()">Add Car</button>
-    </div>
   </div>
 </div>
 
@@ -12829,6 +12855,7 @@ window.addEventListener('resize', function(){
 
 var FBG_LIBRARY_KEY = 'tgk_fbg_library_v1';
 
+// Storage layer (unchanged behaviour): cloud blob via sbSaveFBG, localStorage mirror.
 function fbgLibLoad(){
   // Use Supabase cache if available, fall back to localStorage
   if (_fbgCache !== null) return _fbgCache;
@@ -12842,764 +12869,693 @@ function fbgLibSave(data){
   _fbgCache = data;
   sbSaveFBG(data).catch(function(e){ console.warn('FB group cloud save failed:', e); });
 }
-
-function fbgCarKey(year, make, model){
-  return [year, make, model].join('_').toLowerCase().replace(/\s+/g,'_');
+// Key format is unchanged for cars (so existing data and backups still match).
+// Chassis / product templates get a "kind_" prefix so they can never collide with a car.
+function fbgCarKey(year, make, model, kind){
+  if(!kind || kind === 'car') return [year, make, model].join('_').toLowerCase().replace(/\s+/g,'_');   // exactly the original formula
+  return [kind, make, model].filter(function(x){ return String(x||'').trim() !== ''; }).join('_').toLowerCase().replace(/\s+/g,'_');
 }
 
-function fbgSwitchLibTab(tab){
-  document.getElementById('fbg-lib-tab-cars').classList.toggle('active', tab==='cars');
-  document.getElementById('fbg-lib-tab-add').classList.toggle('active', tab==='add');
-  document.getElementById('fbg-lib-cars').classList.toggle('active', tab==='cars');
-  document.getElementById('fbg-lib-add').classList.toggle('active', tab==='add');
-  if(tab==='add') fbgPopulateCarDropdowns();
+// Everything below lives in a closure so it can't clobber globals other
+// Command Center scripts already define (esc, $, val ...).
+(function(){
+'use strict';
+
+var FBG_MODEL = 'claude-sonnet-4-6';
+var FBG_COOLDOWN_OK = 45, FBG_COOLDOWN_FAIL = 10;      // seconds between LIVE searches
+var FBG_CACHE_KEY = 'tgk_fbg_cache_v2', FBG_CACHE_TTL = 14*24*3600*1000;
+var FBG_W_KEY = 'tgk_fbg_lib_w', FBG_W_DEFAULT = 320, FBG_W_MIN = 260;
+
+var KINDS = {
+  car:     {label:'Car',     plural:'Cars',     ic:'ic-car',    ph:'e.g. 2016 Audi S6, BMW M3 E46, C8 Corvette...'},
+  chassis: {label:'Chassis', plural:'Chassis',  ic:'ic-wrench', ph:'e.g. Audi B9 / 8W, BMW E46, VW MK7...'},
+  product: {label:'Product', plural:'Products', ic:'ic-box',    ph:'e.g. cold air intake, downpipe, coilovers...'}
+};
+var KIND_ORDER = ['car','chassis','product'];
+
+var fbgOpen = {}, fbgKindFilter = 'all', fbgActiveKey = null;
+var fbgResults = [], fbgSortBy = 'score', fbgLabel = '', fbgLabelKind = 'car', fbgVisible = 10;
+var fbgSelected = new Set(), fbgCachedAt = 0, fbgBusy = false;
+var fbgCooldownEnd = 0, fbgCooldownTimer = null;
+
+/* ── helpers ── */
+function $(id){ return document.getElementById(id); }
+function val(id){ var e=$(id); return e ? String(e.value||'').trim() : ''; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function isHttp(u){ return /^https?:\/\//i.test(String(u||'')); }
+function fbSearchUrl(name){ return 'https://www.facebook.com/search/groups/?q='+encodeURIComponent(name||''); }
+function openUrl(u){ if(isHttp(u)) window.open(u,'_blank','noopener'); }
+function kindIcon(k){ return '<span class="ic '+KINDS[k].ic+'"></span>'; }
+// Saved groups may carry an emoji (AI results) OR one of the dashboard's own icon spans (manual adds).
+function iconHtml(ic){
+  ic = String(ic||'');
+  if(!ic) return '<span class="ic ic-users"></span>';
+  if(/^<span class="ic ic-[a-z0-9-]+"><\/span>$/.test(ic)) return ic;
+  return esc(ic);
+}
+function ago(t){ var m=Math.round((Date.now()-t)/60000); if(m<2)return 'just now'; if(m<60)return m+'m ago'; var h=Math.round(m/60); if(h<24)return h+'h ago'; return Math.round(h/24)+'d ago'; }
+function fbgFmt(n){ if(!n||n<=0) return '?'; return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?Math.round(n/1000)+'K':String(n); }
+
+function fbgToast(msg){
+  var t = $('fbg-toast'); if(!t) return;
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
 }
 
-function fbgOpenNewCarModal(){
-  document.getElementById('fbg-car-modal').classList.add('open');
-  document.getElementById('fbg-car-year').focus();
+/* ── template model ── */
+function tplKind(t){ return t && KINDS[t.kind] ? t.kind : 'car'; }
+function tplLabel(t){
+  var k = tplKind(t);
+  if(k==='car') return [t.year,t.make,t.model].filter(Boolean).join(' ');
+  if(k==='chassis') return [t.make,t.model].filter(Boolean).join(' ');
+  return (t.model||'')+(t.make?' ('+t.make+')':'');
 }
-function fbgCloseCarModal(){
-  document.getElementById('fbg-car-modal').classList.remove('open');
-  document.getElementById('fbg-car-year').value='';
-  document.getElementById('fbg-car-make').value='';
-  document.getElementById('fbg-car-model').value='';
+function tplQuery(t){ return tplKind(t)==='product' ? [t.model,t.make].filter(Boolean).join(' ') : tplLabel(t); }
+function tplByKey(l,key){ return l.find(function(t){ return t.key===key; }); }
+function parseQuery(q,kind){
+  q = String(q||'').trim();
+  if(kind==='car'){ var m=q.match(/^(\d{4})\s+(\S+)\s+(.+)$/); return m?{year:m[1],make:m[2],model:m[3]}:{year:'',make:'',model:q}; }
+  if(kind==='chassis'){ var p=q.split(/\s+/); return p.length>1?{make:p[0],model:p.slice(1).join(' ')}:{make:'',model:q}; }
+  return {make:'',model:q};
 }
 
-function fbgSaveNewCar(){
-  var year = document.getElementById('fbg-car-year').value.trim();
-  var make = document.getElementById('fbg-car-make').value.trim();
-  var model = document.getElementById('fbg-car-model').value.trim();
-  if(!year || !make || !model){ fbgToast('Please fill in year, make, and model.'); return; }
-  var lib = fbgLibLoad();
-  var key = fbgCarKey(year, make, model);
-  if(lib.find(function(c){ return c.key===key; })){ fbgToast('That car already exists.'); fbgCloseCarModal(); return; }
-  lib.push({ key:key, year:year, make:make, model:model, groups:[] });
-  fbgLibSave(lib);
-  fbgCloseCarModal();
-  fbgRenderLibrary();
-  fbgPopulateCarDropdowns();
-  fbgToast('Car added: '+year+' '+make+' '+model);
+/* ── modals (same classes the dashboard themes already style) ── */
+var modalOnClose = null;
+function showModal(inner,onClose){
+  closeModal(true);
+  var ov = document.createElement('div');
+  ov.className = 'fbg-modal-overlay open'; ov.id = 'fbg-modal';
+  ov.innerHTML = '<div class="fbg-modal" role="dialog" aria-modal="true">'+inner+'</div>';
+  ov.addEventListener('mousedown',function(e){ if(e.target===ov) closeModal(); });
+  document.body.appendChild(ov);
+  modalOnClose = onClose || null;
+  var f = ov.querySelector('[data-autofocus]'); if(f) f.focus();
+  return ov;
+}
+function closeModal(silent){
+  var m = $('fbg-modal'); if(m) m.remove();
+  var cb = modalOnClose; modalOnClose = null;
+  if(cb && !silent) cb();
+}
+function confirmBox(title,msg,okLabel){
+  return new Promise(function(resolve){
+    var ov = showModal('<div class="fbg-modal-title">'+esc(title)+'</div><div class="fbg-modal-sub">'+esc(msg)+'</div>'
+      +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="no">Cancel</button><button class="fbg-modal-save" data-act="yes" data-autofocus>'+esc(okLabel||'OK')+'</button></div>',
+      function(){ resolve(false); });
+    ov.addEventListener('click',function(e){
+      var b = e.target.closest('[data-act]'); if(!b) return;
+      closeModal(true); resolve(b.dataset.act==='yes');
+    });
+  });
+}
+
+/* template form — shared by "New template" and the Save modal */
+function fieldsHtml(p,kind,pre){
+  pre = pre||{};
+  var v = function(k){ return esc(pre[k]||''); };
+  if(kind==='car') return '<div class="fbg-modal-row"><input class="fbg-modal-input" id="'+p+'-year" placeholder="Year" maxlength="4" value="'+v('year')+'"/><input class="fbg-modal-input" id="'+p+'-make" placeholder="Make" value="'+v('make')+'"/><input class="fbg-modal-input" id="'+p+'-model" placeholder="Model" value="'+v('model')+'"/></div><div class="fbg-hint">One specific vehicle — e.g. 2016 · Audi · S6</div>';
+  if(kind==='chassis') return '<div class="fbg-modal-row2"><input class="fbg-modal-input" id="'+p+'-make" placeholder="Make (e.g. Audi)" value="'+v('make')+'"/><input class="fbg-modal-input" id="'+p+'-model" placeholder="Chassis (e.g. B9 / 8W)" value="'+v('model')+'"/></div><div class="fbg-hint">Covers every model on the platform — e.g. Audi B9 / 8W, BMW E46, VW MK7.</div>';
+  return '<div class="fbg-modal-row2"><input class="fbg-modal-input" id="'+p+'-model" placeholder="Product (e.g. Cold air intake)" value="'+v('model')+'"/><input class="fbg-modal-input" id="'+p+'-make" placeholder="Fits (optional, e.g. Audi B9 S4)" value="'+v('make')+'"/></div><div class="fbg-hint">A product or category you sell — finds groups where those buyers hang out.</div>';
+}
+function tplFormHtml(p,kind,pre){
+  return '<div class="fbg-seg" id="'+p+'-seg">'+KIND_ORDER.map(function(k){
+    return '<button type="button" data-seg="'+k+'" class="'+(k===kind?'on':'')+'">'+kindIcon(k)+KINDS[k].label+'</button>';
+  }).join('')+'</div><div id="'+p+'-fields">'+fieldsHtml(p,kind,pre)+'</div>';
+}
+function bindTplForm(root,p,kind){
+  var st = {kind:kind}, seg = root.querySelector('#'+p+'-seg');
+  seg.addEventListener('click',function(e){
+    var b = e.target.closest('[data-seg]'); if(!b) return;
+    var cur = {make:val(p+'-make'),model:val(p+'-model'),year:val(p+'-year')};
+    st.kind = b.dataset.seg;
+    seg.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on',x===b); });
+    $(p+'-fields').innerHTML = fieldsHtml(p,st.kind,cur);
+    var f = $(p+'-fields').querySelector('input'); if(f) f.focus();
+  });
+  return st;
+}
+function readTplForm(p,kind){
+  var f = {year:val(p+'-year'),make:val(p+'-make'),model:val(p+'-model')};
+  if(kind==='car' && (!f.year||!f.make||!f.model)) return {error:'Please fill in year, make, and model.'};
+  if(kind==='chassis' && (!f.make||!f.model)) return {error:'Fill in the make and the chassis code.'};
+  if(kind==='product' && !f.model) return {error:'Enter the product name.'};
+  return f;
+}
+
+/* ════════ Library: render ════════ */
+function tplOptionsHtml(l,selectedKey,withNew,placeholder){
+  var h = placeholder ? '<option value="">'+esc(placeholder)+'</option>' : '';
+  KIND_ORDER.forEach(function(k){
+    var items = l.filter(function(t){ return tplKind(t)===k; }).sort(function(a,b){ return tplLabel(a).localeCompare(tplLabel(b)); });
+    if(!items.length) return;
+    h += '<optgroup label="'+esc(KINDS[k].plural)+'">'+items.map(function(t){
+      return '<option value="'+esc(t.key)+'"'+(t.key===selectedKey?' selected':'')+'>'+esc(tplLabel(t))+'</option>';
+    }).join('')+'</optgroup>';
+  });
+  if(withNew) h += '<option value="__new__">＋ Create new template…</option>';
+  return h;
+}
+function fbgPopulateCarDropdowns(){
+  var sel = $('fbg-manual-car'); if(!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = tplOptionsHtml(fbgLibLoad(),cur,false,'— Select a template —');
 }
 
 function fbgRenderLibrary(){
-  var lib = fbgLibLoad();
-  var filter = (document.getElementById('fbg-lib-filter')||{}).value || '';
-  var filt = filter.toLowerCase();
-  var filtered = filt ? lib.filter(function(c){
-    return (c.year+' '+c.make+' '+c.model).toLowerCase().includes(filt);
-  }) : lib;
+  var box = $('fbg-car-list'), chips = $('fbg-chips'); if(!box) return;
+  var l = fbgLibLoad();
+  var counts = {all:l.length,car:0,chassis:0,product:0};
+  l.forEach(function(t){ counts[tplKind(t)]++; });
+  if(chips) chips.innerHTML = ['all'].concat(KIND_ORDER).map(function(k){
+    return '<button class="fbg-chip'+(fbgKindFilter===k?' on':'')+'" data-act="kind" data-kind="'+k+'">'+(k==='all'?'All':KINDS[k].plural)+'<b>'+counts[k]+'</b></button>';
+  }).join('');
 
-  var container = document.getElementById('fbg-car-list');
-  if(!container) return;
-  if(filtered.length === 0){
-    container.innerHTML = '<div class="fbg-lib-empty"><div class="fbg-lib-empty-icon"><span class="ic ic-car"></span></div><div class="fbg-lib-empty-txt">'+(filt?'No matches found.':'No cars saved yet.<br>Search a vehicle, then save results as a template.')+'</div></div>';
+  var q = val('fbg-lib-filter').toLowerCase();
+  var list = l.filter(function(t){
+    if(fbgKindFilter!=='all' && tplKind(t)!==fbgKindFilter) return false;
+    if(!q) return true;
+    if(tplLabel(t).toLowerCase().indexOf(q)!==-1) return true;
+    return (t.groups||[]).some(function(g){ return String(g.name||'').toLowerCase().indexOf(q)!==-1 || String(g.url||'').toLowerCase().indexOf(q)!==-1; });
+  }).sort(function(a,b){
+    var ka = KIND_ORDER.indexOf(tplKind(a)), kb = KIND_ORDER.indexOf(tplKind(b));
+    return ka!==kb ? ka-kb : tplLabel(a).localeCompare(tplLabel(b));
+  });
+
+  if(!list.length){
+    box.innerHTML = '<div class="fbg-lib-empty"><div class="fbg-lib-empty-icon"><span class="ic '+(q||fbgKindFilter!=='all'?'ic-search':'ic-car')+'"></span></div><div class="fbg-lib-empty-txt">'
+      +(q||fbgKindFilter!=='all'?'No matches found.':'No templates saved yet.<br>Search a car, chassis or product, then save the results to a template.')+'</div></div>';
     return;
   }
-
-  var html = '';
-  filtered.forEach(function(car){
-    var label = car.year+' '+car.make+' '+car.model;
-    var count = (car.groups||[]).length;
-    html += '<div class="fbg-car-item" id="fbg-car-'+car.key+'">'
-      +'<div class="fbg-car-header" onclick="fbgToggleCar(\''+car.key+'\')">'
-      +'<span class="fbg-car-icon"><span class="ic ic-car"></span></span>'
-      +'<span class="fbg-car-name">'+label+'</span>'
-      +'<span class="fbg-car-count">'+count+' group'+(count===1?'':'s')+'</span>'
-      +'<span class="fbg-car-chevron" id="fbg-chev-'+car.key+'">▶</span>'
-      +'</div>'
-      +'<div class="fbg-car-body" id="fbg-car-body-'+car.key+'">'
-      +'<button class="fbg-car-search-btn" onclick="fbgLoadCarSearch(\''+car.key+'\')"><span class="ic ic-search"></span>Search &ldquo;'+label+'&rdquo;</button>';
-
-    if(count === 0){
-      html += '<div style="font-size:var(--t-sm);color:#aaa;text-align:center;padding:8px 0">No groups linked yet.</div>';
-    } else {
-      (car.groups||[]).forEach(function(g, gi){
-        var safeKey = car.key.replace(/'/g,"\\'");
-        html += '<div class="fbg-saved-group">'
-          +'<span class="fbg-saved-group-icon">'+(g.icon||'<span class="ic ic-users"></span>')+'</span>'
-          +'<div class="fbg-saved-group-info">'
-          +'<div class="fbg-saved-group-name">'+g.name+'</div>'
-          +'<div class="fbg-saved-group-url">'+(g.members&&g.members>0?fbgFmt(g.members)+' members · ':'')+((g.url||'').replace('https://',''))+'</div>'
-          +'</div>'
-          +'<div class="fbg-saved-group-actions">'
-          +'<button class="fbg-saved-group-open" onclick="window.open(\''+g.url+'\',\'_blank\')">↗</button>'
-          +'<button class="fbg-saved-group-rm" onclick="fbgRemoveGroup(\''+safeKey+'\','+gi+')"><span class="ic ic-x"></span></button>'
-          +'</div>'
-          +'</div>';
-      });
-    }
-
-    html += '<button class="fbg-car-delete-btn" onclick="fbgDeleteCar(\''+car.key+'\')"><span class="ic ic-trash"></span>Delete car</button>';
-    html += '</div></div>';
-  });
-  container.innerHTML = html;
-}
-
-function fbgToggleCar(key){
-  var body = document.getElementById('fbg-car-body-'+key);
-  var chev = document.getElementById('fbg-chev-'+key);
-  if(!body) return;
-  var isOpen = body.classList.contains('open');
-  body.classList.toggle('open', !isOpen);
-  if(chev) chev.classList.toggle('open', !isOpen);
-}
-
-function fbgLoadCarSearch(key){
-  var lib = fbgLibLoad();
-  var car = lib.find(function(c){ return c.key===key; });
-  if(!car) return;
-  var q = car.year+' '+car.make+' '+car.model;
-  document.getElementById('fbg-search').value = q;
-  fbgSearch();
-}
-
-function fbgRemoveGroup(carKey, groupIndex){
-  var lib = fbgLibLoad();
-  var car = lib.find(function(c){ return c.key===carKey; });
-  if(!car) return;
-  car.groups.splice(groupIndex, 1);
-  fbgLibSave(lib);
-  fbgRenderLibrary();
-  fbgToast('Group removed.');
-}
-
-function fbgDeleteCar(key){
-  var lib = fbgLibLoad();
-  var idx = lib.findIndex(function(c){ return c.key===key; });
-  if(idx === -1) return;
-  var name = lib[idx].year+' '+lib[idx].make+' '+lib[idx].model;
-  lib.splice(idx, 1);
-  fbgLibSave(lib);
-  fbgRenderLibrary();
-  fbgPopulateCarDropdowns();
-  fbgToast(name+' deleted.');
-}
-
-function fbgPopulateCarDropdowns(){
-  var lib = fbgLibLoad();
-  var selects = [document.getElementById('fbg-manual-car')];
-  selects.forEach(function(sel){
-    if(!sel) return;
-    sel.innerHTML = '<option value="">— Select a car template —</option>';
-    lib.forEach(function(car){
-      var opt = document.createElement('option');
-      opt.value = car.key;
-      opt.textContent = car.year+' '+car.make+' '+car.model;
-      sel.appendChild(opt);
+  box.innerHTML = list.map(function(t){
+    var k = tplKind(t), label = tplLabel(t), n = (t.groups||[]).length, key = t.key;
+    var isOpen = !!fbgOpen[key] || (q && (t.groups||[]).some(function(g){ return String(g.name||'').toLowerCase().indexOf(q)!==-1; }));
+    var body = '<button class="fbg-car-search-btn" data-act="search-tpl" data-key="'+esc(key)+'"><span class="ic ic-search"></span>Search &ldquo;'+esc(label)+'&rdquo;</button>';
+    if(!n) body += '<div class="fbg-none">No groups linked yet.</div>';
+    (t.groups||[]).forEach(function(g,gi){
+      body += '<div class="fbg-saved-group"><span class="fbg-saved-group-icon">'+iconHtml(g.icon)+'</span>'
+        +'<div class="fbg-saved-group-info"><div class="fbg-saved-group-name" title="'+esc(g.name)+'">'+esc(g.name)+'</div>'
+        +'<div class="fbg-saved-group-url">'+(g.members>0?fbgFmt(g.members)+' members · ':'')+esc(String(g.url||'').replace(/^https?:\/\//i,''))+'</div></div>'
+        +'<div class="fbg-saved-group-actions"><button class="fbg-saved-group-open" title="Open" data-act="open-url" data-url="'+esc(g.url)+'">↗</button>'
+        +'<button class="fbg-saved-group-rm" title="Remove" data-act="rm-group" data-key="'+esc(key)+'" data-gi="'+gi+'"><span class="ic ic-x"></span></button></div></div>';
     });
-  });
-}
-
-// Save ALL current results as a template for a car
-function fbgSaveAllAsTemplate(){
-  if(!fbgCurrentResults || fbgCurrentResults.length === 0){ fbgToast('No results to save.'); return; }
-  var lib = fbgLibLoad();
-  if(lib.length === 0){ fbgToast('Add a car first using the library →'); fbgOpenNewCarModal(); return; }
-
-  // Build a quick pick modal inline
-  var carOptions = lib.map(function(c,i){
-    return '<option value="'+c.key+'">'+c.year+' '+c.make+' '+c.model+'</option>';
+    body += '<div class="fbg-car-foot"><button class="fbg-car-delete-btn" data-act="del-tpl" data-key="'+esc(key)+'"><span class="ic ic-trash"></span>Delete template</button></div>';
+    return '<div class="fbg-car-item" id="fbg-car-'+esc(key)+'" data-key="'+esc(key)+'"><div class="fbg-car-header" data-act="toggle-tpl" data-key="'+esc(key)+'">'
+      +'<span class="fbg-car-icon">'+kindIcon(k)+'</span><div class="fbg-car-name-wrap"><div class="fbg-car-name" title="'+esc(label)+'">'+esc(label)+'</div><div class="fbg-car-kind">'+KINDS[k].label+'</div></div>'
+      +'<span class="fbg-car-count">'+n+' group'+(n===1?'':'s')+'</span><span class="fbg-car-chevron'+(isOpen?' open':'')+'">▶</span></div>'
+      +'<div class="fbg-car-body'+(isOpen?' open':'')+'">'+body+'</div></div>';
   }).join('');
-
-  var existingModal = document.getElementById('fbg-template-modal');
-  if(existingModal) existingModal.remove();
-
-  var modal = document.createElement('div');
-  modal.id = 'fbg-template-modal';
-  modal.className = 'fbg-modal-overlay open';
-  modal.innerHTML = '<div class="fbg-modal">'
-    +'<div class="fbg-modal-title">Save as Template</div>'
-    +'<div class="fbg-modal-sub">Choose which car to link these '+fbgCurrentResults.length+' groups to.</div>'
-    +'<select class="fbg-modal-input" id="fbg-tmpl-car-sel" style="height:36px;cursor:pointer;-webkit-appearance:none;appearance:none">'+carOptions+'</select>'
-    +'<div class="fbg-modal-btns" style="margin-top:12px">'
-    +'<button class="fbg-modal-cancel" onclick="document.getElementById(\'fbg-template-modal\').remove()">Cancel</button>'
-    +'<button class="fbg-modal-save" onclick="fbgConfirmSaveTemplate()">Save</button>'
-    +'</div></div>';
-  document.body.appendChild(modal);
 }
 
-function fbgConfirmSaveTemplate(){
-  var carKey = document.getElementById('fbg-tmpl-car-sel').value;
-  if(!carKey){ fbgToast('Please select a car.'); return; }
-  var lib = fbgLibLoad();
-  var car = lib.find(function(c){ return c.key===carKey; });
-  if(!car){ return; }
-  var toAdd = fbgCurrentResults.slice();
-  // Merge, avoid dupes by name
-  var existingNames = new Set((car.groups||[]).map(function(g){ return g.name; }));
+/* ════════ Library: mutations ════════ */
+function createTemplate(l,kind,f){
+  var key = fbgCarKey(f.year,f.make,f.model,kind);
+  var ex = tplByKey(l,key);
+  if(ex) return {tpl:ex,existed:true};
+  var t = {key:key,year:kind==='car'?f.year:'',make:f.make||'',model:f.model,groups:[]};
+  if(kind!=='car') t.kind = kind;                 // car entries keep their original shape
+  l.push(t);
+  return {tpl:t,existed:false};
+}
+function normUrl(u){
+  try{ var x=new URL(u); var s=x.hostname.replace(/^(www|m|web|mbasic)\./i,'')+x.pathname.replace(/\/+$/,'');
+    if(/^\/search\//.test(x.pathname)) s+=x.search; return s.toLowerCase(); }catch(e){ return String(u||'').toLowerCase(); }
+}
+function insertGroups(tpl,list){
+  tpl.groups = tpl.groups||[];
+  var seenUrl = {}, seenName = {};
+  tpl.groups.forEach(function(g){ seenUrl[normUrl(g.url)]=1; seenName[String(g.name||'').toLowerCase()]=1; });
   var added = 0;
-  toAdd.forEach(function(g){
-    if(!existingNames.has(g.name)){
-      car.groups.push({ name:g.name, url:g.url, members:g.members, icon:g.icon||'<span class="ic ic-users"></span>', desc:g.desc||'' });
-      added++;
-    }
+  list.forEach(function(g){
+    var url = isHttp(g.url) ? g.url : fbSearchUrl(g.name);
+    var nu = normUrl(url), nn = String(g.name||'').toLowerCase();
+    if(seenUrl[nu] || seenName[nn]) return;
+    seenUrl[nu]=1; seenName[nn]=1;
+    tpl.groups.push({name:g.name,url:url,members:g.members>0?g.members:0,icon:g.icon||'<span class="ic ic-users"></span>',desc:g.desc||''});
+    added++;
   });
-  fbgLibSave(lib);
-  document.getElementById('fbg-template-modal').remove();
-  fbgRenderLibrary();
-  fbgToast(added+' group'+(added===1?'':'s')+' saved to '+car.year+' '+car.make+' '+car.model+'!');
+  return added;
+}
+function focusTpl(key){
+  fbgOpen[key] = true; fbgKindFilter = 'all';
+  var f = $('fbg-lib-filter'); if(f) f.value = '';
+  fbgRenderLibrary(); fbgPopulateCarDropdowns();
+  var items = document.querySelectorAll('.fbg-car-item');
+  for(var i=0;i<items.length;i++){ if(items[i].dataset.key===key){ if(items[i].scrollIntoView) items[i].scrollIntoView({block:'nearest',behavior:'smooth'}); break; } }
 }
 
-// Save only SELECTED groups to a car
-function fbgSaveSelectedToLibrary(){
-  var toSave = fbgSelected.size > 0
-    ? fbgCurrentResults.filter(function(g){ return fbgSelected.has(g.name); })
-    : fbgCurrentResults;
-  if(toSave.length === 0){ fbgToast('No groups to save.'); return; }
-
-  var lib = fbgLibLoad();
-  if(lib.length === 0){ fbgToast('Add a car first using the library →'); fbgOpenNewCarModal(); return; }
-
-  var carOptions = lib.map(function(c){
-    return '<option value="'+c.key+'">'+c.year+' '+c.make+' '+c.model+'</option>';
-  }).join('');
-
-  var existingModal = document.getElementById('fbg-sel-modal');
-  if(existingModal) existingModal.remove();
-
-  var modal = document.createElement('div');
-  modal.id = 'fbg-sel-modal';
-  modal.className = 'fbg-modal-overlay open';
-  modal.innerHTML = '<div class="fbg-modal">'
-    +'<div class="fbg-modal-title">Save '+toSave.length+' Group'+(toSave.length===1?'':'s')+'</div>'
-    +'<div class="fbg-modal-sub">Link '+(fbgSelected.size>0?'the selected groups':'all results')+' to a car template.</div>'
-    +'<select class="fbg-modal-input" id="fbg-sel-car-sel" style="height:36px;cursor:pointer;-webkit-appearance:none;appearance:none">'+carOptions+'</select>'
-    +'<div class="fbg-modal-btns" style="margin-top:12px">'
-    +'<button class="fbg-modal-cancel" onclick="document.getElementById(\'fbg-sel-modal\').remove()">Cancel</button>'
-    +'<button class="fbg-modal-save" onclick="fbgConfirmSaveSelected()">Save</button>'
-    +'</div></div>';
-  document.body.appendChild(modal);
-
-  // Store groups temporarily
-  window._fbgPendingSave = toSave;
+function openNewTemplate(kind){
+  kind = kind || (fbgKindFilter!=='all' ? fbgKindFilter : 'car');
+  var ov = showModal('<div class="fbg-modal-title">New Template</div>'
+    +'<div class="fbg-modal-sub">Pick what this template is for — then you can search it and file groups under it.</div>'
+    +tplFormHtml('fbg-nt',kind)
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Create</button></div>');
+  var st = bindTplForm(ov,'fbg-nt',kind);
+  var first = ov.querySelector('#fbg-nt-fields input'); if(first) first.focus();
+  function save(){
+    var f = readTplForm('fbg-nt',st.kind);
+    if(f.error){ fbgToast(f.error); return; }
+    var l = fbgLibLoad(), res = createTemplate(l,st.kind,f);
+    if(!res.existed) fbgLibSave(l);
+    closeModal(true); focusTpl(res.tpl.key);
+    fbgToast(res.existed ? 'That template already exists.' : KINDS[st.kind].label+' template added: '+tplLabel(res.tpl));
+  }
+  ov.addEventListener('click',function(e){ var b=e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='save') save(); else if(b.dataset.act==='cancel') closeModal(); });
+  ov.addEventListener('keydown',function(e){ if(e.key==='Enter' && e.target.tagName==='INPUT') save(); });
 }
 
-function fbgConfirmSaveSelected(){
-  var carKey = document.getElementById('fbg-sel-car-sel').value;
-  if(!carKey){ fbgToast('Please select a car.'); return; }
-  var lib = fbgLibLoad();
-  var car = lib.find(function(c){ return c.key===carKey; });
-  if(!car) return;
-  var toAdd = window._fbgPendingSave || [];
-  var existingNames = new Set((car.groups||[]).map(function(g){ return g.name; }));
-  var added = 0;
-  toAdd.forEach(function(g){
-    if(!existingNames.has(g.name)){
-      car.groups.push({ name:g.name, url:g.url, members:g.members, icon:g.icon||'<span class="ic ic-users"></span>', desc:g.desc||'' });
-      added++;
-    }
-  });
-  fbgLibSave(lib);
-  document.getElementById('fbg-sel-modal').remove();
-  fbgRenderLibrary();
-  fbgToast(added+' group'+(added===1?'':'s')+' saved to '+car.year+' '+car.make+' '+car.model+'!');
+async function deleteTemplate(key){
+  var l = fbgLibLoad(), idx = l.findIndex(function(t){ return t.key===key; });
+  if(idx===-1) return;
+  var t = l[idx], n = (t.groups||[]).length;
+  var ok = await confirmBox('Delete “'+tplLabel(t)+'”?', n?('This also removes its '+n+' saved group'+(n===1?'':'s')+'. This can’t be undone.'):'This can’t be undone.', 'Delete');
+  if(!ok) return;
+  l = fbgLibLoad(); idx = l.findIndex(function(x){ return x.key===key; }); if(idx===-1) return;
+  l.splice(idx,1); fbgLibSave(l);
+  delete fbgOpen[key]; if(fbgActiveKey===key) fbgActiveKey = null;
+  fbgRenderLibrary(); fbgPopulateCarDropdowns();
+  fbgToast(tplLabel(t)+' deleted.');
+}
+async function removeGroup(key,gi){
+  var l = fbgLibLoad(), t = tplByKey(l,key); if(!t||!t.groups||!t.groups[gi]) return;
+  var g = t.groups[gi];
+  var ok = await confirmBox('Remove this group?','“'+g.name+'” will be removed from '+tplLabel(t)+'.','Remove');
+  if(!ok) return;
+  l = fbgLibLoad(); t = tplByKey(l,key);
+  var at = t ? t.groups.findIndex(function(x){ return x.name===g.name && x.url===g.url; }) : -1;
+  if(at===-1) return;
+  t.groups.splice(at,1); fbgLibSave(l);
+  fbgRenderLibrary(); fbgToast('Group removed.');
 }
 
 function fbgManualAddUrl(){
-  var name = document.getElementById('fbg-manual-name').value.trim();
-  var url = document.getElementById('fbg-manual-url').value.trim();
-  var members = parseInt(document.getElementById('fbg-manual-members').value) || 0;
-  var carKey = document.getElementById('fbg-manual-car').value;
+  var name = val('fbg-manual-name'), url = val('fbg-manual-url'), members = parseInt(val('fbg-manual-members'),10)||0, key = val('fbg-manual-car');
   if(!name){ fbgToast('Enter a group name.'); return; }
-  if(!url || !url.includes('facebook.com')){ fbgToast('Enter a valid Facebook URL.'); return; }
-  if(!carKey){ fbgToast('Select a car.'); return; }
-  var lib = fbgLibLoad();
-  var car = lib.find(function(c){ return c.key===carKey; });
-  if(!car){ fbgToast('Car not found.'); return; }
-  car.groups = car.groups || [];
-  if(car.groups.find(function(g){ return g.name===name; })){ fbgToast('Group already saved to this car.'); return; }
-  car.groups.push({ name:name, url:url, members:members, icon:'<span class="ic ic-users"></span>', desc:'' });
-  fbgLibSave(lib);
-  fbgRenderLibrary();
-  document.getElementById('fbg-manual-name').value='';
-  document.getElementById('fbg-manual-url').value='';
-  document.getElementById('fbg-manual-members').value='';
-  var msg = document.getElementById('fbg-manual-msg');
-  if(msg){ msg.style.display='block'; msg.textContent='✓ Saved!'; setTimeout(function(){ msg.style.display='none'; }, 2500); }
+  if(!isHttp(url) || url.toLowerCase().indexOf('facebook.com')===-1){ fbgToast('Enter a valid Facebook URL.'); return; }
+  if(!key){ fbgToast('Select a template.'); return; }
+  var l = fbgLibLoad(), t = tplByKey(l,key);
+  if(!t){ fbgToast('Template not found.'); return; }
+  if(!insertGroups(t,[{name:name,url:url,members:members,desc:''}])){ fbgToast('Already saved in this template.'); return; }
+  fbgLibSave(l); fbgOpen[key] = true; fbgRenderLibrary();
+  ['fbg-manual-name','fbg-manual-url','fbg-manual-members'].forEach(function(i){ $(i).value=''; });
+  var m = $('fbg-manual-msg'); if(m){ m.style.display='block'; m.textContent='✓ Saved to '+tplLabel(t); setTimeout(function(){ m.style.display='none'; },2500); }
   fbgToast('Group saved!');
 }
 
-function fbgToast(msg){
-  var t = document.getElementById('fbg-toast');
-  if(!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(function(){ t.classList.remove('show'); }, 2500);
-}
-
-// Show/hide save bar when results load
-function fbgShowSaveBar(label){
-  var bar = document.getElementById('fbg-save-bar');
-  var lbl = document.getElementById('fbg-save-bar-label');
-  if(bar){ bar.classList.add('visible'); }
-  if(lbl && label){ lbl.textContent = label; }
-}
-function fbgHideSaveBar(){
-  var bar = document.getElementById('fbg-save-bar');
-  if(bar) bar.classList.remove('visible');
-}
-
-// Init library on page load
-document.addEventListener('DOMContentLoaded', function(){
-  fbgRenderLibrary();
-  fbgPopulateCarDropdowns();
-  var modal = document.getElementById('fbg-car-modal');
-  if(modal) modal.addEventListener('click', function(e){ if(e.target===modal) fbgCloseCarModal(); });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') fbgCloseCarModal(); });
-});
-
-var FBG_DB = {};
-
-var fbgCurrentResults = [];
-var fbgSortBy = 'score';
-var fbgCurrentLabel = '';
-var fbgVisibleCount = 10;
-
-// ── Web-search powered FB group finder ────────────────────────────────────
-async function callAIWithWebSearch(systemPrompt, userPrompt, maxTokens) {
-  var messages = [{ role: 'user', content: userPrompt }];
-  var tools = [{ type: 'web_search_20250305', name: 'web_search' }];
-
-  // Agentic loop — keep going until stop_reason is 'end_turn' (no more tool calls)
-  for (var i = 0; i < 4; i++) {
-    var body = {
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTokens || 3000,
-      system: systemPrompt,
-      tools: tools,
-      messages: messages
-    };
-    var r, d;
-    try {
-      r = await tgkAIFetch(body);
-    } catch(fe) { throw new Error('NETWORK_ERROR'); }
-
-    d = await r.json();
-    if (d.error) {
-      if (d.error.type === 'authentication_error') throw new Error('AUTH_ERROR');
-      if (d.error.type === 'rate_limit_error') throw new Error('RATE_ERROR');
-      throw new Error('API: ' + d.error.message);
-    }
-
-    // Add assistant turn to history
-    messages.push({ role: 'assistant', content: d.content });
-
-    if (d.stop_reason === 'end_turn') {
-      // Extract final text block
-      var textBlock = d.content.find(function(b){ return b.type === 'text'; });
-      return textBlock ? textBlock.text : '';
-    }
-
-    // Handle tool use — collect all tool_use blocks and build tool_result turn
-    var toolUseBlocks = d.content.filter(function(b){ return b.type === 'tool_use'; });
-    if (toolUseBlocks.length === 0) {
-      var tb = d.content.find(function(b){ return b.type === 'text'; });
-      return tb ? tb.text : '';
-    }
-
-    // Build tool_result content array for ALL tool calls in this turn
-    var toolResults = toolUseBlocks.map(function(block) {
-      return {
-        type: 'tool_result',
-        tool_use_id: block.id,
-        content: 'Search executed.'
-      };
-    });
-    messages.push({ role: 'user', content: toolResults });
+/* Save search results → template (existing one, or create a new one inline) */
+function openSave(){
+  var list = fbgSelected.size ? fbgResults.filter(function(g){ return fbgSelected.has(g.name); }) : fbgResults.slice();
+  if(!list.length){ fbgToast('No groups to save.'); return; }
+  var l = fbgLibLoad();
+  var pre = tplByKey(l,fbgActiveKey) || l.find(function(t){ return tplKind(t)===fbgLabelKind; }) || l[0];
+  var preKey = pre ? pre.key : '__new__';
+  var ov = showModal('<div class="fbg-modal-title">Save '+list.length+' Group'+(list.length===1?'':'s')+'</div>'
+    +'<div class="fbg-modal-sub">'+(fbgSelected.size?'The selected groups':'All results')+' will be filed under the template you choose. Duplicates are skipped.</div>'
+    +'<select class="fbg-modal-input" id="fbg-sv-sel">'+tplOptionsHtml(l,preKey,true)+'</select>'
+    +'<div class="fbg-new-wrap" id="fbg-sv-new">'+tplFormHtml('fbg-sv',fbgLabelKind,parseQuery(fbgLabel,fbgLabelKind))+'</div>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Save</button></div>');
+  var sel = ov.querySelector('#fbg-sv-sel'), wrap = ov.querySelector('#fbg-sv-new');
+  sel.value = preKey;
+  var st = bindTplForm(ov,'fbg-sv',fbgLabelKind);
+  function sync(){ wrap.classList.toggle('show', sel.value==='__new__'); }
+  sel.addEventListener('change',sync); sync();
+  function save(){
+    var l2 = fbgLibLoad(), tpl;
+    if(sel.value==='__new__'){
+      var f = readTplForm('fbg-sv',st.kind);
+      if(f.error){ fbgToast(f.error); return; }
+      tpl = createTemplate(l2,st.kind,f).tpl;
+    } else tpl = tplByKey(l2,sel.value);
+    if(!tpl){ fbgToast('Template not found.'); return; }
+    var added = insertGroups(tpl,list);
+    if(added || sel.value==='__new__') fbgLibSave(l2);
+    fbgActiveKey = tpl.key;
+    closeModal(true); focusTpl(tpl.key);
+    fbgToast(added ? added+' group'+(added===1?'':'s')+' saved to '+tplLabel(tpl)+'!' : 'Nothing new — those are already saved there.');
   }
-  throw new Error('Search loop exceeded');
+  ov.addEventListener('click',function(e){ var b=e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='save') save(); else if(b.dataset.act==='cancel') closeModal(); });
 }
 
-async function fbgSearch(){
-  var q = document.getElementById('fbg-search').value.trim();
-  if(!q) return;
-  var qLow = q.toLowerCase();
-  var countEl = document.getElementById('fbg-count');
-  var requestedCount = countEl ? parseInt(countEl.value) : 10;
-
-  // Instant hit from local cache
-  if(FBG_DB[qLow]){
-    fbgCurrentResults = FBG_DB[qLow].slice();
-    fbgCurrentLabel = q;
-    fbgVisibleCount = requestedCount;
-    fbgSelected.clear();
-    fbgShowSaveBar(q);
-    fbgRender();
-    return;
+/* ════════ Search ════════ */
+function cacheGet(k){ try{ var c=JSON.parse(localStorage.getItem(FBG_CACHE_KEY)||'{}'), e=c[k]; if(e && Date.now()-e.t<FBG_CACHE_TTL) return e; }catch(x){} return null; }
+function cacheSet(k,data){
+  try{ var c=JSON.parse(localStorage.getItem(FBG_CACHE_KEY)||'{}'); c[k]={t:Date.now(),data:data};
+    Object.keys(c).sort(function(a,b){ return c[b].t-c[a].t; }).slice(40).forEach(function(x){ delete c[x]; });
+    localStorage.setItem(FBG_CACHE_KEY,JSON.stringify(c)); }catch(x){}
+}
+function cleanUrl(u){
+  u = String(u||'').trim();
+  if(!/^https?:\/\/(www\.|m\.|web\.)?facebook\.com\/groups\/[^\s]+/i.test(u)) return '';
+  return u.split('?')[0].split('#')[0].replace(/\/+$/,'');
+}
+function normalize(arr){
+  var seen = {}, out = [];
+  arr.forEach(function(g){
+    if(!g || typeof g!=='object') return;
+    var name = String(g.name||'').trim(); if(!name || seen[name.toLowerCase()]) return;
+    seen[name.toLowerCase()] = 1;
+    var tags = (Array.isArray(g.tags)?g.tags:['brand']).filter(function(t){ return ['hot','active','brand','platform'].indexOf(t)!==-1; });
+    out.push({name:name,members:g.members===-1?-1:Math.max(0,Math.round(Number(g.members)||0)),activity:String(g.activity||'Medium'),
+      icon:String(g.icon||'🚗'),tags:tags.length?tags:['brand'],url:cleanUrl(g.url),desc:String(g.desc||''),
+      score:Math.min(99,Math.max(50,Math.round(Number(g.score)||80)))});
+  });
+  return out;
+}
+function extractArray(text){
+  var s = String(text||'').replace(/```json|```/g,'');
+  var m = s.search(/\[\s*\{/);
+  if(m===-1){
+    var o = s.indexOf('{');
+    if(o!==-1){ try{ var obj=JSON.parse(s.slice(o,s.lastIndexOf('}')+1)); var v=Object.keys(obj).map(function(k){ return obj[k]; }).find(Array.isArray); if(v) return v; }catch(e){} }
+    throw new Error('PARSE_FAIL');
   }
+  var e = s.lastIndexOf(']'); if(e<m) throw new Error('PARSE_FAIL');
+  try{ var a=JSON.parse(s.slice(m,e+1)); if(!Array.isArray(a)||!a.length) throw 0; return a; }catch(x){ throw new Error('PARSE_FAIL'); }
+}
+// Same route the rest of the Command Center uses (tgkAIFetch → anthropic-proxy edge function).
+async function aiCall(body){
+  var r, d;
+  try{ r = await tgkAIFetch(body); }catch(e){ throw new Error('NETWORK_ERROR'); }
+  try{ d = await r.json(); }catch(e){ throw new Error('NETWORK_ERROR'); }
+  if(d && d.error){
+    if(d.error.type==='authentication_error') throw new Error('AUTH_ERROR');
+    if(d.error.type==='rate_limit_error') throw new Error('RATE_ERROR');
+    throw new Error('API: '+d.error.message);
+  }
+  return d;
+}
+async function askWithSearch(system,user,maxTokens){
+  var messages = [{role:'user',content:user}], text = '';
+  for(var i=0;i<4;i++){
+    var d = await aiCall({model:FBG_MODEL,max_tokens:maxTokens||3500,system:system,tools:[{type:'web_search_20250305',name:'web_search'}],messages:messages});
+    var blocks = d.content||[];
+    // the JSON is in the LAST text block(s) — earlier ones are "let me search…" chatter
+    text = blocks.filter(function(b){ return b.type==='text'; }).map(function(b){ return b.text; }).join('');
+    if(d.stop_reason==='pause_turn'){ messages.push({role:'assistant',content:blocks}); continue; }   // server-side search still running
+    return text;
+  }
+  return text;
+}
+function buildPrompts(q,kind,count,exclude){
+  var subject = kind==='chassis' ? 'owners and enthusiasts of the "'+q+'" chassis / platform — cover the whole platform across its models, engines and years, plus the best model-specific groups'
+    : kind==='product' ? 'people who would buy "'+q+'" — owner, enthusiast and tuning communities for the vehicles it fits, plus groups dedicated to that type of product'
+    : 'owners of: "'+q+'"';
+  var system = 'You are an expert in automotive Facebook communities. The person searching is TGK Motorsport, a performance parts brand for European vehicles (Audi, VW, BMW); favor groups relevant to those markets when a query is ambiguous, but never force a brand that does not fit the query. Use web search to find real groups and verify member counts where possible; you may also include well-known groups from your training knowledge. Always return a populated JSON array, never an empty one. Return ONLY the JSON array — no explanation, no markdown.';
+  var user = 'Find Facebook groups for '+subject+'.\n\n'
+    +(exclude&&exclude.length ? 'Already found — do NOT repeat these:\n'+exclude.map(function(n,i){ return (i+1)+'. '+n; }).join('\n')+'\n\n' : '')
+    +'Return ONLY a JSON array of '+(exclude&&exclude.length?'exactly ':'')+count+' groups. Each object:\n'
+    +'{"name":"Group Name","members":25000,"activity":"High","icon":"\ud83d\ude97","tags":["brand"],"url":"","desc":"One sentence about the group.","score":88}\n\n'
+    +'members = best estimate as integer (-1 only if truly unknown). activity = Low/Medium/High/Very High. tags = 1-2 of: hot, active, brand, platform. score = relevance 50-99.\n'
+    +'url = the direct facebook.com/groups/... link ONLY if you actually saw it in search results; otherwise use an empty string "". Never guess a URL slug.\n'
+    +'Return ONLY the JSON array. No text before or after it.';
+  return {system:system,user:user};
+}
+function errMsg(e){
+  var m = e && e.message;
+  return m==='AUTH_ERROR' ? 'Not authorised for AI search — sign out and back in, then try again.'
+    : m==='NETWORK_ERROR' ? 'Cannot reach the AI service. Check your connection.'
+    : m==='RATE_ERROR' ? 'Anthropic API rate limit hit. Wait 30–60 seconds and try again.'
+    : m==='PARSE_FAIL' ? 'The AI response was unexpected. Please retry — it usually works on the second attempt.'
+    : (m||'Something went wrong.');
+}
+function setSearchBtn(label,disabled){ var b=$('fbg-go'); if(b){ b.textContent=label; b.disabled=!!disabled; } }
+// Cooldown only throttles LIVE searches (they cost API calls) — the button stays clickable so
+// cached results and saved-template lookups still work instantly.
+function startCooldown(sec){
+  clearInterval(fbgCooldownTimer); fbgCooldownEnd = Date.now()+sec*1000; setSearchBtn('Search ('+sec+'s)',false);
+  fbgCooldownTimer = setInterval(function(){
+    var r = Math.ceil((fbgCooldownEnd-Date.now())/1000);
+    if(r<=0){ clearInterval(fbgCooldownTimer); setSearchBtn('Search',false); } else setSearchBtn('Search ('+r+'s)',false);
+  },250);
+}
 
-  // Block if still cooling down
-  if (Date.now() < fbgCooldownEnd) return;
-
-  // Show loading state
-  var btn = document.querySelector('.fbg-btn');
-  btn.disabled = true;
-  btn.textContent = 'Searching…';
-  document.getElementById('fbg-results').innerHTML =
-    '<div class="fbg-empty">'
-    +'<div class="fbg-empty-icon"><span class="spin" style="width:28px;height:28px;border-width:3px;display:inline-block;vertical-align:middle"></span></div>'
+async function fbgSearch(force){
+  var q = val('fbg-search'), kind = val('fbg-kind')||'car'; if(!q) return;
+  var count = parseInt(val('fbg-count'),10)||10, ck = kind+'|'+q.toLowerCase();
+  if(force!==true){
+    var hit = cacheGet(ck);
+    if(hit && hit.data && hit.data.length){
+      fbgResults = hit.data.slice(); fbgLabel = q; fbgLabelKind = kind; fbgVisible = count; fbgSelected.clear(); fbgCachedAt = hit.t;
+      showSaveBar(); renderResults(); return;
+    }
+  }
+  if(fbgBusy) return;
+  if(Date.now()<fbgCooldownEnd){ fbgToast('Cooling down — try again in '+Math.ceil((fbgCooldownEnd-Date.now())/1000)+'s.'); return; }
+  fbgBusy = true; setSearchBtn('Searching…',true);
+  $('fbg-results').innerHTML = '<div class="fbg-empty"><div class="fbg-empty-icon"><span class="spin" style="width:28px;height:28px;border-width:3px;display:inline-block;vertical-align:middle"></span></div>'
     +'<div class="fbg-empty-title" style="margin-top:14px">Searching the web for real groups&hellip;</div>'
-    +'<div class="fbg-empty-sub">Searching for real groups and member counts for <strong style="color:#fff">'+q+'</strong>. Takes ~20–30 seconds.</div>'
-    +'</div>';
+    +'<div class="fbg-empty-sub">Looking up groups and member counts for <strong>'+esc(q)+'</strong>. Takes ~20–30 seconds.</div></div>';
+  var ok = false;
+  try{
+    var p = buildPrompts(q,kind,count,null);
+    var data = normalize(extractArray(await askWithSearch(p.system,p.user,3500)));
+    if(!data.length) throw new Error('PARSE_FAIL');
+    ok = true; cacheSet(ck,data);
+    fbgResults = data; fbgLabel = q; fbgLabelKind = kind; fbgVisible = count; fbgSelected.clear(); fbgCachedAt = 0;
+    showSaveBar(); renderResults();
+  }catch(e){
+    $('fbg-results').innerHTML = '<div class="fbg-empty"><div class="fbg-empty-icon"><span class="ic ic-alert"></span></div><div class="fbg-empty-title">Search failed</div><div class="fbg-empty-sub">'+esc(errMsg(e))+'</div></div>';
+    hideSaveBar();
+  }finally{ fbgBusy = false; startCooldown(ok?FBG_COOLDOWN_OK:FBG_COOLDOWN_FAIL); }
+}
+function searchTemplate(key){
+  var t = tplByKey(fbgLibLoad(),key); if(!t) return;
+  fbgActiveKey = key;
+  $('fbg-kind').value = tplKind(t); onKindChange();
+  $('fbg-search').value = tplQuery(t);
+  fbgSearch();
+}
+function onKindChange(){ var k = KINDS[val('fbg-kind')]||KINDS.car; $('fbg-search').placeholder = k.ph; }
 
-  var systemPrompt = 'You are an expert in automotive Facebook communities. Your job is to return real Facebook groups for vehicle owners. Use web search to find groups and verify member counts where possible — but you may also include well-known groups from your training knowledge. Always return a populated JSON array. Never return an empty array. Return ONLY the JSON array, no explanation, no markdown.';
-
-  var userPrompt = 'Find Facebook groups for owners of: "' + q + '"\n\n'
-    + 'Use web search to find groups. Also include any well-known Audi/VAG owner groups you already know about that are relevant.\n'
-    + 'Return ONLY a JSON array of ' + requestedCount + ' groups. Each object must be:\n'
-    + '{"name":"Group Name","members":25000,"activity":"High","icon":"\ud83d\ude97","tags":["brand"],"url":"https://www.facebook.com/groups/groupslug","desc":"One sentence about the group.","score":88}\n\n'
-    + 'members = best estimate as integer (-1 only if truly unknown). activity = Low/Medium/High/Very High. tags = 1-2 of: hot, active, brand, platform.\n'
-    + 'Return ONLY the JSON array. No text before or after it.';
-
-  var fbgSearchSuccess = false;
-  try {
-    var raw = await callAIWithWebSearch(systemPrompt, userPrompt, 3500);
-    var clean = raw.replace(/```json|```/g,'').trim();
-    // Find the JSON array in the response — try multiple strategies
-    var arrStart = clean.indexOf('[');
-    var arrEnd = clean.lastIndexOf(']');
-    // If no array brackets, check if the whole response might be a JSON object wrapping the array
-    if (arrStart === -1) {
-      var objStart = clean.indexOf('{');
-      if (objStart !== -1) {
-        try {
-          var obj = JSON.parse(clean.slice(objStart));
-          // Find any array value inside the object
-          var arrVal = Object.values(obj).find(function(v){ return Array.isArray(v); });
-          if (arrVal) clean = JSON.stringify(arrVal);
-          arrStart = 0; arrEnd = clean.length - 1;
-        } catch(pe) {}
-      }
-    }
-    if (arrStart === -1 || arrEnd === -1) throw new Error('PARSE_FAIL');
-    clean = clean.slice(arrStart, arrEnd + 1);
-    var data;
-    try { data = JSON.parse(clean); } catch(pe) { throw new Error('PARSE_FAIL'); }
-    if(!Array.isArray(data) || data.length === 0) throw new Error('PARSE_FAIL');
-    fbgSearchSuccess = true;
-    // Validate and sanitise
-    data = data.map(function(g){
-      var rawUrl = String(g.url || '');
-      // Ensure it's a proper Facebook groups URL
-      if (!rawUrl.startsWith('http')) rawUrl = 'https://www.facebook.com/groups/' + rawUrl;
-      // If it's not a facebook.com/groups URL, build a search URL instead
-      if (!rawUrl.includes('facebook.com/groups/') && !rawUrl.includes('facebook.com/groups')) {
-        rawUrl = 'https://www.facebook.com/search/groups/?q=' + encodeURIComponent(String(g.name||''));
-      }
-      return {
-        name: String(g.name||'Unknown Group'),
-        members: g.members === -1 ? -1 : Math.round(Number(g.members)||0),
-        activity: String(g.activity||'Medium'),
-        icon: String(g.icon||'<span class="ic ic-car"></span>'),
-        tags: Array.isArray(g.tags) ? g.tags : ['brand'],
-        url: rawUrl,
-        desc: String(g.desc||''),
-        score: Math.min(99, Math.max(50, Math.round(Number(g.score)||80))),
-        real: true
-      };
-    });
-    // Cache all results
-    FBG_DB[qLow] = data;
-    fbgCurrentResults = data.slice();
-    fbgCurrentLabel = q;
-    fbgVisibleCount = requestedCount;
-    fbgSelected.clear();
-    fbgRender();
-    fbgShowSaveBar(q);
-  } catch(e) {
-    var msg = e.message === 'AUTH_ERROR' ? 'AI service is not configured. Contact the administrator.'
-            : e.message === 'NETWORK_ERROR' ? 'Cannot reach the AI service. Check your connection.'
-            : e.message === 'RATE_ERROR' ? 'Anthropic API rate limit hit. Wait 30–60 seconds and try again.'
-            : e.message === 'PARSE_FAIL' ? 'The AI response was unexpected. Please retry — it usually works on the second attempt.'
-            : e.message;
-    document.getElementById('fbg-results').innerHTML =
-      '<div class="fbg-empty"><div class="fbg-empty-icon"><span class="ic ic-alert"></span></div>'
-      +'<div class="fbg-empty-title">Search failed</div>'
-      +'<div class="fbg-empty-sub">'+msg+'</div></div>';
-  } finally {
-    // 45s cooldown after success, 10s after failure (so they can retry sooner)
-    fbgStartCooldown(fbgSearchSuccess ? 45 : 10);
-  }
+async function loadMore(){
+  var sorted = sortedResults();
+  if(fbgVisible<sorted.length){ fbgVisible = Math.min(fbgVisible+5,sorted.length); renderResults(); return; }
+  if(fbgBusy) return;
+  if(Date.now()<fbgCooldownEnd){ fbgToast('Cooling down — try again in '+Math.ceil((fbgCooldownEnd-Date.now())/1000)+'s.'); return; }
+  var btn = document.querySelector('#fbg-results [data-act="more"]'); if(btn){ btn.disabled=true; btn.textContent='Searching for more…'; }
+  fbgBusy = true; var ok = false;
+  try{
+    var p = buildPrompts(fbgLabel,fbgLabelKind,5,fbgResults.map(function(g){ return g.name; }));
+    var fresh = normalize(extractArray(await askWithSearch(p.system,p.user,2500)));
+    var have = {}; fbgResults.forEach(function(g){ have[g.name.toLowerCase()]=1; });
+    fresh = fresh.filter(function(g){ return !have[g.name.toLowerCase()]; });
+    if(!fresh.length) throw new Error('PARSE_FAIL');
+    ok = true; fbgResults = fbgResults.concat(fresh);
+    cacheSet(fbgLabelKind+'|'+fbgLabel.toLowerCase(),fbgResults);
+    fbgVisible = fbgResults.length; renderResults();
+  }catch(e){
+    fbgToast(errMsg(e));
+    if(btn){ btn.disabled=false; btn.textContent='Retry — search for 5 more groups'; }
+  }finally{ fbgBusy = false; startCooldown(ok?FBG_COOLDOWN_OK:FBG_COOLDOWN_FAIL); }
 }
 
-function fbgFmt(n){ 
-  if (n === -1 || n === 0) return '?';
-  return n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(0)+'K' : n; 
+/* ════════ Results ════════ */
+function tagClass(t){ return t==='hot'?'fbg-tag-hot':t==='active'?'fbg-tag-active':t==='brand'?'fbg-tag-brand':'fbg-tag-platform'; }
+function tagLabel(t){ return t==='hot'?'Trending':t==='active'?'Very Active':t==='brand'?'Brand-Specific':'Platform'; }
+function sortedResults(){
+  var s = fbgResults.slice();
+  if(fbgSortBy==='members') s.sort(function(a,b){ return b.members-a.members; }); else s.sort(function(a,b){ return b.score-a.score; });
+  return s;
 }
-
-function fbgTagClass(t){
-  if(t==='hot') return 'fbg-tag-hot';
-  if(t==='active') return 'fbg-tag-active';
-  if(t==='brand') return 'fbg-tag-brand';
-  return 'fbg-tag-platform';
+function showSaveBar(){
+  $('fbg-save-bar').classList.add('visible');
+  $('fbg-save-bar-label').textContent = KINDS[fbgLabelKind].label+': '+fbgLabel;
+  $('fbg-cache-note').textContent = fbgCachedAt ? 'Cached '+ago(fbgCachedAt) : '';
+  $('fbg-refresh').style.display = fbgCachedAt ? '' : 'none';
+  updateSaveBtn();
 }
-function fbgTagLabel(t){
-  if(t==='hot') return 'Trending';
-  if(t==='active') return 'Very Active';
-  if(t==='brand') return 'Brand-Specific';
-  return 'Platform';
+function hideSaveBar(){ $('fbg-save-bar').classList.remove('visible'); }
+function updateSaveBtn(){
+  var n = fbgSelected.size;
+  $('fbg-save-btn').innerHTML = '<span class="ic ic-save"></span>'+(n ? 'Save '+n+' selected' : 'Save all '+fbgResults.length);
 }
-
-var fbgSelected = new Set(); // indices into fbgCurrentResults (by name key)
-
-function fbgToggle(name){
-  if(fbgSelected.has(name)) fbgSelected.delete(name);
-  else fbgSelected.add(name);
-  fbgRender();
+function emptyHtml(){
+  return '<div class="fbg-empty"><div class="fbg-empty-icon">&#128101;</div><div class="fbg-empty-title">Find your audience</div>'
+    +'<div class="fbg-empty-sub">Pick Car, Chassis or Product above, then type what to look for<br>— or open a saved template and hit Search.</div></div>';
 }
-
-function fbgSelectAll(){
-  var sorted = fbgCurrentResultsSorted();
-  var visible = sorted.slice(0, fbgVisibleCount);
-  var allSel = visible.every(function(g){ return fbgSelected.has(g.name); });
-  if(allSel){ visible.forEach(function(g){ fbgSelected.delete(g.name); }); }
-  else { visible.forEach(function(g){ fbgSelected.add(g.name); }); }
-  fbgRender();
-}
-
-function fbgCurrentResultsSorted(){
-  var sorted = fbgCurrentResults.slice();
-  if(fbgSortBy==='members') sorted.sort(function(a,b){return b.members-a.members;});
-  else sorted.sort(function(a,b){return b.score-a.score;});
-  return sorted;
-}
-
-function fbgOpenSearch(groupName, vehicleQuery){
-  // Build a Facebook group search URL — always works unlike direct group links
-  var q = encodeURIComponent(groupName + ' ' + vehicleQuery);
-  window.open('https://www.facebook.com/search/groups/?q=' + encodeURIComponent(groupName), '_blank');
-}
-
-function fbgExportCSV(){
-  var toExport = fbgSelected.size > 0
-    ? fbgCurrentResults.filter(function(g){ return fbgSelected.has(g.name); })
-    : fbgCurrentResults;
-  if(toExport.length === 0){ fbgToast('No results to export.'); return; }
-  var header = 'Group Name,Members,Activity,Tags,Relevance Score,Group URL,Search URL';
-  var rows = toExport.map(function(g){
-    var searchUrl = 'https://www.facebook.com/search/groups/?q=' + encodeURIComponent(g.name);
-    var groupUrl = g.url || searchUrl;
-    return [
-      '"'+(g.name||'').replace(/"/g,'""')+'"',
-      g.members === -1 ? 'Unknown' : (g.members || 0),
-      g.activity || '',
-      '"'+(Array.isArray(g.tags) ? g.tags.map(fbgTagLabel).join(', ') : '')+'"',
-      g.score || '',
-      groupUrl,
-      searchUrl
-    ].join(',');
-  });
-  var csv = header + '\n' + rows.join('\n');
-  fbgDownloadCSV(csv, 'fb-groups-' + fbgCurrentLabel.replace(/[^a-z0-9]/gi,'-').toLowerCase() + '.csv');
-}
-
-function fbgExportLibrary(){
-  var lib = fbgLibLoad();
-  if(!lib || lib.length === 0){ fbgToast('Your library is empty — nothing to export.'); return; }
-  var header = 'Car Year,Car Make,Car Model,Group Name,Members,Group URL,Facebook Search URL,Description,Icon';
-  var rows = [];
-  lib.forEach(function(car){
-    var groups = car.groups || [];
-    if(groups.length === 0){
-      rows.push([
-        '"'+(car.year||'').replace(/"/g,'""')+'"',
-        '"'+(car.make||'').replace(/"/g,'""')+'"',
-        '"'+(car.model||'').replace(/"/g,'""')+'"',
-        '""','','','','',''
-      ].join(','));
-    } else {
-      groups.forEach(function(g){
-        var searchUrl = 'https://www.facebook.com/search/groups/?q=' + encodeURIComponent(g.name||'');
-        var groupUrl = g.url || searchUrl;
-        rows.push([
-          '"'+(car.year||'').replace(/"/g,'""')+'"',
-          '"'+(car.make||'').replace(/"/g,'""')+'"',
-          '"'+(car.model||'').replace(/"/g,'""')+'"',
-          '"'+(g.name||'').replace(/"/g,'""')+'"',
-          g.members > 0 ? g.members : 'Unknown',
-          groupUrl,
-          searchUrl,
-          '"'+(g.desc||'').replace(/"/g,'""')+'"',
-          g.icon || '\ud83d\udc65'
-        ].join(','));
-      });
-    }
-  });
-  var totalGroups = lib.reduce(function(s,c){ return s + (c.groups||[]).length; }, 0);
-  var csv = header + '\n' + rows.join('\n');
-  var date = new Date().toISOString().slice(0,10);
-  fbgDownloadCSV(csv, 'tgk-fb-library-' + date + '.csv');
-  fbgToast('Exported ' + lib.length + ' cars & ' + totalGroups + ' groups \u2713');
-}
-
-function fbgDownloadCSV(csv, filename){
-  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
-}
-
-function fbgRender(){
-  var sorted = fbgCurrentResultsSorted();
-  var visible = sorted.slice(0, fbgVisibleCount);
-  var total = fbgCurrentResults.reduce(function(s,g){return s+g.members;},0);
-  var avg = Math.round(fbgCurrentResults.reduce(function(s,g){return s+g.score;},0)/fbgCurrentResults.length);
+function renderResults(){
+  var box = $('fbg-results');
+  if(!fbgResults.length){ box.innerHTML = emptyHtml(); hideSaveBar(); return; }
+  var sorted = sortedResults(), visible = sorted.slice(0,fbgVisible);
+  var known = fbgResults.filter(function(g){ return g.members>0; });
+  var total = known.reduce(function(s,g){ return s+g.members; },0);
+  var avg = Math.round(fbgResults.reduce(function(s,g){ return s+g.score; },0)/fbgResults.length);
   var selCount = fbgSelected.size;
-  var allVisibleSel = visible.length > 0 && visible.every(function(g){ return fbgSelected.has(g.name); });
+  var allSel = visible.length>0 && visible.every(function(g){ return fbgSelected.has(g.name); });
 
-  var html = '<div class="fbg-stats-row">'
-    +'<div class="fbg-stat"><div class="fbg-stat-val">'+fbgCurrentResults.length+'</div><div class="fbg-stat-lbl">Groups found</div></div>'
-    +'<div class="fbg-stat"><div class="fbg-stat-val">'+fbgFmt(total)+'</div><div class="fbg-stat-lbl">Total reach</div></div>'
-    +'<div class="fbg-stat"><div class="fbg-stat-val">'+avg+'</div><div class="fbg-stat-lbl">Avg relevance</div></div>'
-    +'</div>';
-
-  // Selection bar — always visible when results exist
-  html += '<div class="fbg-sel-bar">'
-    +'<div class="fbg-sel-bar-txt">'+(selCount > 0 ? selCount+' selected' : 'Click checkboxes to select groups')+'</div>'
-    +'<button class="fbg-sel-all" onclick="fbgSelectAll()">'+(allVisibleSel?'Deselect all':'Select all')+'</button>'
-    +'<button class="fbg-export-btn" onclick="fbgExportCSV()">⬇ Export CSV'+(selCount>0?' ('+selCount+')':'')+'</button>'
-    +'</div>';
-
-  html += '<div class="fbg-results-header">'
-    +'<span class="fbg-results-lbl">Showing '+visible.length+' of '+sorted.length+' groups for &ldquo;'+fbgCurrentLabel+'&rdquo;</span>'
-    +'<select class="fbg-sort" onchange="fbgSortBy=this.value;fbgRender()">'
-    +'<option value="score">Sort: Relevance</option>'
-    +'<option value="members">Sort: Members</option>'
-    +'</select>'
-    +'</div>';
+  var h = '<div class="fbg-stats-row"><div class="fbg-stat"><div class="fbg-stat-val">'+fbgResults.length+'</div><div class="fbg-stat-lbl">Groups found</div></div>'
+    +'<div class="fbg-stat"><div class="fbg-stat-val">'+fbgFmt(total)+'</div><div class="fbg-stat-lbl">Total reach'+(known.length<fbgResults.length?' (known counts)':'')+'</div></div>'
+    +'<div class="fbg-stat"><div class="fbg-stat-val">'+avg+'</div><div class="fbg-stat-lbl">Avg relevance</div></div></div>';
+  h += '<div class="fbg-sel-bar"><div class="fbg-sel-bar-txt">'+(selCount?selCount+' selected':'Click groups to select them')+'</div>'
+    +'<button class="fbg-sel-all" data-act="select-all">'+(allSel?'Deselect all':'Select all')+'</button>'
+    +'<button class="fbg-export-btn" data-act="export">⬇ Export CSV'+(selCount?' ('+selCount+')':'')+'</button></div>';
+  h += '<div class="fbg-results-header"><span class="fbg-results-lbl">Showing '+visible.length+' of '+sorted.length+' groups for &ldquo;'+esc(fbgLabel)+'&rdquo;</span>'
+    +'<select class="fbg-sort" id="fbg-sort"><option value="score"'+(fbgSortBy==='score'?' selected':'')+'>Sort: Relevance</option><option value="members"'+(fbgSortBy==='members'?' selected':'')+'>Sort: Members</option></select></div>';
 
   visible.forEach(function(g){
-    var tags = g.tags.map(function(t){return '<span class="fbg-tag '+fbgTagClass(t)+'">'+fbgTagLabel(t)+'</span>';}).join('');
-    var isSel = fbgSelected.has(g.name);
-    var safeName = g.name.replace(/'/g,"\\'");
-    var searchUrl = 'https://www.facebook.com/search/groups/?q=' + encodeURIComponent(g.name);
-      var openUrl = (g.url && g.url.includes('facebook.com')) ? g.url : searchUrl;
-      var membersStr = (g.members === -1 || g.members === 0) ? 'Members unknown' : fbgFmt(g.members) + ' members';
-      html += '<div class="fbg-card'+(isSel?' selected':'')+'" onclick="fbgToggle(\''+safeName+'\')" style="cursor:pointer">'
-      +'<div class="fbg-checkbox'+(isSel?' checked':'')+'" onclick="event.stopPropagation();fbgToggle(\''+safeName+'\')"></div>'
-      +'<div class="fbg-avatar">'+g.icon+'</div>'
-      +'<div>'
-      +'<div class="fbg-name">'+g.name+'</div>'
-      +'<div class="fbg-meta">'+membersStr+' &middot; '+g.activity+' activity</div>'
-      +'<div class="fbg-desc">'+g.desc+'</div>'
-      +'<div class="fbg-tags">'+tags+'</div>'
-      +'</div>'
-      +'<div class="fbg-score-wrap">'
-      +'<div class="fbg-score">'+g.score+'</div>'
-      +'<div class="fbg-score-lbl">relevance</div>'
-      +'<button class="fbg-open-btn" onclick="event.stopPropagation();window.open(\''+openUrl+'\',\'_blank\')">Find on FB ↗</button>'
-      +'</div>'
-      +'</div>';
+    var sel = fbgSelected.has(g.name), nm = esc(g.name);
+    var tags = g.tags.map(function(t){ return '<span class="fbg-tag '+tagClass(t)+'">'+tagLabel(t)+'</span>'; }).join('');
+    var members = g.members>0 ? '<span title="AI estimate — verify on Facebook">~'+fbgFmt(g.members)+' members</span>' : 'Members unknown';
+    h += '<div class="fbg-card'+(sel?' selected':'')+'" data-act="toggle" data-name="'+nm+'" style="cursor:pointer">'
+      +'<div class="fbg-checkbox'+(sel?' checked':'')+'"></div><div class="fbg-avatar">'+iconHtml(g.icon)+'</div>'
+      +'<div><div class="fbg-name">'+nm+'</div><div class="fbg-meta">'+members+' &middot; '+esc(g.activity)+' activity</div>'
+      +(g.desc?'<div class="fbg-desc">'+esc(g.desc)+'</div>':'')+'<div class="fbg-tags">'+tags+'</div></div>'
+      +'<div class="fbg-score-wrap"><div class="fbg-score">'+g.score+'</div><div class="fbg-score-lbl">relevance</div>'
+      +(g.url?'<button class="fbg-open-btn fbg-open-primary" data-act="open-url" data-url="'+esc(g.url)+'">Open group ↗</button>':'')
+      +'<button class="fbg-open-btn" data-act="open-url" data-url="'+esc(fbSearchUrl(g.name))+'">Search on FB ↗</button></div></div>';
   });
-
-  // Load more button if there are hidden results
-  // Always show load more — either reveal cached or fetch 5 new
-  var hasMoreCached = fbgVisibleCount < sorted.length;
-  html += '<button class="fbg-load-more-btn" onclick="fbgLoadMore()">'
-    + (hasMoreCached ? 'Show ' + Math.min(5, sorted.length - fbgVisibleCount) + ' more' : 'Search for 5 more groups') + '</button>';
-
-  html += '<div class="fbg-actions">'
-    +'<button class="fbg-action-btn" onclick="fbgCopy()">Copy group list</button>'
-    +'</div>';
-
-  document.getElementById('fbg-results').innerHTML = html;
+  h += '<button class="fbg-load-more-btn" data-act="more">'+(fbgVisible<sorted.length?'Show '+Math.min(5,sorted.length-fbgVisible)+' more':'Search for 5 more groups')+'</button>';
+  h += '<div class="fbg-actions"><button class="fbg-action-btn" data-act="copy">Copy group list</button></div>';
+  box.innerHTML = h; updateSaveBtn();
+}
+function toggleResult(name){ if(fbgSelected.has(name)) fbgSelected.delete(name); else fbgSelected.add(name); renderResults(); }
+function selectAll(){
+  var vis = sortedResults().slice(0,fbgVisible), all = vis.every(function(g){ return fbgSelected.has(g.name); });
+  vis.forEach(function(g){ if(all) fbgSelected.delete(g.name); else fbgSelected.add(g.name); });
+  renderResults();
 }
 
-async function fbgLoadMore(){
-  var q = fbgCurrentLabel;
-  var qLow = q.toLowerCase();
-  var btn = document.querySelector('.fbg-load-more-btn');
-  if(btn){ btn.disabled = true; btn.textContent = 'Loading…'; }
+/* ════════ Export / copy ════════ */
+function csvCell(v){
+  var s = String(v==null?'':v);
+  if(/^[=+\-@\t\r]/.test(s)) s = "'"+s;                 // neutralise spreadsheet formulas
+  return '"'+s.replace(/"/g,'""')+'"';
+}
+function downloadCSV(csv,filename){
+  var blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+}
+function exportResults(){
+  var rows = fbgSelected.size ? fbgResults.filter(function(g){ return fbgSelected.has(g.name); }) : fbgResults;
+  if(!rows.length){ fbgToast('No results to export.'); return; }
+  var out = [['Group Name','Members','Activity','Tags','Relevance Score','Group URL','Search URL'].map(csvCell).join(',')];
+  rows.forEach(function(g){ out.push([g.name,g.members>0?g.members:'Unknown',g.activity,g.tags.map(tagLabel).join(', '),g.score,g.url||'',fbSearchUrl(g.name)].map(csvCell).join(',')); });
+  downloadCSV(out.join('\n'),'fb-groups-'+fbgLabel.replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.csv');
+}
+function fbgExportLibrary(){
+  var l = fbgLibLoad();
+  if(!l.length){ fbgToast('Your library is empty — nothing to export.'); return; }
+  var out = [['Template Type','Template','Group Name','Members','Group URL','Facebook Search URL','Description'].map(csvCell).join(',')], n = 0;
+  l.forEach(function(t){
+    var gs = t.groups||[];
+    if(!gs.length) out.push([KINDS[tplKind(t)].label,tplLabel(t),'','','','',''].map(csvCell).join(','));
+    gs.forEach(function(g){ n++; out.push([KINDS[tplKind(t)].label,tplLabel(t),g.name,g.members>0?g.members:'Unknown',g.url||'',fbSearchUrl(g.name),g.desc||''].map(csvCell).join(',')); });
+  });
+  downloadCSV(out.join('\n'),'tgk-fb-library-'+new Date().toISOString().slice(0,10)+'.csv');
+  fbgToast('Exported '+l.length+' templates & '+n+' groups ✓');
+}
+function copyText(text,okMsg){
+  function fb(){ try{ var ta=document.createElement('textarea'); ta.value=text; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); fbgToast(okMsg); }catch(e){ fbgToast('Copy failed'); } }
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ fbgToast(okMsg); },fb); else fb();
+}
+function copyList(){
+  var rows = fbgSelected.size ? fbgResults.filter(function(g){ return fbgSelected.has(g.name); }) : fbgResults;
+  copyText('Facebook Groups for '+fbgLabel+':\n\n'+rows.map(function(g){
+    return g.name+' ('+(g.members>0?'~'+fbgFmt(g.members)+' members':'members unknown')+') — '+(g.url||fbSearchUrl(g.name));
+  }).join('\n'),'Group list copied');
+}
 
-  var sorted = fbgCurrentResultsSorted();
-
-  // If we have cached results not yet shown, just reveal 5 more
-  if(fbgVisibleCount < sorted.length){
-    fbgVisibleCount = Math.min(fbgVisibleCount + 5, sorted.length);
-    fbgRender();
-    return;
+/* ════════ Resizable library sidebar ════════ */
+function initResizer(){
+  var rz = $('fbg-resizer'), view = $('view-fbgroups'); if(!rz || !view) return;
+  var W = FBG_W_DEFAULT;
+  function viewW(){ return view.getBoundingClientRect().width || window.innerWidth; }
+  function maxW(){ return Math.max(FBG_W_MIN,Math.min(760,Math.floor(viewW()*0.6))); }
+  function clamp(w){ return Math.max(FBG_W_MIN,Math.min(maxW(),Math.round(w))); }
+  function apply(w,save){
+    W = clamp(w); view.style.setProperty('--fbg-lib-w',W+'px');
+    rz.setAttribute('aria-valuenow',String(W)); rz.setAttribute('aria-valuemin',String(FBG_W_MIN)); rz.setAttribute('aria-valuemax',String(maxW()));
+    if(save){ try{ localStorage.setItem(FBG_W_KEY,String(W)); }catch(e){} }
   }
-
-  // Otherwise fetch 5 new from AI
-  var existing = fbgCurrentResults.map(function(g){ return g.name; });
-  var prompt = 'Find 5 MORE real Facebook groups for owners of: "' + q + '".\n'
-    + 'Already found — do NOT repeat these:\n'
-    + existing.map(function(n,i){return (i+1)+'. '+n;}).join('\n') + '\n\n'
-    + 'Return ONLY a JSON array of exactly 5 new groups. Each: {"name":"","members":10000,"activity":"High","icon":"<span class="ic ic-car"></span>","tags":["brand"],"url":"https://www.facebook.com/groups/slug","desc":"One sentence.","score":85}\n'
-    + 'No markdown, no text outside the array.';
-
-  try {
-    var raw = await callAI(prompt, 2000);
-    var clean = raw.replace(/```json|```/g,'').trim();
-    var arrStart = clean.indexOf('['), arrEnd = clean.lastIndexOf(']');
-    if(arrStart === -1 || arrEnd === -1) throw new Error('no array');
-    var newData = JSON.parse(clean.slice(arrStart, arrEnd+1));
-    if(!Array.isArray(newData) || newData.length === 0) throw new Error('Empty');
-    newData = newData.map(function(g){
-      var rawUrl = String(g.url||'');
-      if(!rawUrl.startsWith('http')) rawUrl = 'https://www.facebook.com/groups/' + rawUrl;
-      return {
-        name: String(g.name||'Unknown Group'),
-        members: g.members === -1 ? -1 : Math.round(Number(g.members)||10000),
-        activity: String(g.activity||'Medium'),
-        icon: String(g.icon||'<span class="ic ic-car"></span>'),
-        tags: Array.isArray(g.tags) ? g.tags : ['brand'],
-        url: rawUrl,
-        desc: String(g.desc||''),
-        score: Math.min(99, Math.max(50, Math.round(Number(g.score)||80)))
-      };
-    });
-    fbgCurrentResults = fbgCurrentResults.concat(newData);
-    FBG_DB[qLow] = fbgCurrentResults.slice();
-    fbgVisibleCount = fbgCurrentResults.length;
-    fbgRender();
-  } catch(e) {
-    if(btn){ btn.disabled=false; btn.textContent='Retry'; }
+  var saved = 0; try{ saved = parseInt(localStorage.getItem(FBG_W_KEY),10)||0; }catch(e){}
+  apply(saved||FBG_W_DEFAULT,false);
+  rz.addEventListener('pointerdown',function(e){
+    if(e.button!==undefined && e.button!==0) return;
+    e.preventDefault(); try{ rz.setPointerCapture(e.pointerId); }catch(x){}
+    rz.classList.add('dragging'); document.body.classList.add('fbg-resizing');
+  });
+  rz.addEventListener('pointermove',function(e){ if(rz.classList.contains('dragging')) apply(view.getBoundingClientRect().right-e.clientX,false); });
+  function end(e){
+    if(!rz.classList.contains('dragging')) return;
+    rz.classList.remove('dragging'); document.body.classList.remove('fbg-resizing');
+    try{ rz.releasePointerCapture(e.pointerId); }catch(x){}
+    apply(W,true);
   }
+  rz.addEventListener('pointerup',end); rz.addEventListener('pointercancel',end);
+  rz.addEventListener('dblclick',function(){ apply(FBG_W_DEFAULT,true); });
+  rz.addEventListener('keydown',function(e){
+    var step = e.shiftKey?64:24;
+    if(e.key==='ArrowLeft'){ e.preventDefault(); apply(W+step,true); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); apply(W-step,true); }
+    else if(e.key==='Home'){ e.preventDefault(); apply(FBG_W_MIN,true); }
+    else if(e.key==='End'){ e.preventDefault(); apply(maxW(),true); }
+  });
+  window.addEventListener('resize',function(){ if(view.getBoundingClientRect().width) apply(W,false); });
 }
 
-function fbgCopy(){
-  var toUse = fbgSelected.size > 0
-    ? fbgCurrentResults.filter(function(g){ return fbgSelected.has(g.name); })
-    : fbgCurrentResults;
-  var lines = toUse.map(function(g){
-    return g.name+' ('+fbgFmt(g.members)+' members) — Search: https://www.facebook.com/search/groups/?q='+encodeURIComponent(g.name);
-  }).join('\n');
-  var text = 'Facebook Groups for '+fbgCurrentLabel+':\n\n'+lines;
-  navigator.clipboard && navigator.clipboard.writeText(text);
+/* ════════ Wiring ════════ */
+function switchLibTab(tab){
+  $('fbg-lib-tab-cars').classList.toggle('active',tab==='cars');
+  $('fbg-lib-tab-add').classList.toggle('active',tab==='add');
+  $('fbg-lib-cars').classList.toggle('active',tab==='cars');
+  $('fbg-lib-add').classList.toggle('active',tab==='add');
+  if(tab==='add') fbgPopulateCarDropdowns();
 }
+function init(){
+  if(!$('fbg-results')) return;
+  $('fbg-lib-tab-cars').addEventListener('click',function(){ switchLibTab('cars'); });
+  $('fbg-lib-tab-add').addEventListener('click',function(){ switchLibTab('add'); });
+  $('fbg-go').addEventListener('click',function(){ fbgSearch(); });
+  $('fbg-search').addEventListener('keydown',function(e){ if(e.key==='Enter') fbgSearch(); });
+  $('fbg-kind').addEventListener('change',function(){ fbgActiveKey = null; onKindChange(); });
+  $('fbg-save-btn').addEventListener('click',openSave);
+  $('fbg-refresh').addEventListener('click',function(){ fbgSearch(true); });
+  $('fbg-new-tpl').addEventListener('click',function(){ openNewTemplate(); });
+  $('fbg-export-lib').addEventListener('click',fbgExportLibrary);
+  $('fbg-lib-filter').addEventListener('input',fbgRenderLibrary);
+  $('fbg-manual-save').addEventListener('click',fbgManualAddUrl);
+  ['fbg-manual-name','fbg-manual-url','fbg-manual-members'].forEach(function(id){ $(id).addEventListener('keydown',function(e){ if(e.key==='Enter') fbgManualAddUrl(); }); });
 
-var fbgCooldownTimer = null;
-var fbgCooldownEnd = 0;
+  $('fbg-library').addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
+    if(a==='kind'){ fbgKindFilter = b.dataset.kind; fbgRenderLibrary(); }
+    else if(a==='toggle-tpl'){ fbgOpen[b.dataset.key] = !fbgOpen[b.dataset.key]; fbgRenderLibrary(); }
+    else if(a==='search-tpl') searchTemplate(b.dataset.key);
+    else if(a==='open-url') openUrl(b.dataset.url);
+    else if(a==='rm-group') removeGroup(b.dataset.key,parseInt(b.dataset.gi,10));
+    else if(a==='del-tpl') deleteTemplate(b.dataset.key);
+  });
+  $('fbg-results').addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
+    if(a==='open-url'){ e.stopPropagation(); openUrl(b.dataset.url); }
+    else if(a==='toggle') toggleResult(b.dataset.name);
+    else if(a==='select-all') selectAll();
+    else if(a==='export') exportResults();
+    else if(a==='more') loadMore();
+    else if(a==='copy') copyList();
+  });
+  $('fbg-results').addEventListener('change',function(e){ if(e.target.id==='fbg-sort'){ fbgSortBy = e.target.value; renderResults(); } });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape' && $('fbg-modal')) closeModal(); });
 
-function fbgStartCooldown(seconds) {
-  clearInterval(fbgCooldownTimer);
-  fbgCooldownEnd = Date.now() + seconds * 1000;
-  var btn = document.querySelector('.fbg-btn');
-  if (!btn) return;
-  btn.disabled = true;
-  fbgCooldownTimer = setInterval(function() {
-    var remaining = Math.ceil((fbgCooldownEnd - Date.now()) / 1000);
-    var b = document.querySelector('.fbg-btn');
-    if (!b) { clearInterval(fbgCooldownTimer); return; }
-    if (remaining <= 0) {
-      clearInterval(fbgCooldownTimer);
-      b.disabled = false;
-      b.textContent = 'Search';
-      b.style.background = '';
-    } else {
-      b.textContent = 'Wait ' + remaining + 's';
-      b.style.background = '#2a2a2a';
-    }
-  }, 250);
+  initResizer(); onKindChange(); renderResults(); fbgRenderLibrary(); fbgPopulateCarDropdowns();
+
+  // The cloud copy of the library finishes loading AFTER first paint — refresh when it lands,
+  // and every time the view is opened, so the sidebar never shows a stale list.
+  if(window._sbBootPromise && window._sbBootPromise.then) window._sbBootPromise.then(function(){ fbgRenderLibrary(); fbgPopulateCarDropdowns(); });
+  var view = $('view-fbgroups');
+  if(view && window.MutationObserver) new MutationObserver(function(){ if(view.classList.contains('active')){ fbgRenderLibrary(); fbgPopulateCarDropdowns(); } }).observe(view,{attributes:true,attributeFilter:['class']});
 }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 
-var fbgEl = document.getElementById('fbg-search');
-if(fbgEl) fbgEl.addEventListener('keydown',function(e){if(e.key==='Enter')fbgSearch();});
+// Public surface (other Command Center code — backup import — calls these)
+window.fbgRenderLibrary = fbgRenderLibrary;
+window.fbgPopulateCarDropdowns = fbgPopulateCarDropdowns;
+window.fbgSearch = fbgSearch;
+window.fbgToast = fbgToast;
+window.fbgManualAddUrl = fbgManualAddUrl;
+window.fbgExportLibrary = fbgExportLibrary;
+})();
 </script>
 
 <script>
@@ -18876,7 +18832,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.15';
+var TGK_CC_VERSION='v7.16';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
