@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.14';
+var TGK_CC_VERSION='v7.15';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -29395,16 +29395,17 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     var rules = s.sheet ? s.sheet.cssRules : [];
     function map(sel) {
       sel = sel.trim();
-      if (/^\.tgk-/.test(sel)) return ['.wysi.wysi ' + sel];
+      if (/^\.tgk-/.test(sel)) return [' ' + sel];
       if (!/^\.tgk(?![\w-])/.test(sel)) return null;
       var rest = sel.slice(4);
-      if (!rest) return ['.wysi.wysi', '.wysi.wysi .tgk'];
-      return ['.wysi.wysi' + (/^\s/.test(rest) ? rest : ' .tgk' + rest)];
+      if (!rest) return ['', ' .tgk'];
+      return [/^\s/.test(rest) ? rest : ' .tgk' + rest];
     }
+    var PFX = ['.wysi.wysi', '#view-launch#view-launch#view-launch .wysi.wysi'];
     for (i = 0; i < rules.length; i++) {
       var r = rules[i]; if (r.type !== 1 || /\([^)]*,[^)]*\)/.test(r.selectorText)) continue;
       var parts = r.selectorText.split(','), sels = [], ok = true;
-      for (j = 0; j < parts.length; j++) { var m = map(parts[j]); if (!m) { ok = false; break; } sels = sels.concat(m); }
+      for (j = 0; j < parts.length; j++) { var m = map(parts[j]); if (!m) { ok = false; break; } PFX.forEach(function (px) { m.forEach(function (sf) { sels.push(px + sf); }); }); }
       if (ok && sels.length) out.push(sels.join(',') + '{' + r.style.cssText + '}');
     }
     return out.join('\n');
@@ -29412,10 +29413,13 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
   function applySiteCss(css) {
     if (!siteTag) { siteTag = document.getElementById('tgk-site-preview-css'); if (!siteTag) { siteTag = document.createElement('style'); siteTag.id = 'tgk-site-preview-css'; document.head.appendChild(siteTag); } }
     /* The dashboard theme has global .tgk-sh and thead th rules (underline, brushed texture, text shadow) that are not on the website; switch them off inside the preview. */
-    var NEUTRAL = '\n.wysi.wysi .tgk-sh{background-image:none!important;box-shadow:none!important;border-bottom:0!important}'
-      + '\n.wysi.wysi .tgk-cmp th,.wysi.wysi .tgk-cmp thead th{background-image:none!important;text-shadow:none!important;box-shadow:none!important;border-bottom:0!important}'
-      + '\n.wysi.wysi .tgk-cmp thead,.wysi.wysi .tgk-cmp thead tr{background:none!important;box-shadow:none!important}'
-      + '\n.wysi.wysi .tgk-feats .tgk-feat{margin-bottom:0!important}';
+    var NEUTRAL = ['.wysi.wysi', '#view-launch#view-launch#view-launch .wysi.wysi'].map(function (P) {
+      return P + ' .tgk-sh{background-image:none!important;box-shadow:none!important;border-bottom:0!important;font-family:inherit!important;font-size:inherit!important;font-weight:inherit!important;line-height:inherit!important;color:inherit!important;letter-spacing:inherit!important;text-transform:none!important}'
+        + '\n' + P + ' .tgk-sh::before,' + P + ' .tgk-sh::after,' + P + ' .tgk-sh-title::before,' + P + ' .tgk-sh-title::after,' + P + ' .tgk-section::before,' + P + ' .tgk-section::after{content:none!important;display:none!important}'
+        + '\n' + P + ' .tgk-cmp th,' + P + ' .tgk-cmp thead th{background-image:none!important;text-shadow:none!important;box-shadow:none!important;border-bottom:0!important}'
+        + '\n' + P + ' .tgk-cmp thead,' + P + ' .tgk-cmp thead tr{background:none!important;box-shadow:none!important}'
+        + '\n' + P + ' .tgk-feats .tgk-feat{margin-bottom:0!important}';
+    }).join('\n');
     try { siteTag.textContent = siteScope(css) + NEUTRAL; } catch (e) { console.warn('site css preview', e); }
   }
   applySiteCss(BASE);
