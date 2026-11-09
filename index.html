@@ -12749,7 +12749,7 @@ window.addEventListener('resize', function(){
 select.fbg-modal-input{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
 .fbg-resizer{flex-shrink:0;width:7px;margin:0 -3px 0 -4px;position:relative;z-index:5;cursor:col-resize;touch-action:none;outline:none}
 .fbg-resizer::before{content:'';position:absolute;top:0;bottom:0;left:3px;width:2px;background:transparent;transition:background .15s}
-.fbg-resizer::after{content:'';position:absolute;top:50%;left:1px;width:5px;height:36px;margin-top:-18px;border-radius:3px;background:#3a3d40;opacity:0;transition:opacity .15s}
+.fbg-resizer::after{content:'';position:absolute;top:50%;left:1px;width:5px;height:36px;margin-top:-18px;border-radius:3px;background:#3a3d40;opacity:.5;transition:opacity .15s}
 .fbg-resizer:hover::before,.fbg-resizer:focus-visible::before,.fbg-resizer.dragging::before{background:#2ABFAA}
 .fbg-resizer:hover::after,.fbg-resizer:focus-visible::after,.fbg-resizer.dragging::after{opacity:1}
 body.fbg-resizing{cursor:col-resize!important;user-select:none;-webkit-user-select:none}
@@ -12759,6 +12759,72 @@ body.fbg-resizing iframe{pointer-events:none}
 .fbg-lib-foot{padding:8px 14px 12px;border-top:1px solid rgba(128,128,128,.25);flex-shrink:0;text-align:center}
 .fbg-link-btn{background:none;border:none;font-size:var(--t-xs);color:#777;text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-family:'DM Sans',system-ui,sans-serif}
 .fbg-link-btn:hover{color:#2ABFAA}
+
+/* ── v3: expand button, selection, clipboard, drag & drop, wide mode ── */
+.fbg-lib-titlebar{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.fbg-lib-titlebar .fbg-lib-title{flex:1;margin-bottom:0}
+.fbg-icon-btn{height:26px;padding:0 10px;font-size:var(--t-xs);font-weight:700;border:1px solid #2e3032;border-radius:var(--r-sm);background:#111315;color:#aaa;cursor:pointer;font-family:'DM Sans',system-ui,sans-serif;white-space:nowrap;transition:all .12s}
+.fbg-icon-btn:hover{border-color:#2ABFAA;color:#2ABFAA}
+.fbg-clipbar{display:none;align-items:center;gap:8px;margin:0 10px 8px;padding:7px 10px;background:#0d1f1d;border:1px solid #2ABFAA;border-radius:var(--r-md);font-size:var(--t-xs);color:#2ABFAA;font-weight:600;flex-shrink:0}
+.fbg-clipbar.show{display:flex}
+.fbg-clipbar span{flex:1;min-width:0}
+.fbg-gtools{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:2px 0 6px}
+.fbg-gtools-lbl{font-size:var(--t-xs);color:#aaa;font-weight:600}
+.fbg-gtools-spacer{flex:1}
+.fbg-gbtn{height:24px;padding:0 9px;font-size:var(--t-xs);font-weight:700;border:1px solid #2e3032;border-radius:var(--r-sm);background:none;color:#aaa;cursor:pointer;font-family:'DM Sans',system-ui,sans-serif;white-space:nowrap;transition:all .12s}
+.fbg-gbtn:hover{border-color:#2ABFAA;color:#2ABFAA}
+.fbg-gbtn.danger:hover{border-color:#f87171;color:#f87171}
+.fbg-gbtn.paste{color:#2ABFAA;border-color:#2ABFAA;background:rgba(42,191,170,.08)}
+.fbg-gsel{width:15px;height:15px;border:2px solid #3a3d40;border-radius:3px;cursor:pointer;flex-shrink:0;background:#1a1c1e;display:flex;align-items:center;justify-content:center;user-select:none;transition:all .12s}
+.fbg-gsel:hover{border-color:#2ABFAA}
+.fbg-gsel.checked,.fbg-gsel.partial{background:#2ABFAA;border-color:#2ABFAA}
+.fbg-gsel.checked::after{content:'✓';font-size:10px;color:#0a1412;font-weight:900;line-height:1}
+.fbg-gsel.partial::after{content:'–';font-size:11px;color:#0a1412;font-weight:900;line-height:1}
+.fbg-grip{cursor:grab;color:#666;font-size:14px;line-height:1;flex-shrink:0;padding:0 1px;user-select:none}
+.fbg-grip:hover{color:#2ABFAA}
+.fbg-saved-group{border-radius:var(--r-sm)}
+.fbg-saved-group.sel{background:rgba(42,191,170,.08)}
+.fbg-saved-group.dragging{opacity:.4}
+.fbg-saved-group.drop-before{box-shadow:0 -2px 0 #2ABFAA}
+.fbg-saved-group.drop-after{box-shadow:0 2px 0 #2ABFAA}
+.fbg-car-item.drop-into{border-color:#2ABFAA;box-shadow:0 0 0 1px #2ABFAA}
+.fbg-saved-group-desc{display:none;font-size:var(--t-xs);color:#8a8f96;line-height:1.4;margin-top:2px}
+.fbg-car-foot{justify-content:space-between}
+.fbg-car-delete-btn.edit:hover{color:#2ABFAA}
+.fbg-field-lbl{font-size:var(--t-xs);color:#aaa;font-weight:600;margin:10px 0 4px}
+textarea.fbg-modal-input{height:auto;min-height:140px;padding:8px 10px;resize:vertical;line-height:1.5;font-size:var(--t-sm)}
+.fbg-modal.wide{width:520px}
+.fbg-modal code{font-family:'DM Mono',monospace;font-size:var(--t-xs);background:#1a1c1e;padding:1px 5px;border-radius:3px;color:#cfd3d8}
+/* wide mode (sidebar dragged/expanded past ~560px): show everything instead of ellipsis */
+.fbg-wide .fbg-saved-group{align-items:flex-start;padding:9px 6px}
+.fbg-wide .fbg-saved-group-name{white-space:normal;overflow:visible;font-size:var(--t-md)}
+.fbg-wide .fbg-saved-group-url{white-space:normal;overflow:visible;word-break:break-all}
+.fbg-wide .fbg-saved-group-desc{display:block}
+.fbg-wide .fbg-saved-group-open,.fbg-wide .fbg-saved-group-rm{padding:5px 10px}
+
+/* ── v3.1: result cards are dark "carbon" panels in EVERY theme — keep their text light.
+   (An older light-theme rule forced dark text on .fbg-name/.fbg-meta/.fbg-desc, which made group
+   names unreadable on the dark cards; the sort dropdown also stretched across the whole row.) */
+#view-fbgroups .fbg-card .fbg-name{color:#eceef1!important}
+#view-fbgroups .fbg-card .fbg-meta{color:#aeb4bc!important}
+#view-fbgroups .fbg-card .fbg-desc{color:#9ca3ac!important}
+#view-fbgroups .fbg-card .fbg-score{color:#fff!important}
+#view-fbgroups .fbg-card .fbg-score-lbl{color:#8a9099!important}
+#view-fbgroups .fbg-results-header{gap:12px}
+#view-fbgroups .fbg-results-header .fbg-results-lbl{flex:1;min-width:0}
+#view-fbgroups .fbg-results-header .fbg-sort{width:auto!important;flex:0 0 auto;min-width:190px}
+html:not([data-theme="dark"]) #view-fbgroups .fbg-results-lbl{color:#4B5563}
+
+/* dark theme: the skin forces white backgrounds on <select>; keep this tool's dropdowns dark */
+html[data-theme="dark"] #view-fbgroups select.fbg-count-select,
+html[data-theme="dark"] #view-fbgroups select.fbg-sort,
+html[data-theme="dark"] #view-fbgroups select.fbg-modal-input,
+html[data-theme="dark"] .fbg-modal-overlay select.fbg-modal-input{background-color:#141618!important;color:#e8eaed!important;border-color:#2a2d30!important}
+html[data-theme="dark"] #view-fbgroups .fbg-results-lbl{color:#9AA3AF}
+
+.fbg-modal .fbg-modal-btns{margin-top:16px}
+/* dropdown arrows survive the skin's select resets (both themes) */
+select.fbg-modal-input,#view-fbgroups select.fbg-count-select,#view-fbgroups select.fbg-sort{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 10px center!important;padding-right:28px}
 </style>
 
 <!-- Left: search + results -->
@@ -12814,7 +12880,7 @@ body.fbg-resizing iframe{pointer-events:none}
   <!-- Tab: Template library -->
   <div class="fbg-tab-content active" id="fbg-lib-cars">
     <div class="fbg-lib-header">
-      <div class="fbg-lib-title">Saved Templates</div>
+      <div class="fbg-lib-titlebar"><div class="fbg-lib-title">Saved Templates</div><button class="fbg-icon-btn" id="fbg-expand" title="Make the sidebar wider — or drag its left edge">⤢ Expand</button></div>
       <div class="fbg-lib-sub">Organise groups by car, chassis or product. Open a template to see its groups, or hit Search to re-run it.</div>
       <input class="fbg-lib-search" id="fbg-lib-filter" placeholder="Filter templates or groups..." autocomplete="off" />
       <div class="fbg-chips" id="fbg-chips"></div>
@@ -12823,6 +12889,7 @@ body.fbg-resizing iframe{pointer-events:none}
       <button class="fbg-new-car-btn" id="fbg-new-tpl" style="flex:1;margin:0;width:auto">＋ New Template</button>
       <button class="fbg-new-car-btn" id="fbg-export-lib" style="flex:0 0 auto;margin:0;width:auto;padding:0 14px" title="Download the whole library as CSV">⬇ CSV</button>
     </div>
+    <div class="fbg-clipbar" id="fbg-clipbar"></div>
     <div class="fbg-car-list" id="fbg-car-list">
       <div class="fbg-lib-empty">
         <div class="fbg-lib-empty-icon"><span class="ic ic-car"></span></div>
@@ -12954,11 +13021,11 @@ function parseQuery(q,kind){
 
 /* ── modals (same classes the dashboard themes already style) ── */
 var modalOnClose = null;
-function showModal(inner,onClose){
+function showModal(inner,onClose,wide){
   closeModal(true);
   var ov = document.createElement('div');
   ov.className = 'fbg-modal-overlay open'; ov.id = 'fbg-modal';
-  ov.innerHTML = '<div class="fbg-modal" role="dialog" aria-modal="true">'+inner+'</div>';
+  ov.innerHTML = '<div class="fbg-modal'+(wide?' wide':'')+'" role="dialog" aria-modal="true">'+inner+'</div>';
   ov.addEventListener('mousedown',function(e){ if(e.target===ov) closeModal(); });
   document.body.appendChild(ov);
   modalOnClose = onClose || null;
@@ -13016,10 +13083,10 @@ function readTplForm(p,kind){
 }
 
 /* ════════ Library: render ════════ */
-function tplOptionsHtml(l,selectedKey,withNew,placeholder){
+function tplOptionsHtml(l,selectedKey,withNew,placeholder,excludeKey){
   var h = placeholder ? '<option value="">'+esc(placeholder)+'</option>' : '';
   KIND_ORDER.forEach(function(k){
-    var items = l.filter(function(t){ return tplKind(t)===k; }).sort(function(a,b){ return tplLabel(a).localeCompare(tplLabel(b)); });
+    var items = l.filter(function(t){ return tplKind(t)===k && t.key!==excludeKey; }).sort(function(a,b){ return tplLabel(a).localeCompare(tplLabel(b)); });
     if(!items.length) return;
     h += '<optgroup label="'+esc(KINDS[k].plural)+'">'+items.map(function(t){
       return '<option value="'+esc(t.key)+'"'+(t.key===selectedKey?' selected':'')+'>'+esc(tplLabel(t))+'</option>';
@@ -13036,6 +13103,7 @@ function fbgPopulateCarDropdowns(){
 
 function fbgRenderLibrary(){
   var box = $('fbg-car-list'), chips = $('fbg-chips'); if(!box) return;
+  renderClipbar();
   var l = fbgLibLoad();
   var counts = {all:l.length,car:0,chassis:0,product:0};
   l.forEach(function(t){ counts[tplKind(t)]++; });
@@ -13060,19 +13128,39 @@ function fbgRenderLibrary(){
     return;
   }
   box.innerHTML = list.map(function(t){
-    var k = tplKind(t), label = tplLabel(t), n = (t.groups||[]).length, key = t.key;
+    var k = tplKind(t), label = tplLabel(t), n = (t.groups||[]).length, key = t.key, ek = esc(key);
     var isOpen = !!fbgOpen[key] || (q && (t.groups||[]).some(function(g){ return String(g.name||'').toLowerCase().indexOf(q)!==-1; }));
-    var body = '<button class="fbg-car-search-btn" data-act="search-tpl" data-key="'+esc(key)+'"><span class="ic ic-search"></span>Search &ldquo;'+esc(label)+'&rdquo;</button>';
+    var sel = selOf(key), nSel = selIdx(key).length;
+    var clipHere = fbgClip && fbgClip.items.length && fbgClip.from!==key;
+    var body = '<button class="fbg-car-search-btn" data-act="search-tpl" data-key="'+ek+'"><span class="ic ic-search"></span>Search &ldquo;'+esc(label)+'&rdquo;</button>';
+    if(n){
+      body += '<div class="fbg-gtools"><span class="fbg-gsel'+(nSel===n?' checked':(nSel?' partial':''))+'" data-act="g-selall" data-key="'+ek+'" title="Select all"></span>'
+        +'<span class="fbg-gtools-lbl">'+(nSel?nSel+' selected':'Select')+'</span><span class="fbg-gtools-spacer"></span>'
+        +(nSel ? '<button class="fbg-gbtn" data-act="g-copy" data-key="'+ek+'">Copy</button><button class="fbg-gbtn" data-act="g-cut" data-key="'+ek+'">Cut</button>'
+                +'<button class="fbg-gbtn" data-act="g-move" data-key="'+ek+'">Move…</button><button class="fbg-gbtn danger" data-act="g-del" data-key="'+ek+'">Delete</button>' : '')
+        +'</div>';
+    }
+    body += '<div class="fbg-gtools"><button class="fbg-gbtn" data-act="paste-list" data-key="'+ek+'" title="Paste a list of groups (names and/or links) from text or a spreadsheet">＋ Paste list</button>'
+      +(n?'<button class="fbg-gbtn" data-act="copy-all" data-key="'+ek+'" title="Copy every group in this template">Copy all</button>':'')
+      +(clipHere?'<button class="fbg-gbtn paste" data-act="paste-clip" data-key="'+ek+'">Paste '+fbgClip.items.length+'</button>':'')
+      +'</div>';
     if(!n) body += '<div class="fbg-none">No groups linked yet.</div>';
     (t.groups||[]).forEach(function(g,gi){
-      body += '<div class="fbg-saved-group"><span class="fbg-saved-group-icon">'+iconHtml(g.icon)+'</span>'
+      var on = !!sel[gi];
+      body += '<div class="fbg-saved-group'+(on?' sel':'')+'" data-key="'+ek+'" data-gi="'+gi+'">'
+        +'<span class="fbg-grip" data-act="grip" title="Drag to reorder — or drop onto another template">⠿</span>'
+        +'<span class="fbg-gsel'+(on?' checked':'')+'" data-act="g-sel" data-key="'+ek+'" data-gi="'+gi+'"></span>'
+        +'<span class="fbg-saved-group-icon">'+iconHtml(g.icon)+'</span>'
         +'<div class="fbg-saved-group-info"><div class="fbg-saved-group-name" title="'+esc(g.name)+'">'+esc(g.name)+'</div>'
-        +'<div class="fbg-saved-group-url">'+(g.members>0?fbgFmt(g.members)+' members · ':'')+esc(String(g.url||'').replace(/^https?:\/\//i,''))+'</div></div>'
+        +'<div class="fbg-saved-group-url">'+(g.members>0?fbgFmt(g.members)+' members · ':'')+esc(String(g.url||'').replace(/^https?:\/\//i,''))+'</div>'
+        +(g.desc?'<div class="fbg-saved-group-desc">'+esc(g.desc)+'</div>':'')+'</div>'
         +'<div class="fbg-saved-group-actions"><button class="fbg-saved-group-open" title="Open" data-act="open-url" data-url="'+esc(g.url)+'">↗</button>'
-        +'<button class="fbg-saved-group-rm" title="Remove" data-act="rm-group" data-key="'+esc(key)+'" data-gi="'+gi+'"><span class="ic ic-x"></span></button></div></div>';
+        +'<button class="fbg-saved-group-open" title="Edit" data-act="edit-group" data-key="'+ek+'" data-gi="'+gi+'"><span class="ic ic-pencil"></span></button>'
+        +'<button class="fbg-saved-group-rm" title="Remove" data-act="rm-group" data-key="'+ek+'" data-gi="'+gi+'"><span class="ic ic-x"></span></button></div></div>';
     });
-    body += '<div class="fbg-car-foot"><button class="fbg-car-delete-btn" data-act="del-tpl" data-key="'+esc(key)+'"><span class="ic ic-trash"></span>Delete template</button></div>';
-    return '<div class="fbg-car-item" id="fbg-car-'+esc(key)+'" data-key="'+esc(key)+'"><div class="fbg-car-header" data-act="toggle-tpl" data-key="'+esc(key)+'">'
+    body += '<div class="fbg-car-foot"><button class="fbg-car-delete-btn edit" data-act="edit-tpl" data-key="'+ek+'"><span class="ic ic-pencil"></span>Edit template</button>'
+      +'<button class="fbg-car-delete-btn" data-act="del-tpl" data-key="'+ek+'"><span class="ic ic-trash"></span>Delete template</button></div>';
+    return '<div class="fbg-car-item" id="fbg-car-'+ek+'" data-key="'+ek+'"><div class="fbg-car-header" data-act="toggle-tpl" data-key="'+ek+'">'
       +'<span class="fbg-car-icon">'+kindIcon(k)+'</span><div class="fbg-car-name-wrap"><div class="fbg-car-name" title="'+esc(label)+'">'+esc(label)+'</div><div class="fbg-car-kind">'+KINDS[k].label+'</div></div>'
       +'<span class="fbg-car-count">'+n+' group'+(n===1?'':'s')+'</span><span class="fbg-car-chevron'+(isOpen?' open':'')+'">▶</span></div>'
       +'<div class="fbg-car-body'+(isOpen?' open':'')+'">'+body+'</div></div>';
@@ -13471,15 +13559,22 @@ function copyList(){
 
 /* ════════ Resizable library sidebar ════════ */
 function initResizer(){
-  var rz = $('fbg-resizer'), view = $('view-fbgroups'); if(!rz || !view) return;
-  var W = FBG_W_DEFAULT;
+  var rz = $('fbg-resizer'), view = $('view-fbgroups'), libEl = $('fbg-library'); if(!rz || !view) return null;
+  var W = FBG_W_DEFAULT, prevW = FBG_W_DEFAULT, WIDE = 560;
   function viewW(){ return view.getBoundingClientRect().width || window.innerWidth; }
-  function maxW(){ return Math.max(FBG_W_MIN,Math.min(760,Math.floor(viewW()*0.6))); }
+  function maxW(){ return Math.max(FBG_W_MIN,Math.min(1200,Math.floor(viewW()-380))); }   // always leave room for the search panel
   function clamp(w){ return Math.max(FBG_W_MIN,Math.min(maxW(),Math.round(w))); }
+  function updExpand(){ var b = $('fbg-expand'); if(b) b.textContent = W>=WIDE ? '⤡ Shrink' : '⤢ Expand'; }
   function apply(w,save){
     W = clamp(w); view.style.setProperty('--fbg-lib-w',W+'px');
+    if(libEl) libEl.classList.toggle('fbg-wide',W>=WIDE);
     rz.setAttribute('aria-valuenow',String(W)); rz.setAttribute('aria-valuemin',String(FBG_W_MIN)); rz.setAttribute('aria-valuemax',String(maxW()));
+    updExpand();
     if(save){ try{ localStorage.setItem(FBG_W_KEY,String(W)); }catch(e){} }
+  }
+  function toggleWide(){
+    if(W>=WIDE) apply(prevW<WIDE ? prevW : FBG_W_DEFAULT,true);
+    else { prevW = W; apply(Math.max(WIDE,Math.min(980,Math.floor(viewW()*0.7))),true); }
   }
   var saved = 0; try{ saved = parseInt(localStorage.getItem(FBG_W_KEY),10)||0; }catch(e){}
   apply(saved||FBG_W_DEFAULT,false);
@@ -13505,6 +13600,286 @@ function initResizer(){
     else if(e.key==='End'){ e.preventDefault(); apply(maxW(),true); }
   });
   window.addEventListener('resize',function(){ if(view.getBoundingClientRect().width) apply(W,false); });
+  return {toggleWide:toggleWide};
+}
+
+/* ════════ Group management: select · copy/cut/paste · move · edit · reorder ════════ */
+var fbgGSel = {}, fbgClip = null, fbgDrag = null;
+function selOf(key){ return fbgGSel[key] || (fbgGSel[key] = {}); }
+function selIdx(key){ var o = selOf(key); return Object.keys(o).filter(function(i){ return o[i]; }).map(Number).sort(function(a,b){ return a-b; }); }
+function clearSel(){ fbgGSel = {}; }
+function cloneG(g){ return JSON.parse(JSON.stringify(g)); }
+function groupIdent(g){ return (g.url?normUrl(g.url):'')+'|'+String(g.name||'').toLowerCase(); }
+function groupLine(g){ return g.name+(g.members>0?' ('+fbgFmt(g.members)+' members)':'')+' — '+(g.url||fbSearchUrl(g.name)); }
+function hasGroup(t,g){
+  var ui = g.url ? normUrl(g.url) : null, nn = String(g.name||'').toLowerCase();
+  return (t.groups||[]).some(function(x){ return (ui && x.url && normUrl(x.url)===ui) || String(x.name||'').toLowerCase()===nn; });
+}
+function plural(n,w){ return n+' '+w+(n===1?'':'s'); }
+
+function renderClipbar(){
+  var bar = $('fbg-clipbar'); if(!bar) return;
+  if(!fbgClip || !fbgClip.items.length){ bar.classList.remove('show'); bar.innerHTML = ''; return; }
+  var src = tplByKey(fbgLibLoad(),fbgClip.from);
+  bar.innerHTML = '<span>'+(fbgClip.mode==='cut'?'✂ Cut ':'⧉ Copied ')+plural(fbgClip.items.length,'group')+(src?' from '+esc(tplLabel(src)):'')+' — open a template and hit Paste</span><button class="fbg-gbtn" data-act="clip-clear">Clear</button>';
+  bar.classList.add('show');
+}
+function setClip(mode,key,idxs){
+  var t = tplByKey(fbgLibLoad(),key); if(!t) return;
+  var items = idxs.map(function(i){ return t.groups[i]; }).filter(Boolean).map(cloneG);
+  if(!items.length) return;
+  fbgClip = {mode:mode,from:key,items:items};
+  copyText(items.map(groupLine).join('\n'),(mode==='cut'?'Cut ':'Copied ')+plural(items.length,'group')+' — open another template and hit Paste');
+  clearSel(); fbgRenderLibrary();
+}
+// Move groups (same template = reorder, different template = move). beforeIdx null → end of list.
+function moveGroups(srcKey,idxs,dstKey,beforeIdx){
+  var l = fbgLibLoad(), src = tplByKey(l,srcKey), dst = tplByKey(l,dstKey);
+  if(!src || !dst) return null;
+  idxs = idxs.filter(function(i){ return src.groups && src.groups[i]; });
+  if(!idxs.length) return null;
+  var items = idxs.map(function(i){ return src.groups[i]; }), moved = 0, skipped = 0;
+  if(srcKey===dstKey){
+    var before = beforeIdx==null ? src.groups.length : beforeIdx;
+    var adj = before - idxs.filter(function(i){ return i<before; }).length;
+    var rest = src.groups.filter(function(g,i){ return idxs.indexOf(i)===-1; });
+    Array.prototype.splice.apply(rest,[adj,0].concat(items));
+    src.groups = rest; moved = items.length;
+  } else {
+    dst.groups = dst.groups||[];
+    var add = items.filter(function(g){ return !hasGroup(dst,g); });
+    skipped = items.length-add.length; moved = add.length;
+    var at = beforeIdx==null ? dst.groups.length : Math.min(beforeIdx,dst.groups.length);
+    Array.prototype.splice.apply(dst.groups,[at,0].concat(add));
+    src.groups = src.groups.filter(function(g){ return add.indexOf(g)===-1; });
+  }
+  fbgLibSave(l); clearSel();
+  return {moved:moved,skipped:skipped,src:src,dst:dst};
+}
+function toastMove(res){
+  if(!res) return;
+  if(res.src===res.dst){ fbgToast('Reordered.'); return; }
+  fbgToast((res.moved?'Moved '+plural(res.moved,'group')+' to '+tplLabel(res.dst):'Nothing moved')+(res.skipped?' ('+res.skipped+' already there)':'')+'.');
+}
+function pasteClip(key){
+  var c = fbgClip; if(!c || !c.items.length) return;
+  var l = fbgLibLoad(), dst = tplByKey(l,key); if(!dst) return;
+  if(c.mode==='cut' && c.from===key){ fbgToast('Those groups are already in this template.'); return; }
+  dst.groups = dst.groups||[];
+  var added = 0, skipped = 0, removed = 0;
+  c.items.forEach(function(g){ if(hasGroup(dst,g)) skipped++; else { dst.groups.push(cloneG(g)); added++; } });
+  if(c.mode==='cut'){
+    var src = tplByKey(l,c.from);
+    if(src){ var ids = {}; c.items.forEach(function(g){ ids[groupIdent(g)] = 1; });
+      var n0 = src.groups.length; src.groups = src.groups.filter(function(g){ return !ids[groupIdent(g)]; }); removed = n0-src.groups.length; }
+    fbgClip = null;
+  }
+  if(added || removed) fbgLibSave(l);
+  fbgOpen[key] = true; clearSel(); fbgRenderLibrary();
+  var n = c.mode==='cut' ? removed : added;
+  fbgToast(n ? (c.mode==='cut'?'Moved ':'Pasted ')+plural(n,'group')+' into '+tplLabel(dst)+(skipped?' ('+skipped+' already there)':'')+'.'
+             : 'Nothing new — those groups are already in '+tplLabel(dst)+'.');
+}
+async function deleteSelected(key){
+  var idxs = selIdx(key); if(!idxs.length) return;
+  var t = tplByKey(fbgLibLoad(),key); if(!t) return;
+  var ok = await confirmBox('Delete '+plural(idxs.length,'group')+'?','They will be removed from '+tplLabel(t)+'. This can’t be undone.','Delete');
+  if(!ok) return;
+  var l = fbgLibLoad(); t = tplByKey(l,key); if(!t) return;
+  t.groups = t.groups.filter(function(g,i){ return idxs.indexOf(i)===-1; });
+  fbgLibSave(l); clearSel(); fbgRenderLibrary(); fbgToast('Deleted '+plural(idxs.length,'group')+'.');
+}
+function openMoveTo(key,idxs){
+  var l = fbgLibLoad();
+  if(l.length<2){ fbgToast('Create another template first.'); return; }
+  var ov = showModal('<div class="fbg-modal-title">Move '+plural(idxs.length,'group')+'</div>'
+    +'<div class="fbg-modal-sub">Choose the template to move them into. Groups it already has are skipped.</div>'
+    +'<select class="fbg-modal-input" id="fbg-mv-sel" data-autofocus>'+tplOptionsHtml(l,'',false,'— Choose a template —',key)+'</select>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Move</button></div>');
+  ov.addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return;
+    if(b.dataset.act==='cancel'){ closeModal(); return; }
+    var dst = val('fbg-mv-sel'); if(!dst){ fbgToast('Choose a template.'); return; }
+    var res = moveGroups(key,idxs,dst,null); closeModal(true);
+    fbgOpen[dst] = true; fbgRenderLibrary(); toastMove(res);
+  });
+}
+
+/* edit a group */
+function openEditGroup(key,gi){
+  var l = fbgLibLoad(), t = tplByKey(l,key), g = t && t.groups && t.groups[gi]; if(!g) return;
+  var ov = showModal('<div class="fbg-modal-title">Edit Group</div><div class="fbg-modal-sub">In '+esc(tplLabel(t))+'</div>'
+    +'<div class="fbg-field-lbl">Name</div><input class="fbg-modal-input" id="fbg-eg-name" value="'+esc(g.name)+'" data-autofocus/>'
+    +'<div class="fbg-field-lbl">Facebook link</div><input class="fbg-modal-input" id="fbg-eg-url" value="'+esc(g.url||'')+'"/>'
+    +'<div class="fbg-modal-row2" style="margin-top:8px"><div><div class="fbg-field-lbl" style="margin-top:0">Members</div><input class="fbg-modal-input" id="fbg-eg-members" type="number" min="0" value="'+(g.members>0?g.members:'')+'" placeholder="optional"/></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Template</div><select class="fbg-modal-input" id="fbg-eg-tpl">'+tplOptionsHtml(l,key,false)+'</select></div></div>'
+    +'<div class="fbg-field-lbl">Notes</div><input class="fbg-modal-input" id="fbg-eg-desc" value="'+esc(g.desc||'')+'" placeholder="optional — e.g. allows promo posts on Fridays"/>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Save</button></div>');
+  function save(){
+    var name = val('fbg-eg-name'), url = val('fbg-eg-url'), members = parseInt(val('fbg-eg-members'),10)||0, desc = val('fbg-eg-desc'), dstKey = val('fbg-eg-tpl')||key;
+    if(!name){ fbgToast('Enter a group name.'); return; }
+    var ul = url.toLowerCase();
+    if(url && (!isHttp(url) || (ul.indexOf('facebook.com')===-1 && ul.indexOf('fb.com')===-1))){ fbgToast('Enter a valid Facebook URL (or leave it empty).'); return; }
+    var l2 = fbgLibLoad(), t2 = tplByKey(l2,key), g2 = t2 && t2.groups[gi]; if(!g2){ closeModal(true); return; }
+    var newUrl = url || fbSearchUrl(name);
+    var dst = tplByKey(l2,dstKey) || t2;
+    var others = (dst.groups||[]).filter(function(x){ return x!==g2; });
+    if(others.some(function(x){ return String(x.name||'').toLowerCase()===name.toLowerCase() || (x.url && normUrl(x.url)===normUrl(newUrl)); })){
+      fbgToast('Another group in '+tplLabel(dst)+' already has that name or link.'); return;
+    }
+    g2.name = name; g2.url = newUrl; g2.members = members; g2.desc = desc;
+    if(dst!==t2){ t2.groups.splice(gi,1); dst.groups = dst.groups||[]; dst.groups.push(g2); fbgOpen[dst.key] = true; }
+    fbgLibSave(l2); clearSel(); closeModal(true); fbgRenderLibrary();
+    fbgToast(dst!==t2 ? 'Saved and moved to '+tplLabel(dst)+'.' : 'Group updated.');
+  }
+  ov.addEventListener('click',function(e){ var b = e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='save') save(); else closeModal(); });
+  ov.addEventListener('keydown',function(e){ if(e.key==='Enter' && e.target.tagName==='INPUT') save(); });
+}
+
+/* edit (rename) a template */
+function openEditTemplate(key){
+  var l = fbgLibLoad(), t = tplByKey(l,key); if(!t) return;
+  var kind = tplKind(t);
+  var ov = showModal('<div class="fbg-modal-title">Edit Template</div><div class="fbg-modal-sub">Rename it or change its type. Its groups stay with it.</div>'
+    +tplFormHtml('fbg-et',kind,{year:t.year,make:t.make,model:t.model})
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Save</button></div>');
+  var st = bindTplForm(ov,'fbg-et',kind);
+  function save(){
+    var f = readTplForm('fbg-et',st.kind);
+    if(f.error){ fbgToast(f.error); return; }
+    var l2 = fbgLibLoad(), t2 = tplByKey(l2,key); if(!t2){ closeModal(true); return; }
+    var nk = fbgCarKey(f.year,f.make,f.model,st.kind);
+    if(nk!==key && tplByKey(l2,nk)){ fbgToast('A template with that name already exists — use Move to combine groups.'); return; }
+    t2.key = nk; t2.make = f.make||''; t2.model = f.model; t2.year = st.kind==='car' ? f.year : '';
+    if(st.kind==='car') delete t2.kind; else t2.kind = st.kind;
+    if(nk!==key){
+      if(fbgOpen[key]){ fbgOpen[nk] = true; delete fbgOpen[key]; }
+      if(fbgActiveKey===key) fbgActiveKey = nk;
+      if(fbgGSel[key]){ fbgGSel[nk] = fbgGSel[key]; delete fbgGSel[key]; }
+      if(fbgClip && fbgClip.from===key) fbgClip.from = nk;
+    }
+    fbgLibSave(l2); closeModal(true); fbgRenderLibrary(); fbgPopulateCarDropdowns();
+    fbgToast('Template updated.');
+  }
+  ov.addEventListener('click',function(e){ var b = e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='save') save(); else if(b.dataset.act==='cancel') closeModal(); });
+  ov.addEventListener('keydown',function(e){ if(e.key==='Enter' && e.target.tagName==='INPUT') save(); });
+}
+
+/* paste a list of groups (text or spreadsheet rows) */
+var FB_URL_RE = /(?:https?:\/\/)?(?:www\.|m\.|web\.|mbasic\.)?(?:facebook\.com|fb\.com)\/[^\s"'<>)\]]*/i;
+function parseMembers(s){
+  var m = String(s).match(/(\d[\d,]*(?:\.\d+)?)\s*([kKmM])?\s*(?:members?|people|followers)\b/i);
+  if(!m) return null;
+  var n = parseFloat(m[1].replace(/,/g,'')), u = (m[2]||'').toLowerCase();
+  return {n:Math.round(n*(u==='k'?1e3:u==='m'?1e6:1)),text:m[0]};
+}
+function slugName(url){
+  var seg = String(url).split('?')[0].replace(/\/+$/,'').split('/').pop();
+  try{ seg = decodeURIComponent(seg); }catch(e){}
+  if(/^\d+$/.test(seg)) return 'Group '+seg;
+  return seg.replace(/[-_.]+/g,' ').replace(/\b\w/g,function(c){ return c.toUpperCase(); });
+}
+function fixFbUrl(u){
+  u = u.replace(/[.,;:]+$/,'');
+  if(!/^https?:\/\//i.test(u)) u = 'https://www.'+u.replace(/^(www\.|m\.|web\.|mbasic\.)/i,'');
+  if(/\/groups\/|\/share\/g\//i.test(u)) u = u.split('?')[0].split('#')[0].replace(/\/+$/,'');
+  return u;
+}
+function parseList(text){
+  var items = [], noLink = 0, bad = 0;
+  String(text||'').split(/\r?\n/).forEach(function(raw){
+    var line = raw.trim(); if(!line) return;
+    var url = '', name = '', members = 0;
+    if(line.indexOf('\t')!==-1){
+      line.split('\t').map(function(c){ return c.trim(); }).filter(Boolean).forEach(function(c){
+        var um = c.match(FB_URL_RE);
+        if(um && !url) url = fixFbUrl(um[0]);
+        else if(/^\d[\d,]*$/.test(c) && !members) members = parseInt(c.replace(/,/g,''),10);
+        else if(!name && !/^https?:\/\//i.test(c)){ var pm = parseMembers(c); if(pm && !members){ members = pm.n; c = c.replace(pm.text,''); } name = c; }
+      });
+    } else {
+      var um2 = line.match(FB_URL_RE), rest = line;
+      if(um2){ url = fixFbUrl(um2[0]); rest = rest.replace(um2[0],' '); }
+      else if(/https?:\/\//i.test(line)){ bad++; return; }
+      var pm2 = parseMembers(rest); if(pm2){ members = pm2.n; rest = rest.replace(pm2.text,' '); }
+      name = rest;
+    }
+    name = name.replace(/\(\s*\)|\[\s*\]/g,' ').replace(/^\s*(?:[-*•]|\d+[.)])\s+/,'').replace(/^[\s—–\-|:,;"'•*]+|[\s—–\-|:,;"'•*]+$/g,'').replace(/\s+/g,' ').trim();
+    if(/^(group\s*name|name|group|url|link|members|template)$/i.test(name) && !url) return;       // spreadsheet header row
+    if(!name && url) name = slugName(url);
+    if(!name || (name.length<3 && !url)){ bad++; return; }
+    if(!url) noLink++;
+    items.push({name:name,url:url,members:members,desc:''});
+  });
+  return {items:items,noLink:noLink,bad:bad};
+}
+function openPasteList(key){
+  var t = tplByKey(fbgLibLoad(),key); if(!t) return;
+  var ov = showModal('<div class="fbg-modal-title">Paste groups into “'+esc(tplLabel(t))+'”</div>'
+    +'<div class="fbg-modal-sub">One group per line — a Facebook link, a name, or both. Rows copied from a spreadsheet work too.</div>'
+    +'<div class="fbg-hint" style="margin:-8px 0 8px">Example: Audi S6 Owners (12K members) — https://facebook.com/groups/s6owners</div>'
+    +'<textarea class="fbg-modal-input" id="fbg-pl-text" rows="8" placeholder="Paste here…" data-autofocus></textarea>'
+    +'<div class="fbg-hint" id="fbg-pl-count">Nothing pasted yet.</div>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Add groups</button></div>',null,true);
+  var ta = ov.querySelector('#fbg-pl-text'), cnt = ov.querySelector('#fbg-pl-count');
+  function summary(r){
+    if(!r.items.length && !r.bad) return 'Nothing pasted yet.';
+    return plural(r.items.length,'group')+' found'+(r.noLink?' · '+r.noLink+' without a link (saved as a Facebook search)':'')+(r.bad?' · '+plural(r.bad,'line')+' skipped':'')+'.';
+  }
+  ta.addEventListener('input',function(){ cnt.textContent = summary(parseList(ta.value)); });
+  ov.addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return;
+    if(b.dataset.act==='cancel'){ closeModal(); return; }
+    var r = parseList(ta.value);
+    if(!r.items.length){ fbgToast('Nothing to add yet — paste some groups first.'); return; }
+    var l = fbgLibLoad(), t2 = tplByKey(l,key); if(!t2){ closeModal(true); return; }
+    var added = insertGroups(t2,r.items);
+    if(added) fbgLibSave(l);
+    closeModal(true); fbgOpen[key] = true; fbgRenderLibrary();
+    fbgToast(added ? 'Added '+plural(added,'group')+(r.items.length-added?' ('+(r.items.length-added)+' already there)':'')+'.' : 'Nothing new — those are already in this template.');
+  });
+}
+
+/* drag & drop: reorder within a template, or drop onto another template to move */
+function clearDropMarks(){
+  var host = $('fbg-library'); if(!host) return;
+  host.querySelectorAll('.drop-before,.drop-after,.drop-into,.dragging').forEach(function(el){ el.classList.remove('drop-before','drop-after','drop-into','dragging'); });
+}
+function endDrag(){
+  fbgDrag = null; clearDropMarks();
+  var host = $('fbg-library'); if(host) host.querySelectorAll('.fbg-saved-group[draggable="true"]').forEach(function(r){ r.draggable = false; });
+}
+function bindDrag(){
+  var host = $('fbg-library'); if(!host) return;
+  host.addEventListener('mousedown',function(e){ var gr = e.target.closest && e.target.closest('.fbg-grip'); if(gr){ var row = gr.closest('.fbg-saved-group'); if(row) row.draggable = true; } });
+  document.addEventListener('mouseup',function(){ if(!fbgDrag) host.querySelectorAll('.fbg-saved-group[draggable="true"]').forEach(function(r){ r.draggable = false; }); });
+  host.addEventListener('dragstart',function(e){
+    var row = e.target.closest && e.target.closest('.fbg-saved-group'); if(!row) return;
+    var key = row.dataset.key, gi = parseInt(row.dataset.gi,10), picked = selIdx(key);
+    var idxs = picked.indexOf(gi)!==-1 ? picked : [gi];
+    fbgDrag = {key:key,idxs:idxs}; row.classList.add('dragging');
+    if(e.dataTransfer){ e.dataTransfer.effectAllowed = 'move';
+      try{ var t = tplByKey(fbgLibLoad(),key); e.dataTransfer.setData('text/plain',idxs.map(function(i){ return groupLine(t.groups[i]); }).join('\n')); }catch(x){} }
+  });
+  host.addEventListener('dragover',function(e){
+    if(!fbgDrag) return;
+    var item = e.target.closest && e.target.closest('.fbg-car-item'); if(!item) return;
+    e.preventDefault(); clearDropMarks();
+    var row = e.target.closest('.fbg-saved-group');
+    if(row){ var r = row.getBoundingClientRect(); row.classList.add(e.clientY < r.top+r.height/2 ? 'drop-before' : 'drop-after'); }
+    else item.classList.add('drop-into');
+  });
+  host.addEventListener('drop',function(e){
+    if(!fbgDrag) return;
+    var item = e.target.closest && e.target.closest('.fbg-car-item'); if(!item) return;
+    e.preventDefault();
+    var row = e.target.closest('.fbg-saved-group'), before = null;
+    if(row){ var r = row.getBoundingClientRect(), gi = parseInt(row.dataset.gi,10); before = e.clientY < r.top+r.height/2 ? gi : gi+1; }
+    var d = fbgDrag; endDrag();
+    var res = moveGroups(d.key,d.idxs,item.dataset.key,before);
+    fbgRenderLibrary(); toastMove(res);
+  });
+  host.addEventListener('dragend',endDrag);
 }
 
 /* ════════ Recovery (never lose a library to an empty/partial cloud copy) ════════ */
@@ -13592,6 +13967,18 @@ function init(){
     else if(a==='open-url') openUrl(b.dataset.url);
     else if(a==='rm-group') removeGroup(b.dataset.key,parseInt(b.dataset.gi,10));
     else if(a==='del-tpl') deleteTemplate(b.dataset.key);
+    else if(a==='edit-tpl') openEditTemplate(b.dataset.key);
+    else if(a==='edit-group') openEditGroup(b.dataset.key,parseInt(b.dataset.gi,10));
+    else if(a==='g-sel'){ var so = selOf(b.dataset.key), gi = b.dataset.gi; if(so[gi]) delete so[gi]; else so[gi] = true; fbgRenderLibrary(); }
+    else if(a==='g-selall'){ var t = tplByKey(fbgLibLoad(),b.dataset.key); if(t){ var all = selIdx(b.dataset.key).length===(t.groups||[]).length; fbgGSel[b.dataset.key] = {}; if(!all) (t.groups||[]).forEach(function(g,i){ fbgGSel[b.dataset.key][i] = true; }); fbgRenderLibrary(); } }
+    else if(a==='g-copy') setClip('copy',b.dataset.key,selIdx(b.dataset.key));
+    else if(a==='g-cut') setClip('cut',b.dataset.key,selIdx(b.dataset.key));
+    else if(a==='g-move') openMoveTo(b.dataset.key,selIdx(b.dataset.key));
+    else if(a==='g-del') deleteSelected(b.dataset.key);
+    else if(a==='copy-all'){ var ta = tplByKey(fbgLibLoad(),b.dataset.key); if(ta) setClip('copy',b.dataset.key,(ta.groups||[]).map(function(g,i){ return i; })); }
+    else if(a==='paste-clip') pasteClip(b.dataset.key);
+    else if(a==='paste-list') openPasteList(b.dataset.key);
+    else if(a==='clip-clear'){ fbgClip = null; fbgRenderLibrary(); }
   });
   $('fbg-results').addEventListener('click',function(e){
     var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
@@ -13605,7 +13992,7 @@ function init(){
   $('fbg-results').addEventListener('change',function(e){ if(e.target.id==='fbg-sort'){ fbgSortBy = e.target.value; renderResults(); } });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape' && $('fbg-modal')) closeModal(); });
 
-  initResizer(); onKindChange(); renderResults(); fbgRenderLibrary(); fbgPopulateCarDropdowns();
+  var rzApi = initResizer(); var ex = $('fbg-expand'); if(ex && rzApi) ex.addEventListener('click',rzApi.toggleWide); bindDrag(); onKindChange(); renderResults(); fbgRenderLibrary(); fbgPopulateCarDropdowns();
 
   // The cloud copy of the library finishes loading AFTER first paint — refresh when it lands,
   // and every time the view is opened, so the sidebar never shows a stale list.
@@ -18899,7 +19286,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.17';
+var TGK_CC_VERSION='v7.18';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
