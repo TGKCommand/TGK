@@ -13988,8 +13988,8 @@ function openEditGroup(key,gi){
     +'<div><div class="fbg-field-lbl" style="margin-top:0">Last posted</div><div class="fbg-inline"><input class="fbg-modal-input" id="fbg-eg-posted" type="date" value="'+esc(g.lastPosted||'')+'"/><button type="button" class="fbg-gbtn" id="fbg-eg-today">Today</button></div></div></div>'
     +'<div class="fbg-modal-row2" style="margin-top:8px"><div><div class="fbg-field-lbl" style="margin-top:0">Owner (who manages it)</div><input class="fbg-modal-input" id="fbg-eg-owner" list="fbg-owners" value="'+esc(g.owner||'')+'" placeholder="optional"/></div>'
     +'<div><div class="fbg-field-lbl" style="margin-top:0">Tags (comma separated)</div><input class="fbg-modal-input" id="fbg-eg-tags" value="'+esc((g.tags||[]).join(', '))+'" placeholder="e.g. vendor-friendly, tuning"/></div></div>'
-    +'<div class="fbg-checks"><label><input type="checkbox" id="fbg-eg-verified"'+(g.verified?' checked':'')+'/> Verified — I checked the link and member count</label>'
-    +'<label><input type="checkbox" id="fbg-eg-dead"'+(g.dead?' checked':'')+'/> Dead, renamed or unavailable</label></div>'
+    +'<div class="fbg-checks"><label><input type="checkbox" id="fbg-eg-verified"'+chkAttr()+(g.verified?' checked':'')+'/> Verified — I checked the link and member count</label>'
+    +'<label><input type="checkbox" id="fbg-eg-dead"'+chkAttr()+(g.dead?' checked':'')+'/> Dead, renamed or unavailable</label></div>'
     +'<div class="fbg-field-lbl">Notes</div><input class="fbg-modal-input" id="fbg-eg-desc" value="'+esc(g.desc||'')+'" placeholder="optional — e.g. admin is Dave, promo posts only on Fridays"/>'
     +'<datalist id="fbg-owners">'+ownerNames().map(function(n){ return '<option value="'+esc(n)+'"></option>'; }).join('')+'</datalist>'
     +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Save</button></div>',null,true);
@@ -14029,7 +14029,7 @@ function linksHtml(kind,t,l){
   if(kind==='product'){
     var pool = l.filter(function(x){ return x.id!==t.id && tplKind(x)!=='product'; }), sel = t.fitsIds||[];
     return '<div class="fbg-field-lbl">Fits — which chassis / cars this product is for</div><div class="fbg-checklist" id="fbg-et-fits">'
-      +(pool.length ? pool.map(function(x){ return '<label><input type="checkbox" value="'+esc(x.id)+'"'+(sel.indexOf(x.id)!==-1?' checked':'')+'/> '+kindIcon(tplKind(x))+' '+esc(tplLabel(x))+'</label>'; }).join('') : '<div class="fbg-hint">Add some car or chassis templates first.</div>')+'</div>';
+      +(pool.length ? pool.map(function(x){ return '<label><input type="checkbox" value="'+esc(x.id)+'"'+chkAttr()+(sel.indexOf(x.id)!==-1?' checked':'')+'/> '+kindIcon(tplKind(x))+' '+esc(tplLabel(x))+'</label>'; }).join('') : '<div class="fbg-hint">Add some car or chassis templates first.</div>')+'</div>';
   }
   var cars = l.filter(function(x){ return x.chassisId===t.id; });
   return '<div class="fbg-field-lbl">Cars on this chassis</div><div class="fbg-hint">'+(cars.length ? cars.map(function(c){ return esc(tplLabel(c)); }).join(', ') : 'None yet — link a car from its “Edit template”, or use Auto-link in the Health tab.')+'</div>';
@@ -14551,6 +14551,10 @@ function sortRows(rows,key,dir){
   return rows.slice().sort(function(a,b){ var x = v(a), y = v(b); return (x<y?-1:x>y?1:0)*dir || String(a.rec.name).localeCompare(String(b.rec.name)); });
 }
 
+/* Native checkboxes: the dashboard skin sets appearance:none on every <input>, so a ticked box looks identical to an empty one.
+   Inline !important restores the real, visible checkbox (and can't be out-ranked by any stylesheet rule). */
+var CHK_STYLE = 'appearance:auto!important;-webkit-appearance:checkbox!important;width:16px!important;height:16px!important;min-width:16px!important;margin:0!important;flex:none;accent-color:#2ABFAA;background:transparent!important;border:0!important;box-shadow:none!important;cursor:pointer;';
+function chkAttr(){ return ' style="'+CHK_STYLE+'"'; }
 /* Inline !important styles: the dashboard skin forces white on every <select>/<input> with selectors no normal rule can outrank. */
 var CTL_BASE = 'background-color:#1a1d20!important;color:#e8eaed!important;border:1px solid #2e3032!important;';
 function ctlStyle(f,v){
@@ -15012,9 +15016,9 @@ async function openFitmentLink(){
   var extraList = Object.keys(extra).map(function(k){ return extra[k]; }).sort(function(a,b){ return (a.make+a.code).localeCompare(b.make+b.code); }).slice(0,60);
   if(!props.length && !amb.length && !extraList.length){ fbgToast(already?'Every car already has a chassis link.':'No matches found in Fitment for your cars.'); return; }
   var ov = showModal('<div class="fbg-modal-title">Auto-link from Fitment</div><div class="fbg-modal-sub">Matched your car templates to Fitment vehicles (same make, model and year range). Missing chassis templates are created for you.</div>'
-    +(props.length?'<div class="fbg-sect" style="margin-top:6px">Matches ('+props.length+')</div><div class="fbg-checklist" id="fbg-fl-props">'+props.map(function(p,i){ return '<label><input type="checkbox" checked data-i="'+i+'"/> '+esc(tplLabel(p.car))+' <span class="fbg-dim">→</span> <b>'+esc(p.make+' '+p.code)+'</b></label>'; }).join('')+'</div>':'')
+    +(props.length?'<div class="fbg-sect" style="margin-top:6px">Matches ('+props.length+')</div><div class="fbg-checklist" id="fbg-fl-props">'+props.map(function(p,i){ return '<label><input type="checkbox" checked data-i="'+i+'"'+chkAttr()+'/> '+esc(tplLabel(p.car))+' <span class="fbg-dim">→</span> <b>'+esc(p.make+' '+p.code)+'</b></label>'; }).join('')+'</div>':'')
     +(amb.length?'<div class="fbg-sect">Several chassis possible — pick one ('+amb.length+')</div><div id="fbg-fl-amb">'+amb.map(function(a,i){ return '<div class="fbg-fl-amb"><span>'+esc(tplLabel(a.car))+'</span><select class="fbg-modal-input" data-i="'+i+'"><option value="">skip</option>'+a.codes.map(function(c){ return '<option>'+esc(c)+'</option>'; }).join('')+'</select></div>'; }).join('')+'</div>':'')
-    +(extraList.length?'<div class="fbg-sect">Other chassis Fitment has for makes you use</div><div class="fbg-checklist" id="fbg-fl-extra">'+extraList.map(function(x,i){ return '<label><input type="checkbox" data-i="'+i+'"/> '+esc(x.make+' '+x.code)+'</label>'; }).join('')+'</div><div class="fbg-hint">Ticked ones are created as empty chassis templates, ready to search.</div>':'')
+    +(extraList.length?'<div class="fbg-sect">Other chassis Fitment has for makes you use</div><div class="fbg-checklist" id="fbg-fl-extra">'+extraList.map(function(x,i){ return '<label><input type="checkbox" data-i="'+i+'"'+chkAttr()+'/> '+esc(x.make+' '+x.code)+'</label>'; }).join('')+'</div><div class="fbg-hint">Ticked ones are created as empty chassis templates, ready to search.</div>':'')
     +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="apply">Apply</button></div>',null,true);
   ov.addEventListener('click',function(e){
     var b = e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='cancel'){ closeModal(); return; }
