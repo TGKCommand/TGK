@@ -2287,7 +2287,7 @@ window._sbBootPromise = (async function() {
     window._sbReady = true;
     // Seed localStorage from cloud so export/import still works offline
     if (_tplCache && _tplCache.length) localStorage.setItem('tgk_templates', JSON.stringify(_tplCache));
-    if (_fbgCache && _fbgCache.length) localStorage.setItem(typeof FBG_LIBRARY_KEY !== 'undefined' ? FBG_LIBRARY_KEY : 'tgk_fbg_library_v1', JSON.stringify(_fbgCache));
+    if (_fbgCache && _fbgCache.length && localStorage.getItem('tgk_fbg_dirty') !== '1') localStorage.setItem(typeof FBG_LIBRARY_KEY !== 'undefined' ? FBG_LIBRARY_KEY : 'tgk_fbg_library_v1', JSON.stringify(_fbgCache));
     if (_tbxCache && _tbxCache.length) localStorage.setItem('tgk_toolbox_v1', JSON.stringify(_tbxCache));
     // Re-render toolbox if it loaded while cloud was still fetching
     if (typeof tbxRender === 'function' && document.getElementById('view-toolbox')?.classList.contains('active')) tbxRender();
@@ -12825,15 +12825,195 @@ html[data-theme="dark"] #view-fbgroups .fbg-results-lbl{color:#9AA3AF}
 .fbg-modal .fbg-modal-btns{margin-top:16px}
 /* dropdown arrows survive the skin's select resets (both themes) */
 select.fbg-modal-input,#view-fbgroups select.fbg-count-select,#view-fbgroups select.fbg-sort{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 10px center!important;padding-right:28px}
+
+/* ── v4: sync pill, undo, toast action ── */
+.fbg-syncrow{margin:0 0 6px}
+.fbg-sync{display:inline-block;font-size:var(--t-xs);font-weight:600;color:#777;cursor:pointer;user-select:none}
+.fbg-sync.ok{color:#1a8f7d}
+.fbg-sync.saving{color:#b7791f}
+.fbg-sync.error{color:#dc2626}
+.fbg-sync:hover{text-decoration:underline}
+.fbg-icon-btn:disabled{opacity:.4;cursor:not-allowed}
+.fbg-toast.has-action{pointer-events:auto;display:flex;align-items:center;gap:12px}
+.fbg-toast-act{background:rgba(10,20,18,.18);border:1px solid rgba(10,20,18,.55);color:#0a1412;font:700 var(--t-xs) 'DM Sans',system-ui,sans-serif;padding:3px 10px;border-radius:var(--r-sm);cursor:pointer;text-transform:uppercase;letter-spacing:.06em}
+.fbg-toast-act:hover{background:rgba(10,20,18,.32)}
+
+/* ── v4: main tabs + panes ── */
+.fbg-main-tabs{margin:0 0 16px;max-width:760px}
+.fbg-main-tabs .fbg-tab{flex:1 1 0;min-width:0;white-space:nowrap}
+.fbg-tabcount{display:inline-block;min-width:18px;margin-left:7px;padding:0 6px;font:700 10px/16px 'DM Mono',monospace;border-radius:9px;background:rgba(128,128,128,.25);color:inherit;vertical-align:middle}
+.fbg-tabcount:empty{display:none}
+.fbg-tabcount.warn{background:#E07B28;color:#1a0d02}
+.fbg-pane{display:none}
+.fbg-pane.active{display:block}
+.fbg-libhint{display:none;align-items:center;flex-wrap:wrap;gap:6px;margin:-2px 0 12px;font-size:var(--t-sm);color:#6b7280}
+.fbg-libhint.show{display:flex}
+.fbg-libhint .fbg-tchip{cursor:pointer}
+html[data-theme="dark"] #view-fbgroups .fbg-libhint{color:#9AA3AF}
+
+/* grid helpers used by the new dialogs */
+.fbg-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.fbg-sect{margin:16px 0 8px;padding-top:12px;border-top:1px solid #2e3032;font-size:var(--t-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aaa}
+.fbg-inline{display:flex;gap:6px;align-items:center}
+.fbg-inline .fbg-modal-input{flex:1;min-width:0}
+.fbg-checks{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.fbg-checks label,.fbg-checklist label{display:flex;align-items:center;gap:8px;font-size:var(--t-sm);color:#cfd3d8;cursor:pointer}
+.fbg-checks input,.fbg-checklist input{width:auto!important;height:auto!important;margin:0;flex:none}
+.fbg-checklist{max-height:150px;overflow-y:auto;padding:8px 10px;background:#1a1c1e;border:1px solid #2e3032;border-radius:var(--r-md);display:flex;flex-direction:column;gap:6px}
+.fbg-modal.wide{width:560px}
+input.fbg-modal-input[type="date"]{color-scheme:dark}
+
+/* row badges in the sidebar */
+.fbg-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#555;vertical-align:middle;flex:none}
+.fbg-dot.st-requested{background:#e0a030}.fbg-dot.st-joined{background:#2ABFAA}.fbg-dot.st-rejected{background:#c05050}.fbg-dot.st-banned{background:#8a2c2c}
+.fbg-chip-p{display:inline-block;font:700 10px 'DM Mono',monospace;padding:0 5px;border-radius:3px;margin-left:6px;vertical-align:middle;background:#3a3d40;color:#ddd}
+.fbg-chip-p.pA{background:#2ABFAA;color:#06231d}.fbg-chip-p.pB{background:#E07B28;color:#1a0d02}
+.fbg-flag{margin-left:6px;font-size:10px;font-weight:700}
+.fbg-flag.ok{color:#2ABFAA}.fbg-flag.dead{color:#f87171}.fbg-flag.due{color:#f0b34a}
+.fbg-saved-group-meta{display:none;font-size:var(--t-xs);color:#8a8f96;margin-top:2px}
+.fbg-wide .fbg-saved-group-meta{display:block}
+.fbg-thin{color:#f0b34a;font-weight:700}
+
+/* My Groups table: a dark "carbon" panel in BOTH themes (like the result cards) */
+.fbg-gv{display:flex;flex-direction:column;gap:10px}
+.fbg-presets{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.fbg-gv-count{margin-left:auto;font-size:var(--t-sm);color:#6b7280}
+html[data-theme="dark"] #view-fbgroups .fbg-gv-count{color:#9AA3AF}
+.fbg-gv-bar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;padding:10px 12px;background:#111315;border:1px solid #1e2022;border-radius:var(--r-md)}
+#view-fbgroups #fbg-main .fbg-gv-q{flex:1 1 220px;min-width:180px;height:34px!important;background:#141618!important;color:#e8eaed!important;border:1px solid #2e3032!important;border-radius:var(--r-md)!important;padding:0 12px!important;font-size:var(--t-sm)!important;box-shadow:none!important}
+.fbg-gv-f{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8a8f96}
+.fbg-gv-f .fbg-tsel{min-width:110px}
+.fbg-gv-chk{display:flex;align-items:center;gap:6px;font-size:var(--t-sm);color:#cfd3d8;height:34px}
+.fbg-gv-chk input{width:auto!important;height:auto!important}
+.fbg-gv-bulk{display:none;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;background:#0d1f1d;border:1px solid #2ABFAA;border-radius:var(--r-md)}
+.fbg-gv-bulk.show{display:flex}
+.fbg-gv-bn{font-size:var(--t-sm);font-weight:700;color:#2ABFAA;margin-right:6px}
+.fbg-gv-sp{flex:1}
+.fbg-gv-tablewrap{overflow:auto;max-height:68vh;background:#141618;border:1px solid #1e2022;border-radius:var(--r-md)}
+.fbg-gv-foot{font-size:var(--t-sm);color:#6b7280;display:flex;align-items:center;gap:10px}
+html[data-theme="dark"] #view-fbgroups .fbg-gv-foot{color:#9AA3AF}
+table.fbg-gt{width:100%;border-collapse:collapse;font-size:var(--t-sm);color:#d7dbe0}
+.fbg-gt th{position:sticky;top:0;z-index:2;background:#1a1d20;color:#8a8f96;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:9px 8px;white-space:nowrap;border-bottom:1px solid #2a2d30}
+.fbg-gt th.sortable{cursor:pointer}.fbg-gt th.sortable:hover{color:#2ABFAA}
+.fbg-gt th i{font-style:normal;color:#2ABFAA}
+.fbg-gt td{padding:7px 8px;border-bottom:1px solid #1e2124;vertical-align:middle}
+.fbg-gt tr:hover td{background:#171a1d}
+.fbg-gt tr.sel td{background:#0d1f1d}
+.fbg-gt .c-sel{width:34px}.fbg-gt .c-verified{width:34px;text-align:center}.fbg-gt .c-act{width:40px}.fbg-gt .c-members{white-space:nowrap;font-family:'DM Mono',monospace}
+.fbg-gt .c-name{min-width:230px;max-width:360px}
+.fbg-gt-name{display:flex;align-items:center;gap:8px}
+.fbg-gt-ic{font-size:15px;flex:none}
+.fbg-gt-link{background:none;border:none;padding:0;color:#eceef1;font:600 var(--t-sm) 'DM Sans',system-ui,sans-serif;text-align:left;cursor:pointer}
+.fbg-gt-link:hover{color:#2ABFAA;text-decoration:underline}
+.fbg-gt-link.nolink{color:#aab0b8;font-style:italic}
+.fbg-gt-notes{margin:2px 0 0 23px;font-size:var(--t-xs);color:#8a8f96}
+.fbg-dim{color:#6b7280}
+.fbg-why{font-size:var(--t-xs);color:#aab0b8}
+.fbg-tchip{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:4px;padding:1px 8px;font:600 10px 'DM Sans',system-ui,sans-serif;background:#1e2124;color:#aab0b8;border:1px solid #2a2d30;border-radius:10px;cursor:pointer}
+.fbg-tchip:hover{border-color:#2ABFAA;color:#2ABFAA}
+/* inline controls — explicit dark styling so the skin's select/input resets can't bleach them */
+#view-fbgroups #fbg-main .fbg-tsel,#view-fbgroups #fbg-main .fbg-tin,.fbg-modal-overlay .fbg-tsel{height:28px!important;padding:0 8px!important;font:var(--t-sm) 'DM Sans',system-ui,sans-serif!important;background-color:#1a1d20!important;color:#e8eaed!important;border:1px solid #2e3032!important;border-radius:var(--r-sm)!important;box-shadow:none!important;width:auto!important;min-width:0}
+#view-fbgroups #fbg-main select.fbg-tsel{padding-right:22px!important;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 7px center!important}
+#view-fbgroups #fbg-main .fbg-tin{width:112px!important}
+#view-fbgroups #fbg-main .fbg-tin[type="date"]{width:128px!important;color-scheme:dark}
+#view-fbgroups #fbg-main .fbg-tin.due{border-color:#f0b34a!important;color:#f0b34a!important}
+#view-fbgroups #fbg-main .fbg-tin::placeholder{color:#5f656c}
+#view-fbgroups #fbg-main .fbg-tsel.st-joined{color:#2ABFAA!important;border-color:#1d6b60!important}
+#view-fbgroups #fbg-main .fbg-tsel.st-requested{color:#e0a030!important}
+#view-fbgroups #fbg-main .fbg-tsel.st-rejected,#view-fbgroups #fbg-main .fbg-tsel.st-banned{color:#e07070!important}
+#view-fbgroups #fbg-main .fbg-tsel.rl-allowed{color:#2ABFAA!important}
+#view-fbgroups #fbg-main .fbg-tsel.rl-approval{color:#e0a030!important}
+#view-fbgroups #fbg-main .fbg-tsel.rl-banned{color:#e07070!important}
+#view-fbgroups #fbg-main .fbg-tsel.pr-A{color:#2ABFAA!important;font-weight:700}
+#view-fbgroups #fbg-main .fbg-tsel.pr-B{color:#E07B28!important;font-weight:700}
+#view-fbgroups #fbg-main .fbg-gt .fbg-gsel{margin:0 auto}
+
+/* ── v4: Launch Plan, Health, draft posts, results badges ── */
+.fbg-tag-lib{background:rgba(42,191,170,.18);color:#2ABFAA}
+.fbg-tag-new{background:rgba(224,123,40,.2);color:#E07B28}
+.fbg-hide-known{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:var(--t-xs);color:#6b7280;cursor:pointer}
+.fbg-hide-known input{width:auto!important;height:auto!important}
+html[data-theme="dark"] #view-fbgroups .fbg-hide-known{color:#9AA3AF}
+.fbg-pl{display:flex;flex-direction:column;gap:12px}
+.fbg-pl-card,.fbg-hl-card{background:#111315;border:1px solid #1e2022;border-radius:var(--r-md);padding:14px 16px;color:#d7dbe0}
+.fbg-pl-title{font-size:var(--t-lg);font-weight:700;color:#eceef1}
+.fbg-pl-sub{font-size:var(--t-sm);color:#8a8f96;margin-top:2px}
+.fbg-pl-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+.fbg-pl-fits{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.fbg-pl-fitrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.fbg-pl-fitlbl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#8a8f96;width:62px}
+.fbg-pl-sum{font-size:var(--t-sm);color:#4B5563;padding:2px 2px 0}
+html[data-theme="dark"] #view-fbgroups .fbg-pl-sum{color:#aeb4bc}
+.fbg-pl-sec{margin-top:6px}
+.fbg-pl-sech{display:flex;align-items:baseline;gap:10px;margin:14px 0 6px;padding-left:10px;border-left:3px solid #3a3d40}
+.fbg-pl-secn{font-size:var(--t-md);font-weight:700;color:#111827}
+html[data-theme="dark"] #view-fbgroups .fbg-pl-secn{color:#eceef1}
+.fbg-pl-secn b{font:500 var(--t-sm) 'DM Mono',monospace;color:#6b7280;margin-left:4px}
+.fbg-pl-secs{font-size:var(--t-xs);color:#6b7280}
+.sec-ready .fbg-pl-sech{border-left-color:#2ABFAA}.sec-check .fbg-pl-sech,.sec-approval .fbg-pl-sech{border-left-color:#e0a030}.sec-join .fbg-pl-sech{border-left-color:#5b9fd4}.sec-skip .fbg-pl-sech{border-left-color:#c05050}
+.sec-skip .fbg-gv-tablewrap{opacity:.7}
+.fbg-pl-sec .fbg-gv-tablewrap{max-height:none}
+.fbg-dp-card{margin-top:14px;padding:12px;background:#0f1113;border:1px solid #2a2d30;border-radius:var(--r-md)}
+.fbg-dp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#eceef1}
+.fbg-dp-r{font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#1e2124;color:#aab0b8}
+.fbg-dp-r.rl-allowed{color:#2ABFAA}.fbg-dp-r.rl-approval{color:#e0a030}.fbg-dp-r.rl-banned{color:#e07070}
+.fbg-dp-btns{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.fbg-fl-amb{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;font-size:var(--t-sm);color:#cfd3d8}
+.fbg-fl-amb select{width:130px}
+.fbg-hl{display:flex;flex-direction:column;gap:12px}
+.fbg-hl-card.sync{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fbg-hl-card.sync .fbg-hl-t{flex:1 1 280px}
+.fbg-hl-sech{margin:10px 0 0;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#6b7280}
+html[data-theme="dark"] #view-fbgroups .fbg-hl-sech{color:#9AA3AF}
+.fbg-hl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.fbg-hl-card.warn,.fbg-hl-card.ok{display:flex;align-items:center;gap:12px}
+.fbg-hl-n{font:700 22px 'DM Mono',monospace;min-width:34px;text-align:center;color:#2ABFAA}
+.fbg-hl-card.warn .fbg-hl-n{color:#f0b34a}
+.fbg-hl-t{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.fbg-hl-t b{color:#eceef1;font-size:var(--t-md)}
+.fbg-hl-t span{font-size:var(--t-xs);color:#8a8f96}
+.fbg-hl-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.fbg-hl-card.col{display:flex;flex-direction:column;gap:10px}
+.fbg-hl-list{display:flex;flex-direction:column}
+.fbg-hl-li{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #1e2124;font-size:var(--t-sm)}
+.fbg-hl-li-n{font-weight:600;color:#eceef1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbg-hl-foot{display:flex;justify-content:flex-end}
+.fbg-hl-card.set{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+@media (max-width:1100px){.fbg-hl-two{grid-template-columns:1fr}}
+
+/* aligned columns across tables (My Groups + each Launch Plan section) */
+#view-fbgroups #fbg-main table.fbg-gt{table-layout:fixed;width:100%;min-width:1040px}
+#view-fbgroups #fbg-main .fbg-gt .c-members{width:78px}
+#view-fbgroups #fbg-main .fbg-gt .c-status{width:122px}
+#view-fbgroups #fbg-main .fbg-gt .c-rules{width:134px}
+#view-fbgroups #fbg-main .fbg-gt .c-prio{width:62px}
+#view-fbgroups #fbg-main .fbg-gt .c-posted{width:166px}
+#view-fbgroups #fbg-main .fbg-gt .c-owner{width:124px}
+#view-fbgroups #fbg-main .fbg-gt .c-tags{width:126px}
+#view-fbgroups #fbg-main .fbg-gt .c-tpls{width:176px}
+#view-fbgroups #fbg-main .fbg-gt .c-from{width:190px}
+#view-fbgroups #fbg-main .fbg-gt .c-name{max-width:none;min-width:0}
+#view-fbgroups #fbg-main .fbg-gt .fbg-tsel,#view-fbgroups #fbg-main .fbg-gt .fbg-tin{width:100%!important;min-width:0}
+#view-fbgroups #fbg-main .fbg-gt .fbg-inline{display:flex;gap:6px}
+#view-fbgroups #fbg-main .fbg-gt .fbg-inline .fbg-tin{flex:1}
+.fbg-gt-link{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
 </style>
 
 <!-- Left: search + results -->
-<div class="fbg-main-panel">
+<div class="fbg-main-panel" id="fbg-main">
   <div class="fbg-header">
     <div class="fbg-title">Facebook Group Finder</div>
     <div class="fbg-sub">Search by car, chassis or product — AI uses live web search to find real communities. Save groups to templates in the library →</div>
   </div>
 
+  <div class="fbg-tabs fbg-main-tabs" id="fbg-main-tabs" role="tablist">
+    <button class="fbg-tab active" data-pane="find"><span class="ic ic-search"></span>Find</button>
+    <button class="fbg-tab" data-pane="groups"><span class="ic ic-users"></span>My Groups<span class="fbg-tabcount" id="fbg-cnt-groups"></span></button>
+    <button class="fbg-tab" data-pane="plan"><span class="ic ic-rocket"></span>Launch Plan</button>
+    <button class="fbg-tab" data-pane="health"><span class="ic ic-shield"></span>Health<span class="fbg-tabcount" id="fbg-cnt-health"></span></button>
+  </div>
+
+  <div class="fbg-pane active" id="fbg-pane-find">
   <div class="fbg-search-row">
     <select id="fbg-kind" class="fbg-count-select fbg-kind-select" aria-label="Search type">
       <option value="car">Car</option>
@@ -12848,6 +13028,8 @@ select.fbg-modal-input,#view-fbgroups select.fbg-count-select,#view-fbgroups sel
     </select>
     <button class="fbg-btn" id="fbg-go">Search</button>
   </div>
+
+  <div class="fbg-libhint" id="fbg-libhint"></div>
 
   <!-- Save bar — visible when results are showing -->
   <div class="fbg-save-bar" id="fbg-save-bar">
@@ -12865,6 +13047,11 @@ select.fbg-modal-input,#view-fbgroups select.fbg-count-select,#view-fbgroups sel
       <div class="fbg-empty-sub">Pick Car, Chassis or Product above, then type what to look for<br>— or open a saved template and hit Search.</div>
     </div>
   </div>
+  </div>
+
+  <div class="fbg-pane" id="fbg-pane-groups"></div>
+  <div class="fbg-pane" id="fbg-pane-plan"></div>
+  <div class="fbg-pane" id="fbg-pane-health"></div>
 </div>
 
 <!-- Drag handle: resize the library sidebar -->
@@ -12880,7 +13067,8 @@ select.fbg-modal-input,#view-fbgroups select.fbg-count-select,#view-fbgroups sel
   <!-- Tab: Template library -->
   <div class="fbg-tab-content active" id="fbg-lib-cars">
     <div class="fbg-lib-header">
-      <div class="fbg-lib-titlebar"><div class="fbg-lib-title">Saved Templates</div><button class="fbg-icon-btn" id="fbg-expand" title="Make the sidebar wider — or drag its left edge">⤢ Expand</button></div>
+      <div class="fbg-lib-titlebar"><div class="fbg-lib-title">Saved Templates</div><button class="fbg-icon-btn" id="fbg-undo" title="Nothing to undo" disabled>↶ Undo</button><button class="fbg-icon-btn" id="fbg-expand" title="Make the sidebar wider — or drag its left edge">⤢ Expand</button></div>
+      <div class="fbg-syncrow"><span class="fbg-sync idle" role="button" tabindex="0">● Syncing…</span></div>
       <div class="fbg-lib-sub">Organise groups by car, chassis or product. Open a template to see its groups, or hit Search to re-run it.</div>
       <input class="fbg-lib-search" id="fbg-lib-filter" placeholder="Filter templates or groups..." autocomplete="off" />
       <div class="fbg-chips" id="fbg-chips"></div>
@@ -12996,10 +13184,13 @@ function iconHtml(ic){
 function ago(t){ var m=Math.round((Date.now()-t)/60000); if(m<2)return 'just now'; if(m<60)return m+'m ago'; var h=Math.round(m/60); if(h<24)return h+'h ago'; return Math.round(h/24)+'d ago'; }
 function fbgFmt(n){ if(!n||n<=0) return '?'; return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?Math.round(n/1000)+'K':String(n); }
 
-function fbgToast(msg){
+function fbgToast(msg,action){
   var t = $('fbg-toast'); if(!t) return;
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._timer); t._timer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+  if(!action && eng.undo.length && Date.now()-eng.lastSaveAt<1500 && !/^Undone/.test(msg)) action = {label:'Undo',fn:undoLast};
+  t.textContent = ''; var sp = document.createElement('span'); sp.textContent = msg; t.appendChild(sp);
+  t.classList.toggle('has-action',!!action);
+  if(action){ var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'fbg-toast-act'; bt.textContent = action.label; bt.addEventListener('click',function(){ t.classList.remove('show'); action.fn(); }); t.appendChild(bt); }
+  t.classList.add('show'); clearTimeout(t._timer); t._timer = setTimeout(function(){ t.classList.remove('show'); },action?8000:2600);
 }
 
 /* ── template model ── */
@@ -13104,6 +13295,7 @@ function fbgPopulateCarDropdowns(){
 function fbgRenderLibrary(){
   var box = $('fbg-car-list'), chips = $('fbg-chips'); if(!box) return;
   renderClipbar();
+  if(!suppressPane) setTimeout(function(){ if(!suppressPane) refreshActivePane(); },0);
   var l = fbgLibLoad();
   var counts = {all:l.length,car:0,chassis:0,product:0};
   l.forEach(function(t){ counts[tplKind(t)]++; });
@@ -13151,9 +13343,9 @@ function fbgRenderLibrary(){
         +'<span class="fbg-grip" data-act="grip" title="Drag to reorder — or drop onto another template">⠿</span>'
         +'<span class="fbg-gsel'+(on?' checked':'')+'" data-act="g-sel" data-key="'+ek+'" data-gi="'+gi+'"></span>'
         +'<span class="fbg-saved-group-icon">'+iconHtml(g.icon)+'</span>'
-        +'<div class="fbg-saved-group-info"><div class="fbg-saved-group-name" title="'+esc(g.name)+'">'+esc(g.name)+'</div>'
+        +'<div class="fbg-saved-group-info"><div class="fbg-saved-group-name" title="'+esc(g.name)+'">'+dotHtml(g)+prioChip(g)+esc(g.name)+chipsHtml(g)+'</div>'
         +'<div class="fbg-saved-group-url">'+(g.members>0?fbgFmt(g.members)+' members · ':'')+esc(String(g.url||'').replace(/^https?:\/\//i,''))+'</div>'
-        +(g.desc?'<div class="fbg-saved-group-desc">'+esc(g.desc)+'</div>':'')+'</div>'
+        +metaLine(g)+(g.desc?'<div class="fbg-saved-group-desc">'+esc(g.desc)+'</div>':'')+'</div>'
         +'<div class="fbg-saved-group-actions"><button class="fbg-saved-group-open" title="Open" data-act="open-url" data-url="'+esc(g.url)+'">↗</button>'
         +'<button class="fbg-saved-group-open" title="Edit" data-act="edit-group" data-key="'+ek+'" data-gi="'+gi+'"><span class="ic ic-pencil"></span></button>'
         +'<button class="fbg-saved-group-rm" title="Remove" data-act="rm-group" data-key="'+ek+'" data-gi="'+gi+'"><span class="ic ic-x"></span></button></div></div>';
@@ -13161,7 +13353,7 @@ function fbgRenderLibrary(){
     body += '<div class="fbg-car-foot"><button class="fbg-car-delete-btn edit" data-act="edit-tpl" data-key="'+ek+'"><span class="ic ic-pencil"></span>Edit template</button>'
       +'<button class="fbg-car-delete-btn" data-act="del-tpl" data-key="'+ek+'"><span class="ic ic-trash"></span>Delete template</button></div>';
     return '<div class="fbg-car-item" id="fbg-car-'+ek+'" data-key="'+ek+'"><div class="fbg-car-header" data-act="toggle-tpl" data-key="'+ek+'">'
-      +'<span class="fbg-car-icon">'+kindIcon(k)+'</span><div class="fbg-car-name-wrap"><div class="fbg-car-name" title="'+esc(label)+'">'+esc(label)+'</div><div class="fbg-car-kind">'+KINDS[k].label+'</div></div>'
+      +'<span class="fbg-car-icon">'+kindIcon(k)+'</span><div class="fbg-car-name-wrap"><div class="fbg-car-name" title="'+esc(label)+'">'+esc(label)+'</div><div class="fbg-car-kind">'+kindLine(t,k,n,l)+'</div></div>'
       +'<span class="fbg-car-count">'+n+' group'+(n===1?'':'s')+'</span><span class="fbg-car-chevron'+(isOpen?' open':'')+'">▶</span></div>'
       +'<div class="fbg-car-body'+(isOpen?' open':'')+'">'+body+'</div></div>';
   }).join('');
@@ -13172,7 +13364,7 @@ function createTemplate(l,kind,f){
   var key = fbgCarKey(f.year,f.make,f.model,kind);
   var ex = tplByKey(l,key);
   if(ex) return {tpl:ex,existed:true};
-  var t = {key:key,year:kind==='car'?f.year:'',make:f.make||'',model:f.model,groups:[]};
+  var t = {id:'t_'+hash53(key,1),key:key,year:kind==='car'?f.year:'',make:f.make||'',model:f.model,groups:[]};   // id now, so links can point at it straight away
   if(kind!=='car') t.kind = kind;                 // car entries keep their original shape
   l.push(t);
   return {tpl:t,existed:false};
@@ -13182,17 +13374,16 @@ function normUrl(u){
     if(/^\/search\//.test(x.pathname)) s+=x.search; return s.toLowerCase(); }catch(e){ return String(u||'').toLowerCase(); }
 }
 function insertGroups(tpl,list){
-  tpl.groups = tpl.groups||[];
+  tpl.groups = tpl.groups||[]; var l = fbgLibLoad();
   var seenUrl = {}, seenName = {};
-  tpl.groups.forEach(function(g){ seenUrl[normUrl(g.url)]=1; seenName[String(g.name||'').toLowerCase()]=1; });
+  tpl.groups.forEach(function(g){ seenUrl[normUrl(g.url)] = 1; seenName[String(g.name||'').toLowerCase()] = 1; });
   var added = 0;
   list.forEach(function(g){
     var url = isHttp(g.url) ? g.url : fbSearchUrl(g.name);
     var nu = normUrl(url), nn = String(g.name||'').toLowerCase();
     if(seenUrl[nu] || seenName[nn]) return;
-    seenUrl[nu]=1; seenName[nn]=1;
-    tpl.groups.push({name:g.name,url:url,members:g.members>0?g.members:0,icon:g.icon||'<span class="ic ic-users"></span>',desc:g.desc||''});
-    added++;
+    seenUrl[nu] = 1; seenName[nn] = 1;
+    tpl.groups.push(buildGroup(g,l,url)); added++;
   });
   return added;
 }
@@ -13287,8 +13478,8 @@ function openSave(){
       tpl = createTemplate(l2,st.kind,f).tpl;
     } else tpl = tplByKey(l2,sel.value);
     if(!tpl){ fbgToast('Template not found.'); return; }
-    var added = insertGroups(tpl,list);
-    if(added || sel.value==='__new__') fbgLibSave(l2);
+    var added = insertGroups(tpl,list.map(function(g){ return Object.assign({},g,{aiScore:g.score,priority:prioFromScore(g.score)}); }));
+    if(added || sel.value==='__new__') fbgLibSave(l2,{label:'save groups'});
     fbgActiveKey = tpl.key;
     closeModal(true); focusTpl(tpl.key);
     fbgToast(added ? added+' group'+(added===1?'':'s')+' saved to '+tplLabel(tpl)+'!' : 'Nothing new — those are already saved there.');
@@ -13299,7 +13490,7 @@ function openSave(){
 /* ════════ Search ════════ */
 function cacheGet(k){ try{ var c=JSON.parse(localStorage.getItem(FBG_CACHE_KEY)||'{}'), e=c[k]; if(e && Date.now()-e.t<FBG_CACHE_TTL) return e; }catch(x){} return null; }
 function cacheSet(k,data){
-  try{ var c=JSON.parse(localStorage.getItem(FBG_CACHE_KEY)||'{}'); c[k]={t:Date.now(),data:data};
+  try{ var c=JSON.parse(localStorage.getItem(FBG_CACHE_KEY)||'{}'); c[k]={t:Date.now(),data:JSON.parse(JSON.stringify(data,function(kk,v){ return kk==='isNew' ? undefined : v; }))};
     Object.keys(c).sort(function(a,b){ return c[b].t-c[a].t; }).slice(40).forEach(function(x){ delete c[x]; });
     localStorage.setItem(FBG_CACHE_KEY,JSON.stringify(c)); }catch(x){}
 }
@@ -13391,9 +13582,9 @@ function startCooldown(sec){
 
 async function fbgSearch(force){
   var q = val('fbg-search'), kind = val('fbg-kind')||'car'; if(!q) return;
-  var count = parseInt(val('fbg-count'),10)||10, ck = kind+'|'+q.toLowerCase();
+  var count = parseInt(val('fbg-count'),10)||10, ck = kind+'|'+q.toLowerCase(), prevHit = cacheGet(ck);
   if(force!==true){
-    var hit = cacheGet(ck);
+    var hit = prevHit;
     if(hit && hit.data && hit.data.length){
       fbgResults = hit.data.slice(); fbgLabel = q; fbgLabelKind = kind; fbgVisible = count; fbgSelected.clear(); fbgCachedAt = hit.t;
       showSaveBar(); renderResults(); return;
@@ -13411,6 +13602,7 @@ async function fbgSearch(force){
     var data = normalize(extractArray(await askWithSearch(p.system,p.user,3500)));
     if(!data.length) throw new Error('PARSE_FAIL');
     ok = true; cacheSet(ck,data);
+    if(prevHit && prevHit.data){ var pn = {}; prevHit.data.forEach(function(x){ pn[String(x.name).toLowerCase()] = 1; }); data.forEach(function(g){ if(!pn[g.name.toLowerCase()]) g.isNew = true; }); }
     fbgResults = data; fbgLabel = q; fbgLabelKind = kind; fbgVisible = count; fbgSelected.clear(); fbgCachedAt = 0;
     showSaveBar(); renderResults();
   }catch(e){
@@ -13476,7 +13668,8 @@ function emptyHtml(){
 function renderResults(){
   var box = $('fbg-results');
   if(!fbgResults.length){ box.innerHTML = emptyHtml(); hideSaveBar(); return; }
-  var sorted = sortedResults(), visible = sorted.slice(0,fbgVisible);
+  var sorted = sortedResults(), idx = libIndex();
+  var shown = fbgHideKnown ? sorted.filter(function(g){ return !libMatch(idx,g); }) : sorted, hiddenKnown = sorted.length-shown.length, visible = shown.slice(0,fbgVisible);
   var known = fbgResults.filter(function(g){ return g.members>0; });
   var total = known.reduce(function(s,g){ return s+g.members; },0);
   var avg = Math.round(fbgResults.reduce(function(s,g){ return s+g.score; },0)/fbgResults.length);
@@ -13489,12 +13682,15 @@ function renderResults(){
   h += '<div class="fbg-sel-bar"><div class="fbg-sel-bar-txt">'+(selCount?selCount+' selected':'Click groups to select them')+'</div>'
     +'<button class="fbg-sel-all" data-act="select-all">'+(allSel?'Deselect all':'Select all')+'</button>'
     +'<button class="fbg-export-btn" data-act="export">⬇ Export CSV'+(selCount?' ('+selCount+')':'')+'</button></div>';
-  h += '<div class="fbg-results-header"><span class="fbg-results-lbl">Showing '+visible.length+' of '+sorted.length+' groups for &ldquo;'+esc(fbgLabel)+'&rdquo;</span>'
+  h += '<div class="fbg-results-header"><span class="fbg-results-lbl">Showing '+visible.length+' of '+shown.length+' groups for &ldquo;'+esc(fbgLabel)+'&rdquo;'+(hiddenKnown?' ('+hiddenKnown+' already in your library hidden)':'')+'</span>'
+    +'<button type="button" class="fbg-chip'+(fbgHideKnown?' on':'')+'" data-act="hide-known" style="margin-left:auto">Hide groups I already have</button>'
     +'<select class="fbg-sort" id="fbg-sort"><option value="score"'+(fbgSortBy==='score'?' selected':'')+'>Sort: Relevance</option><option value="members"'+(fbgSortBy==='members'?' selected':'')+'>Sort: Members</option></select></div>';
 
   visible.forEach(function(g){
     var sel = fbgSelected.has(g.name), nm = esc(g.name);
-    var tags = g.tags.map(function(t){ return '<span class="fbg-tag '+tagClass(t)+'">'+tagLabel(t)+'</span>'; }).join('');
+    var inl = libMatch(idx,g);
+    var tags = (inl?'<span class="fbg-tag fbg-tag-lib" title="Saved in: '+esc(inl.map(function(x){ return x.label; }).join(', '))+'">In library</span>':'')+(g.isNew?'<span class="fbg-tag fbg-tag-new">NEW</span>':'')
+      +g.tags.map(function(t){ return '<span class="fbg-tag '+tagClass(t)+'">'+tagLabel(t)+'</span>'; }).join('');
     var members = g.members>0 ? '<span title="AI estimate — verify on Facebook">~'+fbgFmt(g.members)+' members</span>' : 'Members unknown';
     h += '<div class="fbg-card'+(sel?' selected':'')+'" data-act="toggle" data-name="'+nm+'" style="cursor:pointer">'
       +'<div class="fbg-checkbox'+(sel?' checked':'')+'"></div><div class="fbg-avatar">'+iconHtml(g.icon)+'</div>'
@@ -13608,7 +13804,7 @@ var fbgGSel = {}, fbgClip = null, fbgDrag = null;
 function selOf(key){ return fbgGSel[key] || (fbgGSel[key] = {}); }
 function selIdx(key){ var o = selOf(key); return Object.keys(o).filter(function(i){ return o[i]; }).map(Number).sort(function(a,b){ return a-b; }); }
 function clearSel(){ fbgGSel = {}; }
-function cloneG(g){ return JSON.parse(JSON.stringify(g)); }
+function cloneG(g){ var o = JSON.parse(JSON.stringify(g)); delete o.id; delete o.tplId; delete o.addedAt; delete o.updatedAt; return o; }
 function groupIdent(g){ return (g.url?normUrl(g.url):'')+'|'+String(g.name||'').toLowerCase(); }
 function groupLine(g){ return g.name+(g.members>0?' ('+fbgFmt(g.members)+' members)':'')+' — '+(g.url||fbSearchUrl(g.name)); }
 function hasGroup(t,g){
@@ -13705,45 +13901,146 @@ function openMoveTo(key,idxs){
   });
 }
 
-/* edit a group */
+/* ════════ Group tracking fields (shared by every record of the same group) ════════ */
+var STATUS = [{k:'',l:'Not joined'},{k:'requested',l:'Requested'},{k:'joined',l:'Joined'},{k:'rejected',l:'Rejected'},{k:'banned',l:'Banned / left'}];
+var RULES  = [{k:'',l:'Promo unknown'},{k:'allowed',l:'Promo OK'},{k:'approval',l:'Needs admin OK'},{k:'banned',l:'No promo'}];
+var PRIOS  = ['','A','B','C'];
+var TRACK_FIELDS = ['status','rules','priority','owner','tags','lastPosted','postedBy','verified','verifiedAt','dead','aiScore'];
+function labelOf(list,k){ var f = list.find(function(x){ return x.k===(k||''); }); return f ? f.l : ''; }
+function optionsHtml(list,sel){ return list.map(function(x){ return '<option value="'+esc(x.k)+'"'+(x.k===(sel||'')?' selected':'')+'>'+esc(x.l)+'</option>'; }).join(''); }
+function prioOptions(sel){ return PRIOS.map(function(p){ return '<option value="'+p+'"'+(p===(sel||'')?' selected':'')+'>'+(p||'—')+'</option>'; }).join(''); }
+function prioFromScore(s){ return s>=90 ? 'A' : s>=80 ? 'B' : 'C'; }
+function todayStr(){ var d = new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function daysSince(s){ if(!s) return Infinity; var t = Date.parse(s+'T00:00:00'); return isNaN(t) ? Infinity : Math.floor((Date.now()-t)/864e5); }
+function daysSinceTs(ms){ return ms ? Math.floor((Date.now()-ms)/864e5) : Infinity; }
+function isDue(g){ return g.status==='joined' && g.rules!=='banned' && !g.dead && daysSince(g.lastPosted)>=settings().cadence; }
+function needsCheck(g){ return !g.dead && (!g.verified || daysSinceTs(g.verifiedAt)>=settings().recheck); }
+function hasRealLink(g){ return !!g.url && !/\/search\/groups/i.test(g.url); }
+function currentUser(){ var e = $('topbar-user'); return e ? String(e.textContent||'').trim() : ''; }
+function tplById(l,id){ return l.find(function(t){ return t.id===id; }); }
+function ownerNames(){
+  var o = {}; try{ (window.pwGetTeam ? window.pwGetTeam() : []).forEach(function(m){ var n = m.name||m.email; if(n) o[n] = 1; }); }catch(e){}
+  fbgLibLoad().forEach(function(t){ (t.groups||[]).forEach(function(g){ if(g.owner) o[g.owner] = 1; }); });
+  return Object.keys(o).sort();
+}
+function allTags(){ var o = {}; fbgLibLoad().forEach(function(t){ (t.groups||[]).forEach(function(g){ (g.tags||[]).forEach(function(x){ o[x] = 1; }); }); }); return Object.keys(o).sort(); }
+function parseTags(s){ var seen = {}, out = []; String(s||'').split(/[,;]/).map(function(x){ return x.trim().toLowerCase(); }).filter(Boolean).forEach(function(x){ if(!seen[x]){ seen[x] = 1; out.push(x); } }); return out; }
+function isEmptyVal(v){ return v===undefined || v==='' || v===false || v===0 || v===null || (Array.isArray(v) && !v.length); }
+
+// Same group saved in several templates = one set of tracking fields.
+function inheritTracking(o,l){
+  var id = gIdent(o);
+  for(var i=0;i<l.length;i++){ var gs = l[i].groups||[];
+    for(var j=0;j<gs.length;j++){ var x = gs[j];
+      if(x!==o && gIdent(x)===id){ TRACK_FIELDS.forEach(function(k){ if(o[k]===undefined && !isEmptyVal(x[k])) o[k] = deepCopy(x[k]); }); return; } } }
+}
+function buildGroup(g,l,url){
+  var o = {name:g.name,url:url,members:g.members>0?g.members:0,icon:g.icon||'<span class="ic ic-users"></span>',desc:g.desc||''};
+  TRACK_FIELDS.forEach(function(k){ if(!isEmptyVal(g[k])) o[k] = deepCopy(g[k]); });
+  inheritTracking(o,l); return o;
+}
+// Apply a patch to EVERY record of the same group (tracking + name/link/members/notes). Returns #records touched.
+function updateEverywhere(l,ident,patch){
+  var n = 0;
+  l.forEach(function(t){ (t.groups||[]).forEach(function(g){
+    if(gIdent(g)!==ident) return; n++;
+    Object.keys(patch).forEach(function(k){ if(isEmptyVal(patch[k]) && k!=='name' && k!=='url') delete g[k]; else g[k] = patch[k]; });
+  }); });
+  return n;
+}
+function findLoc(l,ident){ for(var i=0;i<l.length;i++){ var gs = l[i].groups||[]; for(var j=0;j<gs.length;j++) if(gIdent(gs[j])===ident) return {t:l[i],gi:j,g:gs[j]}; } return null; }
+
+/* little badges used in the sidebar rows */
+function dotHtml(g){ return '<span class="fbg-dot st-'+(g.status||'none')+'" title="'+esc(labelOf(STATUS,g.status))+(g.rules?' · '+esc(labelOf(RULES,g.rules)):'')+'"></span>'; }
+function prioChip(g){ return g.priority ? '<span class="fbg-chip-p p'+g.priority+'" title="Priority '+g.priority+'" style="margin:0 6px 0 0">'+g.priority+'</span>' : ''; }
+function chipsHtml(g){
+  return (g.dead?'<span class="fbg-flag dead" title="Dead / renamed / unavailable">✗ dead</span>':g.verified?'<span class="fbg-flag ok" title="Link and member count verified">✓</span>':'')
+    +(isDue(g)?'<span class="fbg-flag due" title="Due for a post">● due</span>':'');
+}
+function metaLine(g){
+  var b = [labelOf(STATUS,g.status),labelOf(RULES,g.rules)];
+  if(g.lastPosted) b.push('posted '+g.lastPosted+(g.postedBy?' by '+g.postedBy:'')); if(g.owner) b.push('owner '+g.owner); if((g.tags||[]).length) b.push('#'+g.tags.join(' #'));
+  return '<div class="fbg-saved-group-meta">'+esc(b.filter(Boolean).join(' · '))+'</div>';
+}
+function kindLine(t,k,n,l){
+  var s = KINDS[k].label;
+  if(k==='car' && t.chassisId){ var c = tplById(l,t.chassisId); if(c) s += ' · '+esc(c.model||tplLabel(c)); }
+  if(k==='product' && (t.fitsIds||[]).length) s += ' · fits '+t.fitsIds.length;
+  if(n===0) s += ' · <span class="fbg-thin">no groups</span>'; else if(n<3) s += ' · <span class="fbg-thin">few groups</span>';
+  return s;
+}
+
+/* edit a group (tracking fields apply everywhere the group is saved) */
 function openEditGroup(key,gi){
   var l = fbgLibLoad(), t = tplByKey(l,key), g = t && t.groups && t.groups[gi]; if(!g) return;
-  var ov = showModal('<div class="fbg-modal-title">Edit Group</div><div class="fbg-modal-sub">In '+esc(tplLabel(t))+'</div>'
-    +'<div class="fbg-field-lbl">Name</div><input class="fbg-modal-input" id="fbg-eg-name" value="'+esc(g.name)+'" data-autofocus/>'
-    +'<div class="fbg-field-lbl">Facebook link</div><input class="fbg-modal-input" id="fbg-eg-url" value="'+esc(g.url||'')+'"/>'
-    +'<div class="fbg-modal-row2" style="margin-top:8px"><div><div class="fbg-field-lbl" style="margin-top:0">Members</div><input class="fbg-modal-input" id="fbg-eg-members" type="number" min="0" value="'+(g.members>0?g.members:'')+'" placeholder="optional"/></div>'
-    +'<div><div class="fbg-field-lbl" style="margin-top:0">Template</div><select class="fbg-modal-input" id="fbg-eg-tpl">'+tplOptionsHtml(l,key,false)+'</select></div></div>'
-    +'<div class="fbg-field-lbl">Notes</div><input class="fbg-modal-input" id="fbg-eg-desc" value="'+esc(g.desc||'')+'" placeholder="optional — e.g. allows promo posts on Fridays"/>'
-    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Save</button></div>');
+  var ident0 = gIdent(g), others = 0; l.forEach(function(x){ (x.groups||[]).forEach(function(y){ if(y!==g && gIdent(y)===ident0) others++; }); });
+  var ov = showModal('<div class="fbg-modal-title">Edit Group</div><div class="fbg-modal-sub">In '+esc(tplLabel(t))+(others?' · also saved in '+plural(others,'other template'):'')+' — changes below apply to every copy of this group.</div>'
+    +'<div class="fbg-modal-row2"><div><div class="fbg-field-lbl" style="margin-top:0">Name</div><input class="fbg-modal-input" id="fbg-eg-name" value="'+esc(g.name)+'" data-autofocus/></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Facebook link</div><input class="fbg-modal-input" id="fbg-eg-url" value="'+esc(hasRealLink(g)?g.url:'')+'" placeholder="https://facebook.com/groups/…"/></div></div>'
+    +'<div class="fbg-grid3" style="margin-top:8px"><div><div class="fbg-field-lbl" style="margin-top:0">Members</div><input class="fbg-modal-input" id="fbg-eg-members" type="number" min="0" value="'+(g.members>0?g.members:'')+'" placeholder="optional"/></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Priority</div><select class="fbg-modal-input" id="fbg-eg-prio">'+prioOptions(g.priority)+'</select></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Template (this copy)</div><select class="fbg-modal-input" id="fbg-eg-tpl">'+tplOptionsHtml(l,key,false)+'</select></div></div>'
+    +'<div class="fbg-sect">Outreach</div>'
+    +'<div class="fbg-grid3"><div><div class="fbg-field-lbl" style="margin-top:0">Status</div><select class="fbg-modal-input" id="fbg-eg-status">'+optionsHtml(STATUS,g.status)+'</select></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Promo rules</div><select class="fbg-modal-input" id="fbg-eg-rules">'+optionsHtml(RULES,g.rules)+'</select></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Last posted</div><div class="fbg-inline"><input class="fbg-modal-input" id="fbg-eg-posted" type="date" value="'+esc(g.lastPosted||'')+'"/><button type="button" class="fbg-gbtn" id="fbg-eg-today">Today</button></div></div></div>'
+    +'<div class="fbg-modal-row2" style="margin-top:8px"><div><div class="fbg-field-lbl" style="margin-top:0">Owner (who manages it)</div><input class="fbg-modal-input" id="fbg-eg-owner" list="fbg-owners" value="'+esc(g.owner||'')+'" placeholder="optional"/></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Tags (comma separated)</div><input class="fbg-modal-input" id="fbg-eg-tags" value="'+esc((g.tags||[]).join(', '))+'" placeholder="e.g. vendor-friendly, tuning"/></div></div>'
+    +'<div class="fbg-checks"><label><input type="checkbox" id="fbg-eg-verified"'+(g.verified?' checked':'')+'/> Verified — I checked the link and member count</label>'
+    +'<label><input type="checkbox" id="fbg-eg-dead"'+(g.dead?' checked':'')+'/> Dead, renamed or unavailable</label></div>'
+    +'<div class="fbg-field-lbl">Notes</div><input class="fbg-modal-input" id="fbg-eg-desc" value="'+esc(g.desc||'')+'" placeholder="optional — e.g. admin is Dave, promo posts only on Fridays"/>'
+    +'<datalist id="fbg-owners">'+ownerNames().map(function(n){ return '<option value="'+esc(n)+'"></option>'; }).join('')+'</datalist>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Save</button></div>',null,true);
+  ov.querySelector('#fbg-eg-today').addEventListener('click',function(){ $('fbg-eg-posted').value = todayStr(); });
   function save(){
     var name = val('fbg-eg-name'), url = val('fbg-eg-url'), members = parseInt(val('fbg-eg-members'),10)||0, desc = val('fbg-eg-desc'), dstKey = val('fbg-eg-tpl')||key;
     if(!name){ fbgToast('Enter a group name.'); return; }
     var ul = url.toLowerCase();
     if(url && (!isHttp(url) || (ul.indexOf('facebook.com')===-1 && ul.indexOf('fb.com')===-1))){ fbgToast('Enter a valid Facebook URL (or leave it empty).'); return; }
     var l2 = fbgLibLoad(), t2 = tplByKey(l2,key), g2 = t2 && t2.groups[gi]; if(!g2){ closeModal(true); return; }
-    var newUrl = url || fbSearchUrl(name);
-    var dst = tplByKey(l2,dstKey) || t2;
-    var others = (dst.groups||[]).filter(function(x){ return x!==g2; });
-    if(others.some(function(x){ return String(x.name||'').toLowerCase()===name.toLowerCase() || (x.url && normUrl(x.url)===normUrl(newUrl)); })){
-      fbgToast('Another group in '+tplLabel(dst)+' already has that name or link.'); return;
-    }
-    g2.name = name; g2.url = newUrl; g2.members = members; g2.desc = desc;
+    var newUrl = url ? fixFbUrl(url) : fbSearchUrl(name);
+    var dst = tplByKey(l2,dstKey) || t2, newIdent = gIdent({name:name,url:newUrl});
+    var clash = (dst.groups||[]).some(function(x){ return gIdent(x)!==ident0 && (String(x.name||'').toLowerCase()===name.toLowerCase() || gIdent(x)===newIdent); });
+    if(clash){ fbgToast('Another group in '+tplLabel(dst)+' already has that name or link.'); return; }
+    var posted = val('fbg-eg-posted'), verified = $('fbg-eg-verified').checked;
+    var patch = {name:name,url:newUrl,members:members,desc:desc,status:val('fbg-eg-status'),rules:val('fbg-eg-rules'),priority:val('fbg-eg-prio'),owner:val('fbg-eg-owner'),
+      tags:parseTags(val('fbg-eg-tags')),lastPosted:posted,verified:verified,dead:$('fbg-eg-dead').checked};
+    patch.verifiedAt = verified ? (g2.verifiedAt || Date.now()) : '';
+    patch.postedBy = posted ? (posted===(g2.lastPosted||'') ? (g2.postedBy||'') : currentUser()) : '';
+    updateEverywhere(l2,ident0,patch);
     if(dst!==t2){ t2.groups.splice(gi,1); dst.groups = dst.groups||[]; dst.groups.push(g2); fbgOpen[dst.key] = true; }
-    fbgLibSave(l2); clearSel(); closeModal(true); fbgRenderLibrary();
+    fbgLibSave(l2,{label:'edit group'}); clearSel(); closeModal(true); fbgRenderLibrary();
     fbgToast(dst!==t2 ? 'Saved and moved to '+tplLabel(dst)+'.' : 'Group updated.');
   }
   ov.addEventListener('click',function(e){ var b = e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='save') save(); else closeModal(); });
   ov.addEventListener('keydown',function(e){ if(e.key==='Enter' && e.target.tagName==='INPUT') save(); });
 }
 
-/* edit (rename) a template */
+/* edit (rename / relink) a template */
+function linksHtml(kind,t,l){
+  if(kind==='car'){
+    var ch = l.filter(function(x){ return tplKind(x)==='chassis'; });
+    return '<div class="fbg-field-lbl">Chassis — links this car to its platform</div><select class="fbg-modal-input" id="fbg-et-chassis"><option value="">— none —</option>'
+      +ch.map(function(x){ return '<option value="'+esc(x.id)+'"'+(t.chassisId===x.id?' selected':'')+'>'+esc(tplLabel(x))+'</option>'; }).join('')+'</select>'
+      +(ch.length?'':'<div class="fbg-hint">No chassis templates yet — create one, or use “Auto-link from Fitment” in the Health tab.</div>');
+  }
+  if(kind==='product'){
+    var pool = l.filter(function(x){ return x.id!==t.id && tplKind(x)!=='product'; }), sel = t.fitsIds||[];
+    return '<div class="fbg-field-lbl">Fits — which chassis / cars this product is for</div><div class="fbg-checklist" id="fbg-et-fits">'
+      +(pool.length ? pool.map(function(x){ return '<label><input type="checkbox" value="'+esc(x.id)+'"'+(sel.indexOf(x.id)!==-1?' checked':'')+'/> '+kindIcon(tplKind(x))+' '+esc(tplLabel(x))+'</label>'; }).join('') : '<div class="fbg-hint">Add some car or chassis templates first.</div>')+'</div>';
+  }
+  var cars = l.filter(function(x){ return x.chassisId===t.id; });
+  return '<div class="fbg-field-lbl">Cars on this chassis</div><div class="fbg-hint">'+(cars.length ? cars.map(function(c){ return esc(tplLabel(c)); }).join(', ') : 'None yet — link a car from its “Edit template”, or use Auto-link in the Health tab.')+'</div>';
+}
 function openEditTemplate(key){
   var l = fbgLibLoad(), t = tplByKey(l,key); if(!t) return;
   var kind = tplKind(t);
-  var ov = showModal('<div class="fbg-modal-title">Edit Template</div><div class="fbg-modal-sub">Rename it or change its type. Its groups stay with it.</div>'
+  var ov = showModal('<div class="fbg-modal-title">Edit Template</div><div class="fbg-modal-sub">Rename it, change its type, or link it to the rest of your library. Its groups stay with it.</div>'
     +tplFormHtml('fbg-et',kind,{year:t.year,make:t.make,model:t.model})
+    +'<div id="fbg-et-links">'+linksHtml(kind,t,l)+'</div>'
     +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Save</button></div>');
   var st = bindTplForm(ov,'fbg-et',kind);
+  ov.querySelector('#fbg-et-seg').addEventListener('click',function(){ $('fbg-et-links').innerHTML = linksHtml(st.kind,t,fbgLibLoad()); });
   function save(){
     var f = readTplForm('fbg-et',st.kind);
     if(f.error){ fbgToast(f.error); return; }
@@ -13752,13 +14049,16 @@ function openEditTemplate(key){
     if(nk!==key && tplByKey(l2,nk)){ fbgToast('A template with that name already exists — use Move to combine groups.'); return; }
     t2.key = nk; t2.make = f.make||''; t2.model = f.model; t2.year = st.kind==='car' ? f.year : '';
     if(st.kind==='car') delete t2.kind; else t2.kind = st.kind;
+    delete t2.chassisId; delete t2.fitsIds;
+    if(st.kind==='car'){ var ch = val('fbg-et-chassis'); if(ch) t2.chassisId = ch; }
+    if(st.kind==='product'){ var fits = []; ov.querySelectorAll('#fbg-et-fits input:checked').forEach(function(c){ fits.push(c.value); }); if(fits.length) t2.fitsIds = fits; }
     if(nk!==key){
       if(fbgOpen[key]){ fbgOpen[nk] = true; delete fbgOpen[key]; }
       if(fbgActiveKey===key) fbgActiveKey = nk;
       if(fbgGSel[key]){ fbgGSel[nk] = fbgGSel[key]; delete fbgGSel[key]; }
       if(fbgClip && fbgClip.from===key) fbgClip.from = nk;
     }
-    fbgLibSave(l2); closeModal(true); fbgRenderLibrary(); fbgPopulateCarDropdowns();
+    fbgLibSave(l2,{label:'edit template'}); closeModal(true); fbgRenderLibrary(); fbgPopulateCarDropdowns();
     fbgToast('Template updated.');
   }
   ov.addEventListener('click',function(e){ var b = e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='save') save(); else if(b.dataset.act==='cancel') closeModal(); });
@@ -13882,6 +14182,950 @@ function bindDrag(){
   host.addEventListener('dragend',endDrag);
 }
 
+/* ════════ Data engine v2: ids · timestamps · trash · undo · snapshots · merge-sync ════════
+   The library is still ONE blob (array of templates) so nothing in Supabase has to change — but every
+   template/group now has a stable id + updatedAt, deletes leave a tombstone (so a stale copy can never
+   resurrect them), and syncing MERGES instead of overwriting, so two people editing at once keep both edits. */
+var META_KEY = 'tgk_fbg_meta_v1', DIRTY_KEY = 'tgk_fbg_dirty', CLOUD_LIB = 'tgk_fbg_library', CLOUD_META = 'tgk_fbg_meta';
+var TRASH_DAYS = 90, TRASH_MAX = 500, SNAP_KEEP = 7, UNDO_MAX = 25;
+var eng = {prev:null,cacheRef:null,meta:{v:2,trash:[],snaps:[],snapDay:'',settings:{},settingsAt:0},undo:[],syncing:false,pending:false,ver:0,state:'idle',last:0,err:'',lastSaveAt:0,timer:null,started:false};
+
+function hash53(str,seed){
+  var h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for(var i=0,ch;i<str.length;i++){ ch = str.charCodeAt(i); h1 = Math.imul(h1^ch,2654435761); h2 = Math.imul(h2^ch,1597334677); }
+  h1 = Math.imul(h1^(h1>>>16),2246822507) ^ Math.imul(h2^(h2>>>13),3266489909);
+  h2 = Math.imul(h2^(h2>>>16),2246822507) ^ Math.imul(h1^(h1>>>13),3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+}
+function newId(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
+function stable(o){
+  if(o===null || typeof o!=='object') return JSON.stringify(o);
+  if(Array.isArray(o)) return '['+o.map(stable).join(',')+']';
+  return '{'+Object.keys(o).sort().filter(function(k){ return o[k]!==undefined; }).map(function(k){ return JSON.stringify(k)+':'+stable(o[k]); }).join(',')+'}';
+}
+function ts(x){ return (x && x.updatedAt) || 0; }
+function countAll(lib){ return (lib||[]).reduce(function(s,t){ return s+1+((t&&t.groups)||[]).length; },0); }
+// Identity of a group across templates: its real Facebook link, else its name.
+function gIdent(g){
+  var u = g.url && !/\/search\/groups/i.test(g.url) ? normUrl(g.url) : '';
+  return u ? 'u:'+u : 'n:'+String(g.name||'').trim().toLowerCase();
+}
+
+// Give every template/group a stable id (deterministic for legacy data so every browser agrees). In place, idempotent.
+function normalizeLib(lib){
+  var seenT = {}, seenG = {};
+  lib.forEach(function(t){
+    if(!t.id) t.id = 't_'+hash53(String(t.key||tplLabel(t)),1);
+    while(seenT[t.id]) t.id += 'x';
+    seenT[t.id] = 1;
+    if(!Array.isArray(t.groups)) t.groups = [];
+    t.groups.forEach(function(g){
+      if(!g.id) g.id = 'g_'+hash53(t.id+'|'+gIdent(g),2);
+      while(seenG[g.id]) g.id += 'x';
+      seenG[g.id] = 1; g.tplId = t.id;
+    });
+    if(!Array.isArray(t.order)) t.order = t.groups.map(function(g){ return g.id; });
+  });
+  return lib;
+}
+function indexLib(lib){ var T = {}, G = {}; (lib||[]).forEach(function(t){ T[t.id] = t; (t.groups||[]).forEach(function(g){ G[g.id] = g; }); }); return {T:T,G:G}; }
+function tplSig(t){ var o = {}; Object.keys(t).forEach(function(k){ if(k!=='groups' && k!=='updatedAt' && k!=='order' && k!=='orderAt') o[k] = t[k]; }); return stable(o); }
+function grpSig(g){ var o = {}; Object.keys(g).forEach(function(k){ if(k!=='updatedAt') o[k] = g[k]; }); return stable(o); }
+
+/* trash (tombstones) */
+function dropTomb(type,id){ eng.meta.trash = eng.meta.trash.filter(function(e){ return !(e.type===type && e.id===id); }); }
+function addTomb(e){ dropTomb(e.type,e.id); eng.meta.trash.push(e); pruneTrash(); }
+function pruneTrash(){
+  var cut = Date.now()-TRASH_DAYS*864e5;
+  var t = eng.meta.trash.filter(function(e){ return e.deletedAt>=cut; }).sort(function(a,b){ return b.deletedAt-a.deletedAt; });
+  eng.meta.trash = t.slice(0,TRASH_MAX);
+}
+function tombMap(trash){ var m = {}; (trash||[]).forEach(function(e){ m[e.type+':'+e.id] = Math.max(m[e.type+':'+e.id]||0,e.deletedAt||0); }); return m; }
+
+// Compare `cur` with the last saved state: stamp what changed, tombstone what vanished. Returns true if anything changed.
+function stampChanges(cur,silentTombs){
+  var now = Date.now(), changed = false;
+  normalizeLib(cur);
+  var P = indexLib(eng.prev), C = indexLib(cur);
+  cur.forEach(function(t){
+    var p = P.T[t.id];
+    if(!p){ if(!t.addedAt) t.addedAt = now; t.updatedAt = now; changed = true; dropTomb('tpl',t.id); }
+    else if(tplSig(t)!==tplSig(p)){ t.updatedAt = now; changed = true; }
+    var ids = (t.groups||[]).map(function(g){ return g.id; }), pids = p ? (p.groups||[]).map(function(g){ return g.id; }) : [];
+    if(!p){ t.order = ids; t.orderAt = now; }
+    else if(ids.join()!==pids.join()){
+      // only a real REORDER (or inserting mid-list) counts as an order change; plain adds/removes must not override someone else's reorder
+      var pset = {}, cset = {}; pids.forEach(function(i){ pset[i] = 1; }); ids.forEach(function(i){ cset[i] = 1; });
+      var common = ids.filter(function(i){ return pset[i]; }), pcommon = pids.filter(function(i){ return cset[i]; });
+      var added = ids.filter(function(i){ return !pset[i]; });
+      var tailOnly = ids.slice(0,common.length).join()===common.join();
+      if(common.join()!==pcommon.join() || (added.length && !tailOnly)) t.orderAt = now;
+      t.order = ids; changed = true;
+    }
+    (t.groups||[]).forEach(function(g){
+      var pg = P.G[g.id];
+      if(!pg){ if(!g.addedAt) g.addedAt = now; g.updatedAt = now; changed = true; dropTomb('grp',g.id); }
+      else if(grpSig(g)!==grpSig(pg)){ g.updatedAt = now; changed = true; }
+    });
+  });
+  (eng.prev||[]).forEach(function(pt){
+    if(!C.T[pt.id]){ addTomb({id:pt.id,type:'tpl',deletedAt:now,name:tplLabel(pt),data:deepCopy(pt),silent:!!silentTombs}); changed = true; }
+    else (pt.groups||[]).forEach(function(pg){
+      if(!C.G[pg.id]){ addTomb({id:pg.id,type:'grp',tplId:pt.id,deletedAt:now,name:pg.name,tplLabel:tplLabel(pt),data:deepCopy(pg),silent:!!silentTombs}); changed = true; }
+    });
+  });
+  return changed;
+}
+
+/* merge two libraries (union; newest record wins; tombstones beat older records) */
+function mergeLibs(A,B,tomb){
+  var T = {}, G = {};
+  [A,B].forEach(function(lib,side){ (lib||[]).forEach(function(t){ var r = T[t.id] || (T[t.id] = {a:null,b:null}); if(side===0) r.a = t; else r.b = t; }); });
+  [A,B].forEach(function(lib,side){ (lib||[]).forEach(function(t){ (t.groups||[]).forEach(function(g){
+    var c = G[g.id]; if(!c || ts(g)>ts(c.g) || (ts(g)===ts(c.g) && side===1)) G[g.id] = {g:g,tpl:g.tplId||t.id};
+  }); }); });
+  var out = [], keep = {};
+  Object.keys(T).forEach(function(id){
+    var r = T[id], a = r.a, b = r.b, base = !a ? b : !b ? a : (ts(a)>ts(b) ? a : b);
+    var tb = tomb['tpl:'+id]; if(tb && tb>=Math.max(ts(a),ts(b))) return;
+    var t = deepCopy(base); t.groups = [];
+    var oa = (a&&a.orderAt)||0, ob = (b&&b.orderAt)||0, src = oa>ob ? a : (ob>oa ? b : (b||a));
+    t.order = (src && src.order) ? src.order.slice() : []; if(Math.max(oa,ob)) t.orderAt = Math.max(oa,ob);
+    keep[id] = t; out.push(t);
+  });
+  Object.keys(G).forEach(function(gid){
+    var c = G[gid], g = c.g, tb = tomb['grp:'+gid]; if(tb && tb>=ts(g)) return;
+    var t = keep[c.tpl]; if(!t) return;
+    var cg = deepCopy(g); cg.tplId = t.id; t.groups.push(cg);
+  });
+  // two browsers can end up with the same template (same key) under different ids → fold them together; the lower id always survives
+  out.sort(function(x,y){ return x.id<y.id ? -1 : 1; });
+  var byKey = {}, folded = [];
+  out.forEach(function(t){
+    var i = byKey[t.key];
+    if(i===undefined){ byKey[t.key] = folded.length; folded.push(t); }
+    else { var keep = folded[i]; t.groups.forEach(function(g){ g.tplId = keep.id; keep.groups.push(g); }); keep.order = (keep.order||[]).concat(t.order||[]); }
+  });
+  out = folded;
+  out.forEach(function(t){
+    var pos = {}; (t.order||[]).forEach(function(id,i){ pos[id] = i; });
+    t.groups.sort(function(x,y){
+      var px = pos[x.id], py = pos[y.id];
+      if(px==null && py==null) return ((x.addedAt||0)-(y.addedAt||0)) || String(x.id).localeCompare(String(y.id));
+      if(px==null) return 1; if(py==null) return -1; return px-py;
+    });
+    var seen = {}, res = [];
+    t.groups.forEach(function(g){ var k = gIdent(g), i = seen[k]; if(i===undefined){ seen[k] = res.length; res.push(g); } else if(ts(g)>ts(res[i])) res[i] = g; });
+    t.groups = res; t.order = res.map(function(g){ return g.id; });
+  });
+  out.sort(function(x,y){ return x.id<y.id ? -1 : 1; });
+  return out;
+}
+function mergeMeta(a,b){
+  a = a||{}; b = b||{};
+  var m = {v:2,trash:[],snaps:[],snapDay:'',settings:{},settingsAt:0}, tm = {};
+  (a.trash||[]).concat(b.trash||[]).forEach(function(e){
+    var k = e.type+':'+e.id, c = tm[k];
+    if(!c) tm[k] = deepCopy(e);
+    else { if((e.deletedAt||0)>(c.deletedAt||0)){ var pu = c.purged; c = tm[k] = deepCopy(e); if(pu) c.purged = true; } if(e.purged) c.purged = true; }
+  });
+  Object.keys(tm).forEach(function(k){ var e = tm[k]; if(e.purged){ e.purged = true; delete e.data; } m.trash.push(e); });
+  var sd = {};
+  (a.snaps||[]).concat(b.snaps||[]).forEach(function(s){ var c = sd[s.day]; if(!c || s.t<c.t) sd[s.day] = s; });
+  m.snaps = Object.keys(sd).map(function(k){ return sd[k]; }).sort(function(x,y){ return y.t-x.t; }).slice(0,SNAP_KEEP);
+  m.snapDay = [a.snapDay||'',b.snapDay||''].sort().pop();
+  var sa = a.settingsAt||0, sb = b.settingsAt||0; m.settings = sb>sa ? deepCopy(b.settings||{}) : deepCopy(a.settings||{}); m.settingsAt = Math.max(sa,sb);
+  var save = eng.meta; eng.meta = m; pruneTrash(); m = eng.meta; eng.meta = save;
+  return m;
+}
+
+/* persistence */
+function writeLocal(lib){ try{ localStorage.setItem(FBG_LIBRARY_KEY,JSON.stringify(lib)); }catch(e){} }
+function saveMetaLocal(){ try{ var m = deepCopy(eng.meta); m.snaps = (m.snaps||[]).slice(0,3); localStorage.setItem(META_KEY,JSON.stringify(m)); }catch(e){} }
+function loadMetaLocal(){ try{ var m = JSON.parse(localStorage.getItem(META_KEY)||'null'); if(m && typeof m==='object') eng.meta = mergeMeta(eng.meta,m); }catch(e){} }
+function setDirty(v){ try{ if(v) localStorage.setItem(DIRTY_KEY,'1'); else localStorage.removeItem(DIRTY_KEY); }catch(e){} }
+function isDirty(){ try{ return localStorage.getItem(DIRTY_KEY)==='1'; }catch(e){ return false; } }
+
+function engineLoad(){
+  if(_fbgCache===null || _fbgCache===undefined){
+    var l = readJson(FBG_LIBRARY_KEY); normalizeLib(l); _fbgCache = l; eng.cacheRef = l; eng.prev = deepCopy(l);
+    if(!eng.initLocal) eng.initLocal = deepCopy(l);                 // the browser copy BEFORE the dashboard's cloud boot can overwrite it
+    return l;
+  }
+  if(_fbgCache!==eng.cacheRef){ normalizeLib(_fbgCache); eng.cacheRef = _fbgCache; eng.prev = deepCopy(_fbgCache); }   // replaced from outside (cloud boot) → adopt, don't stamp
+  return _fbgCache;
+}
+function maybeDailySnapshot(prevState){
+  if(!prevState || !prevState.length) return;
+  var day = new Date().toISOString().slice(0,10); if(eng.meta.snapDay===day) return;
+  eng.meta.snapDay = day;
+  eng.meta.snaps.push({t:Date.now(),day:day,n:countAll(prevState),lib:deepCopy(prevState)});
+  eng.meta.snaps = eng.meta.snaps.sort(function(x,y){ return y.t-x.t; }).slice(0,SNAP_KEEP);
+}
+// Every change in the app ends up here (fbgLibSave is this function).
+function engineSave(data,opts){
+  opts = opts||{};
+  data = Array.isArray(data) ? data : [];
+  if(eng.prev===null) eng.prev = [];
+  var changed = stampChanges(data,opts.silentTombs);
+  _fbgCache = data; eng.cacheRef = data;
+  if(!changed){ return Promise.resolve(); }
+  if(!opts.noUndo){ eng.undo.push({label:opts.label||'',snap:eng.prev,at:Date.now()}); if(eng.undo.length>UNDO_MAX) eng.undo.shift(); }
+  maybeDailySnapshot(eng.prev);
+  eng.prev = deepCopy(data); eng.ver++; eng.lastSaveAt = Date.now();
+  writeLocal(data); saveMetaLocal(); setDirty(true); updateUndoBtn();
+  if(!opts.noSync) scheduleSync();
+  return Promise.resolve();
+}
+function restoreState(lib,label,noUndo){
+  var snap = normalizeLib(deepCopy(lib));
+  engineSave(snap,{noUndo:!!noUndo,label:label||'',silentTombs:true});
+  clearSel(); fbgRenderLibrary(); fbgPopulateCarDropdowns();
+}
+function undoLast(){
+  var e = eng.undo.pop(); if(!e){ fbgToast('Nothing to undo.'); return; }
+  restoreState(e.snap,'undo',true); updateUndoBtn(); fbgToast('Undone.');
+}
+function updateUndoBtn(){ var b = $('fbg-undo'); if(!b) return; b.disabled = !eng.undo.length; b.title = eng.undo.length ? 'Undo the last change ('+eng.undo.length+' available)' : 'Nothing to undo'; }
+function adopt(lib){
+  _fbgCache = lib; eng.cacheRef = lib; eng.prev = deepCopy(lib); eng.undo = []; eng.ver++;
+  writeLocal(lib); updateUndoBtn(); fbgRenderLibrary(); fbgPopulateCarDropdowns();
+}
+
+/* cloud (uses the dashboard's own sbFetch, which THROWS on failure — unlike sbSet/sbGet that swallow errors) */
+function cloudGet(id){ return sbFetch('/rest/v1/workspace?id=eq.'+encodeURIComponent(id)+'&select=data&limit=1').then(function(rows){ return (rows && rows[0]) ? rows[0].data : null; }); }
+function cloudSet(id,data){
+  return sbFetch('/rest/v1/workspace',{method:'POST',headers:{'apikey':TGK_SB_KEY,'Authorization':'Bearer '+TGK_SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:id,data:data,updated_at:new Date().toISOString()})});
+}
+function setSync(state,err){
+  eng.state = state; if(err!==undefined) eng.err = err;
+  var txt = state==='saving' ? '● Saving…' : state==='ok' ? '● Synced '+ago(eng.last) : state==='error' ? '⚠ Not saved to cloud — click to retry' : '● Syncing…';
+  document.querySelectorAll('.fbg-sync').forEach(function(el){ el.textContent = txt; el.className = 'fbg-sync '+state; el.title = state==='error' ? ('Last error: '+eng.err+' — your changes are safe in this browser. Click to retry.') : 'Click to sync now'; });
+  if(typeof renderHealthSyncLine==='function') renderHealthSyncLine();
+}
+function scheduleSync(){ clearTimeout(eng.timer); eng.timer = setTimeout(syncNow,600); setSync('saving'); }
+async function syncNow(){
+  if(eng.syncing){ eng.pending = true; return; }
+  eng.syncing = true; setSync('saving');
+  var v0 = eng.ver;
+  try{
+    var cl = await cloudGet(CLOUD_LIB), cm = await cloudGet(CLOUD_META);
+    var cloudLib = Array.isArray(cl) ? cl : []; normalizeLib(cloudLib);
+    var meta = mergeMeta(eng.meta,(cm && typeof cm==='object' && !Array.isArray(cm)) ? cm : {});
+    if(eng.ver!==v0){ eng.pending = true; return; }                 // edited while we were talking to the cloud → merge again first
+    var local = engineLoad();
+    var merged = mergeLibs(local,cloudLib,tombMap(meta.trash));
+    eng.meta = meta; saveMetaLocal();
+    if(stable(merged)!==stable(local)){ adopt(merged); v0 = eng.ver; }
+    if(stable(merged)!==stable(cloudLib)) await cloudSet(CLOUD_LIB,merged);
+    if(stable(meta)!==stable(cm||{})) await cloudSet(CLOUD_META,meta);
+    if(eng.ver===v0) setDirty(false);                              // edited during the write? stay dirty — the queued sync handles it
+    eng.last = Date.now(); setSync('ok','');
+  }catch(e){
+    setSync('error',String(e && e.message || e).slice(0,200));
+  }finally{
+    eng.syncing = false;
+    if(eng.pending){ eng.pending = false; setTimeout(syncNow,100); }
+  }
+}
+function engineStart(){
+  if(eng.started) return; eng.started = true;
+  loadMetaLocal();
+  var local = readJson(FBG_LIBRARY_KEY), boot = Array.isArray(_fbgCache) ? _fbgCache : [], pre = normalizeLib(deepCopy(eng.initLocal||[]));
+  normalizeLib(local); normalizeLib(boot);
+  var tomb = tombMap(eng.meta.trash);
+  var merged = mergeLibs(mergeLibs(pre,local,tomb),boot,tomb);   // pre-boot browser copy ∪ current browser copy ∪ cloud copy
+  adopt(merged);
+  syncNow();
+  setInterval(function(){ if(isDirty() || Date.now()-eng.last>180000) syncNow(); },30000);
+  window.addEventListener('online',function(){ syncNow(); });
+  var lastFocus = 0;
+  window.addEventListener('focus',function(){ if(Date.now()-lastFocus>30000){ lastFocus = Date.now(); syncNow(); } });
+}
+
+/* trash / snapshots / backup */
+function trashList(){
+  var live = indexLib(engineLoad());
+  return eng.meta.trash.filter(function(e){
+    if(e.purged || e.silent) return false;
+    var cur = e.type==='tpl' ? live.T[e.id] : live.G[e.id];
+    return !(cur && ts(cur)>e.deletedAt);                                  // already restored
+  }).sort(function(a,b){ return b.deletedAt-a.deletedAt; });
+}
+function restoreTrash(e){
+  var l = engineLoad();
+  if(e.type==='tpl'){
+    var d = deepCopy(e.data);
+    if(tplByKey(l,d.key)){ fbgToast('A template named “'+tplLabel(d)+'” already exists — rename or delete it first.'); return false; }
+    l.push(d);
+  } else {
+    var t = l.find(function(x){ return x.id===e.tplId; });
+    if(!t){ fbgToast('Its template “'+(e.tplLabel||'')+'” was deleted — restore the template first.'); return false; }
+    var g = deepCopy(e.data); if(hasGroup(t,g)){ fbgToast('That group is already in '+tplLabel(t)+'.'); return false; }
+    t.groups.push(g);
+  }
+  engineSave(l,{label:'restore'});
+  fbgRenderLibrary(); fbgPopulateCarDropdowns(); fbgToast('Restored “'+e.name+'”.');
+  return true;
+}
+function purgeTrash(which){
+  eng.meta.trash.forEach(function(e){ if(!which || (which.type===e.type && which.id===e.id)){ e.purged = true; delete e.data; } });
+  saveMetaLocal(); scheduleSync();
+}
+function settings(){ var s = eng.meta.settings||{}; return {cadence:s.cadence>0?s.cadence:14,recheck:s.recheck>0?s.recheck:90}; }
+function saveSettings(p){ eng.meta.settings = Object.assign({},eng.meta.settings,p); eng.meta.settingsAt = Date.now(); saveMetaLocal(); scheduleSync(); }
+function downloadBackup(){
+  var l = engineLoad(), data = {kind:'tgk-fbg-backup',v:2,exported:new Date().toISOString(),library:deepCopy(l),trash:eng.meta.trash.filter(function(e){ return !e.purged; }),settings:eng.meta.settings};
+  var blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tgk-fb-groups-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+  fbgToast('Backup downloaded — '+plural(l.length,'template')+', '+plural(l.reduce(function(s,t){ return s+(t.groups||[]).length; },0),'group')+'.');
+}
+
+/* ════════ My Groups: every unique group across all templates ════════ */
+var gv = {q:'',status:'*',rules:'*',prio:'*',owner:'*',kind:'*',tpl:'*',tag:'*',showDead:false,preset:'all',sortKey:'name',sortDir:1,limit:200,sel:{}};
+var suppressPane = false, activePane = 'find', gvBuilt = false;
+
+function allGroups(){
+  var l = fbgLibLoad(), map = {}, out = [];
+  l.forEach(function(t){ (t.groups||[]).forEach(function(g){
+    var id = gIdent(g), r = map[id];
+    if(!r){ r = map[id] = {ident:id,rec:g,tpls:[]}; out.push(r); } else if(ts(g)>ts(r.rec)) r.rec = g;
+    r.tpls.push({key:t.key,id:t.id,label:tplLabel(t),kind:tplKind(t)});
+  }); });
+  return out;
+}
+function presetMatch(p,g){
+  if(p==='ready') return g.status==='joined' && g.rules==='allowed' && !g.dead;
+  if(p==='due') return isDue(g);
+  if(p==='join') return !g.status && g.rules!=='banned' && !g.dead;
+  if(p==='check') return needsCheck(g) || !!g.dead;
+  if(p==='dead') return !!g.dead;
+  if(p==='nolink') return !hasRealLink(g) && !g.dead;
+  return true;
+}
+function gvMatch(r){
+  var g = r.rec, f = gv;
+  if(g.dead && !f.showDead && f.preset!=='check' && f.preset!=='dead') return false;
+  if(!presetMatch(f.preset,g)) return false;
+  if(f.q){
+    var hay = (g.name+' '+(g.url||'')+' '+(g.desc||'')+' '+(g.owner||'')+' '+(g.tags||[]).join(' ')+' '+r.tpls.map(function(t){ return t.label; }).join(' ')).toLowerCase();
+    if(f.q.toLowerCase().split(/\s+/).filter(Boolean).some(function(tok){ return hay.indexOf(tok)===-1; })) return false;
+  }
+  if(f.status!=='*' && (g.status||'')!==f.status) return false;
+  if(f.rules!=='*' && (g.rules||'')!==f.rules) return false;
+  if(f.prio!=='*' && (g.priority||'')!==f.prio) return false;
+  if(f.owner!=='*' && (g.owner||'')!==f.owner) return false;
+  if(f.kind!=='*' && !r.tpls.some(function(t){ return t.kind===f.kind; })) return false;
+  if(f.tpl!=='*' && !r.tpls.some(function(t){ return t.id===f.tpl; })) return false;
+  if(f.tag!=='*' && (g.tags||[]).indexOf(f.tag)===-1) return false;
+  return true;
+}
+function sortRows(rows,key,dir){
+  var so = {}, ro = {}, po = {A:0,B:1,C:2};
+  STATUS.forEach(function(x,i){ so[x.k] = i; }); RULES.forEach(function(x,i){ ro[x.k] = i; });
+  function v(r){ var g = r.rec;
+    return key==='name' ? String(g.name||'').toLowerCase() : key==='members' ? (g.members||0) : key==='status' ? so[g.status||''] : key==='rules' ? ro[g.rules||'']
+      : key==='prio' ? (po[g.priority]===undefined?9:po[g.priority]) : key==='last' ? (g.lastPosted||'') : key==='owner' ? String(g.owner||'~').toLowerCase() : 0; }
+  return rows.slice().sort(function(a,b){ var x = v(a), y = v(b); return (x<y?-1:x>y?1:0)*dir || String(a.rec.name).localeCompare(String(b.rec.name)); });
+}
+
+/* Inline !important styles: the dashboard skin forces white on every <select>/<input> with selectors no normal rule can outrank. */
+var CTL_BASE = 'background-color:#1a1d20!important;color:#e8eaed!important;border:1px solid #2e3032!important;';
+function ctlStyle(f,v){
+  var col = '';
+  if(f==='status') col = v==='joined' ? '#2ABFAA' : v==='requested' ? '#e0a030' : (v==='rejected'||v==='banned') ? '#e07070' : '';
+  else if(f==='rules') col = v==='allowed' ? '#2ABFAA' : v==='approval' ? '#e0a030' : v==='banned' ? '#e07070' : '';
+  else if(f==='priority') col = v==='A' ? '#2ABFAA' : v==='B' ? '#E07B28' : '';
+  return CTL_BASE+(col?'color:'+col+'!important;':'')+(f==='priority'&&col?'font-weight:700;':'');
+}
+function ctlAttr(f,v){ return ' style="'+ctlStyle(f,v)+'"'; }
+/* shared table pieces (My Groups + Launch Plan) */
+var GT_HEAD = {sel:'',name:'Group',members:'Members',status:'Status',rules:'Promo',prio:'Pri',posted:'Last posted',owner:'Owner',verified:'✓',tags:'Tags',tpls:'In templates',from:'Why suggested',act:''};
+var GT_SORT = {name:'name',members:'members',status:'status',rules:'rules',prio:'prio',posted:'last',owner:'owner'};
+function cellHtml(c,r,sel){
+  var g = r.rec, id = esc(r.ident);
+  if(c==='sel') return '<span class="fbg-gsel'+(sel[r.ident]?' checked':'')+'" data-act="gt-sel" data-ident="'+id+'"></span>';
+  if(c==='name') return '<div class="fbg-gt-name"><span class="fbg-gt-ic">'+iconHtml(g.icon)+'</span>'+(hasRealLink(g)?'<button type="button" class="fbg-gt-link" data-act="gt-open" data-url="'+esc(g.url)+'" title="Open on Facebook">'+esc(g.name)+'</button>':'<button type="button" class="fbg-gt-link nolink" data-act="gt-open" data-url="'+esc(fbSearchUrl(g.name))+'" title="No direct link yet — opens a Facebook search">'+esc(g.name)+'</button>')
+    +(g.dead?'<span class="fbg-flag dead">✗ dead</span>':'')+'</div>'+(g.desc?'<div class="fbg-gt-notes">'+esc(g.desc)+'</div>':'');
+  if(c==='members') return g.members>0 ? '<span title="Estimate — verify on Facebook">~'+fbgFmt(g.members)+'</span>' : '<span class="fbg-dim">—</span>';
+  if(c==='status') return '<select class="fbg-tsel" data-f="status"'+ctlAttr('status',g.status)+' data-ident="'+id+'">'+optionsHtml(STATUS,g.status)+'</select>';
+  if(c==='rules') return '<select class="fbg-tsel" data-f="rules"'+ctlAttr('rules',g.rules)+' data-ident="'+id+'">'+optionsHtml(RULES,g.rules)+'</select>';
+  if(c==='prio') return '<select class="fbg-tsel" data-f="priority"'+ctlAttr('priority',g.priority)+' data-ident="'+id+'">'+prioOptions(g.priority)+'</select>';
+  if(c==='posted') return '<div class="fbg-inline"><input type="date" class="fbg-tin'+(isDue(g)?' due':'')+'" data-f="lastPosted"'+(isDue(g)?' style="'+CTL_BASE+'border-color:#f0b34a!important;color:#f0b34a!important;"':ctlAttr('x',''))+' data-ident="'+id+'" value="'+esc(g.lastPosted||'')+'"/><button type="button" class="fbg-gbtn" data-act="gt-today" data-ident="'+id+'" title="Mark posted today">✓</button></div>';
+  if(c==='owner') return '<input class="fbg-tin" list="fbg-owners-dl" data-f="owner"'+ctlAttr('x','')+' data-ident="'+id+'" value="'+esc(g.owner||'')+'" placeholder="—"/>';
+  if(c==='verified') return '<span class="fbg-gsel'+(g.verified?' checked':'')+'" data-act="gt-ver" data-ident="'+id+'" title="'+(g.verified?'Verified':'Not verified yet')+'"></span>';
+  if(c==='tags') return '<input class="fbg-tin" data-f="tags"'+ctlAttr('x','')+' data-ident="'+id+'" value="'+esc((g.tags||[]).join(', '))+'" placeholder="—"/>';
+  if(c==='tpls'){ var ch = r.tpls.slice(0,2).map(function(t){ return '<button type="button" class="fbg-tchip" data-act="gt-tpl" data-key="'+esc(t.key)+'" title="'+esc(t.label)+'">'+esc(t.label)+'</button>'; }).join('');
+    return ch+(r.tpls.length>2?'<span class="fbg-dim" title="'+esc(r.tpls.slice(2).map(function(t){ return t.label; }).join(', '))+'">+'+(r.tpls.length-2)+'</span>':''); }
+  if(c==='from') return '<span class="fbg-why">'+esc((r.why||[]).join(' · '))+'</span>';
+  if(c==='act') return '<button type="button" class="fbg-gbtn" data-act="gt-edit" data-ident="'+id+'" title="Edit this group">✎</button>';
+  return '';
+}
+function tableHtml(rows,cols,sel,sortable){
+  var head = cols.map(function(c){
+    var sk = sortable && GT_SORT[c];
+    if(c==='sel') return '<th class="c-sel"><span class="fbg-gsel'+(rows.length && rows.every(function(r){ return sel[r.ident]; })?' checked':'')+'" data-act="gt-selall" title="Select all"></span></th>';
+    return '<th class="c-'+c+(sk?' sortable':'')+'"'+(sk?' data-act="gt-sort" data-key="'+GT_SORT[c]+'"':'')+'>'+GT_HEAD[c]+(sk&&gv.sortKey===GT_SORT[c]?'<i>'+(gv.sortDir>0?' ▲':' ▼')+'</i>':'')+'</th>';
+  }).join('');
+  var body = rows.map(function(r){
+    return '<tr data-ident="'+esc(r.ident)+'"'+(sel[r.ident]?' class="sel"':'')+'>'+cols.map(function(c){ return '<td class="c-'+c+'">'+cellHtml(c,r,sel)+'</td>'; }).join('')+'</tr>';
+  }).join('');
+  return '<table class="fbg-gt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+}
+
+/* commits from the table (inline edits) */
+function commitField(ident,f,value){
+  var l = fbgLibLoad(), patch = {};
+  if(f==='tags') patch.tags = parseTags(value);
+  else if(f==='lastPosted'){ patch.lastPosted = value; patch.postedBy = value ? currentUser() : ''; }
+  else patch[f] = value;
+  if(f==='status' && value==='joined'){ /* nothing extra */ }
+  if(updateEverywhere(l,ident,patch)){ suppressPane = true; fbgLibSave(l,{label:'edit '+f}); fbgRenderLibrary(); suppressPane = false; }
+}
+function toggleVerified(ident){
+  var l = fbgLibLoad(), loc = findLoc(l,ident); if(!loc) return;
+  var on = !loc.g.verified;
+  updateEverywhere(l,ident,{verified:on,verifiedAt:on?Date.now():''});
+  suppressPane = true; fbgLibSave(l,{label:'verify'}); fbgRenderLibrary(); suppressPane = false;
+  return on;
+}
+function markPosted(idents){
+  var l = fbgLibLoad(), me = currentUser(), n = 0;
+  idents.forEach(function(id){ n += updateEverywhere(l,id,{lastPosted:todayStr(),postedBy:me}) ? 1 : 0; });
+  if(n){ suppressPane = true; fbgLibSave(l,{label:'mark posted'}); fbgRenderLibrary(); suppressPane = false; }
+  return n;
+}
+function openEditByIdent(ident){
+  var l = fbgLibLoad(), loc = findLoc(l,ident); if(!loc) return;
+  openEditGroup(loc.t.key,loc.gi);
+}
+// Shared click/change handling for any table made by tableHtml(). ctx: {sel, selChanged(), rerender()}
+function bindGroupTable(root,ctx){
+  root.addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b || !root.contains(b)) return;
+    var a = b.dataset.act, id = b.dataset.ident;
+    if(a==='gt-sel'){ if(ctx.sel[id]) delete ctx.sel[id]; else ctx.sel[id] = true; b.classList.toggle('checked',!!ctx.sel[id]); var tr = b.closest('tr'); if(tr) tr.classList.toggle('sel',!!ctx.sel[id]); ctx.selChanged(); }
+    else if(a==='gt-selall'){ var rows = ctx.visibleRows(); var all = rows.length && rows.every(function(r){ return ctx.sel[r.ident]; }); ctx.setSel(all?{}:rows.reduce(function(o,r){ o[r.ident] = true; return o; },{})); ctx.rerender(); }
+    else if(a==='gt-open') openUrl(b.dataset.url);
+    else if(a==='gt-today'){ markPosted([id]); var inp = root.querySelector('input[data-f="lastPosted"][data-ident="'+cssEsc(id)+'"]'); if(inp){ inp.value = todayStr(); inp.classList.remove('due'); inp.setAttribute('style',ctlStyle('x','')); } ctx.afterInline && ctx.afterInline(); }
+    else if(a==='gt-ver'){ var on = toggleVerified(id); b.classList.toggle('checked',!!on); ctx.afterInline && ctx.afterInline(); }
+    else if(a==='gt-edit') openEditByIdent(id);
+    else if(a==='gt-tpl') focusTpl(b.dataset.key);
+    else if(a==='gt-sort'){ var k = b.dataset.key; if(gv.sortKey===k) gv.sortDir = -gv.sortDir; else { gv.sortKey = k; gv.sortDir = 1; } ctx.rerender(); }
+  });
+  root.addEventListener('change',function(e){
+    var el = e.target; if(!el.dataset || !el.dataset.f) return;
+    commitField(el.dataset.ident,el.dataset.f,el.value);
+    if(el.tagName==='SELECT') el.setAttribute('style',ctlStyle(el.dataset.f,el.value));
+    if(el.dataset.f==='lastPosted'){ el.classList.remove('due'); el.setAttribute('style',ctlStyle('x','')); }
+    ctx.afterInline && ctx.afterInline(el.dataset.f);
+  });
+}
+function cssEsc(s){ return String(s).replace(/(["\\])/g,'\\$1'); }
+
+/* the pane */
+function gvFilterBarHtml(){
+  var sel = function(id,label,inner){ return '<label class="fbg-gv-f"><span>'+label+'</span><select id="'+id+'" class="fbg-tsel"'+ctlAttr('x','')+'>'+inner+'</select></label>'; };
+  return '<div class="fbg-presets" id="fbg-gv-presets"></div>'
+    +'<div class="fbg-gv-bar"><input id="fbg-gv-q" class="fbg-gv-q" style="'+CTL_BASE+'" placeholder="Search groups, notes, owners, tags…" autocomplete="off"/>'
+    +sel('fbg-gv-status','Status','')+sel('fbg-gv-rules','Promo','')+sel('fbg-gv-prio','Priority','')+sel('fbg-gv-owner','Owner','')+sel('fbg-gv-kind','Type','')+sel('fbg-gv-tpl','Template','')+sel('fbg-gv-tag','Tag','')
+    +'<button type="button" class="fbg-chip" id="fbg-gv-dead" data-act="gv-dead">Show dead</button>'
+    +'<button type="button" class="fbg-gbtn" id="fbg-gv-reset">Reset</button><button type="button" class="fbg-gbtn" id="fbg-gv-csv">⬇ CSV</button></div>'
+    +'<div class="fbg-gv-bulk" id="fbg-gv-bulk"></div><div class="fbg-gv-tablewrap" id="fbg-gv-table"></div><div class="fbg-gv-foot" id="fbg-gv-foot"></div>'
+    +'<datalist id="fbg-owners-dl"></datalist>';
+}
+function fillSelect(id,items,cur){
+  var s = $(id); if(!s) return;
+  s.innerHTML = items.map(function(x){ return '<option value="'+esc(x[0])+'">'+esc(x[1])+'</option>'; }).join('');
+  s.value = items.some(function(x){ return x[0]===cur; }) ? cur : '*';
+}
+function gvRefreshControls(){
+  var l = fbgLibLoad(), owners = ownerNames();
+  fillSelect('fbg-gv-status',[['*','Any']].concat(STATUS.map(function(x){ return [x.k,x.l]; })),gv.status);
+  fillSelect('fbg-gv-rules',[['*','Any']].concat(RULES.map(function(x){ return [x.k,x.l]; })),gv.rules);
+  fillSelect('fbg-gv-prio',[['*','Any'],['','No priority'],['A','A'],['B','B'],['C','C']],gv.prio);
+  fillSelect('fbg-gv-owner',[['*','Anyone'],['','Unassigned']].concat(owners.map(function(o){ return [o,o]; })),gv.owner);
+  fillSelect('fbg-gv-kind',[['*','All types'],['car','Cars'],['chassis','Chassis'],['product','Products']],gv.kind);
+  fillSelect('fbg-gv-tpl',[['*','All templates']].concat(l.slice().sort(function(a,b){ return tplLabel(a).localeCompare(tplLabel(b)); }).map(function(t){ return [t.id,tplLabel(t)]; })),gv.tpl);
+  fillSelect('fbg-gv-tag',[['*','Any tag']].concat(allTags().map(function(x){ return [x,x]; })),gv.tag);
+  gv.status = $('fbg-gv-status').value; gv.rules = $('fbg-gv-rules').value; gv.prio = $('fbg-gv-prio').value; gv.owner = $('fbg-gv-owner').value; gv.kind = $('fbg-gv-kind').value; gv.tpl = $('fbg-gv-tpl').value; gv.tag = $('fbg-gv-tag').value;
+  var dl = $('fbg-owners-dl'); if(dl) dl.innerHTML = owners.map(function(o){ return '<option value="'+esc(o)+'"></option>'; }).join('');
+}
+var GV_COLS = ['sel','name','members','status','rules','prio','posted','owner','verified','tags','tpls','act'];
+var gvRows = [];
+function gvVisible(){ return gvRows.slice(0,gv.limit); }
+function renderGroupsPane(){
+  var host = $('fbg-pane-groups'); if(!host) return;
+  if(!gvBuilt){ host.innerHTML = '<div class="fbg-gv">'+gvFilterBarHtml()+'</div>'; gvBuilt = true; bindGroupsPane(); $('fbg-gv-q').value = gv.q; }
+  $('fbg-gv-dead').classList.toggle('on',gv.showDead);
+  gvRefreshControls();
+  var all = allGroups();
+  // purge selections of groups that no longer exist
+  var live = {}; all.forEach(function(r){ live[r.ident] = 1; }); Object.keys(gv.sel).forEach(function(k){ if(!live[k]) delete gv.sel[k]; });
+  gvRows = sortRows(all.filter(gvMatch),gv.sortKey,gv.sortDir);
+  var vis = gvVisible(), wrap = $('fbg-gv-table'), scrollY = wrap.scrollTop, scrollX = wrap.scrollLeft;
+  wrap.innerHTML = gvRows.length ? tableHtml(vis,GV_COLS,gv.sel,true) : '<div class="fbg-empty" style="padding:40px 20px"><div class="fbg-empty-icon"><span class="ic ic-users"></span></div><div class="fbg-empty-title">'+(all.length?'No groups match these filters':'No groups yet')+'</div><div class="fbg-empty-sub">'+(all.length?'Try a different preset or hit Reset.':'Search on the Find tab and save groups to a template — they all show up here.')+'</div></div>';
+  wrap.scrollTop = scrollY; wrap.scrollLeft = scrollX;
+  gvUpdateCounts(all); gvRenderBulk();
+  $('fbg-gv-foot').innerHTML = gvRows.length>vis.length ? 'Showing '+vis.length+' of '+gvRows.length+' <button type="button" class="fbg-gbtn" data-act="gv-more">Show more</button>' : (gvRows.length?'Showing all '+gvRows.length:'');
+  var c = $('fbg-cnt-groups'); if(c) c.textContent = all.length||'';
+}
+function gvUpdateCounts(all){
+  all = all || allGroups();
+  var P = [['all','All'],['ready','Ready to post'],['due','Due to post'],['join','To join'],['check','Needs check']];
+  var n = {}; P.forEach(function(p){ n[p[0]] = 0; });
+  all.forEach(function(r){ P.forEach(function(p){ if((p[0]==='check' || !r.rec.dead) && presetMatch(p[0],r.rec)) n[p[0]]++; }); });
+  var el = $('fbg-gv-presets'); if(el) el.innerHTML = P.map(function(p){ return '<button type="button" class="fbg-chip'+(gv.preset===p[0]?' on':'')+'" data-act="gv-preset" data-p="'+p[0]+'">'+p[1]+'<b>'+n[p[0]]+'</b></button>'; }).join('')+'<span class="fbg-gv-count" id="fbg-gv-count">'+plural(gvRows.length,'group')+' shown</span>';
+}
+function gvRenderBulk(){
+  var ids = Object.keys(gv.sel), el = $('fbg-gv-bulk'); if(!el) return;
+  if(!ids.length){ el.innerHTML = ''; el.classList.remove('show'); return; }
+  el.classList.add('show');
+  el.innerHTML = '<span class="fbg-gv-bn">'+ids.length+' selected</span>'
+    +'<select class="fbg-tsel" id="fbg-bk-status"'+ctlAttr('x','')+'><option value="__">Set status…</option>'+optionsHtml(STATUS,'__')+'</select>'
+    +'<select class="fbg-tsel" id="fbg-bk-rules"'+ctlAttr('x','')+'><option value="__">Set promo rules…</option>'+optionsHtml(RULES,'__')+'</select>'
+    +'<select class="fbg-tsel" id="fbg-bk-prio"'+ctlAttr('x','')+'><option value="__">Set priority…</option>'+prioOptions('__')+'</select>'
+    +'<input class="fbg-tin" id="fbg-bk-owner" list="fbg-owners-dl"'+ctlAttr('x','')+' placeholder="Set owner…"/><button type="button" class="fbg-gbtn" data-act="bk-owner">Set</button>'
+    +'<input class="fbg-tin" id="fbg-bk-tag"'+ctlAttr('x','')+' placeholder="Add tag…"/><button type="button" class="fbg-gbtn" data-act="bk-tag">Add</button>'
+    +'<span class="fbg-gv-sp"></span><button type="button" class="fbg-gbtn" data-act="bk-posted">Posted today</button><button type="button" class="fbg-gbtn" data-act="bk-verify">Mark verified</button>'
+    +'<button type="button" class="fbg-gbtn" data-act="bk-copy">Copy list</button><button type="button" class="fbg-gbtn" data-act="bk-tpl">Add to template…</button>'
+    +'<button type="button" class="fbg-gbtn danger" data-act="bk-del">Delete everywhere</button><button type="button" class="fbg-gbtn" data-act="bk-clear">Clear</button>';
+}
+function selectedRows(){ var ids = gv.sel; return allGroups().filter(function(r){ return ids[r.ident]; }); }
+function bulkPatch(patch,label){
+  var l = fbgLibLoad(), n = 0; Object.keys(gv.sel).forEach(function(id){ n += updateEverywhere(l,id,patch) ? 1 : 0; });
+  if(n){ fbgLibSave(l,{label:label}); fbgRenderLibrary(); }
+  return n;
+}
+function gvToCsv(rows){
+  var head = ['Name','Link','Members','Status','Promo rules','Priority','Last posted','Posted by','Owner','Tags','Verified','Dead','Notes','Templates'];
+  var out = [head.map(csvCell).join(',')];
+  rows.forEach(function(r){ var g = r.rec; out.push([g.name,hasRealLink(g)?g.url:'',g.members>0?g.members:'',labelOf(STATUS,g.status),labelOf(RULES,g.rules),g.priority||'',g.lastPosted||'',g.postedBy||'',g.owner||'',(g.tags||[]).join(' '),g.verified?'yes':'',g.dead?'yes':'',g.desc||'',r.tpls.map(function(t){ return t.label; }).join(' | ')].map(csvCell).join(',')); });
+  return out.join('\n');
+}
+function bindGroupsPane(){
+  var host = $('fbg-pane-groups');
+  bindGroupTable(host,{get sel(){ return gv.sel; },
+    setSel:function(o){ gv.sel = o; return o; },
+    visibleRows:function(){ return gvRows; },
+    selChanged:function(){ gvRenderBulk(); },
+    rerender:function(){ renderGroupsPane(); },
+    afterInline:function(){ gvUpdateCounts(); }});
+  host.addEventListener('input',function(e){ if(e.target.id==='fbg-gv-q'){ gv.q = e.target.value.trim(); gv.limit = 200; renderGroupsPane(); } });
+  host.addEventListener('change',function(e){
+    var id = e.target.id, map = {'fbg-gv-status':'status','fbg-gv-rules':'rules','fbg-gv-prio':'prio','fbg-gv-owner':'owner','fbg-gv-kind':'kind','fbg-gv-tpl':'tpl','fbg-gv-tag':'tag'};
+    if(map[id]){ gv[map[id]] = e.target.value; gv.limit = 200; renderGroupsPane(); }
+    else if(id==='fbg-bk-status' && e.target.value!=='__'){ bulkPatch({status:e.target.value},'bulk status'); renderGroupsPane(); }
+    else if(id==='fbg-bk-rules' && e.target.value!=='__'){ bulkPatch({rules:e.target.value},'bulk rules'); renderGroupsPane(); }
+    else if(id==='fbg-bk-prio' && e.target.value!=='__'){ bulkPatch({priority:e.target.value},'bulk priority'); renderGroupsPane(); }
+  });
+  host.addEventListener('click',async function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
+    if(a==='gv-preset'){ gv.preset = b.dataset.p; gv.limit = 200; renderGroupsPane(); }
+    else if(a==='gv-more'){ gv.limit += 200; renderGroupsPane(); }
+    else if(a==='gv-dead'){ gv.showDead = !gv.showDead; renderGroupsPane(); }
+    else if(a==='bk-clear'){ gv.sel = {}; renderGroupsPane(); }
+    else if(a==='bk-owner'){ var o = val('fbg-bk-owner'); var n = bulkPatch({owner:o},'bulk owner'); fbgToast(n?(o?'Owner set to '+o:'Owner cleared')+' on '+plural(n,'group')+'.':'Nothing changed.'); renderGroupsPane(); }
+    else if(a==='bk-tag'){ var tg = parseTags(val('fbg-bk-tag')); if(!tg.length){ fbgToast('Type a tag first.'); return; }
+      var l = fbgLibLoad(), n2 = 0; Object.keys(gv.sel).forEach(function(id){ var loc = findLoc(l,id); if(loc){ var cur = (loc.g.tags||[]).slice(); tg.forEach(function(x){ if(cur.indexOf(x)===-1) cur.push(x); }); updateEverywhere(l,id,{tags:cur}); n2++; } });
+      fbgLibSave(l,{label:'bulk tag'}); fbgRenderLibrary(); fbgToast('Tagged '+plural(n2,'group')+'.'); renderGroupsPane(); }
+    else if(a==='bk-posted'){ var n3 = markPosted(Object.keys(gv.sel)); fbgToast('Marked '+plural(n3,'group')+' as posted today.'); renderGroupsPane(); }
+    else if(a==='bk-verify'){ var n4 = bulkPatch({verified:true,verifiedAt:Date.now()},'bulk verify'); fbgToast('Verified '+plural(n4,'group')+'.'); renderGroupsPane(); }
+    else if(a==='bk-copy'){ var rows = selectedRows(); copyText(rows.map(function(r){ return groupLine(r.rec); }).join('\n'),'Copied '+plural(rows.length,'group')); }
+    else if(a==='bk-tpl') openAddSelectedToTemplate(selectedRows());
+    else if(a==='bk-del'){
+      var rs = selectedRows(); if(!rs.length) return;
+      var ok = await confirmBox('Delete '+plural(rs.length,'group')+' everywhere?','They will be removed from every template they are saved in. You can bring them back from the Health tab (Recently deleted).','Delete');
+      if(!ok) return;
+      var set = {}; rs.forEach(function(r){ set[r.ident] = 1; }); var l2 = fbgLibLoad();
+      l2.forEach(function(t){ t.groups = (t.groups||[]).filter(function(g){ return !set[gIdent(g)]; }); });
+      fbgLibSave(l2,{label:'delete groups'}); gv.sel = {}; fbgRenderLibrary(); renderGroupsPane(); fbgToast('Deleted '+plural(rs.length,'group')+'.');
+    }
+  });
+  $('fbg-gv-reset').addEventListener('click',function(){ var keep = {sortKey:gv.sortKey,sortDir:gv.sortDir}; gv = {q:'',status:'*',rules:'*',prio:'*',owner:'*',kind:'*',tpl:'*',tag:'*',showDead:false,preset:'all',sortKey:keep.sortKey,sortDir:keep.sortDir,limit:200,sel:gv.sel}; $('fbg-gv-q').value = ''; renderGroupsPane(); });
+  $('fbg-gv-csv').addEventListener('click',function(){ if(!gvRows.length){ fbgToast('No groups to export.'); return; } downloadCSV(gvToCsv(gvRows),'tgk-fb-groups-'+new Date().toISOString().slice(0,10)+'.csv'); });
+}
+function openAddSelectedToTemplate(rows){
+  var l = fbgLibLoad(); if(!rows.length) return;
+  var ov = showModal('<div class="fbg-modal-title">Add '+plural(rows.length,'group')+' to a template</div><div class="fbg-modal-sub">They stay where they are too. Groups the template already has are skipped; tracking info (status, rules, owner…) comes along.</div>'
+    +'<select class="fbg-modal-input" id="fbg-at-sel" data-autofocus>'+tplOptionsHtml(l,'',false,'— Choose a template —')+'</select>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save">Add</button></div>');
+  ov.addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='cancel'){ closeModal(); return; }
+    var key = val('fbg-at-sel'); if(!key){ fbgToast('Choose a template.'); return; }
+    var l2 = fbgLibLoad(), t = tplByKey(l2,key); if(!t) return;
+    var added = insertGroups(t,rows.map(function(r){ return r.rec; }));
+    if(added) fbgLibSave(l2,{label:'add to template'});
+    closeModal(true); fbgOpen[key] = true; fbgRenderLibrary();
+    fbgToast(added ? 'Added '+plural(added,'group')+' to '+tplLabel(t)+'.' : 'Nothing new — they’re already in '+tplLabel(t)+'.');
+  });
+}
+
+/* tabs */
+function showPane(name){
+  activePane = name;
+  document.querySelectorAll('#fbg-main-tabs .fbg-tab').forEach(function(b){ b.classList.toggle('active',b.dataset.pane===name); });
+  document.querySelectorAll('.fbg-pane').forEach(function(p){ p.classList.toggle('active',p.id==='fbg-pane-'+name); });
+  refreshActivePane();
+}
+function refreshActivePane(){
+  if(activePane==='groups') renderGroupsPane();
+  else if(activePane==='plan' && typeof renderPlanPane==='function') renderPlanPane();
+  else if(activePane==='health' && typeof renderHealthPane==='function') renderHealthPane();
+  updateTabCounts();
+}
+function updateTabCounts(){
+  if(typeof updateLibHint==='function') updateLibHint();
+  var c = $('fbg-cnt-groups'); if(c){ var n = allGroups().length; c.textContent = n||''; }
+  var h = $('fbg-cnt-health'); if(h && typeof healthIssueCount==='function'){ var k = healthIssueCount(); h.textContent = k||''; h.classList.toggle('warn',k>0); }
+}
+
+/* ════════ Launch Plan: product → chassis/cars → the groups to work, in priority order ════════ */
+var pl = {product:'',free:'',fits:{},sel:{}}, planBuilt = false;
+var PL_SECTIONS = [
+  ['ready','Ready to post','Joined and promo is allowed'],
+  ['check','Check the rules first','Joined, but you haven’t recorded the promo rules'],
+  ['approval','Ask an admin first','Joined, but posts need admin approval'],
+  ['join','Join first','Not joined yet — worth requesting'],
+  ['skip','Skip','No promo, rejected, banned or dead']];
+function planSection(g){
+  if(g.dead || g.status==='rejected' || g.status==='banned' || g.rules==='banned') return 'skip';
+  if(g.status==='joined'){ if(g.rules==='allowed') return 'ready'; if(g.rules==='approval') return 'approval'; return 'check'; }
+  return 'join';
+}
+function productName(){
+  var t = tplById(fbgLibLoad(),pl.product);
+  return t ? (t.model+(t.make?' ('+t.make+')':'')) : (pl.free||'');
+}
+function planRows(){
+  var l = fbgLibLoad(), byId = {}; l.forEach(function(t){ byId[t.id] = t; });
+  var pt = byId[pl.product] || null, src = {};
+  function addT(t,why){ if(!t) return; var s = src[t.id] || (src[t.id] = {t:t,why:[]}); if(s.why.indexOf(why)===-1) s.why.push(why); }
+  if(pt) addT(pt,'product template');
+  Object.keys(pl.fits).filter(function(id){ return pl.fits[id]; }).forEach(function(id){
+    var t = byId[id]; if(!t) return; var k = tplKind(t);
+    addT(t,k==='chassis' ? 'chassis '+t.model : 'car '+tplLabel(t));
+    if(k==='car' && t.chassisId) addT(byId[t.chassisId],'chassis of '+tplLabel(t));
+    if(k==='chassis') l.filter(function(c){ return c.chassisId===t.id; }).forEach(function(c){ addT(c,'car on '+t.model); });
+  });
+  var map = {}, rows = [];
+  Object.keys(src).forEach(function(id){ var s = src[id];
+    (s.t.groups||[]).forEach(function(g){
+      var gid = gIdent(g), r = map[gid];
+      if(!r){ r = map[gid] = {ident:gid,rec:g,tpls:[],why:[]}; rows.push(r); } else if(ts(g)>ts(r.rec)) r.rec = g;
+      r.tpls.push({key:s.t.key,id:s.t.id,label:tplLabel(s.t),kind:tplKind(s.t)});
+      s.why.forEach(function(w){ if(r.why.indexOf(w)===-1) r.why.push(w); });
+    }); });
+  return rows;
+}
+function planGrouped(){
+  var by = {}; PL_SECTIONS.forEach(function(s){ by[s[0]] = []; });
+  planRows().forEach(function(r){ by[planSection(r.rec)].push(r); });
+  var po = {A:0,B:1,C:2};
+  Object.keys(by).forEach(function(k){ by[k].sort(function(a,b){
+    var da = isDue(a.rec)?0:1, db = isDue(b.rec)?0:1; if(da!==db) return da-db;
+    var pa = po[a.rec.priority]===undefined?9:po[a.rec.priority], pb = po[b.rec.priority]===undefined?9:po[b.rec.priority]; if(pa!==pb) return pa-pb;
+    return (b.rec.members||0)-(a.rec.members||0); }); });
+  return by;
+}
+var PL_COLS = ['sel','name','members','status','rules','prio','posted','owner','from','act'];
+function planSelected(){ var by = planGrouped(), out = []; PL_SECTIONS.forEach(function(s){ by[s[0]].forEach(function(r){ if(pl.sel[r.ident]) out.push(r); }); }); return out; }
+
+function renderPlanPane(){
+  var host = $('fbg-pane-plan'); if(!host) return;
+  var l = fbgLibLoad(), prods = l.filter(function(t){ return tplKind(t)==='product'; });
+  if(!planBuilt){ host.innerHTML = '<div class="fbg-pl"><div class="fbg-pl-card" id="fbg-pl-form"></div><div id="fbg-pl-bar"></div><div id="fbg-pl-out"></div></div>'; planBuilt = true; bindPlanPane(); }
+  var form = $('fbg-pl-form');
+  var pool = l.filter(function(t){ return tplKind(t)!=='product'; });
+  var chips = ['chassis','car'].map(function(k){
+    var items = pool.filter(function(t){ return tplKind(t)===k; }).sort(function(a,b){ return tplLabel(a).localeCompare(tplLabel(b)); });
+    return items.length ? '<div class="fbg-pl-fitrow"><span class="fbg-pl-fitlbl">'+(k==='chassis'?'Chassis':'Cars')+'</span>'+items.map(function(t){ return '<button type="button" class="fbg-chip'+(pl.fits[t.id]?' on':'')+'" data-act="pl-fit" data-id="'+esc(t.id)+'">'+esc(k==='chassis'?(t.make+' '+t.model):tplLabel(t))+'</button>'; }).join('')+'</div>' : '';
+  }).join('');
+  form.innerHTML = '<div class="fbg-pl-head"><div><div class="fbg-pl-title">Launch Plan</div><div class="fbg-pl-sub">Pick a product and what it fits — you get every group worth working, ranked, with what to do first.</div></div></div>'
+    +'<div class="fbg-pl-row"><label class="fbg-gv-f"><span>Product</span><select id="fbg-pl-prod" class="fbg-tsel"'+ctlAttr('x','')+'><option value="">— choose a product template —</option>'
+    +prods.map(function(t){ return '<option value="'+esc(t.id)+'"'+(pl.product===t.id?' selected':'')+'>'+esc(tplLabel(t))+'</option>'; }).join('')+'<option value="__free__"'+(pl.product==='__free__'?' selected':'')+'>New product (type a name)…</option></select></label>'
+    +(pl.product==='__free__' ? '<label class="fbg-gv-f"><span>Name</span><input id="fbg-pl-free" class="fbg-tin" style="'+CTL_BASE+'width:220px!important" value="'+esc(pl.free)+'" placeholder="e.g. B9 S4 intake"/></label>' : '')+'</div>'
+    +'<div class="fbg-pl-fits"><div class="fbg-gv-f"><span>Fits</span></div>'+(chips||'<div class="fbg-hint">Add some chassis or car templates first — then pick what this product fits.</div>')+'</div>';
+  renderPlanOut();
+}
+function renderPlanOut(){
+  var out = $('fbg-pl-out'), bar = $('fbg-pl-bar'); if(!out) return;
+  var fitCount = Object.keys(pl.fits).filter(function(k){ return pl.fits[k]; }).length;
+  if(!pl.product && !fitCount){ out.innerHTML = '<div class="fbg-empty" style="padding:36px 20px"><div class="fbg-empty-icon"><span class="ic ic-rocket"></span></div><div class="fbg-empty-title">Pick what you’re launching</div><div class="fbg-empty-sub">Choose a product template and/or tap the chassis and cars it fits above.</div></div>'; bar.innerHTML = ''; return; }
+  var by = planGrouped(), total = 0, due = 0; PL_SECTIONS.forEach(function(s){ total += by[s[0]].length; by[s[0]].forEach(function(r){ if(isDue(r.rec)) due++; }); });
+  var nSel = Object.keys(pl.sel).filter(function(k){ return pl.sel[k]; }).length;
+  bar.innerHTML = '<div class="fbg-pl-sum"><b>'+plural(total,'group')+'</b> for <b>'+esc(productName()||'this launch')+'</b> · '+by.ready.length+' ready · '+(by.check.length+by.approval.length)+' to check or ask · '+by.join.length+' to join'+(due?' · <span class="fbg-flag due">'+due+' due</span>':'')+'</div>'
+    +'<div class="fbg-gv-bulk show"><span class="fbg-gv-bn">'+(nSel?nSel+' selected':'Select groups to act on them')+'</span><span class="fbg-gv-sp"></span>'
+    +'<button type="button" class="fbg-gbtn" data-act="pl-selready">Select all ready</button>'
+    +(nSel?'<button type="button" class="fbg-gbtn" data-act="pl-posted">Posted today</button><button type="button" class="fbg-gbtn paste" data-act="pl-draft">Draft posts…</button><button type="button" class="fbg-gbtn" data-act="pl-copy">Copy list</button><button type="button" class="fbg-gbtn" data-act="pl-csv">⬇ CSV</button><button type="button" class="fbg-gbtn" data-act="pl-clear">Clear</button>':'')+'</div>';
+  if(!total){ out.innerHTML = '<div class="fbg-empty" style="padding:30px 20px"><div class="fbg-empty-title">No saved groups for this yet</div><div class="fbg-empty-sub">The templates you picked don’t have any groups. Search for them on the Find tab and save the keepers.</div></div>'; return; }
+  out.innerHTML = PL_SECTIONS.filter(function(s){ return by[s[0]].length; }).map(function(s){
+    var k = s[0]; return '<div class="fbg-pl-sec sec-'+k+'" data-sec="'+k+'"><div class="fbg-pl-sech"><span class="fbg-pl-secn">'+s[1]+' <b>'+by[k].length+'</b></span><span class="fbg-pl-secs">'+s[2]+'</span></div>'
+      +'<div class="fbg-gv-tablewrap" data-sec="'+k+'">'+tableHtml(by[k],PL_COLS,pl.sel,false)+'</div></div>'; }).join('');
+  PL_SECTIONS.forEach(function(s){ var w = out.querySelector('.fbg-gv-tablewrap[data-sec="'+s[0]+'"]'); if(w) bindGroupTable(w,planCtx(s[0],by[s[0]])); });
+}
+var planRefreshT = null;
+function planCtx(sec,rows){
+  return {get sel(){ return pl.sel; }, setSel:function(o){ rows.forEach(function(r){ delete pl.sel[r.ident]; }); Object.keys(o).forEach(function(k){ pl.sel[k] = true; }); return pl.sel; },
+    visibleRows:function(){ return rows; },
+    selChanged:function(){ var bar = $('fbg-pl-bar'); if(bar) renderPlanOutBarOnly(); },
+    rerender:function(){ renderPlanOut(); },
+    afterInline:function(f){ if(f==='status' || f==='rules'){ clearTimeout(planRefreshT); planRefreshT = setTimeout(renderPlanOut,250); } else renderPlanOutBarOnly(); }};
+}
+function renderPlanOutBarOnly(){
+  var bar = $('fbg-pl-bar'); if(!bar) return;
+  // rebuild only the action bar (keeps the tables, scroll and focus)
+  var nSel = Object.keys(pl.sel).filter(function(k){ return pl.sel[k]; }).length, by = planGrouped(), total = 0, due = 0;
+  PL_SECTIONS.forEach(function(s){ total += by[s[0]].length; by[s[0]].forEach(function(r){ if(isDue(r.rec)) due++; }); });
+  bar.innerHTML = '<div class="fbg-pl-sum"><b>'+plural(total,'group')+'</b> for <b>'+esc(productName()||'this launch')+'</b> · '+by.ready.length+' ready · '+(by.check.length+by.approval.length)+' to check or ask · '+by.join.length+' to join'+(due?' · <span class="fbg-flag due">'+due+' due</span>':'')+'</div>'
+    +'<div class="fbg-gv-bulk show"><span class="fbg-gv-bn">'+(nSel?nSel+' selected':'Select groups to act on them')+'</span><span class="fbg-gv-sp"></span>'
+    +'<button type="button" class="fbg-gbtn" data-act="pl-selready">Select all ready</button>'
+    +(nSel?'<button type="button" class="fbg-gbtn" data-act="pl-posted">Posted today</button><button type="button" class="fbg-gbtn paste" data-act="pl-draft">Draft posts…</button><button type="button" class="fbg-gbtn" data-act="pl-copy">Copy list</button><button type="button" class="fbg-gbtn" data-act="pl-csv">⬇ CSV</button><button type="button" class="fbg-gbtn" data-act="pl-clear">Clear</button>':'')+'</div>';
+}
+function bindPlanPane(){
+  var host = $('fbg-pane-plan');
+  host.addEventListener('change',function(e){
+    if(e.target.id==='fbg-pl-prod'){
+      pl.product = e.target.value; pl.sel = {};
+      var t = tplById(fbgLibLoad(),pl.product); pl.fits = {};
+      if(t) (t.fitsIds||[]).forEach(function(id){ pl.fits[id] = true; });
+      renderPlanPane();
+    }
+  });
+  host.addEventListener('input',function(e){ if(e.target.id==='fbg-pl-free'){ pl.free = e.target.value.trim(); renderPlanOutBarOnly(); } });
+  host.addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
+    if(a==='pl-fit'){ pl.fits[b.dataset.id] = !pl.fits[b.dataset.id]; pl.sel = {}; b.classList.toggle('on',!!pl.fits[b.dataset.id]); renderPlanOut(); }
+    else if(a==='pl-selready'){ var by = planGrouped(); by.ready.forEach(function(r){ pl.sel[r.ident] = true; }); renderPlanOut(); }
+    else if(a==='pl-clear'){ pl.sel = {}; renderPlanOut(); }
+    else if(a==='pl-posted'){ var n = markPosted(Object.keys(pl.sel).filter(function(k){ return pl.sel[k]; })); fbgToast('Marked '+plural(n,'group')+' as posted today.'); renderPlanOut(); }
+    else if(a==='pl-copy'){ var rs = planSelected(); copyText(rs.map(function(r){ return groupLine(r.rec); }).join('\n'),'Copied '+plural(rs.length,'group')); }
+    else if(a==='pl-csv'){ var rs2 = planSelected(); downloadCSV(gvToCsv(rs2),'tgk-launch-plan-'+(productName()||'plan').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.csv'); }
+    else if(a==='pl-draft') openDraftPosts(planSelected());
+  });
+}
+
+/* AI-drafted, rule-aware posts (written for you to post by hand) */
+function openDraftPosts(rows){
+  if(!rows.length){ fbgToast('Select some groups first.'); return; }
+  if(rows.length>8){ fbgToast('Pick 8 groups or fewer at a time.'); return; }
+  var ov = showModal('<div class="fbg-modal-title">Draft posts</div>'
+    +'<div class="fbg-modal-sub">'+plural(rows.length,'group')+' · written to be posted by hand. Each draft follows the group’s promo rules; where permission is needed you also get a short message for the admins. Check everything before posting.</div>'
+    +'<div class="fbg-modal-row2"><div><div class="fbg-field-lbl" style="margin-top:0">Product</div><input class="fbg-modal-input" id="fbg-dp-prod" value="'+esc(productName())+'" placeholder="e.g. B9 S4 downpipe" data-autofocus/></div>'
+    +'<div><div class="fbg-field-lbl" style="margin-top:0">Tone</div><select class="fbg-modal-input" id="fbg-dp-tone"><option>Helpful enthusiast</option><option>Straight to the point</option><option>Friendly and casual</option></select></div></div>'
+    +'<div class="fbg-field-lbl">What’s worth saying (facts only — the draft won’t invent specs or prices)</div><textarea class="fbg-modal-input" id="fbg-dp-points" rows="4" placeholder="e.g. Catted, direct bolt-on, 3&quot; piping, made in-house. Lead time 2 weeks."></textarea>'
+    +'<div class="fbg-field-lbl">Link (optional)</div><input class="fbg-modal-input" id="fbg-dp-link" placeholder="https://tgkmotorsport.com/…"/>'
+    +'<div id="fbg-dp-out"></div>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Close</button><button class="fbg-modal-save" data-act="gen">Write drafts</button></div>',null,true);
+  var busy = false;
+  ov.addEventListener('click',async function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
+    if(a==='cancel'){ closeModal(); return; }
+    if(a==='copy'){ var ta = ov.querySelector('#'+b.dataset.t); if(ta) copyText(ta.value,'Copied'); return; }
+    if(a==='open'){ openUrl(b.dataset.url); return; }
+    if(a==='posted'){ markPosted([b.dataset.ident]); b.textContent = 'Marked ✓'; b.disabled = true; return; }
+    if(a==='gen'){
+      if(busy) return;
+      var prod = val('fbg-dp-prod'), points = val('fbg-dp-points');
+      if(!prod){ fbgToast('Enter the product name.'); return; }
+      busy = true; b.disabled = true; b.textContent = 'Writing…';
+      var out = $('fbg-dp-out'); out.innerHTML = '<div class="fbg-hint" style="margin-top:12px">Writing '+plural(rows.length,'draft')+'… about 15–30 seconds.</div>';
+      try{
+        var res = await draftPosts(rows,prod,points,val('fbg-dp-link'),val('fbg-dp-tone'));
+        out.innerHTML = res.map(function(x,i){
+          var r = x.row, g = r.rec, need = g.rules!=='allowed';
+          return '<div class="fbg-dp-card"><div class="fbg-dp-h"><b>'+esc(g.name)+'</b><span class="fbg-dp-r rl-'+(g.rules||'unk')+'">'+esc(labelOf(RULES,g.rules)||'Promo unknown')+'</span></div>'
+            +(x.adminMessage?'<div class="fbg-field-lbl">Message the admins first</div><textarea class="fbg-modal-input" id="fbg-dp-a'+i+'" rows="3">'+esc(x.adminMessage)+'</textarea><div class="fbg-dp-btns"><button type="button" class="fbg-gbtn" data-act="copy" data-t="fbg-dp-a'+i+'">Copy message</button></div>':'')
+            +'<div class="fbg-field-lbl">'+(need?'Post (after they say yes)':'Post')+'</div><textarea class="fbg-modal-input" id="fbg-dp-p'+i+'" rows="6">'+esc(x.post)+'</textarea>'
+            +'<div class="fbg-dp-btns"><button type="button" class="fbg-gbtn paste" data-act="copy" data-t="fbg-dp-p'+i+'">Copy post</button><button type="button" class="fbg-gbtn" data-act="open" data-url="'+esc(hasRealLink(g)?g.url:fbSearchUrl(g.name))+'">Open group ↗</button><button type="button" class="fbg-gbtn" data-act="posted" data-ident="'+esc(r.ident)+'">Mark posted today</button></div></div>';
+        }).join('');
+        b.textContent = 'Write again';
+      }catch(err){ out.innerHTML = '<div class="fbg-hint" style="margin-top:12px;color:#f87171">'+esc(errMsg(err))+'</div>'; b.textContent = 'Try again'; }
+      busy = false; b.disabled = false;
+    }
+  });
+}
+async function draftPosts(rows,prod,points,link,tone){
+  var system = 'You write Facebook group posts for TGK Motorsport, a performance-parts brand for European cars (Audi, VW, BMW). The person posts them BY HAND in car-enthusiast Facebook groups. '
+    +'Write like a real enthusiast who works at the shop, not an advertisement. Rules: lead with something useful or interesting for that group; mention the product naturally; include one short line disclosing that you work at (or own) TGK Motorsport; '
+    +'NEVER invent specs, prices, dyno numbers, fitment or availability — use ONLY the facts provided; no hashtags; at most 2 emojis; 60-110 words; end with a question that invites discussion. '
+    +'Respect each group\'s promo rules: if the rules are "approval" or "unknown", ALSO write a short, polite message (2-3 sentences) asking the admins for permission before posting; if the rules are "allowed", adminMessage must be an empty string. '
+    +'Return ONLY a JSON array, no markdown: [{"name":"<exact group name>","post":"...","adminMessage":"..."}]';
+  var user = 'Product: '+prod+'\nTone: '+tone+'\nFacts you may use:\n'+(points||'(none given — keep it general and ask a question)')+(link?'\nLink to include: '+link:'')+'\n\nGroups:\n'
+    +rows.map(function(r,i){ var g = r.rec; return (i+1)+'. "'+g.name+'" — about '+(g.members>0?fbgFmt(g.members)+' members':'unknown size')+'; promo rules: '+(g.rules||'unknown')+(g.desc?'; notes: '+g.desc:''); }).join('\n');
+  var d = await aiCall({model:FBG_MODEL,max_tokens:3500,system:system,messages:[{role:'user',content:user}]});
+  var text = (d.content||[]).filter(function(b){ return b.type==='text'; }).map(function(b){ return b.text; }).join('');
+  var arr = extractArray(text), used = {};
+  return rows.map(function(r,i){
+    var x = arr.find(function(a){ return a && String(a.name||'').toLowerCase()===String(r.rec.name).toLowerCase() && !used[a.name]; }) || arr[i] || {};
+    if(x.name) used[x.name] = 1;
+    return {row:r,post:String(x.post||''),adminMessage:r.rec.rules==='allowed' ? '' : String(x.adminMessage||'')};
+  });
+}
+
+/* Fitment → chassis links */
+function normModel(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function modelMatch(vm,cm){ var a = normModel(vm), b = normModel(cm); if(!a || !b) return false; return a===b || (a.length>=2 && b.indexOf(a)!==-1) || (b.length>=2 && a.indexOf(b)!==-1); }
+function inYears(v,year){ var y = parseInt(year,10); if(!y) return true; var f = parseInt(v.year_from,10), t = parseInt(v.year_to,10); if(!f && !t) return true; return y>=(f||0) && y<=(t||9999); }
+function chassisCode(v){ return String(v.chassis||v.platform||'').trim(); }
+async function fitmentVehicles(){
+  var F = window.FM; if(!F) return null;
+  if(!F.loaded && typeof window.fmLoad==='function'){ try{ await window.fmLoad(); }catch(e){} }
+  return (F.vehicles && F.vehicles.length) ? F.vehicles : null;
+}
+async function openFitmentLink(){
+  var veh = await fitmentVehicles();
+  if(!veh){ fbgToast('Fitment data isn’t loaded — open the Fitment tool once (signed in), then try again.'); return; }
+  var l = fbgLibLoad(), props = [], amb = [], already = 0;
+  l.filter(function(t){ return tplKind(t)==='car'; }).forEach(function(c){
+    if(c.chassisId && tplById(l,c.chassisId)){ already++; return; }
+    var cand = veh.filter(function(v){ return String(v.make||'').toLowerCase()===String(c.make||'').toLowerCase() && modelMatch(v.model,c.model) && inYears(v,c.year); });
+    var codes = []; cand.forEach(function(v){ var k = chassisCode(v); if(k && codes.indexOf(k)===-1) codes.push(k); });
+    if(codes.length===1) props.push({car:c,make:cand[0].make,code:codes[0]}); else if(codes.length>1) amb.push({car:c,codes:codes,make:cand[0].make});
+  });
+  var makes = {}; l.forEach(function(t){ if(t.make) makes[String(t.make).toLowerCase()] = 1; });
+  var extra = {}; veh.forEach(function(v){ var k = chassisCode(v); if(!k || !makes[String(v.make||'').toLowerCase()]) return; var key = fbgCarKey('',v.make,k,'chassis'); if(!tplByKey(l,key) && !props.some(function(p){ return fbgCarKey('',p.make,p.code,'chassis')===key; })) extra[key] = {make:v.make,code:k}; });
+  var extraList = Object.keys(extra).map(function(k){ return extra[k]; }).sort(function(a,b){ return (a.make+a.code).localeCompare(b.make+b.code); }).slice(0,60);
+  if(!props.length && !amb.length && !extraList.length){ fbgToast(already?'Every car already has a chassis link.':'No matches found in Fitment for your cars.'); return; }
+  var ov = showModal('<div class="fbg-modal-title">Auto-link from Fitment</div><div class="fbg-modal-sub">Matched your car templates to Fitment vehicles (same make, model and year range). Missing chassis templates are created for you.</div>'
+    +(props.length?'<div class="fbg-sect" style="margin-top:6px">Matches ('+props.length+')</div><div class="fbg-checklist" id="fbg-fl-props">'+props.map(function(p,i){ return '<label><input type="checkbox" checked data-i="'+i+'"/> '+esc(tplLabel(p.car))+' <span class="fbg-dim">→</span> <b>'+esc(p.make+' '+p.code)+'</b></label>'; }).join('')+'</div>':'')
+    +(amb.length?'<div class="fbg-sect">Several chassis possible — pick one ('+amb.length+')</div><div id="fbg-fl-amb">'+amb.map(function(a,i){ return '<div class="fbg-fl-amb"><span>'+esc(tplLabel(a.car))+'</span><select class="fbg-modal-input" data-i="'+i+'"><option value="">skip</option>'+a.codes.map(function(c){ return '<option>'+esc(c)+'</option>'; }).join('')+'</select></div>'; }).join('')+'</div>':'')
+    +(extraList.length?'<div class="fbg-sect">Other chassis Fitment has for makes you use</div><div class="fbg-checklist" id="fbg-fl-extra">'+extraList.map(function(x,i){ return '<label><input type="checkbox" data-i="'+i+'"/> '+esc(x.make+' '+x.code)+'</label>'; }).join('')+'</div><div class="fbg-hint">Ticked ones are created as empty chassis templates, ready to search.</div>':'')
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="apply">Apply</button></div>',null,true);
+  ov.addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; if(b.dataset.act==='cancel'){ closeModal(); return; }
+    var l2 = fbgLibLoad(), made = 0, linked = 0;
+    function chassisFor(make,code){ var key = fbgCarKey('',make,code,'chassis'), r = createTemplate(l2,'chassis',{make:make,model:code}); if(!r.existed) made++; return r.tpl; }
+    ov.querySelectorAll('#fbg-fl-props input:checked').forEach(function(c){ var p = props[+c.dataset.i], car = tplByKey(l2,p.car.key); if(car){ car.chassisId = chassisFor(p.make,p.code).id; linked++; } });
+    ov.querySelectorAll('#fbg-fl-amb select').forEach(function(s){ if(!s.value) return; var a = amb[+s.dataset.i], car = tplByKey(l2,a.car.key); if(car){ car.chassisId = chassisFor(a.make,s.value).id; linked++; } });
+    ov.querySelectorAll('#fbg-fl-extra input:checked').forEach(function(c){ var x = extraList[+c.dataset.i]; chassisFor(x.make,x.code); });
+    if(linked || made){ fbgLibSave(l2,{label:'link cars to chassis'}); }
+    closeModal(true); fbgRenderLibrary(); fbgPopulateCarDropdowns();
+    fbgToast('Linked '+plural(linked,'car')+(made?' · created '+plural(made,'chassis template'):'')+'.');
+  });
+}
+
+/* ════════ Find tab extras: what's already in your library · NEW since last time · library hint ════════ */
+var fbgHideKnown = false;
+function libIndex(){
+  var by = {}, nm = {};
+  fbgLibLoad().forEach(function(t){ (t.groups||[]).forEach(function(g){
+    var item = {label:tplLabel(t),key:t.key,status:g.status||''};
+    (by[gIdent(g)] = by[gIdent(g)] || []).push(item);
+    var n = String(g.name||'').trim().toLowerCase(); (nm[n] = nm[n] || []).push(item);
+  }); });
+  return {by:by,nm:nm};
+}
+function libMatch(idx,g){
+  var a = (g.url ? idx.by[gIdent(g)] : null) || idx.nm[String(g.name||'').trim().toLowerCase()];
+  return a && a.length ? a : null;
+}
+function updateLibHint(){
+  var el = $('fbg-libhint'); if(!el) return;
+  var q = val('fbg-search').toLowerCase(), toks = q.split(/[\s,\/]+/).filter(function(x){ return x.length>=2; });
+  if(!toks.length){ el.classList.remove('show'); el.innerHTML = ''; return; }
+  var l = fbgLibLoad();
+  var tpls = l.filter(function(t){ var lab = tplLabel(t).toLowerCase(); return toks.every(function(x){ return lab.indexOf(x)!==-1; }); });
+  var inTpl = {}; tpls.forEach(function(t){ inTpl[t.id] = 1; });
+  var gm = 0, seen = {};
+  l.forEach(function(t){ if(inTpl[t.id]) return; (t.groups||[]).forEach(function(g){ var id = gIdent(g); if(seen[id]) return; var n = String(g.name||'').toLowerCase(); if(toks.every(function(x){ return n.indexOf(x)!==-1; })){ seen[id] = 1; gm++; } }); });
+  if(!tpls.length && !gm){ el.classList.remove('show'); el.innerHTML = ''; return; }
+  el.innerHTML = '<span>Already in your library:</span>'+tpls.slice(0,4).map(function(t){ return '<button type="button" class="fbg-tchip" data-act="hint-tpl" data-key="'+esc(t.key)+'">'+esc(tplLabel(t))+' · '+plural((t.groups||[]).length,'group')+'</button>'; }).join('')
+    +(gm?'<span class="fbg-dim">+ '+plural(gm,'matching group')+' in other templates</span>':'')+'<span class="fbg-dim">— or search the web for new ones</span>';
+  el.classList.add('show');
+}
+/* ════════ Health: what needs attention + safety net ════════ */
+function healthReport(){
+  var l = fbgLibLoad(), all = allGroups();
+  return {
+    thin: l.filter(function(t){ return (t.groups||[]).length<3; }),
+    unlinked: l.filter(function(t){ return tplKind(t)==='car' && !(t.chassisId && tplById(l,t.chassisId)); }),
+    prodNoFits: l.filter(function(t){ return tplKind(t)==='product' && !(t.fitsIds||[]).length; }),
+    due: all.filter(function(r){ return isDue(r.rec); }).length,
+    check: all.filter(function(r){ return needsCheck(r.rec); }).length,
+    dead: all.filter(function(r){ return r.rec.dead; }).length,
+    nolink: all.filter(function(r){ return !hasRealLink(r.rec) && !r.rec.dead; }).length,
+    total: all.length
+  };
+}
+function healthIssueCount(){ var h = healthReport(); return [h.thin.length,h.unlinked.length,h.prodNoFits.length,h.due,h.check,h.dead,h.nolink].filter(function(n){ return n>0; }).length; }
+function renderHealthSyncLine(){
+  var el = $('fbg-hl-sync'); if(!el) return;
+  el.className = 'fbg-sync '+eng.state;
+  el.textContent = eng.state==='ok' ? '● Synced '+ago(eng.last) : eng.state==='saving' ? '● Saving…' : eng.state==='error' ? '⚠ Not saved to cloud' : '● Syncing…';
+}
+function renderHealthPane(){
+  var host = $('fbg-pane-health'); if(!host) return;
+  if(!host._bound){ host._bound = true; bindHealthPane(host); }
+  var h = healthReport(), S = settings(), snaps = eng.meta.snaps.slice().sort(function(a,b){ return b.t-a.t; }), trash = trashList();
+  function card(cls,n,title,sub,btn){ return '<div class="fbg-hl-card '+(n?'warn':'ok')+' '+cls+'"><div class="fbg-hl-n">'+n+'</div><div class="fbg-hl-t"><b>'+title+'</b><span>'+sub+'</span></div>'+(n&&btn?btn:'')+'</div>'; }
+  var view = function(p,label){ return '<button type="button" class="fbg-gbtn" data-act="hl-view" data-p="'+p+'">'+(label||'View')+'</button>'; };
+  var thinHtml = h.thin.length ? '<div class="fbg-hl-card"><div class="fbg-hl-list">'+h.thin.slice().sort(function(a,b){ return (a.groups||[]).length-(b.groups||[]).length; }).map(function(t){
+    var k = tplKind(t), n = (t.groups||[]).length;
+    return '<div class="fbg-hl-li"><span class="fbg-car-icon">'+kindIcon(k)+'</span><span class="fbg-hl-li-n">'+esc(tplLabel(t))+'</span><span class="fbg-dim">'+(n?plural(n,'group'):'no groups')+'</span><span class="fbg-gv-sp"></span>'
+      +'<button type="button" class="fbg-gbtn paste" data-act="hl-search" data-key="'+esc(t.key)+'">Search now</button><button type="button" class="fbg-gbtn" data-act="hl-open" data-key="'+esc(t.key)+'">Open</button></div>'; }).join('')+'</div></div>' : '';
+  host.innerHTML = '<div class="fbg-hl">'
+    +'<div class="fbg-hl-card sync"><div class="fbg-hl-t"><b>Sync &amp; backup</b><span>Your library saves in this browser instantly and syncs to the cloud. Two people editing at once are merged, never overwritten.</span></div>'
+    +'<span class="fbg-sync '+eng.state+'" id="fbg-hl-sync"></span><button type="button" class="fbg-gbtn" data-act="hl-sync">Sync now</button><button type="button" class="fbg-gbtn" data-act="hl-backup">⬇ Download backup</button><button type="button" class="fbg-gbtn" data-act="hl-restorefile">Restore from file…</button><input type="file" id="fbg-hl-file" accept=".json,application/json" hidden/></div>'
+    +'<div class="fbg-hl-sech">Needs attention</div><div class="fbg-hl-grid">'
+    +card('due',h.due,'Due to post','Joined groups you haven’t posted in for '+S.cadence+'+ days',view('due'))
+    +card('check',h.check,'Needs checking','Never verified, or not checked in '+S.recheck+'+ days',view('check'))
+    +card('dead',h.dead,'Dead or renamed','Marked unavailable — hidden from lists',view('dead'))
+    +card('nolink',h.nolink,'No direct link','Saved by name only — open Facebook and add the link',view('nolink'))
+    +card('thin',h.thin.length,'Thin templates','Fewer than 3 groups — search to fill them up','')
+    +card('unlinked',h.unlinked.length,'Cars without a chassis','Link them so launches find the right groups','<button type="button" class="fbg-gbtn paste" data-act="hl-fitment">Auto-link from Fitment</button>')
+    +card('fits',h.prodNoFits.length,'Products without “fits”','Tell the plan which chassis and cars each product is for','')
+    +'</div>'+thinHtml
+    +'<div class="fbg-hl-sech">Safety net</div><div class="fbg-hl-two">'
+    +'<div class="fbg-hl-card col"><div class="fbg-hl-t"><b>Daily snapshots</b><span>The library as it was before the first change of each day. Restoring is undoable.</span></div>'
+    +(snaps.length ? '<div class="fbg-hl-list">'+snaps.map(function(s,i){ var tn = s.lib.length, gn = s.lib.reduce(function(x,t){ return x+(t.groups||[]).length; },0);
+        return '<div class="fbg-hl-li"><span class="fbg-hl-li-n">'+esc(s.day)+'</span><span class="fbg-dim">'+plural(tn,'template')+' · '+plural(gn,'group')+'</span><span class="fbg-gv-sp"></span><button type="button" class="fbg-gbtn" data-act="hl-snap" data-i="'+i+'">Restore</button></div>'; }).join('')+'</div>' : '<div class="fbg-hint">The first snapshot is taken the next time you change something.</div>')+'</div>'
+    +'<div class="fbg-hl-card col"><div class="fbg-hl-t"><b>Recently deleted</b><span>Kept for '+TRASH_DAYS+' days.</span></div>'
+    +(trash.length ? '<div class="fbg-hl-list">'+trash.slice(0,30).map(function(e,i){
+        return '<div class="fbg-hl-li"><span class="fbg-hl-li-n">'+esc(e.name)+'</span><span class="fbg-dim">'+(e.type==='tpl'?'template':'in '+esc(e.tplLabel||'?'))+' · '+ago(e.deletedAt)+'</span><span class="fbg-gv-sp"></span><button type="button" class="fbg-gbtn" data-act="hl-restore" data-t="'+e.type+'" data-id="'+esc(e.id)+'">Restore</button></div>'; }).join('')+'</div><div class="fbg-hl-foot"><button type="button" class="fbg-gbtn danger" data-act="hl-empty">Empty trash</button></div>' : '<div class="fbg-hint">Nothing deleted recently.</div>')+'</div></div>'
+    +'<div class="fbg-hl-sech">Settings</div><div class="fbg-hl-card set"><label class="fbg-gv-f"><span>Post cadence (days)</span><input type="number" min="1" max="365" class="fbg-tin" data-set="cadence"'+ctlAttr('x','')+' value="'+S.cadence+'"/></label>'
+    +'<label class="fbg-gv-f"><span>Re-verify every (days)</span><input type="number" min="7" max="720" class="fbg-tin" data-set="recheck"'+ctlAttr('x','')+' value="'+S.recheck+'"/></label>'
+    +'<div class="fbg-hint" style="flex:1">“Due to post” uses the cadence; “Needs checking” uses the re-verify interval.</div></div>'
+    +'</div>';
+  renderHealthSyncLine();
+}
+function restoreFromText(text){
+  var obj; try{ obj = JSON.parse(text); }catch(e){ fbgToast('That file isn’t valid JSON.'); return false; }
+  var lib = Array.isArray(obj) ? obj : (obj && (obj.library || obj.fbgLibrary));
+  if(!Array.isArray(lib) || lib.some(function(t){ return !t || !t.key || !Array.isArray(t.groups||[]); })){ fbgToast('That doesn’t look like a TGK FB Groups backup.'); return false; }
+  var gn = lib.reduce(function(s,t){ return s+(t.groups||[]).length; },0);
+  confirmBox('Restore this backup?','It replaces your current library with '+plural(lib.length,'template')+' and '+plural(gn,'group')+' from the file. You can undo this right after.','Restore').then(function(ok){
+    if(!ok) return; restoreState(lib,'restore backup'); renderHealthPane(); fbgToast('Backup restored — '+plural(lib.length,'template')+'.');
+  });
+  return true;
+}
+function bindHealthPane(host){
+  host.addEventListener('click',async function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
+    if(a==='hl-sync') syncNow();
+    else if(a==='hl-backup') downloadBackup();
+    else if(a==='hl-restorefile') $('fbg-hl-file').click();
+    else if(a==='hl-view'){ var p = b.dataset.p; gv.preset = p==='nolink'||p==='dead'||p==='due'||p==='check' ? p : 'all'; gv.limit = 200; showPane('groups'); }
+    else if(a==='hl-search'){ showPane('find'); searchTemplate(b.dataset.key); }
+    else if(a==='hl-open'){ focusTpl(b.dataset.key); }
+    else if(a==='hl-fitment') openFitmentLink();
+    else if(a==='hl-snap'){
+      var snaps = eng.meta.snaps.slice().sort(function(x,y){ return y.t-x.t; }), s = snaps[+b.dataset.i]; if(!s) return;
+      var ok = await confirmBox('Restore the snapshot from '+s.day+'?','This replaces your current library with how it was before that day’s first change ('+plural(s.lib.length,'template')+'). You can undo it right after.','Restore');
+      if(ok){ restoreState(s.lib,'restore snapshot'); renderHealthPane(); fbgToast('Restored the '+s.day+' snapshot.'); }
+    }
+    else if(a==='hl-restore'){ var en = eng.meta.trash.find(function(x){ return x.type===b.dataset.t && x.id===b.dataset.id; }); if(en && restoreTrash(en)) renderHealthPane(); }
+    else if(a==='hl-empty'){ var ok2 = await confirmBox('Empty the trash?','Everything in Recently deleted is gone for good.','Empty trash'); if(ok2){ purgeTrash(); renderHealthPane(); fbgToast('Trash emptied.'); } }
+  });
+  host.addEventListener('change',function(e){
+    var el = e.target;
+    if(el.id==='fbg-hl-file' && el.files && el.files[0]){ var fr = new FileReader(); fr.onload = function(){ restoreFromText(String(fr.result||'')); el.value = ''; }; fr.readAsText(el.files[0]); }
+    else if(el.dataset && el.dataset.set){ var n = parseInt(el.value,10); if(n>0){ var p = {}; p[el.dataset.set] = n; saveSettings(p); renderHealthPane(); updateTabCounts(); } }
+  });
+}
+
 /* ════════ Recovery (never lose a library to an empty/partial cloud copy) ════════ */
 var RESCUE_KEY = 'tgk_fbg_library_rescue';   // largest copy ever seen — stashed by the dashboard boot code
 function readJson(key){ try{ var a=JSON.parse(localStorage.getItem(key)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
@@ -13904,25 +15148,6 @@ function mergeInto(base,extra){
   });
   return r;
 }
-// The dashboard's cloud writes fail silently — read the cloud copy back and warn if it didn't stick.
-function verifyCloud(expected){
-  setTimeout(function(){
-    if(typeof sbGet!=='function') return;
-    sbGet('tgk_fbg_library').then(function(d){
-      var n = Array.isArray(d) ? d.length : 0;
-      if(n<expected) fbgToast('⚠ Cloud sync did not save — your templates are only in this browser right now.');
-    }).catch(function(){});
-  },1800);
-}
-function autoRescue(){
-  // The cloud copy came back EMPTY but this browser still has templates → the cloud is wrong, not the browser.
-  if(!Array.isArray(_fbgCache) || _fbgCache.length) return;
-  var local = readJson(FBG_LIBRARY_KEY); if(!local.length) return;
-  var base = [], r = mergeInto(base,local);
-  fbgLibSave(base);
-  fbgToast('Restored '+r.cars+' template'+(r.cars===1?'':'s')+' from this browser (the cloud copy was empty).');
-  verifyCloud(base.length);
-}
 async function recoverFromBrowser(){
   var src = []; mergeInto(src,readJson(RESCUE_KEY)); mergeInto(src,readJson(FBG_LIBRARY_KEY));
   var probe = JSON.parse(JSON.stringify(fbgLibLoad())), r = mergeInto(probe,src);
@@ -13932,7 +15157,6 @@ async function recoverFromBrowser(){
   var l = fbgLibLoad(); mergeInto(l,src); fbgLibSave(l);
   fbgRenderLibrary(); fbgPopulateCarDropdowns();
   fbgToast('Recovered '+r.cars+' template'+(r.cars===1?'':'s')+' and '+r.groups+' group'+(r.groups===1?'':'s')+'.');
-  verifyCloud(l.length);
 }
 
 /* ════════ Wiring ════════ */
@@ -13949,12 +15173,17 @@ function init(){
   $('fbg-lib-tab-add').addEventListener('click',function(){ switchLibTab('add'); });
   $('fbg-go').addEventListener('click',function(){ fbgSearch(); });
   $('fbg-search').addEventListener('keydown',function(e){ if(e.key==='Enter') fbgSearch(); });
+  $('fbg-search').addEventListener('input',updateLibHint);
+  $('fbg-libhint').addEventListener('click',function(e){ var b = e.target.closest('[data-act="hint-tpl"]'); if(b) focusTpl(b.dataset.key); });
   $('fbg-kind').addEventListener('change',function(){ fbgActiveKey = null; onKindChange(); });
   $('fbg-save-btn').addEventListener('click',openSave);
   $('fbg-refresh').addEventListener('click',function(){ fbgSearch(true); });
   $('fbg-new-tpl').addEventListener('click',function(){ openNewTemplate(); });
   $('fbg-export-lib').addEventListener('click',fbgExportLibrary);
   $('fbg-lib-filter').addEventListener('input',fbgRenderLibrary);
+  var ub = $('fbg-undo'); if(ub) ub.addEventListener('click',undoLast);
+  document.querySelectorAll('#fbg-main-tabs .fbg-tab').forEach(function(b){ b.addEventListener('click',function(){ showPane(b.dataset.pane); }); });
+  document.querySelectorAll('.fbg-sync').forEach(function(el){ el.addEventListener('click',function(){ syncNow(); }); });
   var rec = $('fbg-recover'); if(rec) rec.addEventListener('click',recoverFromBrowser);
   $('fbg-manual-save').addEventListener('click',fbgManualAddUrl);
   ['fbg-manual-name','fbg-manual-url','fbg-manual-members'].forEach(function(id){ $(id).addEventListener('keydown',function(e){ if(e.key==='Enter') fbgManualAddUrl(); }); });
@@ -13988,6 +15217,7 @@ function init(){
     else if(a==='export') exportResults();
     else if(a==='more') loadMore();
     else if(a==='copy') copyList();
+    else if(a==='hide-known'){ fbgHideKnown = !fbgHideKnown; renderResults(); }
   });
   $('fbg-results').addEventListener('change',function(e){ if(e.target.id==='fbg-sort'){ fbgSortBy = e.target.value; renderResults(); } });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape' && $('fbg-modal')) closeModal(); });
@@ -13996,13 +15226,19 @@ function init(){
 
   // The cloud copy of the library finishes loading AFTER first paint — refresh when it lands,
   // and every time the view is opened, so the sidebar never shows a stale list.
-  if(window._sbBootPromise && window._sbBootPromise.then) window._sbBootPromise.then(function(){ try{ autoRescue(); }catch(e){ console.warn('FB auto-rescue failed:',e); } fbgRenderLibrary(); fbgPopulateCarDropdowns(); });
+  if(window._sbBootPromise && window._sbBootPromise.then) window._sbBootPromise.then(function(){ try{ engineStart(); }catch(e){ console.warn('FB engine start failed:',e); } fbgRenderLibrary(); fbgPopulateCarDropdowns(); });
+  else { try{ engineStart(); }catch(e){ console.warn('FB engine start failed:',e); } }
   var view = $('view-fbgroups');
   if(view && window.MutationObserver) new MutationObserver(function(){ if(view.classList.contains('active')){ fbgRenderLibrary(); fbgPopulateCarDropdowns(); } }).observe(view,{attributes:true,attributeFilter:['class']});
 }
+// storage entry points must be swapped in BEFORE the first render, so the browser copy is captured before the cloud boot can touch it
+window.fbgLibLoad = engineLoad;
+window.fbgLibSave = function(d,o){ return engineSave(d,o); };
+engineLoad();
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 
 // Public surface (other Command Center code — backup import — calls these)
+window.fbgSyncNow = syncNow; window.fbgUndo = undoLast; window.fbgEngine = eng;
 window.fbgRenderLibrary = fbgRenderLibrary;
 window.fbgPopulateCarDropdowns = fbgPopulateCarDropdowns;
 window.fbgSearch = fbgSearch;
@@ -19286,7 +20522,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.18';
+var TGK_CC_VERSION='v7.19';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
