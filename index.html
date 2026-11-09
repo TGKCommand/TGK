@@ -12997,6 +12997,8 @@ html[data-theme="dark"] #view-fbgroups .fbg-hl-sech{color:#9AA3AF}
 #view-fbgroups #fbg-main .fbg-gt .fbg-inline{display:flex;gap:6px}
 #view-fbgroups #fbg-main .fbg-gt .fbg-inline .fbg-tin{flex:1}
 .fbg-gt-link{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+#fbg-hl-err .fbg-hl-t{flex:0 0 auto!important}
+#fbg-hl-err{gap:10px}
 </style>
 
 <!-- Left: search + results -->
@@ -14393,16 +14395,33 @@ function adopt(lib){
   writeLocal(lib); updateUndoBtn(); fbgRenderLibrary(); fbgPopulateCarDropdowns();
 }
 
-/* cloud (uses the dashboard's own sbFetch, which THROWS on failure — unlike sbSet/sbGet that swallow errors) */
-function cloudGet(id){ return sbFetch('/rest/v1/workspace?id=eq.'+encodeURIComponent(id)+'&select=data&limit=1').then(function(rows){ return (rows && rows[0]) ? rows[0].data : null; }); }
-function cloudSet(id,data){
-  return sbFetch('/rest/v1/workspace',{method:'POST',headers:{'apikey':TGK_SB_KEY,'Authorization':'Bearer '+TGK_SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:id,data:data,updated_at:new Date().toISOString()})});
+/* cloud — authenticated the way the rest of the Command Center does it (legacy anon JWT as apikey + the signed-in
+   user's session token as the login). The dashboard's own sbGet/sbSet send the publishable key as the login token,
+   which Supabase rejects — and they swallow the error, which is why saves silently never reached the cloud. */
+async function cloudHeaders(prefer){
+  var anon = (typeof TGK_SB_JWT!=='undefined') ? TGK_SB_JWT : TGK_SB_KEY, token = '';
+  try{ token = (typeof _tgkFreshToken==='function') ? await _tgkFreshToken() : ''; }catch(e){}
+  var h = {'apikey':anon,'Authorization':'Bearer '+(token||anon),'Content-Type':'application/json'};
+  if(prefer) h['Prefer'] = prefer;
+  eng.authMode = token ? 'signed-in session' : 'anon key only';
+  return h;
 }
+async function cloudReq(path,method,body,prefer){
+  var h = await cloudHeaders(prefer), r;
+  try{ r = await fetch(TGK_SB_URL+path,{method:method,headers:h,body:body?JSON.stringify(body):undefined}); }
+  catch(e){ var ne = new Error('Network error — '+(e&&e.message||'request blocked or offline')); ne.status = 0; throw ne; }
+  var t = ''; try{ t = await r.text(); }catch(e){}
+  if(!r.ok){ var er = new Error('HTTP '+r.status+' '+String(t||r.statusText||'').replace(/\s+/g,' ').slice(0,300)); er.status = r.status; throw er; }
+  return t ? JSON.parse(t) : null;
+}
+function cloudGet(id){ return cloudReq('/rest/v1/workspace?id=eq.'+encodeURIComponent(id)+'&select=data&limit=1','GET').then(function(rows){ return (rows && rows[0]) ? rows[0].data : null; }); }
+function cloudSet(id,data){ return cloudReq('/rest/v1/workspace','POST',{id:id,data:data,updated_at:new Date().toISOString()},'resolution=merge-duplicates,return=minimal'); }
 function setSync(state,err){
   eng.state = state; if(err!==undefined) eng.err = err;
   var txt = state==='saving' ? '● Saving…' : state==='ok' ? '● Synced '+ago(eng.last) : state==='error' ? '⚠ Not saved to cloud — click to retry' : '● Syncing…';
   document.querySelectorAll('.fbg-sync').forEach(function(el){ el.textContent = txt; el.className = 'fbg-sync '+state; el.title = state==='error' ? ('Last error: '+eng.err+' — your changes are safe in this browser. Click to retry.') : 'Click to sync now'; });
   if(typeof renderHealthSyncLine==='function') renderHealthSyncLine();
+  if(typeof updateTabCounts==='function') updateTabCounts();
 }
 function scheduleSync(){ clearTimeout(eng.timer); eng.timer = setTimeout(syncNow,600); setSync('saving'); }
 async function syncNow(){
@@ -14423,7 +14442,8 @@ async function syncNow(){
     if(eng.ver===v0) setDirty(false);                              // edited during the write? stay dirty — the queued sync handles it
     eng.last = Date.now(); setSync('ok','');
   }catch(e){
-    setSync('error',String(e && e.message || e).slice(0,200));
+    setDirty(true);                                                   // anything the cloud hasn't confirmed counts as unsynced (the dashboard boot must not overwrite it)
+    eng.errStatus = e && e.status; setSync('error',String(e && e.message || e).slice(0,300));
   }finally{
     eng.syncing = false;
     if(eng.pending){ eng.pending = false; setTimeout(syncNow,100); }
@@ -15052,8 +15072,29 @@ function healthReport(){
     total: all.length
   };
 }
-function healthIssueCount(){ var h = healthReport(); return [h.thin.length,h.unlinked.length,h.prodNoFits.length,h.due,h.check,h.dead,h.nolink].filter(function(n){ return n>0; }).length; }
+function healthIssueCount(){ var h = healthReport(); return [eng.state==='error'?1:0,h.thin.length,h.unlinked.length,h.prodNoFits.length,h.due,h.check,h.dead,h.nolink].filter(function(n){ return n>0; }).length; }
+var RLS_SQL = "alter table public.workspace enable row level security;\ncreate policy \"workspace_team_rw\" on public.workspace\n  for all to authenticated using (true) with check (true);";
+function syncErrorHelp(){
+  var m = String(eng.err||''), st = eng.errStatus;
+  if(st===401||st===403||/row-level security|permission denied|42501|JWT|Invalid API key/i.test(m)) return {why:'Supabase rejected the save — a permissions (login or row-level-security) problem. Signed in via: '+(eng.authMode||'?')+'.',sql:true};
+  if(st===404||/relation .*does not exist|PGRST205/i.test(m)) return {why:'The “workspace” table was not found in Supabase.',sql:false};
+  if(st===0) return {why:'The browser could not reach Supabase (offline, blocked, or a network/extension problem).',sql:false};
+  return {why:'Supabase returned an unexpected error.',sql:false};
+}
+function renderSyncError(){
+  var el = $('fbg-hl-err'); if(!el) return;
+  if(eng.state!=='error'){ el.style.display = 'none'; return; }
+  var h = syncErrorHelp();
+  el.style.display = ''; el.style.flexDirection = 'column'; el.style.alignItems = 'stretch';
+  el.innerHTML = '<div class="fbg-hl-t"><b style="color:#f87171">Why it isn’t saving to the cloud</b><span>'+esc(h.why)+' Your changes are safe in this browser and will sync as soon as this is fixed.</span></div>'
+    +'<div class="fbg-sql" id="fbg-hl-errtxt"></div>'
+    +(h.sql?'<div class="fbg-hl-t"><span>If the message mentions row-level security, run this once in Supabase → SQL Editor (it lets signed-in team members read and write the shared “workspace” table the Command Center already uses):</span></div><div class="fbg-sql" id="fbg-hl-sqltxt"></div>':'')
+    +'<div class="fbg-dp-btns"><button type="button" class="fbg-gbtn" data-act="hl-copyerr">Copy error</button>'+(h.sql?'<button type="button" class="fbg-gbtn" data-act="hl-copysql">Copy SQL</button>':'')+'<button type="button" class="fbg-gbtn paste" data-act="hl-sync">Retry now</button></div>';
+  $('fbg-hl-errtxt').textContent = 'Error: '+eng.err;
+  if(h.sql) $('fbg-hl-sqltxt').textContent = RLS_SQL;
+}
 function renderHealthSyncLine(){
+  renderSyncError();
   var el = $('fbg-hl-sync'); if(!el) return;
   el.className = 'fbg-sync '+eng.state;
   el.textContent = eng.state==='ok' ? '● Synced '+ago(eng.last) : eng.state==='saving' ? '● Saving…' : eng.state==='error' ? '⚠ Not saved to cloud' : '● Syncing…';
@@ -15071,6 +15112,7 @@ function renderHealthPane(){
   host.innerHTML = '<div class="fbg-hl">'
     +'<div class="fbg-hl-card sync"><div class="fbg-hl-t"><b>Sync &amp; backup</b><span>Your library saves in this browser instantly and syncs to the cloud. Two people editing at once are merged, never overwritten.</span></div>'
     +'<span class="fbg-sync '+eng.state+'" id="fbg-hl-sync"></span><button type="button" class="fbg-gbtn" data-act="hl-sync">Sync now</button><button type="button" class="fbg-gbtn" data-act="hl-backup">⬇ Download backup</button><button type="button" class="fbg-gbtn" data-act="hl-restorefile">Restore from file…</button><input type="file" id="fbg-hl-file" accept=".json,application/json" hidden/></div>'
+    +'<div class="fbg-hl-card sync" id="fbg-hl-err" style="display:none"></div>'
     +'<div class="fbg-hl-sech">Needs attention</div><div class="fbg-hl-grid">'
     +card('due',h.due,'Due to post','Joined groups you haven’t posted in for '+S.cadence+'+ days',view('due'))
     +card('check',h.check,'Needs checking','Never verified, or not checked in '+S.recheck+'+ days',view('check'))
@@ -15108,6 +15150,8 @@ function bindHealthPane(host){
     var b = e.target.closest('[data-act]'); if(!b) return; var a = b.dataset.act;
     if(a==='hl-sync') syncNow();
     else if(a==='hl-backup') downloadBackup();
+    else if(a==='hl-copyerr') copyText('TGK FB Groups sync error: '+eng.err+' (auth: '+(eng.authMode||'?')+')','Error copied');
+    else if(a==='hl-copysql') copyText(RLS_SQL,'SQL copied');
     else if(a==='hl-restorefile') $('fbg-hl-file').click();
     else if(a==='hl-view'){ var p = b.dataset.p; gv.preset = p==='nolink'||p==='dead'||p==='due'||p==='check' ? p : 'all'; gv.limit = 200; showPane('groups'); }
     else if(a==='hl-search'){ showPane('find'); searchTemplate(b.dataset.key); }
@@ -15185,7 +15229,7 @@ function init(){
   $('fbg-lib-filter').addEventListener('input',fbgRenderLibrary);
   var ub = $('fbg-undo'); if(ub) ub.addEventListener('click',undoLast);
   document.querySelectorAll('#fbg-main-tabs .fbg-tab').forEach(function(b){ b.addEventListener('click',function(){ showPane(b.dataset.pane); }); });
-  document.querySelectorAll('.fbg-sync').forEach(function(el){ el.addEventListener('click',function(){ syncNow(); }); });
+  document.querySelectorAll('.fbg-sync').forEach(function(el){ el.addEventListener('click',function(){ if(eng.state==='error') showPane('health'); else syncNow(); }); });
   var rec = $('fbg-recover'); if(rec) rec.addEventListener('click',recoverFromBrowser);
   $('fbg-manual-save').addEventListener('click',fbgManualAddUrl);
   ['fbg-manual-name','fbg-manual-url','fbg-manual-members'].forEach(function(id){ $(id).addEventListener('keydown',function(e){ if(e.key==='Enter') fbgManualAddUrl(); }); });
