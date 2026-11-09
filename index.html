@@ -2269,6 +2269,14 @@ function _sbToast(msg, ok) {
   setTimeout(function() { if (el) el.innerHTML = ''; }, 3000);
 }
 
+// FB library safety net: the boot below replaces the local copy with the cloud copy, and sbGet()
+// returns null on ANY error (which reads as "empty"). Keep the largest copy ever seen so the
+// FB Group Finder's Recover button can always bring it back.
+(function(){ try{
+  var cur=JSON.parse(localStorage.getItem('tgk_fbg_library_v1')||'[]'), prev=JSON.parse(localStorage.getItem('tgk_fbg_library_rescue')||'[]');
+  var n=function(a){return Array.isArray(a)?a.reduce(function(x,c){return x+1+((c&&c.groups)||[]).length;},0):0;};
+  if(n(cur)>n(prev)) localStorage.setItem('tgk_fbg_library_rescue',JSON.stringify(cur));
+}catch(e){} })();
 // ── Boot: pre-load everything in the background ───────────────
 window._sbReady = false;
 window._sbBootPromise = (async function() {
@@ -12747,6 +12755,10 @@ select.fbg-modal-input{-webkit-appearance:none;appearance:none;cursor:pointer;pa
 body.fbg-resizing{cursor:col-resize!important;user-select:none;-webkit-user-select:none}
 body.fbg-resizing iframe{pointer-events:none}
 @media (max-width:768px){.fbg-resizer{display:none}.fbg-search-row{flex-wrap:wrap}.fbg-search-row .fbg-input{flex:1 1 100%;order:3}}
+
+.fbg-lib-foot{padding:8px 14px 12px;border-top:1px solid rgba(128,128,128,.25);flex-shrink:0;text-align:center}
+.fbg-link-btn{background:none;border:none;font-size:var(--t-xs);color:#777;text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-family:'DM Sans',system-ui,sans-serif}
+.fbg-link-btn:hover{color:#2ABFAA}
 </style>
 
 <!-- Left: search + results -->
@@ -12817,6 +12829,7 @@ body.fbg-resizing iframe{pointer-events:none}
         <div class="fbg-lib-empty-txt">No templates saved yet.<br>Search a car, chassis or product, then save the results to a template.</div>
       </div>
     </div>
+    <div class="fbg-lib-foot"><button class="fbg-link-btn" id="fbg-recover" title="Add back any templates this browser has saved that the library is missing">Recover templates saved in this browser</button></div>
   </div>
 
   <!-- Tab: Add URL manually -->
@@ -12867,7 +12880,7 @@ function fbgLibSave(data){
   try{ localStorage.setItem(FBG_LIBRARY_KEY, JSON.stringify(data)); }catch(e){}
   // Write to Supabase in the background
   _fbgCache = data;
-  sbSaveFBG(data).catch(function(e){ console.warn('FB group cloud save failed:', e); });
+  return sbSaveFBG(data).catch(function(e){ console.warn('FB group cloud save failed:', e); });
 }
 // Key format is unchanged for cars (so existing data and backups still match).
 // Chassis / product templates get a "kind_" prefix so they can never collide with a car.
@@ -13494,6 +13507,59 @@ function initResizer(){
   window.addEventListener('resize',function(){ if(view.getBoundingClientRect().width) apply(W,false); });
 }
 
+/* ════════ Recovery (never lose a library to an empty/partial cloud copy) ════════ */
+var RESCUE_KEY = 'tgk_fbg_library_rescue';   // largest copy ever seen — stashed by the dashboard boot code
+function readJson(key){ try{ var a=JSON.parse(localStorage.getItem(key)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+// Add-only merge of `extra` into `base` (templates by key; groups by URL or name). Never removes anything.
+function mergeInto(base,extra){
+  var r = {cars:0,groups:0};
+  (extra||[]).forEach(function(ec){
+    if(!ec || !ec.key) return;
+    var bc = tplByKey(base,ec.key);
+    if(!bc){ var cp = JSON.parse(JSON.stringify(ec)); cp.groups = cp.groups||[]; base.push(cp); r.cars++; r.groups += cp.groups.length; return; }
+    bc.groups = bc.groups||[];
+    var su = {}, sn = {};
+    bc.groups.forEach(function(g){ if(g.url) su[normUrl(g.url)]=1; sn[String(g.name||'').toLowerCase()]=1; });
+    (ec.groups||[]).forEach(function(g){
+      if(!g || !g.name) return;
+      if((g.url && su[normUrl(g.url)]) || sn[String(g.name).toLowerCase()]) return;
+      bc.groups.push(JSON.parse(JSON.stringify(g)));
+      if(g.url) su[normUrl(g.url)]=1; sn[String(g.name).toLowerCase()]=1; r.groups++;
+    });
+  });
+  return r;
+}
+// The dashboard's cloud writes fail silently — read the cloud copy back and warn if it didn't stick.
+function verifyCloud(expected){
+  setTimeout(function(){
+    if(typeof sbGet!=='function') return;
+    sbGet('tgk_fbg_library').then(function(d){
+      var n = Array.isArray(d) ? d.length : 0;
+      if(n<expected) fbgToast('⚠ Cloud sync did not save — your templates are only in this browser right now.');
+    }).catch(function(){});
+  },1800);
+}
+function autoRescue(){
+  // The cloud copy came back EMPTY but this browser still has templates → the cloud is wrong, not the browser.
+  if(!Array.isArray(_fbgCache) || _fbgCache.length) return;
+  var local = readJson(FBG_LIBRARY_KEY); if(!local.length) return;
+  var base = [], r = mergeInto(base,local);
+  fbgLibSave(base);
+  fbgToast('Restored '+r.cars+' template'+(r.cars===1?'':'s')+' from this browser (the cloud copy was empty).');
+  verifyCloud(base.length);
+}
+async function recoverFromBrowser(){
+  var src = []; mergeInto(src,readJson(RESCUE_KEY)); mergeInto(src,readJson(FBG_LIBRARY_KEY));
+  var probe = JSON.parse(JSON.stringify(fbgLibLoad())), r = mergeInto(probe,src);
+  if(!r.cars && !r.groups){ fbgToast('Nothing to recover — this browser has nothing the library is missing.'); return; }
+  var ok = await confirmBox('Recover saved templates?','This browser has '+r.cars+' template'+(r.cars===1?'':'s')+' and '+r.groups+' group'+(r.groups===1?'':'s')+' that the library doesn’t have right now. Add them back? Nothing is removed.','Recover');
+  if(!ok) return;
+  var l = fbgLibLoad(); mergeInto(l,src); fbgLibSave(l);
+  fbgRenderLibrary(); fbgPopulateCarDropdowns();
+  fbgToast('Recovered '+r.cars+' template'+(r.cars===1?'':'s')+' and '+r.groups+' group'+(r.groups===1?'':'s')+'.');
+  verifyCloud(l.length);
+}
+
 /* ════════ Wiring ════════ */
 function switchLibTab(tab){
   $('fbg-lib-tab-cars').classList.toggle('active',tab==='cars');
@@ -13514,6 +13580,7 @@ function init(){
   $('fbg-new-tpl').addEventListener('click',function(){ openNewTemplate(); });
   $('fbg-export-lib').addEventListener('click',fbgExportLibrary);
   $('fbg-lib-filter').addEventListener('input',fbgRenderLibrary);
+  var rec = $('fbg-recover'); if(rec) rec.addEventListener('click',recoverFromBrowser);
   $('fbg-manual-save').addEventListener('click',fbgManualAddUrl);
   ['fbg-manual-name','fbg-manual-url','fbg-manual-members'].forEach(function(id){ $(id).addEventListener('keydown',function(e){ if(e.key==='Enter') fbgManualAddUrl(); }); });
 
@@ -13542,7 +13609,7 @@ function init(){
 
   // The cloud copy of the library finishes loading AFTER first paint — refresh when it lands,
   // and every time the view is opened, so the sidebar never shows a stale list.
-  if(window._sbBootPromise && window._sbBootPromise.then) window._sbBootPromise.then(function(){ fbgRenderLibrary(); fbgPopulateCarDropdowns(); });
+  if(window._sbBootPromise && window._sbBootPromise.then) window._sbBootPromise.then(function(){ try{ autoRescue(); }catch(e){ console.warn('FB auto-rescue failed:',e); } fbgRenderLibrary(); fbgPopulateCarDropdowns(); });
   var view = $('view-fbgroups');
   if(view && window.MutationObserver) new MutationObserver(function(){ if(view.classList.contains('active')){ fbgRenderLibrary(); fbgPopulateCarDropdowns(); } }).observe(view,{attributes:true,attributeFilter:['class']});
 }
@@ -18832,7 +18899,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.16';
+var TGK_CC_VERSION='v7.17';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
