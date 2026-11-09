@@ -18876,7 +18876,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.13';
+var TGK_CC_VERSION='v7.14';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -20270,7 +20270,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 
   function aigKeyDown(e){
     if(e.key === ' ' || e.code === 'Space'){
-      if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName||'')) return;
+      var _t = e.target;
+      if(_t && (/INPUT|TEXTAREA|SELECT/.test(_t.tagName||'') || _t.isContentEditable || (_t.closest && _t.closest('[contenteditable="true"],[contenteditable=""],.wysi')))) return;
+      if(e.metaKey || e.ctrlKey || e.altKey) return;
       if(e.repeat) return; e.preventDefault(); bulletOn(); return;
     }
   }
@@ -29335,6 +29337,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
       st.live = j.css === undefined ? null : j.css; st.liveAt = j.updatedAt; st.hasPrev = !!j.hasPrevious; st.theme = (j.theme && j.theme.name) || '';
       var ctl = st.live ? parseControls(st.live) : {}; st.old = !!st.live && !Object.keys(ctl).length;
       st.vals = Object.assign({}, DEF, ctl); st.loaded = true;
+      applySiteCss(st.live || BASE);
     } catch (e) { st.loaded = false; say(failHtml(e), 'err'); }
     st.loading = false; render();
   }
@@ -29380,9 +29383,43 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     Array.prototype.forEach.call(card.querySelectorAll('[data-w]'), function (b) { b.onclick = function () { st.width = +b.getAttribute('data-w'); Array.prototype.forEach.call(card.querySelectorAll('[data-w]'), function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); paint(); }; });
     card.addEventListener('click', function (e) { if (e.target && e.target.id === 'tsx-reload') { st.loaded = false; load(true); } });
     render();
-    var v = el('v-tpllib'); if (v) { var go = function () { if (v.classList.contains('on')) load(false); }; new MutationObserver(go).observe(v, { attributes: true, attributeFilter: ['class'] }); go(); }
+    ['v-tpllib', 'v-edit'].forEach(function (id) { var v = el(id); if (v) { var go = function () { if (v.classList.contains('on')) load(false); }; new MutationObserver(go).observe(v, { attributes: true, attributeFilter: ['class'] }); go(); } });
   }
-  window.tgkTplStyles = { build: build, parse: parseControls, derive: derive, checks: checks, state: st, load: load };
+  /* Editor previews (.wysi) used their own copy of the description rules, so they drifted from the website.
+     Now the preview is styled by the store's real template CSS (live copy once loaded, built-in copy before that).
+     Only .tgk rules are used, re-scoped to the editor, so nothing in the dashboard itself is touched. */
+  var siteTag = null;
+  function siteScope(css) {
+    var d = document.implementation.createHTMLDocument(''), s = d.createElement('style'), out = [], i, j;
+    s.textContent = String(css || ''); d.head.appendChild(s);
+    var rules = s.sheet ? s.sheet.cssRules : [];
+    function map(sel) {
+      sel = sel.trim();
+      if (/^\.tgk-/.test(sel)) return ['.wysi.wysi ' + sel];
+      if (!/^\.tgk(?![\w-])/.test(sel)) return null;
+      var rest = sel.slice(4);
+      if (!rest) return ['.wysi.wysi', '.wysi.wysi .tgk'];
+      return ['.wysi.wysi' + (/^\s/.test(rest) ? rest : ' .tgk' + rest)];
+    }
+    for (i = 0; i < rules.length; i++) {
+      var r = rules[i]; if (r.type !== 1 || /\([^)]*,[^)]*\)/.test(r.selectorText)) continue;
+      var parts = r.selectorText.split(','), sels = [], ok = true;
+      for (j = 0; j < parts.length; j++) { var m = map(parts[j]); if (!m) { ok = false; break; } sels = sels.concat(m); }
+      if (ok && sels.length) out.push(sels.join(',') + '{' + r.style.cssText + '}');
+    }
+    return out.join('\n');
+  }
+  function applySiteCss(css) {
+    if (!siteTag) { siteTag = document.getElementById('tgk-site-preview-css'); if (!siteTag) { siteTag = document.createElement('style'); siteTag.id = 'tgk-site-preview-css'; document.head.appendChild(siteTag); } }
+    /* The dashboard theme has global .tgk-sh and thead th rules (underline, brushed texture, text shadow) that are not on the website; switch them off inside the preview. */
+    var NEUTRAL = '\n.wysi.wysi .tgk-sh{background-image:none!important;box-shadow:none!important;border-bottom:0!important}'
+      + '\n.wysi.wysi .tgk-cmp th,.wysi.wysi .tgk-cmp thead th{background-image:none!important;text-shadow:none!important;box-shadow:none!important;border-bottom:0!important}'
+      + '\n.wysi.wysi .tgk-cmp thead,.wysi.wysi .tgk-cmp thead tr{background:none!important;box-shadow:none!important}'
+      + '\n.wysi.wysi .tgk-feats .tgk-feat{margin-bottom:0!important}';
+    try { siteTag.textContent = siteScope(css) + NEUTRAL; } catch (e) { console.warn('site css preview', e); }
+  }
+  applySiteCss(BASE);
+  window.tgkTplStyles = { build: build, parse: parseControls, derive: derive, checks: checks, state: st, load: load, applySiteCss: applySiteCss, siteScope: siteScope };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 
