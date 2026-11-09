@@ -12982,7 +12982,7 @@ html[data-theme="dark"] #view-fbgroups .fbg-hl-sech{color:#9AA3AF}
 @media (max-width:1100px){.fbg-hl-two{grid-template-columns:1fr}}
 
 /* aligned columns across tables (My Groups + each Launch Plan section) */
-#view-fbgroups #fbg-main table.fbg-gt{table-layout:fixed;width:100%;min-width:1040px}
+#view-fbgroups #fbg-main table.fbg-gt{table-layout:fixed;width:100%}
 #view-fbgroups #fbg-main .fbg-gt .c-members{width:78px}
 #view-fbgroups #fbg-main .fbg-gt .c-status{width:122px}
 #view-fbgroups #fbg-main .fbg-gt .c-rules{width:134px}
@@ -14572,7 +14572,9 @@ function tableHtml(rows,cols,sel,sortable){
   var body = rows.map(function(r){
     return '<tr data-ident="'+esc(r.ident)+'"'+(sel[r.ident]?' class="sel"':'')+'>'+cols.map(function(c){ return '<td class="c-'+c+'">'+cellHtml(c,r,sel)+'</td>'; }).join('')+'</tr>';
   }).join('');
-  return '<table class="fbg-gt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+  var GT_W = {sel:34,members:78,status:122,rules:134,prio:62,posted:166,owner:124,verified:34,tags:126,tpls:176,from:190,act:44};
+  var minW = 280 + cols.reduce(function(n,c){ return n+(GT_W[c]||0); },0);            // name column always keeps ≥280px; the wrapper scrolls sideways instead of squashing it
+  return '<table class="fbg-gt" style="min-width:'+minW+'px"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
 }
 
 /* commits from the table (inline edits) */
