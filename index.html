@@ -5791,9 +5791,13 @@ function showSectionToolbar(sh) {
   sh.classList.add('sh-active');
   const tb = document.createElement('div');
   tb.className = 'sec-toolbar';
-  const mk = function(label, cls, fn){
+  const mk = function(label, cls, fn, tip){
     const b = document.createElement('button');
-    b.textContent = label; b.className = cls;
+    // (v7.20) a label that is icon markup is drawn as the icon; it used to be printed as text (<span class="ic ic-star"></span>)
+    if(/^<span class="ic [a-z0-9-]+"><\/span>$/.test(label)){ b.innerHTML = label; var _i = b.firstChild; if(_i && _i.style) _i.style.marginRight = '0'; }
+    else b.textContent = label;
+    b.className = cls;
+    if(tip) b.title = tip;
     b.addEventListener('mousedown', function(e){ e.preventDefault(); fn(); });
     return b;
   };
@@ -8597,9 +8601,13 @@ function showBlkToolbar(blk, wysiwyg, syncFn) {
   blk.classList.add('blk-active');
   const tb = document.createElement('div');
   tb.className = 'blk-toolbar';
-  const mk = function(label, cls, fn){
+  const mk = function(label, cls, fn, tip){
     const b = document.createElement('button');
-    b.textContent = label; b.className = cls;
+    // (v7.20) a label that is icon markup is drawn as the icon; it used to be printed as text (<span class="ic ic-star"></span>)
+    if(/^<span class="ic [a-z0-9-]+"><\/span>$/.test(label)){ b.innerHTML = label; var _i = b.firstChild; if(_i && _i.style) _i.style.marginRight = '0'; }
+    else b.textContent = label;
+    b.className = cls;
+    if(tip) b.title = tip;
     b.addEventListener('mousedown', function(e){ e.preventDefault(); fn(); });
     return b;
   };
@@ -8661,7 +8669,7 @@ function showBlkToolbar(blk, wysiwyg, syncFn) {
   tb.appendChild(mk('<span class="ic ic-star"></span>','blk-save-btn', function(){
     hideBlkToolbar();
     _saveElementAsTemplate(blk);
-  }));
+  }, 'Save this block as a template'));
 
   // ── DELETE ──
   tb.appendChild(mk('<span class="ic ic-x"></span>','blk-del-btn', function(){
@@ -8675,7 +8683,7 @@ function showBlkToolbar(blk, wysiwyg, syncFn) {
       else _updateColRow(p);
     }
     syncFn(); hideBlkToolbar(); injectAddButtons(wysiwyg, syncFn);
-  }));
+  }, 'Delete this block'));
 
   document.body.appendChild(tb);
   const rect = blk.getBoundingClientRect();
@@ -8692,6 +8700,16 @@ function hideBlkToolbar(){
   if(_blkToolbar){ _blkToolbar.remove(); _blkToolbar=null; }
   if(_activeBlk){ _activeBlk.classList.remove('blk-active'); _activeBlk=null; }
 }
+// (v7.20) The block toolbar closes when you click anywhere that is not the block, the toolbar, or one of the menus it opens. The only check used to sit on
+// the editor area itself, so a click on the sidebar, the page margin or the header never reached it and the toolbar stayed open.
+document.addEventListener('mousedown', function(e){
+  if(!_blkToolbar) return;
+  var el = e.target;
+  if(!el || !el.closest) return;
+  if(el.closest('.blk-toolbar,.clr-picker-panel,.txt-panel,.add-menu,#blk-icon-modal,[class*="picker"],[class*="icon-pick"]')) return;
+  if(_activeBlk && _activeBlk.contains(el)) return;
+  hideBlkToolbar();
+}, true);
 
 function injectAddButtons(wysiwyg, syncFn){
   wysiwyg.querySelectorAll('.add-block-btn').forEach(function(b){ b.remove(); });
@@ -20572,7 +20590,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.19';
+var TGK_CC_VERSION='v7.20';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -28486,7 +28504,7 @@ function fmApplyToSameSku(){
   var p=fmProd(FM.sel),src=fmFitsOf(FM.sel);
   var others=FM.products.filter(function(o){return o.sku&&o.sku===p.sku&&o.handle!==p.handle;});
   if(!others.length||!src.length)return;
-  if(!confirm('Add this product\'s '+src.length+' vehicles to '+others.length+' other page'+(others.length!==1?'s':'')+' with SKU '+p.sku+'?'))return;
+  if(!confirm('Add this product\'s '+src.length+' vehicles to '+others.length+' other page'+(others.length!==1?'s':'')+' with SKU '+p.sku+'?\n\nThose pages will then list these vehicles too, so dealer lists and the ERP will show them on each page. Only do this when the pages should fit the same vehicles.'))return;
   fmDo(async function(){var n=0;for(var i=0;i<others.length;i++)n+=await fmAddVehicles(others[i].handle,src.map(function(f){return {id:f.vehicle_id,make:f.make,model:f.model,year_from:f.year_from,year_to:f.year_to,engine:f.engine,chassis:f.chassis};}));fmToast('Added '+n+' rows across '+others.length+' page'+(others.length!==1?'s':''));});
 }
 function fmInList(handles){return 'in.('+handles.map(function(h){return '"'+encodeURIComponent(String(h).replace(/"/g,''))+'"';}).join(',')+')';}
@@ -28833,10 +28851,12 @@ var FM_SHOP='tgk-motorsport.myshopify.com';
 function fmSamePagesHtml(p){
   var others=fmOtherPages(p);if(!others.length)return '';
   var mine={};fmFitsOf(p.handle).forEach(function(f){mine[fmVKey(f)]=1;});
+  var nm=function(t){return String(t||'').trim().toLowerCase();},sameName=others.some(function(o){return nm(o.title)===nm(p.title);});
   return '<div class="fm-card fm-samepages"><b>Same SKU on '+(others.length===1?'another website page':others.length+' other website pages')+'</b>'
     +others.map(function(o){var theirs=fmFitsOf(o.handle),shared=theirs.filter(function(f){return mine[fmVKey(f)];}).length;
       return '<div class="fm-vrow"><a href="#" onclick="fmPick('+fmJs(o.handle)+');return false">'+fmEsc(o.title||o.handle)+'</a> <span class="fm-tdim">'+theirs.length+' vehicle'+(theirs.length!==1?'s':'')+(shared?', '+shared+' also on this page':'')+'</span></div>';}).join('')
-    +'<div class="fm-tdim" style="font-size:12.5px;margin-top:4px">Each page keeps its own fitment list. Dealer price lists and the ERP combine them under the one SKU (each vehicle once). In website vehicle search, if both pages fit a car, shoppers see only the page with the fewest vehicles - the one made most specifically for that car.</div></div>';
+    +(sameName?'<div class="fm-msg small" style="margin-top:6px"><b>These pages have the same name.</b> Dealers see one card per page, named after the page, so two cards with the same name cannot be told apart. Give each page its own name (Product name, under Details, then Save).</div>':'')
+    +'<div class="fm-tdim" style="font-size:12.5px;margin-top:4px">Each page keeps its own fitment list. Dealer price lists and the ERP show one card per page for this SKU, named after the page, each with only that page\'s vehicles. Price, stock and ordering stay on the one SKU. In website vehicle search, if both pages fit a car, shoppers see only the page with the fewest vehicles - the one made most specifically for that car.</div></div>';
 }
 function fmDetailsHtml(){
   var p=fmProd(FM.sel),f=function(id,label,val,hint){return '<label class="fm-field"><span>'+label+'</span><input class="fm-in" id="'+id+'" value="'+fmEsc(val||'')+'">'+(hint?'<em>'+hint+'</em>':'')+'</label>';};
