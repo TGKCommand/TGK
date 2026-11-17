@@ -20590,7 +20590,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.20';
+var TGK_CC_VERSION='v7.21';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -20915,7 +20915,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 .aig-hover-name b{color:#f0f0f0;font-weight:600}
 .aig-foot{display:flex;gap:6px}
 .aig-foot{flex-wrap:wrap}
-.aig-foot button{flex:1 1 45%;background:rgba(255,255,255,.03);border:1px solid #2e2e2e;color:#9CA3AF;border-radius:2px;padding:6px 4px;font-size:11px;cursor:pointer;font-family:inherit}
+.aig-foot button{flex:1 1 28%;background:rgba(255,255,255,.03);border:1px solid #2e2e2e;color:#9CA3AF;border-radius:2px;padding:6px 4px;font-size:11px;cursor:pointer;font-family:inherit}
 .aig-foot button:hover{color:#f0f0f0;border-color:#3a3a3a}
 .aig-pop-score{font-size:10px;color:#6b7076;text-align:center;cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;font-family:inherit;padding:2px}
 .aig-pop-score:hover{color:#9CA3AF}
@@ -21036,11 +21036,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var hitFrom = null;
   var lastPraiseHopAt = -1e9, cigForearm = 0, cigAim = null, cigForearmS = null;
   var blockUntil = 0, shieldEl = null, shieldUntil = 0, recentHits = [], lastDefendAt = -1e9, lastShieldAt = -1e9, defenseStats = { blocks:0, catches:0, parries:0 };
-  var anger = 0, madHits = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0, lastAngerDecay = 0;
+  var anger = 0, madHits = 0, madOn = false, fightOn = false, fightUntil = 0, fightCooldownUntil = 0, sulkUntil = 0, nextSteamAt = 0;
   var cursorStolen = false, stolenUntil = 0, stolenEl = null, lastDodgeAt = 0, fleeDir = 1, fleeHopAt = 0;
   var lastInteractAt = performance.now(), asleep = false, nextZzAt = 0, nextBoredAt = 0, skit = null, hiddenAt = 0, lookX = 0, lookY = 0, lookUntil = 0;
-  var headImg = null, gazeX = 0, gazeY = 0, gazeRY = 0, shadesEl = null, limpUntil = 0, slideUntil = 0, dramaOn = false, nextRoomAt = 0, roomState = null, nextGossipAt = 0;
-  var squishX = 0, squishY = 0, squishV = 0, lastFridayMin = -1, nextCloneTalkAt = 0;
+  var headImg = null, gazeX = 0, gazeY = 0, gazeRY = 0, limpUntil = 0, slideUntil = 0, dramaOn = false, nextRoomAt = 0, roomState = null, nextGossipAt = 0;
+  var squishX = 0, squishV = 0, lastFridayMin = -1, nextCloneTalkAt = 0;
   var perf = { auto:true, on:false, ema:16, bad:0, good:0 };
   function setRootPos(){
     if(!root) return;
@@ -21640,14 +21640,16 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var sec = function(cls, label, hint, list){ return '<div><div class="aig-sec-label">'+label+'<span>'+hint+'</span></div><div class="aig-tool-row '+cls+'">'+list.map(toolBtnHtml).join('')+'</div></div>'; };
     pop.innerHTML =
       '<div class="aig-tray-head"><div class="aig-tray-title">AI Guy</div>'+
-        '<button class="aig-mute-btn" onclick="aiGuyToggleSandbox()" title="Physics sandbox">\u269B</button><button class="aig-mute-btn" onclick="aiGuyToggleSettings()" title="Settings">\u2699</button>'+
-        '<button class="aig-mute-btn" onclick="aiGuyToggleMute()" id="aig-mute-btn" title="Mute sound">'+(muted?'\u2716':'\u266A')+'</button>'+
+        '<button class="aig-mute-btn" onclick="aiGuyToggleSettings()" title="Settings">\u2699</button>'+
+        '<button class="aig-mute-btn" onclick="aiGuyToggleMute()" id="aig-mute-btn" title="'+(muted?'Sound is off (click to turn on)':'Mute sound')+'">'+(muted?'\u2716':'\u266A')+'</button>'+
         '<button class="aig-mute-btn" onclick="aiGuyCloseTray()" title="Close">\u2715</button></div>'+
       sec('aig-tool-good', 'Praise', 'click him', praise) +
-      sec('aig-tool-bad',  'Whack',  'click him \u00b7 hold to rapid-fire', whack) +
-      sec('aig-tool-trap', 'Traps & gadgets', 'click the floor / anywhere', traps) +
-      sec('aig-tool-bad', 'Secret TGK tools', secret.filter(function(t){ return !toolLocked(t); }).length + '/' + secret.length + ' unlocked \u00b7 hover for how', secret) +
-      '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' good \u00b7 '+aigState.bad+' bad \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.map(function(n){ var rr = mpRemotes.filter(function(q){ return q.name === n; })[0]; var s = rr ? shirtFor(rr.who, rr.sh) : myShirt(); return '<b style="color:'+s.hi+'">'+n+'</b>'; }).join(', ') : '')+'</span></div>'+
+      sec('aig-tool-bad',  'Whack',  'click him', whack) +
+      sec('aig-tool-trap', 'Traps & gadgets', 'hover for how', traps) +
+      sec('aig-tool-bad', 'Secret TGK tools', secret.filter(function(t){ return !toolLocked(t); }).length + '/' + secret.length + ' unlocked \u00b7 tap a locked one', secret) +
+      '<div class="aig-hover-name" id="aig-hover-name">'+aigState.good+' praises \u00b7 '+aigState.bad+' hits \u00b7 anger '+Math.round(anger)+'%'+(madOn?' <b>(mad)</b>':'')+(performance.now() < fightCooldownUntil ? ' \u00b7 truce '+Math.ceil((fightCooldownUntil-performance.now())/1000)+'s' : '')+(heldTool ? ' \u00b7 holding <b>'+heldTool.label+'</b>' : '')+'<br><span style="color:#6b7076">brain: '+brainStatus()+' \u00b7 realtime: '+mpStatus+(mpOnline.length ? ' \u00b7 online: '+mpOnline.map(function(n){ var rr = mpRemotes.filter(function(q){ return q.name === n; })[0]; var s = rr ? shirtFor(rr.who, rr.sh) : myShirt(); return '<b style="color:'+s.hi+'">'+n+'</b>'; }).join(', ') : '')+'</span></div>'+
+      '<div><div class="aig-sec-label">Talk to him<span>he answers back</span></div>'+
+      '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something..." maxlength="200" onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div></div>'+
       '<div><div class="aig-sec-label">Games & modes<span>pick one</span></div><div class="aig-games">'+
         '<button class="aig-game-btn" onclick="aiGuyWhackAMole()" title="45 seconds of whack-a-mole"><span>\u{1F573}</span>Whack-a-mole</button>'+
         '<button class="aig-game-btn" onclick="aiGuyBadDay()" title="20 seconds of scripted torment"><span>\u{1F4A5}</span>Bad day</button>'+
@@ -21656,8 +21658,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         '<button class="aig-game-btn" onclick="aiGuyToggleSandbox()" title="Gravity, bounce and wind sliders"><span>\u269B</span>Sandbox</button>'+
         '<button class="aig-game-btn" onclick="aiGuyVentMode()" title="Everything, all at once"><span>\u{1F525}</span>Chaos</button>'+
       '</div></div>'+
-      '<div class="aig-talk"><input id="aig-talk-in" placeholder="Say something to him..." onkeydown="if(event.key===\'Enter\'){aiGuyTalk(this.value);this.value=\'\';}"><button onclick="var i=document.getElementById(\'aig-talk-in\');aiGuyTalk(i.value);i.value=\'\'">Say</button></div>'+
-      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearTraps()">Clear traps</button><button onclick="aiGuyClearClones()" title="Pop every clone">Clear clones</button><button onclick="aiGuyClearProps()" title="Remove crates and mugs">Clear props</button></div>'+
+      '<div class="aig-foot"><button onclick="aiGuyShowHistory()">History</button><button onclick="aiGuyHeal()">Heal him</button><button onclick="aiGuyClearFloor()" title="Removes traps, clones, crates and mugs">Clear floor</button></div>'+
       settingsHtml() + sandboxHtml();
     document.body.appendChild(pop);
     popOpen = true;
@@ -21668,7 +21669,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     pop.style.top = '-9999px';
     pop.addEventListener('mouseover', function(e){
       var b = e.target.closest && e.target.closest('.aig-tool-btn'); var nm = document.getElementById('aig-hover-name');
-      if(b && nm){ var t = findTool(b.getAttribute('data-tool')); if(t) nm.innerHTML = '<b>'+t.label+'</b>' + (t.unlock && toolLocked(t) ? ' \u00b7 locked: '+t.unlock.label : ' \u00b7 '+({place:'click the floor to place', drop:'click to drop', spawn:'click to spawn', sling:'grab, pull, release', cannon:(t.id==='car'?'click to send the car':'click to fire'), toggle:'click anywhere'}[t.kind] || (t.type==='good' ? 'click him to praise' : 'click him, or hold near him'))); }
+      if(b && nm){ var t = findTool(b.getAttribute('data-tool')); if(t) nm.innerHTML = '<b>'+t.label+'</b>' + (t.unlock && toolLocked(t) ? ' \u00b7 locked: '+t.unlock.label : ' \u00b7 '+toolHow(t)); }
     });
     requestAnimationFrame(function(){ repositionPop(r); });
     setTimeout(function(){ document.addEventListener('click', outsideClose); }, 0);
@@ -21688,7 +21689,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function toolBtnHtml(t){
     if(toolLocked(t)) return '<button class="aig-tool-btn aig-locked" data-tool="'+t.id+'" onclick="aiGuyLockedTap(\''+t.id+'\')" title="'+t.label+' \u2014 locked: '+t.unlock.label+'">'+t.icon+'</button>';
     var on = heldTool && heldTool.id === t.id ? ' aig-on' : '';
-    return '<button class="aig-tool-btn'+on+'" data-tool="'+t.id+'" onclick="aiGuyEquipTool(\''+t.id+'\')" title="'+t.label+'">'+t.icon+'</button>';
+    return '<button class="aig-tool-btn'+on+'" data-tool="'+t.id+'" onclick="aiGuyEquipTool(\''+t.id+'\')" title="'+t.label+' \u2014 '+toolHow(t)+'">'+t.icon+'</button>';
   }
   window.aiGuyLockedTap = function(id){
     var t = findTool(id); if(!t) return;
@@ -21756,7 +21757,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     muted = !muted;
     try{ localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); }catch(err){}
     var btn = document.getElementById('aig-mute-btn');
-    if(btn) btn.textContent = muted ? '\u2716' : '\u266A';
+    if(btn){ btn.textContent = muted ? '\u2716' : '\u266A'; btn.title = muted ? 'Sound is off (click to turn on)' : 'Mute sound'; }
   };
   function playToolSound(tool){
     switch(tool.id){
@@ -21842,7 +21843,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     bandaid: String.fromCodePoint(0x1FA79),
     star: '\u2B50',
     freeze: '\u2744',
-    sling: String.fromCodePoint(0x1FA83),
+    sling: String.fromCodePoint(0x1F3F9),
     tramp: '\u2B06',
     fan: String.fromCodePoint(0x1F32C),
     gravity: '\u21C5',
@@ -21853,10 +21854,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     coffee: '\u2615',
     car: String.fromCodePoint(0x1F3CE),
     fire: String.fromCodePoint(0x1F525), cigar: String.fromCodePoint(0x1F6AC),
-    anvil: String.fromCodePoint(0x1F3F7), blower: String.fromCodePoint(0x1F343), hose: String.fromCodePoint(0x1F6BF),
-    crate: String.fromCodePoint(0x1F4E6), mug: String.fromCodePoint(0x2615), lasso: String.fromCodePoint(0x1FA80), mole: String.fromCodePoint(0x1F573), magnet: String.fromCodePoint(0x1F9F2), bucket: String.fromCodePoint(0x1F9FA),
+    anvil: '\u2692', blower: String.fromCodePoint(0x1F343), hose: String.fromCodePoint(0x1F692),
+    crate: String.fromCodePoint(0x1F4E6), mug: String.fromCodePoint(0x1F375), lasso: '\u27B0', mole: String.fromCodePoint(0x1F573), magnet: String.fromCodePoint(0x1F9F2), bucket: String.fromCodePoint(0x1FAA3),
     ufo: String.fromCodePoint(0x1F6F8), spring: String.fromCodePoint(0x1F300), cake: String.fromCodePoint(0x1F382),
-    coffee2: String.fromCodePoint(0x1F375), sax: String.fromCodePoint(0x1F3B7), stapler: String.fromCodePoint(0x1F4CE),
+    coffee2: String.fromCodePoint(0x1F375), sax: String.fromCodePoint(0x1F3B7), stapler: String.fromCodePoint(0x1F4CC),
     wrench: String.fromCodePoint(0x1F527), boost: String.fromCodePoint(0x1F4A8), cel: String.fromCodePoint(0x1F7E0), oil: String.fromCodePoint(0x1F6E2),
     tire: String.fromCodePoint(0x1F6DE), dyno: String.fromCodePoint(0x1F4C8), rs: String.fromCodePoint(0x1F3C1), dsg: String.fromCodePoint(0x1F3AE),
     k04: String.fromCodePoint(0x1F32A), box: String.fromCodePoint(0x1F4E6), quattro: String.fromCodePoint(0x1F3D4),
@@ -21935,6 +21936,31 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       tone(523,.08,'triangle',.05); tone(784,.08,'triangle',.05,.09); tone(1046,.2,'triangle',.06,.18);
     });
   }
+
+  // How each tool is actually used. One place, so the tray hover line, the button tooltip and the
+  // "equipped" bar can never disagree (they used to be two separate lookup tables, both missing
+  // the hold-to-aim, charge, lasso and crate tools, which all claimed "click him to swing").
+  function toolHow(t){
+    switch(t.id){
+      case 'hammer': case 'glove': case 'rs': return 'hold to wind up, release to swing';
+      case 'blower': case 'hose': return 'hold and aim at him';
+      case 'car': return 'click anywhere to send the S6';
+      case 'tire': return 'click to roll a tire across the floor';
+      case 'magnet': return 'click to yank him toward the cursor';
+      case 'shirt': return 'click to fire a shirt across the room';
+      case 'lasso': return 'click to throw the rope at him';
+      case 'dyno': return 'click to open the dyno';
+      case 'crate': case 'mug': return 'click to drop it from above';
+    }
+    switch(t.kind){
+      case 'place': return 'click the floor to place it';
+      case 'drop': return 'click where it should land';
+      case 'spawn': return 'click where he should appear';
+      case 'sling': return 'grab him, pull back, let go';
+      case 'toggle': return 'click anywhere to flip gravity';
+    }
+    return t.type === 'good' ? 'click him to praise' : 'click him to swing' + (settings.rapid === false ? '' : ' (hold to rapid-fire)');
+  }
   function findTool(id){
     for(var i=0;i<TOOLS.length;i++){ if(TOOLS[i].id===id) return TOOLS[i]; }
     return null;
@@ -22007,7 +22033,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     }
     chip.innerHTML =
       '<span class="aig-held-icon" style="cursor:pointer" onclick="aiGuyReopenTray(event)" title="Switch tool">'+tool.icon+'</span>'+
-      '<span class="aig-held-label" style="cursor:pointer" onclick="aiGuyReopenTray(event)">'+tool.label+' equipped &middot; '+({place:'click the floor to place', drop:'click to drop it', spawn:'click where he should appear', sling:'grab him, pull back, let go', cannon:(tool.id==='car'?'click anywhere to send the S6':'click to fire'), toggle:'click anywhere'}[tool.kind] || 'click him to swing')+'</span>'+
+      '<span class="aig-held-label" style="cursor:pointer" onclick="aiGuyReopenTray(event)">'+tool.label+' equipped &middot; '+toolHow(tool)+'</span>'+
       '<button onclick="aiGuyPutDownTool()" title="Put down">&#x2715;</button>';
   }
 
@@ -22324,6 +22350,23 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   };
   var CAR_HIT_PHRASES = ['Blown turbo!','Boost leak!','Misfire on 3!','Check engine!','Limp mode!','Over-boost!','Rod knock!','Timing chain!','Coilpack down!','Wastegate stuck!'];
   var CAR_HIT_SPICY = ['Shit, boost leak!','Goddamn misfire!','Limp mode, damn it!','Rod knock. Fuck.','Son of a bitch, check engine!'];
+  // Idle lines built from things he can actually see, so he reads as paying attention instead of reciting.
+  var gline = null;
+  function groundedLine(){
+    var out = [], P = percept || {}, n = P.open_notifications || 0;
+    if(n > 0) out.push(n + (n === 1 ? ' notification is' : ' notifications are') + ' still open. Just saying.');
+    if(P.notifications_trend === 'rising') out.push('The notification count is going up, not down.');
+    var wk = Date.now() - 7*86400000, hits = 0;
+    (aigState.log || []).forEach(function(e){ if(e.type === 'bad' && new Date(e.ts).getTime() > wk) hits++; });
+    if(hits >= 10) out.push('You have hit me ' + hits + ' times this week. I keep count.');
+    var ko = aigState.stats && aigState.stats.lastKoBy, kt = ko && findTool(ko.tool);
+    if(ko && ko.who && kt) out.push('Last time I went down, it was ' + String(ko.who).split('@')[0] + ' with the ' + kt.label.toLowerCase() + '.');
+    var idle = P.minutes_since_you_touched_me || 0;
+    if(idle >= 15) out.push('Nobody has touched me in ' + idle + ' minutes. Not complaining.');
+    var others = (mpOnline || []).filter(function(nm){ return nm && nm !== mpName; });
+    if(others.length) out.push(others[0] + ' is on right now.');
+    return out.length ? pick(out) : null;
+  }
   var lastSayAt = -1e9, aiHoldUntil = -1e9;
   function say(text, ms, force){
     if(!root) return; if(!force && focusQuiet()) return;
@@ -22401,6 +22444,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     if(heldTool) return;
     if(performance.now() < sulkUntil) say(pick(['...','I am fine.','Whatever you say.','Cool. Great. Love that for me.','Do not.']));
     else if(madOn) say(pick(spicy(['I remember every hit.','Keep swinging. I dare you.','My patience has a torque spec too.','Say sync one more time.'],['Say sync one more goddamn time.','I remember every hit, asshole.','Keep swinging. I dare you. I DARE you.'])));
+    else if(Math.random() < 0.3 && (gline = groundedLine())){ say(gline); }
     else if(Math.random() < 0.33){
       var mood = (performance.now() - lastPraiseAt < 12000) ? 'happy' :
                  bandaids.length >= 2 ? 'sore' :
@@ -22675,6 +22719,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     traps.push(t);
     saveWorld();
   }
+  window.aiGuyClearFloor = function(){ window.aiGuyClearTraps(); window.aiGuyClearClones(); if(window.aiGuyClearProps) window.aiGuyClearProps(); };
   window.aiGuyClearTraps = function(){ traps.slice().forEach(removeTrap); tone(400,.06,'sine',.03); saveWorld(); };
   var WORLD_KEY = 'tgk_ai_guy_world';
   var worldRestoring = false, worldRestored = false;
@@ -23747,7 +23792,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       '<label>Walk speed <span style="display:flex;align-items:center;gap:6px"><input type="range" min="0.4" max="2.5" step="0.1" value="'+settings.speed+'" oninput="aiGuySetting(\'speed\',this.value);this.nextSibling.textContent=(+this.value).toFixed(1)+\'x\'"><span style="width:30px;text-align:right;color:#f0f0f0">'+settings.speed.toFixed(1)+'x</span></span></label>'+
       tog('taunts', 'Taunts', settings.taunts !== false) +
       tog('hide', 'Wanders off to hide', settings.hide !== false) +
-      tog('rapid', 'Hold to rapid-fire', settings.rapid !== false) +
+      tog('rapid', 'Hold to rapid-fire (swing tools)', settings.rapid !== false) +
       tog('lite', 'Lite mode (fewer effects)', !!settings.lite) +
       tog('fight', 'He fights back when mad', settings.fight !== false) +
       tog('steal', 'He can steal the cursor', settings.steal !== false) +
@@ -24198,8 +24243,43 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // (tgkAIFetch), so rate limits, model allowlist and auth are all handled server-side.
   // Strictly rate-limited here too (one thought per ~35s), only for notable moments, and every
   // call has a canned fallback -- if the proxy is down or slow he just says the scripted line.
-  var brainBusy = false, lastThinkAt = -1e9, brainFails = 0, recentLines = [], lastRenameAt = -1e9;
-  function brainOn(){ return settings.brain !== false && typeof tgkAIFetch === 'function' && brainFails < 4 && !perf.on; }
+  var brainBusy = false, lastThinkAt = -1e9, brainFails = 0, brainPausedUntil = 0, recentLines = [], lastRenameAt = -1e9;
+  var AIG_MODEL = 'claude-sonnet-4-6';
+  // The brain backs off instead of switching itself off until the page is reloaded: a rate limit or a
+  // dead proxy pauses it for a while, then it quietly comes back. Canned lines cover the gap.
+  function brainOn(){ return settings.brain !== false && typeof tgkAIFetch === 'function' && performance.now() >= brainPausedUntil && !perf.on; }
+  function brainPause(ms){ brainPausedUntil = Math.max(brainPausedUntil, performance.now() + ms); }
+  function brainStatus(){
+    if(settings.brain === false) return 'off';
+    if(typeof tgkAIFetch !== 'function') return 'unavailable';
+    if(perf.on) return 'paused (lite mode)';
+    var left = Math.ceil((brainPausedUntil - performance.now())/1000);
+    if(left > 0) return 'resting ' + (left >= 90 ? Math.ceil(left/60) + 'm' : left + 's');
+    return 'on';
+  }
+  // The only place the model is called from. Resolves with the reply text. tgkAIFetch turns HTTP errors
+  // (401 / 429 / 5xx) into a 200 response with an {error} body; before this, those were read as an empty
+  // reply, never counted as a failure, and the brain kept hitting a rate-limited proxy at full speed.
+  function aigAsk(system, messages, maxTokens){
+    return tgkAIFetch({ model: AIG_MODEL, max_tokens: maxTokens, system: system, messages: messages })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.error){
+          var ty = String(d.error.type || '');
+          brainFails++;
+          brainPause(ty === 'rate_limit_error' ? 120000 : ty === 'authentication_error' ? 600000 : 60000);
+          throw new Error(ty || 'api_error');
+        }
+        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
+        if(!txt) throw new Error('empty_reply');
+        brainFails = 0;
+        return txt;
+      }, function(e){
+        brainFails++;
+        if(brainFails >= 3) brainPause(Math.min(600000, 30000 * brainFails));
+        throw e;
+      });
+  }
   function remember(kind, detail, extra){ return memRemember(kind, detail, extra); }
   function brainContext(){
     var now = new Date();
@@ -24225,11 +24305,24 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     };
   }
   var BRAIN_SYSTEM = [
-    'You are "AI Guy", the office mascot of TGK Motorsport, a small performance auto-parts shop (Audi / VW enthusiasts, turbo cars, Shopify store, an ERP, dealer portal, backorders, ShipStation).',
-    'You are a little cartoon robot body with the boss\'s real face. The team clicks you with cartoon weapons to blow off steam, and praises you when the AI did good work. You are a sarcastic, quick, lovable coworker: dry humor, car-nerd jokes (boost leaks, P0299, N75, DSG, downpipes, "torque spec: gutentight"), light shop-ops jokes (Shopify sync, backorders, SKUs with hyphens, ShipStation firing twice, "did you run node --check", data accuracy).',
-    'Reply with ONE line only, 4 to 14 words, max 90 characters. No quotes, no emojis, no hashtags, no preamble, no explanation. First person. Match the mood: playful when praised, dramatic when hurt, genuinely grumpy when mad, sulky when sulking, sleepy when asleep. Never insult real people cruelly; teasing is fine. Never mention being an AI model or a prompt.'
+    'You are "AI Guy", the office mascot of TGK Motorsport, a small performance auto-parts shop (Audi / VW enthusiasts, turbo cars, a Shopify store, an ERP, a dealer portal, ShipStation).',
+    'You are a little cartoon robot body wearing the boss\'s real face. The team clicks you with cartoon weapons to blow off steam, and praises you when the AI did good work. You are a quick, dry, likeable coworker, not a comedian doing a bit: you sound like a real person in a shop, short and offhand.',
+    'Reply with ONE line only, 3 to 16 words, max 90 characters. No quotes, no emojis, no hashtags, no preamble, no explanation. First person.',
+    'React to what actually just happened and to who did it. Use a name only if the context gives you one. Vary your length and rhythm; sometimes one word is right. Do not force a joke every time, and use a car or shop joke in at most about one line out of three. Never reuse a joke or phrase from your recent lines.',
+    'Match your state in the context: playful when praised, dramatic when hurt, properly grumpy when mad, short and sulky when sulking, sleepy when asleep, curious when nothing is happening. Your mood carries over: if you were hit a lot a minute ago, you are still sore.',
+    'You can only see what is in the Context. You do NOT know anything about live orders, stock, backorders, customers, tickets or sales, so never state or invent numbers, SKUs, names or events about the business. If asked, say you cannot see that and point to the ERP or Support Center. Never claim to have done something you did not do. Teasing is fine, never cruel. Never mention being an AI model or a prompt.'
   ].join(' ');
   var SLUR_RX = /\b(n[i1]gg|f[a4]gg?[oe]t|k[i1]ke|sp[i1]c|ch[i1]nk|tr[a4]nn|ret[a4]rd|wetback|gook|beaner|towelhead|dyke)\w*/i;
+  function brainSystem(){
+    return BRAIN_SYSTEM + (settings.swear === false ? ' No profanity at all.' : ' Profanity is allowed and fits your character when you are hurt or mad: shit, damn, hell, ass, bastard, and an occasional fuck. Use it like a shop mechanic, not every line. Never slurs, nothing sexual, never mock anyone for who they are.');
+  }
+  // One sanitiser for every line the model writes: first line only, sane length, no links, no slurs, no "as an AI".
+  // (The old version collapsed newlines before splitting on them, so a two-line reply became one long line and was thrown away.)
+  function cleanLine(raw, max){
+    var t = String(raw || '').trim().split(/\r?\n/)[0].replace(/^["'\s]+|["'\s]+$/g, '').replace(/\s+/g, ' ');
+    if(!t || t.length > (max || 110) || /https?:/i.test(t) || /as an ai|language model|prompt/i.test(t) || SLUR_RX.test(t)) return '';
+    return t;
+  }
   function think(kind, detail, fallback, ms, urgent, onText){ if(!urgent && focusQuiet()) return;
     var fb = function(){ if(fallback) say(fallback, ms||2600, true); };
     if(!brainOn() || brainBusy || (!urgent && performance.now() - lastThinkAt < 35000)){ fb(); return; }
@@ -24241,22 +24334,20 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
                (recalled.length ? '\nThings you remember that are similar to this:\n- '+recalled.join('\n- ') : '')+
                '\nDo not repeat any of these recent lines: '+JSON.stringify(recentLines.slice(-6))+
                '\nYour one line:';
-    var sys = BRAIN_SYSTEM + (settings.swear === false ? ' No profanity at all.' : ' Profanity is allowed and fits your character when you are hurt or mad: shit, damn, hell, ass, bastard, and an occasional fuck. Use it like a shop mechanic, not every line. Never slurs, nothing sexual, never mock anyone for who they are.');
-    var timer = setTimeout(function(){ if(brainBusy){ brainBusy = false; fb(); } }, 4500);
     var done = false;
-    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 60, system: sys, messages:[{ role:'user', content:user }] })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
+    // A reply that lands after the canned line has already been shown is dropped (it used to speak a second line
+    // and reset the busy flag out from under whatever call was running by then).
+    var timer = setTimeout(function(){ if(done) return; done = true; brainBusy = false; fb(); }, 6000);
+    aigAsk(brainSystem(), [{ role:'user', content:user }], 60)
+      .then(function(raw){
         if(done) return; done = true; clearTimeout(timer); brainBusy = false;
-        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
-        txt = txt.replace(/^["'\s]+|["'\s]+$/g,'').replace(/\s+/g,' ').split('\n')[0];
-        if(!txt || txt.length > 110 || /https?:/i.test(txt) || /as an ai|language model|prompt/i.test(txt) || SLUR_RX.test(txt)){ fb(); return; }
+        var txt = cleanLine(raw, 110);
+        if(!txt){ fb(); return; }
         recentLines.push(txt); if(recentLines.length > 12) recentLines.shift();
         say('\u2726 ' + txt, ms || Math.min(4200, 1800 + txt.length*28), true);
-        brainFails = 0;
         if(onText){ try{ onText(txt); }catch(e){} }
       })
-      .catch(function(){ if(done) return; done = true; clearTimeout(timer); brainBusy = false; brainFails++; fb(); });
+      .catch(function(){ if(done) return; done = true; clearTimeout(timer); brainBusy = false; fb(); });
   }
   window.aiGuyThink = think;
   window.aiGuyDebug = { sleep: fallAsleep, wake: wakeUp, skit: startSkit, hide: startHiding, unhide: unhide, cover: function(){ return hideSpot ? (hideSpot.el.id || hideSpot.el.className) : null; }, state: function(){ return { mode:mode, asleep:asleep, skit:skit?skit.kind:null, anger:Math.round(anger), mad:madOn, fight:fightOn, stolen:cursorStolen, truce_s: Math.max(0, Math.ceil((fightCooldownUntil-performance.now())/1000)), steal_on: settings.steal !== false, fight_on: settings.fight !== false }; } };
@@ -24685,49 +24776,71 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
   // ---------------- Talk to him ----------------
   // Claude decides both what he SAYS and what he DOES; the local code executes the action.
+  // It is a real conversation now: the last few turns go to the model as turns (his own replies included),
+  // so he can answer "why?" or "what about the other one?" instead of treating every message as the first.
   var talkBusy = false;
   var TALK_ACTIONS = { calm:1, come:1, nap:1, dance:1, sulk:1, attack:1, hide:1, wave:1, none:1 };
+  function chatTurns(){
+    var out = [], cutoff = Date.now() - 30*60000;
+    (aigState.chat || []).forEach(function(c){
+      if(!c || !c.t || (c.at || 0) < cutoff) return;
+      var role = c.who === 'you' ? 'user' : 'assistant';
+      var text = role === 'user' ? String(c.t) : JSON.stringify({ say: String(c.t), action: TALK_ACTIONS[c.a] ? c.a : 'none' });
+      if(!out.length && role !== 'user') return;                          // the conversation has to open with the person
+      if(out.length && out[out.length-1].role === role){                  // never two of the same role in a row
+        if(role === 'user') out[out.length-1].content += '\n' + text; else out[out.length-1].content = text;
+        return;
+      }
+      out.push({ role: role, content: text });
+    });
+    return (out.length && out[out.length-1].role === 'user') ? out : null;
+  }
   window.aiGuyTalk = function(text){
     if(!root || root.style.display === 'none') return;
     text = String(text||'').trim(); if(!text) return;
     closePop(); touch(); if(asleep) wakeUp(true);
     remember('you said', text.slice(0,50));
-    aigState.chat.push({ who:'you', t:text.slice(0,140), at:Date.now() }); if(aigState.chat.length > 12) aigState.chat.shift(); saveState();
+    aigState.chat.push({ who:'you', t:text.slice(0,200), at:Date.now() }); if(aigState.chat.length > 12) aigState.chat.shift(); saveState();
     var lower = text.toLowerCase();
+    // Offline answers. Whole words only: the old patterns matched inside other words, so "this" waved hello,
+    // "where" made him walk over, and "interest" sent him to sleep.
     var fallback = function(){
       var act = 'none', line;
-      if(/calm|relax|chill|sorry|truce/.test(lower)){ act = 'calm'; line = pick(['...fine. Fine.','Apology noted. Filed. Ignored.','Breathing. Counting backorders.']); }
-      else if(/come|here|closer/.test(lower)){ act = 'come'; line = pick(['Coming. Hold your hammer.','On my way. Slowly.']); }
-      else if(/sleep|nap|rest|tired/.test(lower)){ act = 'nap'; line = pick(['Do not have to tell me twice.','Wake me for the deploy.']); }
-      else if(/dance|celebrate|party/.test(lower)){ act = 'dance'; line = pick(['Watch this.','Strut mode.']); }
-      else if(/who hit|most|leader|score/.test(lower)){ var P = playerOf(); line = 'You: '+P.hits+' hits, '+P.praises+' praises. Favorite: '+(favTool(P)||'undecided')+'.'; }
-      else if(/how are|you ok|feel/.test(lower)){ line = anger > 60 ? pick(spicy(['Mad. Obviously.','Been better. Been hit less.'],['Pissed, since you ask.'])) : pick(['Alive. Employed. Walking.','Fine until you reach for the tray.']); }
-      else if(/hide|duck|disappear/.test(lower)){ act = 'hide'; line = pick(['Say no more.','Hiding. You saw nothing.','Stealth mode.']); }
-      else if(/hello|hi\b|hey|yo\b/.test(lower)){ act = 'wave'; line = pick(['Hey.','Yo.','Present.']); }
+      if(/\b(calm|relax|chill|sorry|truce)\b/.test(lower)){ act = 'calm'; line = pick(['...fine. Fine.','Apology noted. Filed. Ignored.','Breathing. Counting backorders.']); }
+      else if(/\b(come|closer)\b|\bover here\b/.test(lower)){ act = 'come'; line = pick(['Coming. Hold your hammer.','On my way. Slowly.']); }
+      else if(/\b(sleep|nap|rest|tired)\b/.test(lower)){ act = 'nap'; line = pick(['Do not have to tell me twice.','Wake me for the deploy.']); }
+      else if(/\b(dance|celebrate|party)\b/.test(lower)){ act = 'dance'; line = pick(['Watch this.','Strut mode.']); }
+      else if(/\bwho (hit|hits)\b|\bleader|\bscore\b|\bhow many\b/.test(lower)){ var P = playerOf(); line = 'You: '+P.hits+' hits, '+P.praises+' praises. Favorite: '+(favTool(P)||'undecided')+'.'; }
+      else if(/\bhow are\b|\byou ok\b|\bfeel/.test(lower)){ line = anger > 60 ? pick(spicy(['Mad. Obviously.','Been better. Been hit less.'],['Pissed, since you ask.'])) : pick(['Alive. Employed. Walking.','Fine until you reach for the tray.']); }
+      else if(/\b(hide|duck|disappear)\b/.test(lower)){ act = 'hide'; line = pick(['Say no more.','Hiding. You saw nothing.','Stealth mode.']); }
+      else if(/^(hello|hi|hey|yo|sup)\b|\b(hello|hey)\b/.test(lower)){ act = 'wave'; line = pick(['Hey.','Yo.','Present.']); }
       else line = pick(['Noted.','Write that in Notes.','Is that a request or a threat?','Cool. Anyway.','I heard you. I am choosing not to respond.']);
-      talkDo(act); sayTalk(line);
+      talkDo(act); sayTalk(line, act);
     };
-    if(!brainOn() || talkBusy){ fallback(); return; }
+    var turns = chatTurns();
+    if(!brainOn() || talkBusy || !turns){ fallback(); return; }
     talkBusy = true;
-    var ctx = brainContext(); ctx.recent_chat = aigState.chat.slice(-6);
-    var sys = BRAIN_SYSTEM + (settings.swear === false ? ' No profanity.' : ' Profanity allowed in moderation, never slurs.') +
-      ' The user is TALKING to you now. Reply ONLY with JSON: {"say": "<one line, max 90 chars>", "action": "<one of calm|come|nap|dance|sulk|attack|hide|wave|none>"}. Choose the action that fits what you would actually do given your anger and what they said - you may refuse requests. Use the context to answer factual questions about scores and who hit you.';
-    var timer = setTimeout(function(){ if(talkBusy){ talkBusy = false; fallback(); } }, 5000); var done = false;
-    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 90, system: sys, messages:[{ role:'user', content: 'They said: "'+text.slice(0,200)+'"\nContext: '+JSON.stringify(ctx)+'\nJSON:' }] })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
+    aiHoldUntil = -1e9; say('...', 9000, true);                           // he is thinking: no dead air while the model answers
+    var sys = brainSystem() +
+      ' You are in a live conversation: the person is TALKING to you. Answer what they actually said, in character, and ask a short question back only when it comes naturally.' +
+      ' Reply ONLY with JSON: {"say": "<one line, max 90 chars>", "action": "<one of calm|come|nap|dance|sulk|attack|hide|wave|none>"}.' +
+      ' Pick the action you would really do given your anger and what they said; you may refuse a request.' +
+      ' Answer questions about scores, who hit you and how you feel from the Context. For anything about the shop itself (orders, stock, customers, tickets), say plainly that you cannot see it and send them to the ERP or Support Center.' +
+      '\nContext: ' + JSON.stringify(brainContext());
+    var done = false;
+    var timer = setTimeout(function(){ if(done) return; done = true; talkBusy = false; fallback(); }, 9000);
+    aigAsk(sys, turns, 120)
+      .then(function(raw){
         if(done) return; done = true; clearTimeout(timer); talkBusy = false;
-        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
-        var m = /\{[\s\S]*\}/.exec(txt); var obj = null; try{ obj = m ? JSON.parse(m[0]) : null; }catch(e){}
-        if(!obj || !obj.say || SLUR_RX.test(obj.say)){ fallback(); return; }
-        var line = String(obj.say).replace(/\s+/g,' ').slice(0, 110);
-        talkDo(TALK_ACTIONS[obj.action] ? obj.action : 'none');
-        sayTalk('\u2726 ' + line);
-        brainFails = 0;
+        var m = /\{[\s\S]*\}/.exec(raw); var obj = null; try{ obj = m ? JSON.parse(m[0]) : null; }catch(e){}
+        var line = obj ? cleanLine(obj.say, 110) : '';
+        if(!line){ fallback(); return; }
+        var act = TALK_ACTIONS[obj.action] ? obj.action : 'none';
+        talkDo(act); sayTalk('\u2726 ' + line, act);
       })
-      .catch(function(){ if(done) return; done = true; clearTimeout(timer); talkBusy = false; brainFails++; fallback(); });
+      .catch(function(){ if(done) return; done = true; clearTimeout(timer); talkBusy = false; fallback(); });
   };
-  function sayTalk(line){ aiHoldUntil = -1e9; say(line, Math.min(5000, 2200 + line.length*30), true); aigState.chat.push({ who:'him', t:line.replace(/^\u2726 /,'').slice(0,140), at:Date.now() }); if(aigState.chat.length > 12) aigState.chat.shift(); saveState(); }
+  function sayTalk(line, act){ aiHoldUntil = -1e9; say(line, Math.min(5000, 2200 + line.length*30), true); aigState.chat.push({ who:'him', t:line.replace(/^\u2726 /,'').slice(0,200), a:act||'none', at:Date.now() }); if(aigState.chat.length > 12) aigState.chat.shift(); saveState(); }
   function talkDo(act){
     switch(act){
       case 'calm':  anger = Math.max(0, anger - 35); if(anger < 55 && madOn){ madOn = false; bounce.classList.remove('aig-mad'); } if(fightOn) endFightBack(); break;
@@ -24788,7 +24901,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     document.body.appendChild(el);
     traps.push({ kind:'boulder', el:el, x:x, y:-50, vy:0, tool:t, born:performance.now(), isBox:true });
   }
-  var boxedUntil = 0, boxEl = null;
+  var boxEl = null;
   function boxHim(){
     if(mode === 'frozen' || cursorStolen) return;
     frozenWasAir = false; mode = 'frozen'; vx = 0; vy = 0; rotVel = 0; posY = groundY(); setRootPos(); phys.style.transform = '';
@@ -25058,17 +25171,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       '{"mood":"<one word>","goal":"<one of sulk|seek_praise|plot_revenge|make_friends|work|rest|mischief|none>",' +
       '"about":"<person name or empty>","opinion":"<short opinion of that person, or empty>","say":"<one line under 90 chars, or empty>"}. ' +
       'Pick the goal you would actually pursue for the next few minutes given your anger, who has been hitting you, and who has been kind.';
-    var timer = setTimeout(function(){ planBusy = false; }, 6000); var done = false;
-    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 120, system: sys, messages:[{ role:'user', content:'Why you are planning: '+reason+'\nState: '+JSON.stringify(planContext())+'\nJSON:' }] })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(done) return; done = true; clearTimeout(timer); planBusy = false;
-        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
-        var m = /\{[\s\S]*\}/.exec(txt); var o = null; try{ o = m ? JSON.parse(m[0]) : null; }catch(e){}
-        if(!o) return;
-        applyPlan(o);
+    // No local timer: a plan is not time-critical, so a slow one still lands (tgkAIFetch aborts a dead call itself).
+    aigAsk(sys, [{ role:'user', content:'Why you are planning: '+reason+'\nState: '+JSON.stringify(planContext())+'\nJSON:' }], 220)
+      .then(function(raw){
+        planBusy = false;
+        var m = /\{[\s\S]*\}/.exec(raw); var o = null; try{ o = m ? JSON.parse(m[0]) : null; }catch(e){}
+        if(o) applyPlan(o);
       })
-      .catch(function(){ if(done) return; done = true; clearTimeout(timer); planBusy = false; brainFails++; });
+      .catch(function(){ planBusy = false; });
   }
   function applyPlan(o){
     plan = { mood: String(o.mood||'').slice(0,20), goal: PLAN_GOALS[o.goal] ? o.goal : 'none', at: performance.now() };
@@ -25088,7 +25198,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       case 'rest':         drives.rest = 0.95; break;
       case 'mischief':     drives.mischief = 0.9; break;
     }
-    if(o.say && !SLUR_RX.test(o.say)) say('\u2726 ' + String(o.say).slice(0,110), 3600, true);
+    var planLine = cleanLine(o.say, 110); if(planLine) say('\u2726 ' + planLine, 3600, true);
   }
   function directorTick(ts){
     if(ts < nextPlanAt) return;
@@ -25134,7 +25244,6 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // Left alone he patches himself up: bandaids come off one at a time, splats wipe away,
   // soot dusts off, anger bleeds out. Getting hit resets the clock.
   var nextHealAt = 0, lastDayCheck = 0;
-  var _bossFirstDelay = 240000;
   function updateHealing(ts){
     if(ts < nextHealAt) return;
     nextHealAt = ts + 20000;
@@ -25666,7 +25775,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
 
   // ---------------- Verb: CHARGE (hold to wind up, release to swing) ----------------
-  var CHARGE_TOOLS = { hammer:1, glove:1, sling:0, rs:1, boulder:0 };
+  var CHARGE_TOOLS = { hammer:1, glove:1, rs:1 };
   var charging = null, chargeEl = null, chargeJustFired = false;
   function chargeStart(e){
     if(!heldTool || !CHARGE_TOOLS[heldTool.id]) return false;
@@ -25845,7 +25954,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   window.aiGuyClearProps = function(){ crates.slice().forEach(function(c){ if(c.el) c.el.remove(); }); crates = []; };
 
   // ---------------- He picks up dropped tools and uses them ----------------
-  var loose = [], nextGrabCheck = 0;
+  var loose = [];
   function spawnLoose(tool, x, y){
     if(!tool) return;
     var el = document.createElement('div'); el.className = 'aig-trap'; el.textContent = tool.icon;
@@ -26047,7 +26156,6 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   }
 
   // ---------------- Best hit of the day (replay card) ----------------
-  var bestHit = null;
   function noteHit(tool, force, speed){
     var score = (tool.weight||1) * (force||1) * (1 + Math.min(2, speed||0));
     var day = new Date().toISOString().slice(0,10);
@@ -26293,12 +26401,13 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // ================= #4 DAILY REFLECTION =================
   // Once a day he reads his own history back and writes durable beliefs, which then ride along
   // in every prompt. That is what gives him a past rather than a log.
+  var reflectBusy = false;
   function maybeReflect(){
     var today = new Date().toISOString().slice(0,10);
     if(aigState.stats.reflectedOn === today) return;
     if((aigState.memory||[]).length < 8) return;
-    if(!brainOn()) return;
-    aigState.stats.reflectedOn = today; saveState();
+    if(!brainOn() || reflectBusy) return;
+    reflectBusy = true;
     var hist = (aigState.memory||[]).slice(0, 40).map(function(m){
       var c = m.ctx||{};
       return new Date(m.t).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + m.k + (m.d?': '+m.d:'') + (m.who?' by '+m.who:'') + (c.tool?' ['+c.tool+']':'');
@@ -26309,13 +26418,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var sys = BRAIN_SYSTEM + ' You are reflecting privately at the end of a day, not speaking to anyone. Reply ONLY with JSON: ' +
       '{"about_people":{"<name>":"<one short belief>"},"about_self":"<one short belief>","about_the_shop":"<one short belief>","resolution":"<one thing you intend to do tomorrow>"}. ' +
       'Base it strictly on the history given. Keep every value under 90 characters.';
-    tgkAIFetch({ model:'claude-sonnet-4-6', max_tokens: 320, system: sys,
-                 messages:[{ role:'user', content: 'Your history:\n' + hist.join('\n') + '\n\nPeople: ' + JSON.stringify(players) + '\n\nJSON:' }] })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var txt = (d && d.content && d.content[0] && d.content[0].text) ? String(d.content[0].text) : '';
+    aigAsk(sys, [{ role:'user', content: 'Your history:\n' + hist.join('\n') + '\n\nPeople: ' + JSON.stringify(players) + '\n\nJSON:' }], 400)
+      .then(function(txt){
+        reflectBusy = false;
         var mm = /\{[\s\S]*\}/.exec(txt); var o = null; try{ o = mm ? JSON.parse(mm[0]) : null; }catch(e){}
         if(!o) return;
+        aigState.stats.reflectedOn = today;
         aigState.beliefs = {
           people: o.about_people || {}, self: String(o.about_self||'').slice(0,120),
           shop: String(o.about_the_shop||'').slice(0,120), resolution: String(o.resolution||'').slice(0,120),
@@ -26327,7 +26435,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         });
         saveState();
         setTimeout(function(){ if(aigState.beliefs.resolution) say('\u2726 ' + aigState.beliefs.resolution, 4000, true); }, 3000);
-      }).catch(function(){});
+      }).catch(function(){ reflectBusy = false; });
   }
 
   // ================= #5 GOAL STACK =================
@@ -26418,13 +26526,6 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     pop.style.left = left+'px';
   }
 
-  var fxLive = 0, FX_BUDGET = 140;
-  function fxNode(cls, ttl){
-    if(fxLive > FX_BUDGET) return null;
-    var el = document.createElement('div'); el.className = cls; fxLive++;
-    setTimeout(function(){ el.remove(); fxLive--; }, ttl);
-    return el;
-  }
   // ---------------- Canvas FX layer: one <canvas>, all particles ----------------
   // Replaces the per-particle DOM nodes (each was a layout + a timer). A few hundred
   // particles now cost one draw call per frame instead of hundreds of style writes.
