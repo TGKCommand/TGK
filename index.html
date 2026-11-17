@@ -20590,7 +20590,7 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.21';
+var TGK_CC_VERSION='v7.25';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -20962,6 +20962,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
 #aig-history-body::-webkit-scrollbar{width:8px}
 #aig-history-body::-webkit-scrollbar-thumb{background:#2e2e2e;border-radius:2px}
 .aig-hist-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #232527}
+.aig-ash{position:absolute;top:0;bottom:0;left:100%;width:0;background:#b9b9be;border-radius:0 2px 2px 0;box-shadow:inset -1px 0 0 #8c8c93}
+.aig-cigar.aig-cig-out{filter:grayscale(1) brightness(.55) drop-shadow(0 1px 1px rgba(0,0,0,.55))}
+.aig-handpt{position:absolute;left:50%;bottom:0;width:1px;height:1px;pointer-events:none}
+.aig-plea{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:3060;width:248px;max-width:calc(100vw - 16px);background:#18191b;border:1px solid #2e2e2e;border-radius:2px;padding:8px 10px 9px;font-family:var(--font,inherit);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.aig-plea b{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#ef4444;margin-bottom:6px}
+.aig-plea-row{display:flex;gap:6px}
+.aig-plea input{flex:1;min-width:0;background:#101214;border:1px solid #2e2e2e;color:#f0f0f0;border-radius:2px;padding:5px 7px;font-size:11px;font-family:inherit}
+.aig-plea button{background:#F0812E;border:none;color:#fff;border-radius:2px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.aig-plea-rec{font-size:10px;color:#6b7076;margin-top:6px}
+.aig-plea-bar{height:2px;background:#2e2e2e;margin-top:7px}
+.aig-plea-bar i{display:block;height:100%;width:100%;background:#F0812E}
 </style>
 
 <div id="aig-root" title="Click for tools, or drag to throw">
@@ -21016,10 +21027,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       var raw = localStorage.getItem(STORE_KEY);
       if(raw){
         var parsed = JSON.parse(raw);
-        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[], players: parsed.players||{}, learn: parsed.learn||{}, chat: parsed.chat||[], opinions: parsed.opinions||{}, beliefs: parsed.beliefs||null, daily: parsed.daily||null, tod: parsed.tod||null };
+        if(parsed && typeof parsed==='object') return { good: parsed.good||0, bad: parsed.bad||0, log: parsed.log||[], ach: parsed.ach||[], stats: parsed.stats||{}, cond: parsed.cond||null, memory: parsed.memory||[], players: parsed.players||{}, learn: parsed.learn||{}, chat: parsed.chat||[], opinions: parsed.opinions||{}, beliefs: parsed.beliefs||null, daily: parsed.daily||null, tod: parsed.tod||null, boss: parsed.boss||[], achNames: parsed.achNames||{} };
       }
     }catch(e){}
-    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{}, beliefs:null, daily:null, tod:null };
+    return { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{}, beliefs:null, daily:null, tod:null, boss:[], achNames:{} };
   }
   function stat(key, inc){ aigState.stats[key] = (aigState.stats[key]||0) + (inc==null?1:inc); try{ dailyStat(key); }catch(_e){} return aigState.stats[key]; }
   var aigState = loadState();
@@ -21511,6 +21522,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     } else if(mode === 'stuck'){
       target = 0;
     }
+    target += cigNod();
     target = Math.max(-28, Math.min(28, target));
     var k = 0.012 * dt, damp = Math.pow(0.86, dt/16);
     headVel = (headVel + (target - headAng) * k) * damp;
@@ -22105,7 +22117,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // Hold the mouse down to auto-swing (swing tools only) -- rapid-fire stress relief.
   function aigHoldStart(e){
     if(!heldTool) return;
-    if(isUiTarget(e.target) || aigOwnUi(e.target)) return;
+    // His own UI is off limits for starting a hold -- except HIM. Pressing on his body is the whole point of Hammer,
+    // Punch, Launch Control, the leaf blower, the hose and hold-to-rapid-fire; this guard used to reject those presses,
+    // so those tools only worked if you pressed in the thin gap beside him.
+    var onHim = !!(e.target && e.target.closest && e.target.closest('#aig-root'));
+    if(isUiTarget(e.target) || (aigOwnUi(e.target) && !onHim)) return;
     if(heldTool.kind === 'sling'){ slingStart(e); return; }
     if(chargeStart(e)) return;
     if(blowStart(e)) return;
@@ -23134,6 +23150,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     { id:'rodeo',      name:'Rodeo',       desc:'Roped him with the lasso.' },
     { id:'stacker',    name:'Stacker',     desc:'Stacked three crates.' },
     { id:'whack_master', name:'Whack Master', desc:'Scored 10 in whack-a-mole.' },
+    { id:'filibuster', name:'Filibuster', desc:'Talked the boss out of switching him off.' },
     { id:'stretch_armstrong', name:'Stretch Armstrong', desc:'Grabbed him by a limb.' },
     { id:'accelerant', name:'Accelerant',  desc:'Poured oil on the fire.' },
     { id:'hydroplane',  name:'Hydroplane',  desc:'Oil slick into a boost. No traction at all.' },
@@ -25371,6 +25388,8 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // Scott's guy smokes. Puffs on a timer, ember brightens, smoke drifts up, and it goes out
   // (comically) if he gets soaked, frozen or set on fire.
   var cigarEl = null, nextPuffAt = 0, cigarOn = false, cigRaiseUntil = 0, cigHand = null, cigLift = 0;
+  var cigAsh = 0.6, cigAshEl = null, cigFlickUntil = 0, cigNextWispAt = 0, cigLit = true, cigEverOn = false, cigRelightAt = 0, cigEmber = { x:0, y:0 };
+  function cigAshApply(){ if(cigAshEl) cigAshEl.style.width = cigAsh.toFixed(1) + 'px'; }
   function cigarShouldShow(){ return (settings.cigar === true) || (settings.cigar !== false && myFaceId() === 'scott'); }
   function updateCigar(ts){
     if(!cigarEl) cigarEl = root && root.querySelector('.aig-cigar');
@@ -25380,8 +25399,17 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       cigarOn = want; cigarEl.style.display = want ? '' : 'none';
       var armR = root.querySelector('.aig-arm.r'); if(armR) armR.classList.toggle('aig-holding', want);
       if(!want){ cigHand = null; cigAim = null; cigForearmS = null; }
+      // Put out (soaked, frozen, on fire) and back again: it comes back dead, then he relights it.
+      if(want){ if(cigEverOn){ cigLit = false; cigRelightAt = ts + 2200; cigarEl.classList.add('aig-cig-out'); } cigEverOn = true; }
     }
     if(!want) return;
+    if(!cigAshEl){ cigAshEl = document.createElement('i'); cigAshEl.className = 'aig-ash'; cigarEl.appendChild(cigAshEl); cigAshApply(); }
+    if(!cigLit && ts > cigRelightAt){
+      cigLit = true; cigAsh = 0.6; cigAshApply();
+      cigarEl.classList.remove('aig-cig-out'); cigarEl.classList.add('aig-cig-blaze');
+      setTimeout(function(){ if(cigarEl) cigarEl.classList.remove('aig-cig-blaze'); }, 800);
+      say(pick(['Lighter.','Relit. Nobody saw that.','Still got it.']), 1500);
+    }
     // The cigar is anchored by its MOUTH END. Raised: that end is at his lips. Resting: it hangs
     // out to his side, below the chin, clear of the chest.
     var LIP = { x: 22, y: 30 };                      // his lips, in sprite coords
@@ -25394,6 +25422,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var tipX = REST.x + (LIP.x - REST.x)*e;
     var tipY = REST.y + (LIP.y - REST.y)*e - Math.sin(e*Math.PI)*2.5 + hold;
     var ang  = restA + (lipA - restA)*e;
+    if(ts < cigFlickUntil) ang += Math.sin(ts/38) * 7 * ((cigFlickUntil - ts)/420);     // the flick
     var rad = ang * Math.PI/180;
     cigarEl.style.left = tipX.toFixed(1)+'px';
     cigarEl.style.top  = (tipY - 2.75).toFixed(1)+'px';
@@ -25401,8 +25430,11 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     // Hand grips the cigar about 45% along it.
     var grip = 9;
     cigHand = { x: tipX + Math.cos(rad)*grip, y: tipY + Math.sin(rad)*grip };
+    // where the coal is right now (the ash sits beyond it), in page coordinates
+    var cl = 19 + cigAsh, cs0 = settings.size||1, cr0 = guyRect(), cex = tipX + Math.cos(rad)*cl, cey = tipY + Math.sin(rad)*cl;
+    cigEmber = { x: cr0.left + (dir < 0 ? (46 - cex)*cs0 : cex*cs0), y: cr0.top + cey*cs0 };
     // Puff cycle: lift to the lips, ember flares, smoke drifts off the tip.
-    if(ts > nextPuffAt){
+    if(cigLit && ts > nextPuffAt){
       nextPuffAt = ts + 4000 + Math.random()*4500;
       cigRaiseUntil = ts + 2400;
       // the drag: ember flares hot ~600ms after it reaches the lips, then a big exhale
@@ -25410,12 +25442,14 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         if(!cigarEl || !cigarOn) return;
         cigarEl.classList.add('aig-cig-blaze');
         noiseBurst(.5, 320, 0.05, 1.6);
+        cigAsh += 0.7 + Math.random()*0.5; cigAshApply();                          // every drag grows the ash
+        if(cigAsh > 4.4) setTimeout(cigarFlick, 2300);                             // and when it is long enough he taps it off
         setTimeout(function(){ if(cigarEl) cigarEl.classList.remove('aig-cig-blaze'); }, 900);
       }, 700);
       setTimeout(function(){ if(cigarOn) bigPuff(); }, 1700);
       var s = settings.size||1, r = guyRect();
-      var ex2 = tipX + Math.cos(rad)*19;            // the ember end
-      var ey2 = tipY + Math.sin(rad)*19;
+      var ex2 = tipX + Math.cos(rad)*(19 + cigAsh);   // the end of the ash
+      var ey2 = tipY + Math.sin(rad)*(19 + cigAsh);
       var emberX = r.left + (dir < 0 ? (46 - ex2)*s : ex2*s);
       var emberY = r.top + ey2*s;
       for(var i=0;i<(perf.on?4:12);i++){
@@ -25426,6 +25460,33 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       }
       if(Math.random() < 0.22) say(pick(['*puff*','Do not tell my wife.','This is a lunch break.','Ahh.','Cuban. Probably.']), 1600);
     }
+    // Between drags it smoulders: one thin, faint wisp off the coal every second or so.
+    if(!perf.on && cigLit && cigLift < 0.15 && ts > cigNextWispAt){
+      cigNextWispAt = ts + 700 + Math.random()*900;
+      fxEmit({ x: cigEmber.x, y: cigEmber.y, vx: (Math.random()-0.5)*0.01, vy: -0.022 - Math.random()*0.012, size: 2.5 + Math.random()*2,
+               color: 'rgba(205,205,212,.2)', ttl: 2400 + Math.random()*800, shape:'smoke', drag:0.996, sway:true, phase: Math.random()*6 });
+    }
+  }
+  // Tap the ash off: grey flakes and a few live sparks fall under gravity, the cigar jerks, fresh coal flares.
+  // Head posture while he smokes: chin comes up on the drag, goes a little further back on the exhale, then relaxes.
+  var cigExhaleUntil = 0;
+  function cigNod(){
+    if(!cigarOn || !cigLit || mode !== 'walk' || asleep) return 0;
+    var back = cigLift * 6 + (performance.now() < cigExhaleUntil ? 5 : 0);
+    return -back * (dir < 0 ? -1 : 1);
+  }
+  function cigarFlick(){
+    if(!cigarEl || !cigarOn || !cigLit) return;
+    cigFlickUntil = performance.now() + 420;
+    var n = perf.on ? 4 : 10;
+    for(var i=0;i<n;i++)
+      fxEmit({ x: cigEmber.x + (Math.random()-0.5)*3, y: cigEmber.y, vx: (Math.random()-0.5)*0.05, vy: -0.01 - Math.random()*0.025,
+               size: 1.4 + Math.random()*1.8, color: (i % 3) ? 'rgba(176,176,182,.95)' : 'rgba(255,150,60,.95)', ttl: 700 + Math.random()*500,
+               shape:'rect', g:0.0011, drag:0.998, rot: Math.random()*6, vr: (Math.random()-0.5)*0.1 });
+    fxEmit({ x: cigEmber.x, y: cigEmber.y, vx: 0.004, vy: -0.016, size: 6, color:'rgba(190,190,196,.25)', ttl: 900, shape:'smoke', drag:0.995 });
+    cigAsh = 0.5; cigAshApply();
+    cigarEl.classList.add('aig-cig-blaze'); setTimeout(function(){ if(cigarEl) cigarEl.classList.remove('aig-cig-blaze'); }, 260);
+    if(Math.random() < 0.35) say(pick(['*tap*','Ash everywhere. Worth it.','Do not tell facilities.']), 1500);
   }
   window.aiGuyCigar = function(on){ settings.cigar = !!on; saveSettings(); };
 
@@ -25509,21 +25570,63 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // ---------------- The boss walks in ----------------
   // If you are not playing as Tyler, the boss occasionally strolls on, tells you to get back to
   // work, marches over to the robot button, switches AI Guy off, and leaves.
-  var BOSS_HAND_DX = 34, BOSS_HAND_DY = 20;    // he stands beside the button and reaches across to it
+  var BOSS_HAND_DX = 34;    // he stands beside the button and reaches across to it
   var boss = null, nextBossAt = 240000, bossPlayHits = 0, bossWindowStart = performance.now();
   var BOSS_LINES_PLAY = [
     'Having fun?', 'Is that what I pay for?', 'That thing is not on the P and L.',
-    'How many hits is that today?', 'The backorders are not going to count themselves.',
+    'The backorders are not going to count themselves.',
     'I can see your screen from my office.', 'Cycle counts. Now.',
-    'That is company property you are hitting.', 'Three hundred hits. I checked.',
-    'Nobody has touched the ERP in an hour.', 'Shopify sync. Go.', 'This is billable time.'
+    'That is company property you are hitting.',
+    'Shopify sync. Go.', 'This is billable time.'
   ];
   var BOSS_LINES_IDLE = [
-    'Are you still here?', 'Your screen has not moved in twenty minutes.',
+    'Are you still here?',
     'Inventory does not count itself.', 'Break time is over.',
     'I am not paying you to watch a cartoon.', 'Somebody answer the support inbox.',
     'Did you at least run the sync?', 'Wake up.'
   ];
+  // What the boss says. When there are real numbers (from his own log) he quotes them instead of a made-up figure.
+  function bossLine(reason){
+    var P = playerOf(), nowD = new Date().toDateString(), wkAgo = Date.now() - 7*86400000, today = 0, wk = 0;
+    (aigState.log || []).forEach(function(e){ if(e.type !== 'bad') return; var t = new Date(e.ts); if(t.toDateString() === nowD) today++; if(t.getTime() > wkAgo) wk++; });
+    var data = [], idleMin = Math.round((performance.now() - lastInteractAt) / 60000);
+    if(reason === 'idle'){
+      if(idleMin >= 7) data.push('He has been standing there ' + idleMin + ' minutes. So have you.');
+    } else {
+      if(bossPlayHits >= 10) data.push(bossPlayHits + ' hits in the last ten minutes. I counted.');
+      if(today >= 10) data.push(today + ' hits today. On company time.');
+      if((aigState.log || []).length < 500 && wk >= 40) data.push(wk + ' hits this week. I can do math.');
+      var ft = favTool(P) && findTool(favTool(P)); if(ft) data.push('The ' + ft.label.toLowerCase() + ' again?');
+    }
+    var generic = reason === 'idle' ? BOSS_LINES_IDLE : BOSS_LINES_PLAY;
+    return (data.length && Math.random() < 0.7) ? pick(data) : pick(generic);
+  }
+  window.aiGuyDebug.bossLine = bossLine;
+  function bossLog(outcome){
+    if(!boss || boss.logged) return;
+    boss.logged = true;
+    if(!aigState.boss) aigState.boss = [];
+    aigState.boss.unshift({ ts: new Date().toISOString(), who: sharedEmail().split('@')[0], reason: boss.reason || 'play', outcome: outcome, plea: boss.pleaText || '' });
+    if(aigState.boss.length > 30) aigState.boss.length = 30;
+    stat('boss_visits'); if(outcome === 'won') stat('plea_wins');
+    saveState();
+  }
+  function bossEsc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function bossHistHtml(){
+    var L = aigState.boss || []; if(!L.length) return '';
+    var won = L.filter(function(x){ return x.outcome === 'won'; }).length;
+    var OUT = { won:['Talked him out of it','#4ADE9F'], lost:['Plea failed','#FF6B6B'], off:['Switched him off','#FF6B6B'] };
+    var h = '<div class="aig-sec-label" style="margin:6px 0 4px">Boss visits<span>' + L.length + ' recent \u00b7 ' + won + ' talked out of it</span></div><div style="border-top:1px solid #2e2e2e;margin-bottom:14px">';
+    L.slice(0, 8).forEach(function(e){
+      var o = OUT[e.outcome] || OUT.off;
+      h += '<div class="aig-hist-row" style="align-items:flex-start"><span style="font-size:16px">' + String.fromCodePoint(0x1F454) + '</span>' +
+           '<span style="flex:1;min-width:0"><span style="font-size:13px;font-weight:700;color:' + o[1] + '">' + o[0] + '</span>' +
+           (e.who ? '<span style="font-size:11px;color:#6b7076"> \u00b7 ' + bossEsc(e.who) + '</span>' : '') +
+           (e.plea ? '<br><span style="font-size:11px;color:#9CA3AF">&ldquo;' + bossEsc(String(e.plea).slice(0, 80)) + '&rdquo;</span>' : '') + '</span>' +
+           '<span style="font-size:12px;color:#9CA3AF;white-space:nowrap">' + new Date(e.ts).toLocaleDateString() + '</span></div>';
+    });
+    return h + '</div>';
+  }
   function bossShouldCome(ts){
     if(boss || !root || root.style.display === 'none') return false;
     if(myFaceId() === 'tyler') return false;                 // you ARE the boss; he does not visit himself
@@ -25545,10 +25648,12 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     el.querySelector('.aig-bounce-c').appendChild(tag);
     var sc = el.querySelector('.aig-scale-c'); if(sc) sc.style.transform = 'scale(1.18)';                          // he is bigger than you
     document.body.appendChild(el);
+    // a tracker at the end of each forearm, so we know where his REAL hand is (the old code guessed with fixed offsets)
+    el.querySelectorAll('.aig-arm .aig-seg').forEach(function(sg){ var hp = document.createElement('i'); hp.className = 'aig-handpt'; sg.appendChild(hp); });
     var bub = document.createElement('div'); bub.className = 'aig-boss-bub'; bub.style.display = 'none'; document.body.appendChild(bub);
     boss = { el: el, bub: bub, flip: el.querySelector('.aig-flip-c'), bounce: el.querySelector('.aig-bounce-c'),
              x: fromLeft ? -70 : W + 24, y: groundY() - 8, dir: fromLeft ? 1 : -1, phase: 'enter', t0: performance.now(),
-             reason: reason, said: false, pressed: false, target: 0 };
+             reason: reason, said: false, pressed: false, target: 0, pleaUsed: false, hearing: false, pleaTotal: 1 };
     // where he is heading: the robot button
     var btn = document.getElementById('ai-guy-toggle-btn');
     var br = btn ? btn.getBoundingClientRect() : null;
@@ -25561,6 +25666,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
       say(pick(spicy(['Oh no. Look busy.','Boss. BOSS. Act natural.','Quick, open a spreadsheet.','I was working. We were both working.'],['Shit. The boss.'])), 2200, true);
       if(heldTool) window.aiGuyPutDownTool();
     }, 900);
+    setTimeout(function(){ if(boss) pleaShow(); }, 1000);
   }
   function bossSay(text, ms){
     if(!boss) return;
@@ -25568,17 +25674,112 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     clearTimeout(boss.bubTimer);
     boss.bubTimer = setTimeout(function(){ if(boss) boss.bub.style.display = 'none'; }, ms || 3200);
   }
+  // ---- Talking the boss out of it ----
+  // While he is walking in and heading for the button, a small box lets you speak up for AI Guy.
+  // Claude (as the boss) judges the argument; a lazy one loses, a good one sends him back to his office.
+  // Once he starts reaching for the button it is too late. One try per visit.
+  var pleaEl = null;
+  function pleaShow(){
+    if(pleaEl || !boss || boss.pleaUsed) return;
+    pleaEl = document.createElement('div'); pleaEl.className = 'aig-plea';
+    pleaEl.innerHTML = '<b>The boss is coming</b><div class="aig-plea-row"><input maxlength="160" placeholder="Say something in his defense..."><button type="button">Plead</button></div><div class="aig-plea-bar"><i></i></div>' + pleaRecord();
+    document.body.appendChild(pleaEl);
+    var inp = pleaEl.querySelector('input');
+    var go = function(){ window.aiGuyPlead(inp.value); };
+    pleaEl.querySelector('button').addEventListener('click', go);
+    inp.addEventListener('keydown', function(e){ e.stopPropagation(); if(e.key === 'Enter') go(); });
+    inp.addEventListener('keyup', function(e){ e.stopPropagation(); });
+    pleaEl.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+  }
+  function pleaRecord(){
+    var P = playerOf(); if(!(P.hits + P.praises)) return '';
+    return '<div class="aig-plea-rec">Your record with him: ' + P.praises + ' praises, ' + P.hits + ' hits.</div>';
+  }
+  function pleaClose(){ if(pleaEl){ pleaEl.remove(); pleaEl = null; } }
+  function pleaTick(ts){
+    if(!boss || !pleaEl) return;
+    if(boss.pleaUsed || boss.phase === 'reach' || boss.phase === 'press' || boss.phase === 'leave'){ pleaClose(); return; }
+    var walk = Math.abs((boss.btnX || 0) - boss.x) / 0.26, eta;
+    if(boss.phase === 'enter') eta = Math.abs(boss.target - boss.x) / 0.16 + 3400 + walk;
+    else if(boss.phase === 'speak') eta = Math.max(0, 3400 - (ts - boss.t0)) + walk;
+    else eta = walk + 600;
+    boss.pleaTotal = Math.max(boss.pleaTotal || 1, eta);
+    var bar = pleaEl.querySelector('.aig-plea-bar i');
+    if(bar) bar.style.width = Math.max(0, Math.min(100, eta / boss.pleaTotal * 100)).toFixed(0) + '%';
+  }
+  window.aiGuyPlead = function(raw){
+    var text = String(raw || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+    if(!boss || boss.pleaUsed || boss.hearing || !text) return;
+    if(boss.phase === 'reach' || boss.phase === 'press' || boss.phase === 'leave') return;
+    boss.pleaUsed = true; boss.hearing = true; boss.hearAt = performance.now(); boss.pleaText = text;
+    var PL = playerOf(), tot = PL.hits + PL.praises, kind = tot >= 5 ? PL.praises / tot : 0.5;     // how kind you have been to him
+    pleaClose();
+    remember('you defended him to the boss', text.slice(0, 50));
+    say(text, 2600, true);                                          // you speak for him
+    bossSay('...', 9000);
+    var guess = function(){                                         // offline, or the model was slow: a fair coin, a little better for a real argument
+      var relent = Math.random() < Math.max(0.05, Math.min(0.85, 0.3 + Math.min(0.25, text.length / 160) + (kind - 0.5) * 0.4));
+      pleaResolve(pick(relent ? ['I rest my case.','Thank you for your time.'] : ['Worth a shot.','I tried.']),
+                  pick(relent ? ['...Fine. Ten minutes.','Fair enough. Carry on.'] : ['Nice try.','Not today.']), relent);
+    };
+    if(!brainOn()){ setTimeout(guess, 1200); return; }
+    var sys = 'You write one short exchange between a shop owner (the boss) and AI Guy, the office mascot the boss is about to switch off. ' +
+      'The boss walked in because AI Guy was being played with or sat idle, and is heading for the off button. A coworker has just spoken up for AI Guy. ' +
+      'Decide fairly: the boss relents ONLY if the coworker\'s argument is genuinely persuasive, specific, funny or clever. A lazy, rude, empty or repeated argument loses. Switching him off is the default. ' +
+      'Someone who is mostly kind to AI Guy gets a little benefit of the doubt; someone who mostly hits him gets teased for it, and the boss may point it out. The boss is dry, busy and fair, not a villain. Reply ONLY with JSON: {"guy":"<what AI Guy says to the boss, max 80 chars>","boss":"<the boss reply, max 80 chars>","verdict":"relent or press"}. ' +
+      'Office banter only: never invent numbers, orders or facts about the business. No profanity.';
+    var done = false, timer = setTimeout(function(){ if(done) return; done = true; guess(); }, 8000);
+    aigAsk(sys, [{ role:'user', content: 'Why the boss came: ' + (boss.reason === 'idle' ? 'AI Guy had been sitting idle' : 'AI Guy was being hit a lot') + '. The coworker said: "' + text + '". Their record with AI Guy: ' + PL.praises + ' praises and ' + PL.hits + ' hits' + (tot >= 5 ? ' (' + Math.round(kind*100) + '% kind).' : ' (too few to judge).') }], 160)
+      .then(function(r2){
+        if(done) return; done = true; clearTimeout(timer);
+        var m = /\{[\s\S]*\}/.exec(r2), o = null; try{ o = m ? JSON.parse(m[0]) : null; }catch(e){}
+        var g = o ? cleanLine(o.guy, 90) : '', b = o ? cleanLine(o.boss, 90) : '';
+        if(!o || !b){ guess(); return; }
+        pleaResolve(g, b, String(o.verdict || '').toLowerCase() === 'relent');
+      })
+      .catch(function(){ if(done) return; done = true; clearTimeout(timer); guess(); });
+  };
+  function pleaResolve(guy, bossLine, relent){
+    if(!boss || !boss.hearing) return;
+    bossSay(bossLine, 3200);
+    if(guy) setTimeout(function(){ say('\u2726 ' + guy, 2600, true); }, 900);
+    var hold = relent ? 2400 : 1700;
+    setTimeout(function(){
+      if(!boss) return;
+      boss.t0 += performance.now() - boss.hearAt;                   // the listening time does not eat his walk timers
+      boss.hearing = false;
+      if(relent){
+        boss.won = true; bossLog('won'); achieve('filibuster'); remember('talked the boss out of switching me off', '');
+        boss.phase = 'leave'; boss.t0 = performance.now(); boss.dir = boss.x > window.innerWidth/2 ? 1 : -1; boss.reaching = false;
+        var a = boss.el.querySelectorAll('.aig-arm'); if(a.length >= 2){ a[0].style.transform = ''; a[1].style.transform = ''; }
+      }
+    }, hold);
+  }
+  // The press is a real click on the real button, and only if he is still on.
+  function bossFlipSwitch(){
+    var btn = document.getElementById('ai-guy-toggle-btn');
+    var on = function(){ return !!(window.aiGuyIsOn && window.aiGuyIsOn()); };
+    try{ if(on()){ if(btn && btn.getClientRects().length) btn.click(); else window.aiGuyToggleVisible(); } }catch(e){}
+    setTimeout(function(){ if(on()) window.aiGuyToggleVisible(); }, 150);       // belt and braces: he must end up off
+  }
   function updateBoss(ts, dt){
     if(!boss) return;
     var W = window.innerWidth, age = ts - boss.t0;
-    if(boss.phase === 'enter'){
+    if(boss.hearing && ts - boss.hearAt > 15000) boss.hearing = false;      // safety: never stay frozen
+    if(boss.hearing){
+      /* he is listening to the plea: hold still */
+    } else if(boss.phase === 'enter'){
       boss.x += boss.dir * 0.16 * dt;
       if((boss.dir > 0 && boss.x >= boss.target) || (boss.dir < 0 && boss.x <= boss.target)){
         boss.phase = 'speak'; boss.t0 = ts;
-        var line = boss.reason === 'idle' ? pick(BOSS_LINES_IDLE) : pick(BOSS_LINES_PLAY);
+        var line = bossLine(boss.reason);
         bossSay(line, 3600);
         // AI Guy's reply
-        setTimeout(function(){ if(boss) say(pick(spicy(['He is not wrong.','I said nothing.','Do not look at me.','I am a victim here.'],['He is not wrong, honestly.'])), 2000, true); }, 1500);
+        // AI Guy answers back. Claude writes it when the brain is up; the old canned lines are the fallback.
+        setTimeout(function(){
+          if(!boss || boss.hearing || boss.pleaUsed) return;
+          think('the boss just walked up and said to you: "' + line + '". Answer him back in one line, nervous but cheeky', '', pick(spicy(['He is not wrong.','I said nothing.','Do not look at me.','I am a victim here.'],['He is not wrong, honestly.'])), 2200, true);
+        }, 1500);
       }
     } else if(boss.phase === 'speak'){
       if(age > 3400){ boss.phase = 'toButton'; boss.t0 = ts; boss.dir = boss.btnX > boss.x ? 1 : -1; }
@@ -25599,41 +25800,51 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
         bossSay(pick(['Right then.','Enough of this.','Where is that button.']), 1800);
       }
     } else if(boss.phase === 'reach'){
-      // Rise so the HAND reaches the button. His hand sits BOSS_HAND_DY below the top of his
-      // sprite box, so the body target is the button plus that offset -- head stays clear.
+      // Closed loop: aim his REAL hand (the tracker on his forearm) at the REAL button every frame, and press only
+      // once the hand is over it. The old version steered the body to a fixed offset, and measured in a browser the
+      // hand was still ~47px short of the button when it "pressed".
       var btnR2 = boss.btn ? boss.btn.getBoundingClientRect() : null;
       var side2 = boss.handSide || 1;
-      var ty = btnR2 ? (btnR2.top + btnR2.height/2 - BOSS_HAND_DY) : 40;
-      var txr = btnR2 ? (btnR2.left + btnR2.width/2 - 23 - side2*BOSS_HAND_DX) : boss.x;
-      boss.y += (ty - boss.y) * Math.min(1, dt/380);
-      boss.x += (txr - boss.x) * Math.min(1, dt/420);
       boss.dir = side2;                                         // face the button
       var arms2 = boss.el.querySelectorAll('.aig-arm');
-      // the arm nearest the button points at it; the far arm hangs
       var near = side2 > 0 ? arms2[1] : arms2[0], far = side2 > 0 ? arms2[0] : arms2[1];
-      if(near) near.style.transform = 'rotate(' + (side2 > 0 ? -108 : 108) + 'deg) scaleY(1.7)';
+      if(near) near.style.transform = 'rotate(' + (side2 > 0 ? -132 : 132) + 'deg) scaleY(1.7)';
       if(far) far.style.transform = 'rotate(' + (side2 > 0 ? 18 : -18) + 'deg)';
       boss.reaching = true;
-      if(Math.abs(ty - boss.y) < 12 && Math.abs(txr - boss.x) < 12 && !boss.pressed){
-        boss.pressed = true; boss.phase = 'press'; boss.t0 = ts;
+      var hp = near ? near.querySelector('.aig-handpt') : null, hr = hp ? hp.getBoundingClientRect() : null;
+      var ready = false;
+      if(btnR2 && btnR2.width > 0 && hr){
+        var ex = (btnR2.left + btnR2.width/2) - hr.left, ey = (btnR2.top + btnR2.height/2) - hr.top;
+        var kk = Math.min(1, dt/240);
+        boss.x += ex * kk; boss.y += ey * kk;
+        var onIt = Math.abs(ex) < btnR2.width*0.3 && Math.abs(ey) < btnR2.height*0.3;
+        boss.onTarget = onIt ? (boss.onTarget || 0) + dt : 0;
+        ready = boss.onTarget > 160;                            // steady on it, not just passing through
+      } else if(age > 1400){ ready = true; }                    // no button on screen (small screens): do not stand there forever
+      if(!ready && age > 6000) ready = true;                    // never get stuck reaching
+      if(ready && !boss.pressed){
+        boss.pressed = true; boss.phase = 'press'; boss.t0 = ts; boss.jab = 0;
+        bossLog(boss.pleaUsed ? 'lost' : 'off');
+        pleaClose();
         bossSay(pick(['Back to work.','Enough.','Done.','That is enough of that.']), 2600);
-        // the jab: he lunges at the button, it depresses, then he settles back
-        boss.jab = ts;
-        if(boss.btn){ boss.btn.classList.add('aig-btn-press'); setTimeout(function(){ if(boss && boss.btn) boss.btn.classList.remove('aig-btn-press'); }, 420); }
-        tone(700,.05,'square',.05); tone(400,.08,'square',.05,.05);
+        say(pick(spicy(['Wait--','No no no I was BEING PRODUCTIVE','See you tomorrow I guess'],['Oh come ON'])), 1500, true);
+        var bt = boss.btn;
         setTimeout(function(){
-          say(pick(spicy(['Wait--','No no no I was BEING PRODUCTIVE','See you tomorrow I guess'],['Oh come ON'])), 1400, true);
-          setTimeout(function(){ if(window.aiGuyIsOn && window.aiGuyIsOn()) window.aiGuyToggleVisible(); }, 700);
-        }, 900);
+          if(!boss) return;
+          boss.jab = performance.now();                         // the jab: the hand goes into the button...
+          if(bt){ bt.classList.add('aig-btn-press'); setTimeout(function(){ bt.classList.remove('aig-btn-press'); }, 420); }
+          tone(700,.05,'square',.05); tone(400,.08,'square',.05,.05);
+          setTimeout(bossFlipSwitch, 200);                      // ...and at the bottom of the stroke the button really goes
+        }, 650);
       }
     } else if(boss.phase === 'press'){
-      var jt = ts - (boss.jab||ts), sideJ = boss.handSide || 1;
+      var jt = boss.jab ? ts - boss.jab : 9999, sideJ = boss.handSide || 1;
       if(jt < 420){
         var jab = Math.sin(jt/420*Math.PI) * 6;                  // in and back out
         boss.x += sideJ * jab * 0.09 * (dt/16);
         boss.y -= jab * 0.05 * (dt/16);
       }
-      if(age > 2600){ boss.phase = 'leave'; boss.t0 = ts; boss.dir = boss.x > W/2 ? 1 : -1; boss.reaching = false;
+      if(age > 2800){ boss.phase = 'leave'; boss.t0 = ts; boss.dir = boss.x > W/2 ? 1 : -1; boss.reaching = false;
         var arms3 = boss.el.querySelectorAll('.aig-arm'); if(arms3.length>=2){ arms3[0].style.transform=''; arms3[1].style.transform=''; } }
     } else if(boss.phase === 'leave'){
       boss.y += (groundY() - 8 - boss.y) * Math.min(1, dt/600);
@@ -25645,17 +25856,19 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     boss.flip.style.transform = boss.dir < 0 ? 'scaleX(-1)' : 'scaleX(1)';
     if(boss.bub.style.display !== 'none') boss.bub.style.transform = 'translate3d('+(boss.x - 30).toFixed(0)+'px,'+(boss.y - 48).toFixed(0)+'px,0)';
     // a plain walk cycle for him
-    var s = Math.sin(ts/160);
+    pleaTick(ts);
+    var s = boss.hearing ? 0 : Math.sin(ts/160);
     var arms = boss.el.querySelectorAll('.aig-arm'), legs = boss.el.querySelectorAll('.aig-leg');
     if(arms.length >= 2 && !boss.reaching){ arms[0].style.transform = 'rotate('+(16+s*20)+'deg)'; arms[1].style.transform = 'rotate('+(-16-s*20)+'deg)'; }
     if(legs.length >= 2){ legs[0].style.transform = 'rotate('+(-s*16)+'deg)'; legs[1].style.transform = 'rotate('+(s*16)+'deg)'; }
   }
   function despawnBoss(){
     if(!boss) return;
-    clearTimeout(boss.bubTimer);
+    clearTimeout(boss.bubTimer); pleaClose();
+    var won = boss.won;
     if(boss.el) boss.el.remove(); if(boss.bub) boss.bub.remove();
     boss = null;
-    nextBossAt = performance.now() + 900000 + Math.random()*900000;     // 15-30 minutes before he comes back
+    nextBossAt = performance.now() + 900000 + Math.random()*900000 + (won ? 1800000 : 0);     // 15-30 minutes before he comes back; a successful plea buys another half hour
     bossPlayHits = 0; bossWindowStart = performance.now();
   }
   window.aiGuyBoss = function(){ summonBoss('play'); };                  // for testing / for fun
@@ -25685,6 +25898,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   // A proper exhale: a dense cloud that billows out from his mouth and drifts, not a few wisps.
   function bigPuff(){
     if(!root) return;
+    cigExhaleUntil = performance.now() + 1100;
     var r = guyRect(), s = settings.size||1;
     var mx = r.left + (dir < 0 ? (46-26)*s : 26*s), my = r.top + 28*s;
     var n = perf.on ? 10 : 26;
@@ -25779,7 +25993,9 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   var charging = null, chargeEl = null, chargeJustFired = false;
   function chargeStart(e){
     if(!heldTool || !CHARGE_TOOLS[heldTool.id]) return false;
-    charging = { t0: performance.now(), x: e.clientX, y: e.clientY, over: false };
+    var gr0 = guyRect(), pd0 = hitPad + 6;
+    charging = { t0: performance.now(), x: e.clientX, y: e.clientY, over: false,
+                 startOnHim: e.clientX >= gr0.left-pd0 && e.clientX <= gr0.right+pd0 && e.clientY >= gr0.top-pd0 && e.clientY <= gr0.bottom+pd0 };
     if(!chargeEl){
       chargeEl = document.createElement('div'); chargeEl.className = 'aig-charge';
       chargeEl.innerHTML = '<svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"></circle><circle class="fg" cx="20" cy="20" r="17" stroke-dasharray="107" stroke-dashoffset="107"></circle></svg>';
@@ -25808,7 +26024,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   function chargeEnd(e, silent){
     if(!charging) return;
     var held = performance.now() - charging.t0, p = Math.min(1, held/1100);
-    var slipped = charging.slipped; charging = null;
+    var slipped = charging.slipped, startOnHim = charging.startOnHim; charging = null;
     if(chargeEl) { chargeEl.style.display = 'none'; chargeEl.classList.remove('full'); }
     if(slipped || silent) return;
     chargeJustFired = true; setTimeout(function(){ chargeJustFired = false; }, 250);
@@ -25816,7 +26032,10 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     var force = 0.45 + p*1.6;                                        // weak tap -> huge wind-up
     var r = guyRect(), pad = hitPad + 6;
     var onHim = x >= r.left-pad && x <= r.right+pad && y >= r.top-pad && y <= r.bottom+pad;
-    if(onHim){
+    // Aim assist: he is usually being knocked around during the wind-up, so the cursor is rarely still exactly on him at the
+    // instant of release. If you pressed on him and he is still close to your cursor, the swing counts.
+    var nearHim = startOnHim && Math.hypot(x - (r.left + r.width/2), y - (r.top + r.height/2)) < 95;
+    if(onHim || nearHim){
       if(p > 0.85){ hitStop(90); slowMo(0.4, 420); spawnFloatText('FULL SWING', 'bad', 12); shakeScreen(); achieve('full_swing'); }
       applyToolHit(heldTool, x, y, force);
     }
@@ -26647,6 +26866,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
     '</div>';
     html += todayHtml();
     html += achHtml();
+    html += bossHistHtml();
     html += '<div class="aig-lb" id="aig-lb"></div>';
     if(!aigState.log.length){
       html += '<div style="text-align:center;color:#9CA3AF;padding:20px 0">No reactions logged yet &mdash; click the little guy at the bottom of the screen.</div>';
@@ -26682,7 +26902,7 @@ html.aig-nocursor, html.aig-nocursor *{cursor:none!important}
   };
   window.aiGuyClearHistory = function(){
     if(!confirm('Clear all AI Guy history and reset the score? This cannot be undone.')) return;
-    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{} };
+    aigState = { good:0, bad:0, log:[], ach:[], stats:{}, cond:null, memory:[], players:{}, learn:{}, chat:[], opinions:{}, boss:[], achNames:{} };
     saveState();
     updateBadge();
     renderHistoryList();
