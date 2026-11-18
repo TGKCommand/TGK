@@ -20779,7 +20779,10 @@ function _playRec(ctx,vol,layers){
       +'#cx-snd-pop .sr.off{opacity:.5}'
       /* the Command Center styles every select, checkbox and slider globally; these put this panel's controls back to plain, readable ones */
       +'html body #cx-snd-pop select{height:30px!important;min-height:0!important;min-width:0!important;width:100%!important;background:#0e1113!important;color:#e6eaed!important;border:1px solid #3a4850!important;border-radius:2px!important;padding:0 6px!important;font:500 13px "DM Sans",system-ui,sans-serif!important;box-shadow:none!important;-webkit-appearance:menulist!important;appearance:auto!important}'
-      +'html body #cx-snd-pop select option{background:#0e1113;color:#e6eaed}'
+      /* v7.27: the open list was white with pale text. A global rule ("select option{background-color:#fff!important}") beat this one; it now wins, and the list is told to draw dark. */
+      +'html body #cx-snd-pop select{color-scheme:dark!important}'
+      +'html body #cx-snd-pop select option,html body #cx-snd-pop select optgroup{background-color:#14171a!important;background:#14171a!important;color:#e6eaed!important}'
+      +'html body #cx-snd-pop select option:checked{background-color:#0d9488!important;background:#0d9488!important;color:#fff!important}'
       +'html body #cx-snd-pop button{height:30px!important;min-height:0!important;background:transparent!important;color:#c9d1d6!important;border:1px solid #3a4850!important;border-radius:2px!important;padding:0 10px!important;font:700 12px "DM Sans",sans-serif!important;cursor:pointer;box-shadow:none!important;text-transform:none!important;letter-spacing:0!important}'
       +'html body #cx-snd-pop button:hover{background:rgba(255,255,255,.07)!important}'
       +'html body #cx-snd-pop label{color:inherit;font:inherit;margin:0;text-transform:none;letter-spacing:0}'
@@ -20837,7 +20840,7 @@ function _playRec(ctx,vol,layers){
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.26';
+var TGK_CC_VERSION='v7.27';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
