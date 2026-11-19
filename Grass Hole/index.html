@@ -129,7 +129,21 @@ kbd{font-family:var(--body);font-weight:700;background:var(--paper);color:var(--
 .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px 18px;margin:0;padding:14px 16px;background:rgba(23,19,15,.75);border-radius:8px;list-style:none}
 .keys li{display:flex;gap:8px;align-items:baseline}
 
-.garage{max-width:1080px;margin:0 auto}
+.garage{max-width:1120px;margin:0 auto;background:rgba(16,13,10,.62);border-radius:14px;padding:6px 22px 26px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.g-sub{color:#cfc5ad;margin:-4px 0 12px;font-size:15px}
+.g-tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:3px solid var(--yellow);scrollbar-width:none}
+.g-tabs button{font-family:var(--display);font-weight:400;font-size:18px;padding:9px 16px 8px;background:rgba(255,255,255,.07);color:var(--paper);border:0;border-radius:9px 9px 0 0;white-space:nowrap;text-shadow:none}
+.g-tabs button.on{background:var(--yellow);color:var(--ink)}
+.g-tabs button small{font-family:var(--body);font-weight:700;font-size:13px;opacity:.8;margin-left:4px}
+.g-body{padding-top:4px}
+.g-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px}
+.g-jobs .ticket{margin:0}
+.g-two{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+.derby-banner{display:grid;grid-template-columns:1fr auto auto;gap:6px 20px;align-items:center;background:linear-gradient(100deg,#4a1710,#1d1612 70%);border:2px solid #a8321f;border-left:10px solid #e04a22;border-radius:8px;padding:14px 18px;margin:16px 0 4px;color:var(--paper)}
+.derby-banner h3{font-family:var(--display);font-weight:400;font-size:24px;margin:0 0 4px;line-height:1.1}
+.derby-banner p{margin:0;color:#e6dcc4}
+.derby-banner .pay{font-family:var(--display);font-size:32px;color:var(--yellow)}
+@media (max-width:760px){ .garage{padding:4px 12px 20px;border-radius:0} .g-two{grid-template-columns:1fr} .derby-banner{grid-template-columns:1fr auto} .derby-banner .btn{grid-column:1 / -1} .g-tabs button{font-size:16px;padding:9px 12px 8px} }
 .g-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:8px}
 .g-head h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,6vw,58px);margin:0;color:var(--yellow);line-height:1}
 .wallet{font-family:var(--display);font-size:34px;color:var(--paper)}
@@ -280,12 +294,14 @@ const JOBS = [
   {name:'The HOA president’s lawn', note:'Brenda measures it with a ruler. Give her something to measure.', w:46, d:40, pay:450, trees:6, gnomes:9, flowers:85, seed:59},
   {name:'The Hendersons’ pool house', note:'Mow around the pool. Around it.', w:30, d:28, pay:240, trees:2, gnomes:2, flowers:20, seed:71, pool:true},
   {name:'Shady Rest Cemetery', note:'Quiet customers. Mind the headstones.', w:38, d:32, pay:330, trees:3, gnomes:0, flowers:60, seed:83, stones:true, wx:'sunset'},
-  {name:'Pine Hollow putting green', note:'They grade the stripes. Keep ’em straight.', w:32, d:32, pay:380, trees:0, gnomes:0, flowers:0, seed:97, golf:true, wx:'day'}
+  {name:'Pine Hollow putting green', note:'They grade the stripes. Keep ’em straight.', w:32, d:32, pay:380, trees:0, gnomes:0, flowers:0, seed:97, golf:true, wx:'day'},
+  {name:'Demolition derby', note:'No grass. Last mower running takes the pot.', w:36, d:36, pay:180, trees:0, gnomes:0, flowers:0, seed:777, derby:true, wx:'day'},
 ];
 JOBS.forEach(j=>{ j.pay=Math.round(j.pay*1.4/5)*5; });      // money comes a little easier
 JOBS.forEach(j => j.par = Math.round(60 + j.w*j.d*0.3));
 
 const ACH = [
+  ['derby','Last mower running','Win a demolition derby.'],['derby3','Clean sweep','Wreck all three other mowers yourself.'],
   ['ragdoll','Lawn dart','Get thrown off your own mower.'],['ragfar','Thirty-foot Earl','Fly thirty feet without the mower.'],['selfown','Self-employed','Get run over by your own runaway mower.'],
   ['grill','Cookout’s over','Tip the grill.'],['firepee','Volunteer fireman','Put out a fence fire the natural way.'],['potty','Occupied','Tip the porta-potty.'],['tramp','Boing','Launch the mower off a trampoline.'],
   ['copslip','Stepped in it','Watch the law find the dog mess.'],['copbees','Qualified immunity','Let the yellowjackets handle the officer.'],['tased','Ride the lightning','Punch a cop. Regret it.'],
@@ -982,7 +998,7 @@ function npcPose(o,q){
     const wt=rw[k+3]/255; if(wt>0){ const t=q.twist*wt, c=Math.cos(t), s=Math.sin(t), x2=x*c+z*s; z=-x*s+z*c; x=x2; }
     const wh=rw[k+4]/255; if(wh>0){ const dx=x-nk[0], dy=y-nk[1], dz=z-nk[2], t1=q.headNod*wh, c1=Math.cos(t1), s1=Math.sin(t1), y1=dy*c1-dz*s1, z1=dy*s1+dz*c1, t2=q.headYaw*wh, c2=Math.cos(t2), s2=Math.sin(t2); x=nk[0]+dx*c2+z1*s2; y=nk[1]+y1; z=nk[2]-dx*s2+z1*c2; }
     pa[i*3]=x+q.sway; pa[i*3+1]=y+q.bob; pa[i*3+2]=z; }
-  o.geo.attributes.position.needsUpdate=true; if((++o.nf)%3===0) o.geo.computeVertexNormals();
+  o.geo.attributes.position.needsUpdate=true; if((++o.nf)%3===0) mdNormals(o);
 }
 function npcWalk(o,ph,amp){ if(o&&o.rw) npcPose(o, amp>0?walkPose(ph,amp/0.5):idlePose(G?G.time:0,'')); }
 function dogPose(o,yaw,tilt,wag,br,aL,aR){ const P=o.base, pa=o.geo.attributes.position.array, hw=o.hw, fw=o.fw, fl=o.piv.fl, n=P.length/3, nk=o.piv.neck, tb=o.piv.tail, bs=1+0.02*br;
@@ -991,15 +1007,32 @@ function dogPose(o,yaw,tilt,wag,br,aL,aR){ const P=o.base, pa=o.geo.attributes.p
     if(wh>0){ const dx=x-nk[0], dy=y-nk[1], dz=z-nk[2], a=yaw*wh, c=Math.cos(a), s=Math.sin(a), x1=dx*c+dz*s, z1=-dx*s+dz*c, b=tilt*wh, cb=Math.cos(b), sb=Math.sin(b); x=nk[0]+x1*cb-dy*sb; y=nk[1]+x1*sb+dy*cb+0.004*br*wh; z=nk[2]+z1; }
     if(wt>0){ const a=wag*wt, c=Math.cos(a), s=Math.sin(a), dx=x-tb[0], dz=z-tb[2]; x=tb[0]+dx*c+dz*s; z=tb[2]-dx*s+dz*c; }
     pa[i*3]=x; pa[i*3+1]=y; pa[i*3+2]=z; }
-  o.geo.attributes.position.needsUpdate=true; if((++o.nf)%4===0) o.geo.computeVertexNormals(); }
+  o.geo.attributes.position.needsUpdate=true; if((++o.nf)%4===0) mdNormals(o); }
 /* scanned props and people: colour is baked into the mesh, so there is no texture to load */
 const vcMat = new THREE.MeshStandardMaterial({vertexColors:true, roughness:.8, metalness:0, envMapIntensity:.4});
-function mdMake(D){ const v=b64arr(D.v,Int16Array), c=b64arr(D.c,Uint8Array), n=D.n, pos=new Float32Array(n*3), col=new Float32Array(n*3);
-  for(let i=0;i<n*3;i++){ pos[i]=v[i]*D.s; col[i]=Math.pow(c[i]/255,2.2); }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setIndex(new THREE.BufferAttribute(new Uint32Array(b64arr(D.i,n<65536?Uint16Array:Uint32Array)),1)); g.computeVertexNormals(); g.userData.keep=true;
-  return {geo:g, mat:vcMat, base:pos.slice(), lw:D.lw?b64arr(D.lw,Uint8Array):null, rw:D.rw?b64arr(D.rw,Uint8Array):null, hw:D.hw?b64arr(D.hw,Uint8Array):null, fw:D.fw?b64arr(D.fw,Uint8Array):null, oneArm:!!D.oneArm, soft:!!D.soft, nf:0, piv:D.piv, h:D.h}; }
+/* Smooth normals across texture seams: each vertex shares its normal with every copy of itself */
+function mdNormals(o){ const g=o.geo; if(!o.wm){ g.computeVertexNormals(); return; }
+  const p=g.attributes.position.array, ix=g.index.array, wm=o.wm, acc=o.nacc||(o.nacc=new Float32Array((o.wmax+1)*3)), na=g.attributes.normal.array; acc.fill(0);
+  for(let f=0;f<ix.length;f+=3){ const i0=ix[f], i1=ix[f+1], i2=ix[f+2], a=i0*3, b=i1*3, c=i2*3, e1x=p[b]-p[a], e1y=p[b+1]-p[a+1], e1z=p[b+2]-p[a+2], e2x=p[c]-p[a], e2y=p[c+1]-p[a+1], e2z=p[c+2]-p[a+2], nx=e1y*e2z-e1z*e2y, ny=e1z*e2x-e1x*e2z, nz=e1x*e2y-e1y*e2x;
+    let w=wm[i0]*3; acc[w]+=nx; acc[w+1]+=ny; acc[w+2]+=nz; w=wm[i1]*3; acc[w]+=nx; acc[w+1]+=ny; acc[w+2]+=nz; w=wm[i2]*3; acc[w]+=nx; acc[w+1]+=ny; acc[w+2]+=nz; }
+  for(let v=0;v<wm.length;v++){ const w=wm[v]*3, x=acc[w], y=acc[w+1], z=acc[w+2], l=Math.hypot(x,y,z)||1; na[v*3]=x/l; na[v*3+1]=y/l; na[v*3+2]=z/l; }
+  g.attributes.normal.needsUpdate=true; }
+function mdMake(D){ const v=b64arr(D.v,Int16Array), n=D.n, pos=new Float32Array(n*3); for(let i=0;i<n*3;i++) pos[i]=v[i]*D.s;
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); let mat=vcMat, wm=null, wmax=0;
+  if(D.uv){   /* high-detail version: the model's own photo texture */
+    const u=b64arr(D.uv,Uint16Array), uv=new Float32Array(n*2); for(let i=0;i<n*2;i++) uv[i]=u[i]/65535; g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); g.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(n*3),3));
+    const t=new THREE.TextureLoader().load(D.tex); t.flipY=false; t.encoding=renderer.outputEncoding; t.anisotropy=8; mat=new THREE.MeshStandardMaterial({map:t,roughness:.8,metalness:0,envMapIntensity:.45});
+    wm=b64arr(D.wm,n<65536?Uint16Array:Uint32Array); for(let i=0;i<n;i++) if(wm[i]>wmax) wmax=wm[i]; }
+  else { const c=b64arr(D.c,Uint8Array), col=new Float32Array(n*3); for(let i=0;i<n*3;i++) col[i]=Math.pow(c[i]/255,2.2); g.setAttribute('color',new THREE.BufferAttribute(col,3)); }
+  g.setIndex(new THREE.BufferAttribute(new Uint32Array(b64arr(D.i,n<65536?Uint16Array:Uint32Array)),1)); g.userData.keep=true;
+  const o={geo:g, mat, base:pos.slice(), lw:D.lw?b64arr(D.lw,Uint8Array):null, rw:D.rw?b64arr(D.rw,Uint8Array):null, hw:D.hw?b64arr(D.hw,Uint8Array):null, fw:D.fw?b64arr(D.fw,Uint8Array):null, oneArm:!!D.oneArm, soft:!!D.soft, nf:0, piv:D.piv, h:D.h, wm, wmax};
+  mdNormals(o); return o; }
 const MD = {}; if(MDL) for(const k in MDL){ try{ MD[k]=mdMake(MDL[k]); }catch(e){} }
-const mdMesh = (k,parent) => { const m=new THREE.Mesh(MD[k].geo,vcMat); m.castShadow=true; m.receiveShadow=true; m.frustumCulled=false; if(parent) parent.add(m); return m; };
+/* When the game is hosted with a models folder beside it, swap each model for its high-detail textured version as it arrives */
+const HD = ["brenda", "cop", "copm", "dale", "dog", "flamingo", "gnome", "stump", "wb", "wreck"];
+if(HD) for(const k of HD) fetch('models/'+k+'.json').then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(D=>{ const N=mdMake(D), O=MD[k]; if(!O){ MD[k]=N; return; }
+  const old=O.geo, us=(O.users||[]).filter(m=>m.parent); Object.assign(O,N); O.users=us; for(const m of us){ m.geometry=O.geo; m.material=O.mat; } old.dispose(); }).catch(()=>{});
+const mdMesh = (k,parent) => { const o_=MD[k], m=new THREE.Mesh(o_.geo,o_.mat||vcMat); (o_.users||(o_.users=[])).push(m); m.castShadow=true; m.receiveShadow=true; m.frustumCulled=false; if(parent) parent.add(m); return m; };
 const COP = MD.cop || null;
 const copNavy = std({color:0x141c30,roughness:.6});
 
@@ -1025,6 +1058,12 @@ const tmpG=new THREE.Vector3();
 if(MD.trimmer){ for(const ch of trimmer.children) if(ch!==trimLine) ch.visible=false; const A=V3(.27,-.27,-.62), B=V3(.06,-.74,-1.7), d=B.clone().sub(A), len=d.length(); limb(A,B,.012,MT.steel,trimmer,.012);
   const m=mdMesh('trimmer',trimmer); m.castShadow=false; m.scale.setScalar(len+0.3); m.position.copy(A).addScaledVector(d,0.5); m.quaternion.setFromUnitVectors(V3(-1,0,0),d.clone().normalize()); m.rotateX(Math.PI); }
 const earlBody = MD.earl ? mdMesh('earl',scene) : null; if(earlBody) earlBody.visible=false;
+/* Earl on the mower is the same scanned body, sat down: one copy for everyone else to look at, and one with the head and arms tucked away for your own eyes */
+let earlFull = null;
+if(MD.earl&&MD.earl.rw&&MDL&&MDL.earl){ const sit={hipL:1.5,hipR:1.5,kneeL:1.45,kneeR:1.45,shL:1.05,shR:1.05,elL:0.35,elR:0.35,twist:0,headYaw:0,headNod:0.05,bob:0,sway:0};
+  const A=mdMake(MDL.earl); npcPose(A,sit); mdNormals(A); earlFull=new THREE.Group(); earlFull.name='earlFull'; { const am=new THREE.Mesh(A.geo,vcMat); am.castShadow=true; am.frustumCulled=false; earlFull.add(am); } earlFull.position.set(0,-0.17,0.6); mower.add(earlFull); earlFull.visible=false;
+  const Bq=mdMake(MDL.earl); npcPose(Bq,sit); { const pa=Bq.geo.attributes.position.array, ca=Bq.geo.attributes.color.array, rw=Bq.rw; for(let i=0;i<pa.length/3;i++){ const id=rw[i*5], hd=rw[i*5+4]>0||pa[i*3+1]>1.44; if(hd){ ca[i*3]=0.2; ca[i*3+1]=0.03; ca[i*3+2]=0.03; } if(((id===1||id===2)&&rw[i*5+1]>60)||rw[i*5+4]>40){ pa[i*3]=0; pa[i*3+1]=1.36; pa[i*3+2]=0.05; } } Bq.geo.attributes.color.needsUpdate=true; Bq.geo.attributes.position.needsUpdate=true; mdNormals(Bq); }
+  for(const ch of rider.children) ch.visible=false; const bm=new THREE.Mesh(Bq.geo,vcMat); bm.frustumCulled=false; bm.position.set(0,-0.17,0.6); rider.add(bm); }
 
 /* held in front of the camera */
 const hand = new THREE.Group(); camera.add(hand); hand.visible=false;
@@ -1157,7 +1196,7 @@ function buildWorld(J){
   world = new THREE.Group(); scene.add(world);
   const R = mulberry(J.seed), rr = (a,b) => a + R()*(b-a);
   const w=J.w, d=J.d, nx=Math.round(w/CELL), nz=Math.round(d/CELL), cw=w/nx, cd=d/nz, N=nx*nz;
-  const noHouse=!!(J.stones||J.golf), houseX=-w*0.12, houseHW=noHouse?0:Math.min(w*0.36,9);
+  const noHouse=!!(J.stones||J.golf||J.derby), houseX=-w*0.12, houseHW=noHouse?0:Math.min(w*0.36,9);
   const pad={x0:w/2-4.6, x1:w/2, z0:-d/2, z1:-d/2+3.4};
   W = {J,w,d,nx,nz,cw,cd,N, cut:new Uint8Array(N), hgt:new Float32Array(N), jx:new Float32Array(N), jz:new Float32Array(N), rot:new Float32Array(N), sc:new Float32Array(N), tone:new Float32Array(N),
     flowerAt:new Int16Array(N).fill(-1), total:0, cutCount:0, trees:[], gnomes:[], houseX, houseHW, pad, ready:false,
@@ -1194,13 +1233,13 @@ function buildWorld(J){
     W.trees.push({x,z}); addTree(x,z,rr(.95,1.2),cardsIn); t++;
   }
 
-  W.ramp=null; if(JOBS.indexOf(J)>=1&&!J.golf&&!J.stones){ for(let q=0;q<40;q++){ const x=rr(-w/2+4,w/2-4), z=rr(-d/2+6,d/2-4); if(inPad(x,z,4)||inBed(x,z,3)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<3)) continue; const th=rr(0,6.283), g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=th;
+  W.ramp=null; if(JOBS.indexOf(J)>=1&&!J.golf&&!J.stones&&!J.derby){ for(let q=0;q<40;q++){ const x=rr(-w/2+4,w/2-4), z=rr(-d/2+6,d/2-4); if(inPad(x,z,4)||inBed(x,z,3)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<3)) continue; const th=rr(0,6.283), g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=th;
       const pl=mesh(uvBox(1.5,.05,2.4,1,1.5),MT.wood,0,.32,0,g); pl.rotation.x=0.27; mesh(uvBox(1.4,.6,.08,1,.4),MT.wood,0,.3,-1.1,g); mesh(uvBox(.08,.3,.08,.1,.2),MT.wood,.6,.15,-.3,g); mesh(uvBox(.08,.3,.08,.1,.2),MT.wood,-.6,.15,-.3,g); world.add(g); W.ramp={x,z,th}; break; } }
   W.pool=pool; W.stones=[]; W.dale=null;
-  if(MD.stump&&!J.golf&&JOBS.indexOf(J)>=1){ for(let q=0;q<40;q++){ const x=rr(-w/2+3,w/2-3), z=rr(-d/2+5,d/2-3); if(inPad(x,z,3)||inBed(x,z,2)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<2.5)||(W.ramp&&Math.hypot(W.ramp.x-x,W.ramp.z-z)<3)) continue; const m=mdMesh('stump',world); m.position.set(x,0,z); m.rotation.y=rr(0,6.28); m.scale.setScalar(1.5); W.stones.push({x,z,r:.5,stump:true}); break; } }
+  if(MD.stump&&!J.golf&&!J.derby&&JOBS.indexOf(J)>=1){ for(let q=0;q<40;q++){ const x=rr(-w/2+3,w/2-3), z=rr(-d/2+5,d/2-3); if(inPad(x,z,3)||inBed(x,z,2)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<2.5)||(W.ramp&&Math.hypot(W.ramp.x-x,W.ramp.z-z)<3)) continue; const m=mdMesh('stump',world); m.position.set(x,0,z); m.rotation.y=rr(0,6.28); m.scale.setScalar(1.5); W.stones.push({x,z,r:.5,stump:true}); break; } }
   if(MD.wreck&&houseHW>0&&JOBS.indexOf(J)>=1){ const x=houseX-houseHW+1.6, z=-d/2+2.6, m=mdMesh('wreck',world); m.position.set(x,0,z); m.rotation.y=rr(-.4,.4); W.stones.push({x,z,r:.95,wreck:true}); }
   W.gags=[]; W.fire=null;
-  { const ji=JOBS.indexOf(J), gspot=()=>{ for(let q=0;q<50;q++){ const x=rr(-w/2+3.5,w/2-3.5), z=rr(-d/2+5.5,d/2-3.5); if(inPad(x,z,3.5)||inBed(x,z,2.5)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<2.6)||(W.ramp&&Math.hypot(W.ramp.x-x,W.ramp.z-z)<3.5)||W.stones.some(t=>Math.hypot(t.x-x,t.z-z)<2.5)||W.gags.some(t=>Math.hypot(t.x-x,t.z-z)<4.5)) continue; return [x,z]; } return null; };
+  if(!J.derby){ const ji=JOBS.indexOf(J), gspot=()=>{ for(let q=0;q<50;q++){ const x=rr(-w/2+3.5,w/2-3.5), z=rr(-d/2+5.5,d/2-3.5); if(inPad(x,z,3.5)||inBed(x,z,2.5)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<2.6)||(W.ramp&&Math.hypot(W.ramp.x-x,W.ramp.z-z)<3.5)||W.stones.some(t=>Math.hypot(t.x-x,t.z-z)<2.5)||W.gags.some(t=>Math.hypot(t.x-x,t.z-z)<4.5)) continue; return [x,z]; } return null; };
     const add=(type,r,build)=>{ const sp_=gspot(); if(!sp_) return; const g=new THREE.Group(); g.position.set(sp_[0],0,sp_[1]); build(g); world.add(g); W.gags.push({type,x:sp_[0],z:sp_[1],r,m:g,st:0,t:0}); };
     const blk=std({color:0x1b1b1d,roughness:.5,metalness:.5}), blu=std({color:0x2a66b8,roughness:.6}), teal=std({color:0x2f8f8a,roughness:.7}), wht=std({color:0xe9e9e4,roughness:.6});
     if(!J.golf&&ji>=1&&houseHW>0) add('grill',0.5,g=>{ for(const q of [[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]]) cyl(.015,.015,.75,MT.steel,q[0],.375,q[1],g,6); ball(.3,blk,0,.82,0,g,14,10).scale.y=.6; ball(.3,blk,0,.9,0,g,14,10).scale.y=.55; cyl(.02,.02,.06,MT.steel,0,1.08,0,g,8); });
@@ -1336,7 +1375,7 @@ function buildWorld(J){
 
   /* the dog */
   W.turd=own(std({color:0x4a2f1a,roughness:.9}));
-  if(J.dog||R()<0.45){ const g=new THREE.Group(), fur=own(std({color:0xb07a3c,roughness:.9})), dk2=own(std({color:0x3a2a1a,roughness:.8}));
+  if(!J.derby&&(J.dog||R()<0.45)){ const g=new THREE.Group(), fur=own(std({color:0xb07a3c,roughness:.9})), dk2=own(std({color:0x3a2a1a,roughness:.8}));
     mesh(rboxGeo(.24,.24,.58,.08),fur,0,.42,0,g); ball(.13,fur,0,.6,-.36,g,12,10); mesh(rboxGeo(.1,.09,.16,.03),fur,0,.56,-.5,g); ball(.03,dk2,0,.58,-.585,g,8,6);
     for(const sx of [-1,1]){ mesh(rboxGeo(.07,.14,.03,.012),dk2,sx*.1,.66,-.33,g); for(const sz of [-.2,.2]) mesh(new THREE.CylinderGeometry(.035,.03,.32,8),fur,sx*.08,.16,sz,g); }
     const tail=new THREE.Group(); tail.position.set(0,.5,.28); limb(V3(0,0,0),V3(0,.2,.12),.02,fur,tail,.03); g.add(tail);
@@ -1502,13 +1541,13 @@ function startJob(i, fromNet){
   const J=JOBS[i]; buildWorld(J);
   G={job:i,time:0,stress:100,beers:UPG.cooler.val[S.up.cooler],drunk:0,gnomes:0,mounted:true,carry:false,last:{burp:-99,fart:-99,swear:-99},cd:{},straight:0,donut:0,donutSign:0,cutAny:false,lastHitLine:-99,flowerQuip:0,done:false,fpsT:0,fpsN:0,hicT:8,mutterT:14,jolt:0,pass:0,fall:0,farts:0,swears:0,windows:0,fill:null,startAt:0.7,birdT:4};
   M.x=W.pad.x0+2.0; M.z=W.pad.z0+1.7; M.th=Math.PI/2; M.v=0; M.steer=0; M.blades=false; M.load=0; M.rpm=0; M.pitch=0; M.roll=0; M.thr=0; M.vh=M.th; M.delta=0; M.eng=0; M.fuel=UPG.tank.val[S.up.tank];
-  look.yaw=0; look.pitch=-0.2; buzz=0; act=null; syncMowerLook();
+  look.yaw=0; look.pitch=-0.2; buzz=0; act=null; syncMowerLook(); clearDerby(); if(J.derby) setupDerby();
   mode='play'; $('#menu').hidden=true; $('#hud').hidden=false; $('#jobName').textContent=J.name;
   if(Radio.i<0) radioSet(0); else if(!Radio.src && stations()[Radio.i] && stations()[Radio.i].kind==='song') radioSet(Radio.i);
   if(Net.on){ Net.score={}; Net.score[Net.id]=0; Net.pending=[]; if(fromNet){ M.x-=2.4; M.z+=rand(0,2); } if(Net.host) netSend('welcome',welcomeMsg('*')); }
   { const wx=Net.on?'day':(J.wx||((i===0&&!S.done[0])?'day':pick(['day','day','day','sunset','sunset','rain','night']))); applyWeather(wx); M.dmg=0;
     if(wx!=='day') toast({sunset:'Golden hour',rain:'It’s rainin’',night:'Night shift'}[wx],{sunset:'Low sun, long shadows.',rain:'Wet grass: she’ll slide in the turns. Pays extra.',night:'Headlights on. Pays extra.'}[wx],'☼'); }
-  say('Blades on with Space. Let’s get this over with.', false);
+  say(J.derby?'Nose first. Hit ’em where it hurts.':'Blades on with Space. Let’s get this over with.', false);
   if(!TOUCH&&!S.opts.k2){ S.opts.k2=1; save(); toast('The keys moved','1 to 7: beer, smoke, burp, fart, cuss, leak, flirt. F punches, G fires a rocket, Q is the trimmer, R gasses up.','!'); }
   lockPointer();
 }
@@ -1523,10 +1562,10 @@ function finishJob(fromNet){
   const J=JOBS[G.job], base=mpBase===null?J.pay:mpBase, sharp=Math.round(base*(UPG.blades.val[S.up.blades]-1)), fast=G.time<=J.par?Math.round(base*0.25):0, perfect=W.cutCount>=W.total?Math.round(base*0.2):0, gn=G.gnomes*8, win=-25*(G.windows||0), wxB=(WX.kind==='rain'||WX.kind==='night')?Math.round(base*0.15):0, strP=(J.golf&&(G.strT||0)>5)?(G.strS||0)/G.strT:0, strB=Math.round(base*0.5*strP), poolC=-40*(G.pools||0), fine=-(G.fine||0), gagC=-40*(G.burn||0)-15*(G.sprk||0)-20*(G.potty||0), repC=-Math.round((M.dmg||0)*0.3), total=Math.max(0,base+sharp+fast+perfect+gn+vsBonus+win+wxB+strB+poolC+fine+repC+gagC);
   S.money+=total; S.earned+=total; S.stats.jobs++; S.done[G.job]=1; S.unlocked=Math.max(S.unlocked, Math.min(JOBS.length,G.job+2));
   if(!S.best[G.job]||G.time<S.best[G.job]) S.best[G.job]=Math.round(G.time);
-  unlock('job1'); if(S.stats.jobs>=5) unlock('job5'); if(JOBS.every((_,i)=>S.done[i])) unlock('all'); if(perfect) unlock('perfect'); if(fast) unlock('fast'); if(S.earned>=1000) unlock('rich');
+  unlock('job1'); if(S.stats.jobs>=5) unlock('job5'); if(JOBS.every((j_,i)=>j_.derby||S.done[i])) unlock('all'); if(perfect) unlock('perfect'); if(fast) unlock('fast'); if(S.earned>=1000) unlock('rich');
   save(); sfx.cash(); M.blades=false; M.v=0;
   mode='done'; unlockPointer(); $('#hud').hidden=true;
-  const next=Math.min(JOBS.length-1,G.job+1);
+  const next=Math.min(JOBS.length-2,G.job+1);
   const rows=[[Net.on?'Your cut of the job':'Base pay',base],['Won the yard',vsBonus],['Sharp-blade bonus',sharp],['Beat the clock ('+fmtTime(G.time)+' of '+fmtTime(J.par)+')',fast],['Every last blade',perfect],['Gnome hazard pay',gn],['Broken window',win],['Bad-weather pay',wxB],['Straight stripes ('+Math.round(strP*100)+'%)',strB],['Pool cleaning',poolC],['Citations',fine],['Property damage',gagC],['Mower repairs',repC]].filter(r=>r[1]!==0||r[0]==='Base pay'||r[0]==='Your cut of the job');
   showMenu(`<div class="sheet"><h1>Lawn’s done.</h1><p>${J.name}. Stress relieved: ${Math.round(100-G.stress)}%.</p><p><b>Customer review:</b> ${G.rv=review()}</p>${G.bestRag?`<p><b>Instant replay:</b> Earl versus ${G.bestRag.why}. ${Math.round(G.bestRag.d)} feet through the air.</p>`:''}${mpRows}
     <table>${rows.map(r=>`<tr><td>${r[0]}</td><td>$${r[1]}</td></tr>`).join('')}<tr class="total"><td>Paid</td><td>$${total}</td></tr></table>
@@ -1581,16 +1620,18 @@ function nameTag(name){ const c=document.createElement('canvas'); c.width=256; c
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false})); sp.scale.set(1.5,.375,1); return sp; }
 function addPeer(p){
   const g=mower.clone(true), pm=MT.paint.clone(); pm.color.setHex((PAINTS[p.pc]||PAINTS[0]).c).multiplyScalar(0.5);
-  g.traverse(o=>{ o.visible=true; if(o.material===MT.paint) o.material=pm; });
-  const sb=makeBody(true); g.add(sb); const body=(MD.earl?(()=>{ const gg=new THREE.Group(); mdMesh('earl',gg); return gg; })():makeBody(false)), tag=nameTag(esc(p.n||'Somebody').slice(0,12));
+  { const kill=[]; g.traverse(o=>{ if(o.isLight) kill.push(o); if(o.material===MT.paint) o.material=pm; }); for(const o of kill) if(o.parent) o.parent.remove(o); }
+  const ef=g.getObjectByName('earlFull'), rd0=g.getObjectByName('rider'), gp0=g.getObjectByName('grip'); if(ef){ if(rd0&&rd0.parent) rd0.parent.remove(rd0); if(gp0) gp0.visible=false; }
+  const sb=ef?new THREE.Group():makeBody(true); g.add(sb); const body=(MD.earl?(()=>{ const gg=new THREE.Group(); mdMesh('earl',gg); return gg; })():makeBody(false)), tag=nameTag(esc(p.n||'Somebody').slice(0,12));
   scene.add(g); scene.add(body); scene.add(tag);
-  const q={g,body,sb,tag,rider:g.getObjectByName('rider'),grip:g.getObjectByName('grip'),name:esc(p.n||'Somebody').slice(0,12),x:p.x,z:p.z,th:p.th,tx:p.x,tz:p.z,tth:p.th,mt:1,px:p.x,pz:p.z,py:0,seen:performance.now()};
+  const q={g,body,sb,tag,rider:ef||g.getObjectByName('rider'),grip:ef?null:g.getObjectByName('grip'),name:esc(p.n||'Somebody').slice(0,12),x:p.x,z:p.z,th:p.th,tx:p.x,tz:p.z,tth:p.th,mt:1,px:p.x,pz:p.z,py:0,seen:performance.now()};
   Net.peers[p.id]=q; toast(q.name+' rolled up','Another mower just joined the yard.','★'); return q;
 }
 function dropPeer(id){ const q=Net.peers[id]; if(!q) return; scene.remove(q.g); scene.remove(q.body); scene.remove(q.tag); delete Net.peers[id]; }
 function onSt(p){
   if((mode!=='play'&&mode!=='pause')||!W||!G||!p||p.id===Net.id) return;
-  const q=Net.peers[p.id]||addPeer(p); q.seen=performance.now(); q.tx=p.x; q.tz=p.z; q.tth=p.th; q.mt=p.mt; q.bl=p.bl;
+  const q=Net.peers[p.id]||addPeer(p); q.seen=performance.now(); q.tx=p.x; q.tz=p.z; q.tth=p.th; q.mt=p.mt; q.bl=p.bl; q.hp=p.hp;
+  if(p.bots&&G.derby&&!Net.host){ while(derbyBots.length<p.bots.length) derbyBots.push(makeBot(derbyBots.length)); p.bots.forEach((a,i)=>{ const b=derbyBots[i]; b.tx=a[0]; b.tz=a[1]; b.tth=a[2]; b.v=a[3]; b.hp=a[4]; if(b.alive&&!a[5]){ b.x=a[0]; b.z=a[1]; derbyOut(b,false); } }); }
   if(!p.mt){ q.px=p.px; q.pz=p.pz; q.py=p.py; }
   if(typeof p.sc==='number') Net.score[p.id]=p.sc;
   if(p.c&&p.c.length){ let any=false; for(const k of p.c){ if(k>=0&&k<W.N&&W.cut[k]===0){ applyCut(k,!!p.l,false); any=true; } }
@@ -1604,6 +1645,9 @@ function onEv(p){
     else if(d<14) say(q.name+' let one rip.',false); }
   else if(p.k==='burp'){ playBuf(pick(p.b?BODY.burp.slice(4):BODY.burp.slice(0,4)),.9*att,1); }
   else if(p.k==='swear'){ const b=VOBUF[VOKEY[p.t]]; if(d<16){ playBuf(b,.9*att,1.06); say(q.name+': '+esc(p.t||''),false); } }
+  else if(p.k==='dh'){ if(Net.host&&G.derby){ const b=derbyBots[p.i]; if(b&&b.alive){ b.hp-=Math.min(60,+p.d||0); b.stun=0.6; b.v*=-0.3; if(b.hp<=0){ derbyOut(b,false); netSend('ev',{id:Net.id,k:'dk',to:p.id,n:b.name}); } } } }
+  else if(p.k==='dk'){ if(G.derby&&p.to===Net.id){ G.derby.kills++; toast('You wrecked '+esc(p.n||'him'),'That one’s yours.','!'); } }
+  else if(p.k==='dout'){ if(G.derby){ if(p.by===Net.id){ G.derby.kills++; toast('You wrecked '+q.name,'That one’s yours.','!'); } else toast(q.name+' is out','One less mower.','!'); } }
   else if(p.k==='gnome'){ const gn=W.gnomes[p.i]; if(gn&&gn.alive){ gn.alive=false; gn.g.visible=false; sfx.smash(); for(let i=0;i<30;i++) bits.spawn(gn.x,0.3,gn.z,rand(-4,4),rand(2,6),rand(-4,4),rand(1,2),.6,.1,.08,10,0.4); } }
 }
 function netTick(dt){
@@ -1616,7 +1660,8 @@ function netTick(dt){
   const ge=$('#gas'); if(G&&G.gassed>0){ G.gassed-=dt; ge.style.opacity=clamp(G.gassed,0,1).toFixed(2); } else if(ge.style.opacity!=='0') ge.style.opacity='0';
   if(!Net.on||mode!=='play'||!G||G.done) return;
   Net.acc+=dt; if(Net.acc<0.125) return; Net.acc=0;
-  const p={id:Net.id,n:S.opts.name||'Earl',x:+M.x.toFixed(2),z:+M.z.toFixed(2),th:+M.th.toFixed(2),mt:G.mounted?1:0,bl:M.blades?1:0,pc:S.paint,sc:Net.score[Net.id]||0};
+  const p={id:Net.id,n:S.opts.name||'Earl',x:+M.x.toFixed(2),z:+M.z.toFixed(2),th:+M.th.toFixed(2),mt:G.mounted?1:0,bl:M.blades?1:0,pc:S.paint,sc:Net.score[Net.id]||0,hp:Math.round(100-(M.dmg||0))};
+  if(G.derby&&Net.host&&derbyBots.length) p.bots=derbyBots.map(b=>[+b.x.toFixed(2),+b.z.toFixed(2),+b.th.toFixed(2),+b.v.toFixed(1),Math.round(b.hp),b.alive?1:0]);
   if(!G.mounted){ p.px=+P.x.toFixed(2); p.pz=+P.z.toFixed(2); p.py=+P.yaw.toFixed(2); }
   if(Net.pending.length){ p.c=Net.pending; p.l=Net.light?1:0; Net.pending=[]; }
   netSend('st',p);
@@ -1791,6 +1836,79 @@ function doFlirt(){
     else { say('Brenda: '+pick(B_NO),false); if(B&&B.visit&&bd<3){ G.jolt=1; sfx.thud(); G.stress=Math.min(100,G.stress+2); toast('Slapped','You had that one comin’.','!'); } annoy(1); }
   },1700);
 }
+/* ---------------------------------------------------------------- demolition derby */
+const DERBY = JOBS.findIndex(j=>j.derby);
+let derbyBots = [];
+const derbyEl = document.createElement('div'); derbyEl.id='derbyHud'; derbyEl.hidden=true; derbyEl.style.cssText='position:absolute;left:14px;top:104px;font-weight:700;font-size:17px;text-shadow:0 1px 3px #000;line-height:1.35'; $('#hud').appendChild(derbyEl);
+function clearDerby(){ for(const b of derbyBots) scene.remove(b.g); derbyBots=[]; derbyEl.hidden=true; }
+function makeBot(i){ const names=['Dale','Gary','Darrell'], cols=[0x2f6fb5,0xd8c21a,0x3c8f3a], a=(i+0.5)/3*Math.PI+Math.PI, R0=W.w/2-5, g=mower.clone(true), pm=MT.paint.clone(), kill=[]; pm.color.setHex(cols[i%3]);
+  g.traverse(o=>{ if(o.isLight) kill.push(o); if(o.material===MT.paint) o.material=pm; }); for(const o of kill) if(o.parent) o.parent.remove(o);
+  { const ef=g.getObjectByName('earlFull'), rd0=g.getObjectByName('rider'), gp0=g.getObjectByName('grip'); if(ef){ ef.visible=true; if(rd0&&rd0.parent) rd0.parent.remove(rd0); if(gp0) gp0.visible=false; } else g.add(makeBody(true)); }
+  scene.add(g); const x=Math.cos(a)*R0, z=Math.sin(a)*R0*0.9; return {g,name:names[i%3],x,z,th:Math.atan2(x,z),tx:x,tz:z,tth:Math.atan2(x,z),v:0,hp:100,alive:true,top:rand(4.0,5.0),cd:0,stun:0,tgt:null}; }
+function setupDerby(){
+  G.derby={kills:0,over:0,win:false,pair:{},maxPeers:0}; W.brenda=null; W.cop=null; for(const q of W.props||[]){ q.alive=false; q.m.visible=false; }
+  for(let k=0;k<W.N;k++) if(W.cut[k]===0) applyCut(k,(Math.floor(k/W.nx)%4)<2,false);
+  W.grass.instanceMatrix.needsUpdate=true; W.grass.instanceColor.needsUpdate=true; W.flowers.instanceMatrix.needsUpdate=true; W.tex.needsUpdate=true; W.ready=false;
+  const tire=std({color:0x141414,roughness:.9}), hay=std({color:0xc9a544,roughness:1});
+  for(let i=0;i<7;i++){ const a=i/7*6.283+0.4, r=5+((i*37)%7)/7*(W.w/2-10), x=Math.cos(a)*r, z=Math.sin(a)*r;        // same spots on every player's screen
+    if(i%2){ for(let k=0;k<3;k++){ const t=mesh(new THREE.TorusGeometry(.32,.13,8,16),tire,x,.13+k*.26,z,world); t.rotation.x=Math.PI/2; } W.stones.push({x,z,r:.5,stump:true}); }
+    else { box(1.1,.55,.6,hay,x,.275,z,world).rotation.y=i*1.3; W.stones.push({x,z,r:.6,stump:true}); } }
+  /* alone you get three computer mowers; in a room the host fills the empty seats and runs them for everybody */
+  if(!Net.on||Net.host){ const n=Math.max(0,3-Object.keys(Net.peers).length); for(let i=0;i<n;i++) derbyBots.push(makeBot(i)); }
+  M.x=0; M.z=W.d/2-5; M.th=0; M.vh=0;
+  toast('Demolition derby',Net.on?'Every mower for itself. Last one running wins.':'Three other mowers. Hit them in the side or the rear. Last one running takes the pot.','!');
+}
+function derbyOut(b,byPlayer){ b.alive=false; b.hp=0; b.v=0; sfx.smash(); debris(b.x,.6,b.z,30,'dirt',5); for(let i=0;i<12;i++) puffs.spawn(b.x+rand(-.4,.4),1,b.z+rand(-.4,.4),rand(-.6,.6),rand(.8,2),rand(-.6,.6),rand(1.5,2.6),.12,.12,.12,-0.1,1);
+  boomL.position.set(b.x,1.2,b.z); boomL.intensity=4; b.g.rotation.z=0.14; if(byPlayer) G.derby.kills++; toast(b.name+' is out',byPlayer?'That one’s yours.':'Somebody else got him.','!');
+  if(byPlayer) say(pick(['Sit down, '+b.name+'.','That’s for the beer, '+b.name+'.','Send me the bill.']),false); }
+function updateDerby(dt){
+  const D=G.derby; if(!D) return; const hw=W.w/2-0.9, hd=W.d/2-0.9, now=G.time, pAlive=!G.wreck, guest=Net.on&&!Net.host;
+  for(const b of derbyBots){
+    if(guest&&b.alive){ const k=Math.min(1,dt*9); b.x+=(b.tx-b.x)*k; b.z+=(b.tz-b.z)*k; b.th+=angDiff(b.tth,b.th)*k; continue; }
+    if(!b.alive){ if(Math.random()<dt*4) puffs.spawn(b.x,1,b.z,rand(-.3,.3),rand(.6,1.4),rand(-.3,.3),rand(1,2),.1,.1,.1,-0.1,1); continue; }
+    b.cd-=dt; if(b.cd<=0||!b.tgt||(b.tgt!=='p'&&b.tgt.alive===false)||(b.tgt==='p'&&!pAlive)){ b.cd=rand(2.5,5); const opts=derbyBots.filter(o=>o!==b&&o.alive); if(pAlive){ opts.push('p'); opts.push('p'); opts.push('p'); } if(Net.on) for(const id in Net.peers){ const q=Net.peers[id]; if((q.hp===undefined?100:q.hp)>0){ opts.push(q); opts.push(q); opts.push(q); } } b.tgt=opts.length?opts[Math.floor(rand(opts.length))]:null; }
+    if(b.tgt&&b.tgt!=='p'&&b.tgt.g&&!b.tgt.name0&&b.tgt.hp!==undefined&&b.tgt.alive===undefined&&b.tgt.hp<=0) b.tgt=null;
+    let tx=0, tz=0; if(b.tgt==='p'){ tx=M.x; tz=M.z; } else if(b.tgt){ tx=b.tgt.x; tz=b.tgt.z; }
+    let want=b.tgt?b.top*(0.55+0.45*b.hp/100):0; if(b.stun>0){ b.stun-=dt; want=-2.2; }
+    const turn=clamp(angDiff(Math.atan2(-(tx-b.x),-(tz-b.z)),b.th),-1,1)*(b.stun>0?-1:1);
+    b.th+=turn*2.0*dt*clamp(Math.abs(b.v)/2,0.35,1); b.v+=clamp(want-b.v,-4*dt,3*dt); b.x-=Math.sin(b.th)*b.v*dt; b.z-=Math.cos(b.th)*b.v*dt;
+    if(Math.abs(b.x)>hw||Math.abs(b.z)>hd){ b.x=clamp(b.x,-hw,hw); b.z=clamp(b.z,-hd,hd); if(Math.abs(b.v)>2.5) b.hp-=2; b.v*=-0.3; b.stun=0.7; }
+    for(const st of W.stones){ const dx=b.x-st.x, dz=b.z-st.z, dd=Math.hypot(dx,dz), rr_=st.r+0.6; if(dd<rr_){ const k=rr_/(dd||.001); b.x=st.x+dx*k; b.z=st.z+dz*k; b.v*=0.5; b.stun=Math.max(b.stun,0.5); } }
+    if(b.hp<45&&Math.random()<dt*(60-b.hp)*0.2) puffs.spawn(b.x-Math.sin(b.th)*0.8,1,b.z-Math.cos(b.th)*0.8,rand(-.3,.3),rand(.5,1.2),rand(-.3,.3),rand(.8,1.6),.1,.1,.1,-0.1,1);
+    if(b.hp<=0) derbyOut(b,false);
+  }
+  /* everything that can hit everything else */
+  const E=derbyBots.map((b,i)=>({k:'b'+i,b,x:b.x,z:b.z,th:b.th,v:b.v,fixed:!b.alive||guest,name:b.name})); E.push({k:'me',me:true,x:M.x,z:M.z,th:M.th,v:M.v,name:'you'});
+  if(Net.on){ let left=0, n=0; for(const id in Net.peers){ const q=Net.peers[id]; n++; if((q.hp===undefined?100:q.hp)>0) left++; const dv=q.lx===undefined?0:((q.x-q.lx)*-Math.sin(q.th)+(q.z-q.lz)*-Math.cos(q.th))/Math.max(dt,1e-3); q.dv=(q.dv||0)*0.7+dv*0.3; q.lx=q.x; q.lz=q.z; E.push({k:id,peer:q,x:q.x,z:q.z,th:q.th,v:q.dv,fixed:true,name:q.name}); } D.maxPeers=Math.max(D.maxPeers,n); D.peersLeft=left; }
+  for(let i=0;i<E.length;i++) for(let j=i+1;j<E.length;j++){ const A=E[i], B=E[j]; let dx=B.x-A.x, dz=B.z-A.z; const dd=Math.hypot(dx,dz); if(dd>=1.85||(A.fixed&&B.fixed)) continue; const nx=dx/(dd||1), nz=dz/(dd||1), ov=1.85-dd;
+      if(A.fixed){ B.x+=nx*ov; B.z+=nz*ov; } else if(B.fixed){ A.x-=nx*ov; A.z-=nz*ov; } else { A.x-=nx*ov/2; A.z-=nz*ov/2; B.x+=nx*ov/2; B.z+=nz*ov/2; }
+      const c=(-Math.sin(A.th)*A.v+Math.sin(B.th)*B.v)*nx+(-Math.cos(A.th)*A.v+Math.cos(B.th)*B.v)*nz, pk=A.k+B.k;
+      if(c>1.2&&now-(D.pair[pk]||-9)>0.45){ D.pair[pk]=now; sfx.thud(); if(AC) noise(AC.currentTime,0.18,0.35,'bandpass',900,0.6);
+        const mx=(A.x+B.x)/2, mz=(A.z+B.z)/2; for(let q=0;q<14;q++) bits.spawn(mx,.7,mz,rand(-3,3),rand(1,4),rand(-3,3),rand(.2,.5),1,.75,.3,9,0); debris(mx,.5,mz,6,'dirt',3);
+        for(const [X,Y,sg] of [[A,B,1],[B,A,-1]]){ const dot=(-Math.sin(X.th)*nx-Math.cos(X.th)*nz)*sg, mult=dot>0.55?0.4:(dot<-0.4?1.35:1), dmg=c*4.2*mult;
+          if(X.b&&X.b.alive){ if(guest){ if(Y.me) netSend('ev',{id:Net.id,k:'dh',i:derbyBots.indexOf(X.b),d:+dmg.toFixed(1)}); } else if(!Y.peer){ X.b.hp-=dmg*(Y.b?0.25:1); X.b.v=-X.b.v*0.3; X.v=X.b.v; X.b.stun=0.6; if(X.b.hp<=0) derbyOut(X.b,!!Y.me); } }
+          else if(X.me){ D.lastHit=Y.peer?Y.k:null; damage(dmg*(Math.abs(X.v)<0.7?1.9:1.1)); M.v*=-0.35; X.v=M.v; G.jolt=1; G.stress=Math.min(100,G.stress+1); if(G.mounted&&c>5.5&&mult>=1) eject(Y.name,c); } } } }
+  for(const e of E){ if(e.b&&e.b.alive){ e.b.x=e.x; e.b.z=e.z; } else if(e.me){ M.x=e.x; M.z=e.z; } }
+  for(const b of derbyBots){ b.g.position.set(b.x,0,b.z); b.g.rotation.y=b.th; if(b.alive&&!G.mounted&&!G.rag&&!G.fall&&Math.abs(b.v)>2&&Math.hypot(P.x-b.x,P.z-b.z)<1.0){ G.fall=2.6; sfx.thud(); G.stress=Math.min(100,G.stress+4); say(b.name+': Stay down, Earl!',false); } }
+  const left=derbyBots.filter(b=>b.alive).length; derbyEl.hidden=false;
+  if(Net.on){ for(const id in Net.peers){ const q=Net.peers[id]; if(q.hp!==undefined&&q.hp<=0&&Math.random()<dt*4) puffs.spawn(q.x,1,q.z,rand(-.3,.3),rand(.6,1.4),rand(-.3,.3),rand(1,2),.1,.1,.1,-0.1,1); }
+    if(!pAlive&&!D.sentOut){ D.sentOut=true; netSend('ev',{id:Net.id,k:'dout',by:D.lastHit||''}); } }
+  const humans=(pAlive?1:0)+(Net.on?(D.peersLeft||0):0), tot=humans+left, who=[];
+  if(Net.on){ who.push((S.opts.name||'Earl')+' '+(pAlive?Math.max(1,Math.round(100-(M.dmg||0)))+'%':'OUT')); for(const id in Net.peers){ const q=Net.peers[id], h=q.hp===undefined?100:q.hp; who.push(q.name+' '+(h>0?h+'%':'OUT')); } }
+  for(const b of derbyBots) who.push(b.name+' '+(b.alive?Math.max(1,Math.round(b.hp))+'%':'OUT'));
+  derbyEl.textContent='Mowers left: '+tot+'   '+(Net.on?who.join(' · '):who.join(' · '));
+  if(!D.over){ if(Net.on){ if(D.maxPeers>0&&(tot<=1||humans===0)){ D.over=now+2.5; D.win=pAlive&&tot===1; } } else if(!pAlive){ D.over=now+2.5; D.win=false; } else if(left===0){ D.over=now+2.5; D.win=true; } }
+  else if(now>D.over&&!G.done) finishDerby(D.win);
+}
+function finishDerby(win){
+  if(!G||G.done) return; G.done=true; const D=G.derby, pot=win?JOBS[DERBY].pay:30, kb=50*D.kills, fine=-(G.fine||0), total=Math.max(0,pot+kb+fine);
+  S.money+=total; S.earned+=total; if(win){ unlock('derby'); if(D.kills>=3) unlock('derby3'); } if(S.earned>=1000) unlock('rich'); save(); sfx.cash(); M.blades=false; M.v=0; G.runaway=null;
+  mode='done'; unlockPointer(); $('#hud').hidden=true; derbyEl.hidden=true;
+  const rows=[[win?'The pot':'Showing up',pot],['Wrecks ('+D.kills+')',kb],['Citations',fine]].filter(r=>r[1]!==0);
+  showMenu(`<div class="sheet"><h1>${win?'Last mower running.':'You’re scrap.'}</h1><p>${win?'Nothing left out there but smoke and you.':(Net.on&&!G.wreck?'Nobody won that one. The computer mowers outlasted every one of you.':'She’s done. Drag her home and bang out the dents.')}</p>${G.bestRag?`<p><b>Instant replay:</b> Earl versus ${G.bestRag.why}. ${Math.round(G.bestRag.d)} feet through the air.</p>`:''}
+    <table>${rows.map(r=>`<tr><td>${r[0]}</td><td>$${r[1]}</td></tr>`).join('')}<tr class="total"><td>Paid</td><td>$${total}</td></tr></table>
+    <div class="row">${(Net.on&&!Net.host)?'<span>Waiting for the host to pick what’s next.</span><button class="btn plain" data-act="leave">Leave the room</button>':`<button class="btn" data-act="job" data-arg="${DERBY}">Run it back</button><button class="btn plain" data-act="garage">Go to the garage</button>`}</div></div>`, '');
+}
 function review(){
   const dd=[], Pd=G.peed||{};
   if(Pd.hyd) dd.push('urinated on my hydrangeas'); if(Pd.pool) dd.push('peed in my pool'); if(G.burn) dd.push('set my fence on fire with my own grill'); if(G.potty) dd.push('tipped over a porta-potty with my husband in it');
@@ -1941,7 +2059,7 @@ function punchHit(){
   for(const gn of W.gnomes){ if(gn.alive&&infront(gn.x,gn.z,0.5)){ hit=true; gn.alive=false; G.gnomes++; S.stats.gnomes++; unlock('gnome'); unlock('punch'); netSend('ev',{id:Net.id,k:'gnome',i:W.gnomes.indexOf(gn)}); const p={type:'thrown',m:gn.g,x:gn.x,y:0.1,z:gn.z,r:0.2,alive:true}; W.props.push(p); launch(p,ux*12,5.5,uz*12); sfx.thud(); setTimeout(()=>{ if(mode==='play') say(pick(LINES.gnome)); },700); } }
   if(hit){ relief(2); return; }
   { const C=W.cop; if(C&&C.visit&&infront(C.g.position.x,C.g.position.z,0.7)){ G.fine=(G.fine||0)+100; unlock('ticket'); unlock('tased'); G.tased=3.2; G.tasedN=(G.tasedN||0)+1; if(!G.mounted) G.fall=2.6; if(AC) for(let q=0;q<24;q++) tone('square',900+(q%2)*500,300,AC.currentTime+q*0.12,0.06,0.12); say('Officer Darlene: TASER, TASER! ...That’s a hundred bucks and a nap, Earl.',false); return; } }
-  if(!G.mounted&&infront(M.x,M.z,0.9)){ sfx.thud(); if(AC) tone('square',180,90,AC.currentTime,0.15,0.3); G.jolt=1; if((M.dmg||0)>0){ M.dmg=Math.max(0,M.dmg-30); G.wreck=M.dmg>=100; say(LINES.tree[2]); } return; }
+  if(!G.mounted&&infront(M.x,M.z,0.9)){ sfx.thud(); if(AC) tone('square',180,90,AC.currentTime,0.15,0.3); G.jolt=1; if((M.dmg||0)>0&&!G.derby){ M.dmg=Math.max(0,M.dmg-30); G.wreck=M.dmg>=100; say(LINES.tree[2]); } return; }
   const B=W.brenda; if(B&&B.visit&&infront(B.g.position.x,B.g.position.z,0.7)){ annoy(2); say('Brenda: Don’t you dare, Earl!',false); B.visit.ph=2; B.visit.run=true; return; }
   if(W.dale&&infront(W.dale.x,W.dale.z,1.0)){ sfx.thud(); annoy(1); relief(4); unlock('dalepunch'); say('Dale: OW! I’m tellin’ Brenda!',false); return; }
   let solid=!G.mounted&&infront(M.x,M.z,0.8); for(const t of W.trees) if(infront(t.x,t.z,0.4)) solid=true; const px=ox+ux*reach*0.8, pz=oz+uz*reach*0.8; if(Math.abs(px)>W.w/2-0.1||Math.abs(pz)>W.d/2-0.1) solid=true;
@@ -2032,6 +2150,7 @@ function boom(x,y,z){
     for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ const k=j*W.nx+i, cx=-W.w/2+(i+.5)*W.cw, cz=-W.d/2+(j+.5)*W.cd; if(W.cut[k]===0&&Math.hypot(cx-x,cz-z)<Rb*rand(.8,1)){ applyCut(k,false,false); nb++; } }
     if(nb){ W.grass.instanceMatrix.needsUpdate=true; W.grass.instanceColor.needsUpdate=true; W.flowers.instanceMatrix.needsUpdate=true; W.tex.needsUpdate=true; checkReady(); } }
   const near=(ax,az,r)=>Math.hypot(ax-x,az-z)<r;
+  for(const b of derbyBots) if(b.alive&&near(b.x,b.z,2.8)){ b.hp-=30; b.stun=1; b.v*=-0.3; }
   for(const gn of W.gnomes){ if(gn.alive&&near(gn.x,gn.z,2)){ gn.alive=false; gn.g.visible=false; G.gnomes++; S.stats.gnomes++; unlock('gnome'); unlock('rocket'); sfx.smash(); debris(gn.x,.3,gn.z,26,'gnome'); } }
   for(const p of W.props||[]){ if(!p.alive||p.fly||!near(p.x,p.z,2)) continue; if(p.type==='flamingo'){ p.pink=true; smashProp(p); unlock('flamingo'); } else if(p.type==='nest'){ p.alive=false; p.m.visible=false; startBees(); } else if(p.type==='ball'){ launch(p,(p.x-x)*5,6,(p.z-z)*5); } }
   const B=W.brenda; if(B&&near(B.g.position.x,B.g.position.z,5)&&brendaReact('brfart')) annoy(1);
@@ -2072,6 +2191,7 @@ function applyCut(k,light,local){
   return fl;
 }
 function checkReady(){
+  if(G&&G.derby) return;
   if(!W.ready&&W.cutCount/W.total>=0.96){ W.ready=true; toast('Good enough to get paid','Press Enter to cash out, or get every last blade for a bonus.','$'); say(LINES.ready[0]); }
   if(W.cutCount>=W.total&&G&&!G.finishing){ G.finishing=true; setTimeout(()=>finishJob(), 900); }
 }
@@ -2165,13 +2285,26 @@ function updatePlay(dt){
     M.load+=((M.cutN>0?Math.min(1,M.cutN/12):0)-M.load)*Math.min(1,dt*4);
     const bog=1-0.3*M.load*(1-0.12*S.up.engine);
     const target=gas?(M.thr>0?vmax*M.thr*bog:vmax*0.4*M.thr):0;
-    const speeding=Math.abs(target)>Math.abs(M.v)&&Math.sign(target)===Math.sign(M.v||target), acc=speeding?3.4:(fz===0?2.6:6.5), prevV=M.v;
-    M.v+=clamp(target-M.v,-acc*dt,acc*dt);
+    /* grip: dry cut grass holds well, tall grass less, wet grass hardly at all. It caps how hard she can launch, brake and corner. */
+    const mu=(WX.kind==='rain'?0.45:0.85)-0.12*M.load, grip=mu*9.8;
+    const speeding=Math.abs(target)>Math.abs(M.v)&&Math.sign(target)===Math.sign(M.v||target), accRaw=speeding?3.4:(fz===0?2.6:6.5), accLim=speeding?grip*0.5:grip*0.9, acc=Math.min(accRaw,accLim), prevV=M.v;
+    M.spinning=gas&&speeding&&accRaw>accLim+0.15&&Math.abs(M.thr)>0.6;
+    if(M.spinning&&Math.random()<dt*45) bits.spawn(M.x+Math.sin(M.th)*0.55+rand(-.35,.35),0.06,M.z+Math.cos(M.th)*0.55+rand(-.35,.35),Math.sin(M.th)*rand(1,3)+rand(-.5,.5),rand(.6,1.8),Math.cos(M.th)*rand(1,3)+rand(-.5,.5),.5,.24,.17,.09,9,.4);
+    if(ZT()){ /* two wheel motors, each with its own inertia */ const tR=gas?target+M.steer*1.2:0, tL=gas?target-M.steer*1.2:0, wa=Math.min(6,grip*0.8)*dt; if(M.wl===undefined){ M.wl=M.v; M.wr=M.v; }
+      const cur=(M.wl+M.wr)/2; M.wl+=M.v-cur; M.wr+=M.v-cur; M.wl+=clamp(tL-M.wl,-wa,wa); M.wr+=clamp(tR-M.wr,-wa,wa); M.v=(M.wl+M.wr)/2; }
+    else M.v+=clamp(target-M.v,-acc*dt,acc*dt);
     /* front wheels steer, the mower pivots around its rear axle; a lawn tractor turns at full lock at mowing speed, and scrubs off a little speed doing it */
     M.delta=M.steer*lerp(0.9,0.5,clamp((sp-3.2)/4,0,1)); M.v*=1-0.22*Math.abs(M.delta)*dt;
-    const om=ZT()?(gas?M.steer*2.3:0):M.v*Math.tan(M.delta)/1.15, dth=om*dt;   // a zero-turn spins on the spot: one wheel forward, one back
+    let om, push=false;
+    if(ZT()) om=(M.wr-M.wl)/1.04;                    // a zero-turn spins on the spot: one wheel forward, one back
+    else { const omK=M.v*Math.tan(M.delta)/1.15, alat=Math.abs(M.v*omK); om=omK; if(alat>grip){ om=omK*grip/alat; push=true; M.v*=1-0.5*dt; } }      // past the limit the front tires just scrub
+    /* crank the wheel at speed on dry ground and the inside wheels lift; hold it and she goes over */
+    { const latG=Math.abs(M.v*om)/9.8; if(!ZT()&&latG>0.6&&sp>4.2&&mu>0.6&&!(M.jy>0)) M.tip=Math.min(1.2,(M.tip||0)+dt*1.5); else M.tip=Math.max(0,(M.tip||0)-dt*2.5);
+      if(M.tip>0.45&&!M.tipSaid){ M.tipSaid=true; say('Whoa, she’s liftin’!',false); } if(M.tip<0.1) M.tipSaid=false;
+      if(M.tip>=1.2){ M.tip=0; const s0=sp; damage(18); M.v*=0.2; sfx.thud(); toast('Rolled her','Ease off before you crank the wheel.','!'); eject('his own drivin’',s0); } }
+    const dth=om*dt;
     /* the tires only hold so well: at speed the mower keeps sliding the way it was going for a moment */
-    M.vh+=angDiff(M.th,M.vh)*Math.min(1,lerp(45,16,clamp((sp-3)/4,0,1))*(WX.kind==='rain'?0.13:1)*dt);
+    M.vh+=angDiff(M.th,M.vh)*Math.min(1,lerp(45,16,clamp((sp-3)/4,0,1))*Math.pow(mu/0.85,3)*(push?0.5:1)*dt);
     const rx0=M.x+Math.sin(M.th)*0.5, rz0=M.z+Math.cos(M.th)*0.5;
     M.th+=dth;
     const rx1=rx0-Math.sin(M.vh)*M.v*dt, rz1=rz0-Math.cos(M.vh)*M.v*dt;
@@ -2180,7 +2313,7 @@ function updatePlay(dt){
     collideMower(vmax); airUpdate(dt);
     const moved=Math.hypot(M.x-ox,M.z-oz), ax=(M.v-prevV)/Math.max(dt,1e-4);
     M.pitch+=(clamp(ax*0.006,-0.05,0.05)-M.pitch)*Math.min(1,dt*6);
-    M.roll+=(clamp(-M.v*om*0.009,-0.07,0.07)-M.roll)*Math.min(1,dt*5);
+    M.roll+=(clamp(-M.v*om*0.009,-0.07,0.07)-Math.sign(M.v*om)*(M.tip||0)*0.3-M.roll)*Math.min(1,dt*5);
     M.rpm+=((gas?((M.blades||fz!==0)?1:0.45)-0.22*M.load:0)-M.rpm)*Math.min(1,dt*3);
     if(M.slide&&Math.abs(M.v)>2&&Math.random()<dt*30) bits.spawn(M.x+Math.sin(M.th)*0.5+rand(-.4,.4),0.05,M.z+Math.cos(M.th)*0.5+rand(-.4,.4),rand(-1,1),rand(.5,1.5),rand(-1,1),.6,.22,.15,.08,8,.5);
     if(gas){ M.fuel-=dt*((Math.abs(M.v)>0.3||M.blades)?(1+0.5*M.load):0.3); if(M.fuel<=0){ M.fuel=0; M.blades=false; M.eng=0; sfx.sputter(); say(pick(LINES.dry)); unlock('dry'); } }
@@ -2204,7 +2337,7 @@ function updatePlay(dt){
     const moved=Math.hypot(P.x-ox,P.z-oz); if(Math.floor((P.bob+moved*2.2)/Math.PI)!==Math.floor(P.bob/Math.PI)) sfx.step(); P.bob+=moved*2.2; S.stats.walked+=moved; if(S.stats.walked*FT>=600) unlock('walk');
     if(buzz>0.75&&going&&!G.fall&&Math.random()<dt*0.07*buzz){ G.fall=2.6; sfx.thud(); say(pick(LINES.fall)); }
   }
-  updateTrim(dt); if(G.mounted&&M.blades&&Math.abs(M.v)>0.5){ G.strT=(G.strT||0)+dt; if(Math.abs(M.steer)<0.1) G.strS=(G.strS||0)+dt; }
+  updateDerby(dt); updateTrim(dt); if(G.mounted&&M.blades&&Math.abs(M.v)>0.5){ G.strT=(G.strT||0)+dt; if(Math.abs(M.steer)<0.1) G.strS=(G.strS||0)+dt; }
   updateAct(dt);
 }
 const tmpV = new THREE.Vector3();
@@ -2219,7 +2352,7 @@ function placeCamera(dt){
   wheels[2].piv.rotation.y=wheels[3].piv.rotation.y=M.delta;
   const roll=Math.sin(t*1.3)*b*0.06+Math.sin(t*0.5+1)*b*0.05, sway=Math.sin(t*0.7)*b*0.07, nod=Math.sin(t*0.9+1)*b*0.04+(G?G.jolt*0.035:0);
   if(playing){
-    rider.visible=G.mounted&&!WB(); if(earlBody) earlBody.visible=false; if(ragG&&!G.rag) ragG.visible=false; carried.visible=G.carry&&!G.fill; W.canMesh.visible=!G.carry;
+    rider.visible=G.mounted&&!WB(); if(earlBody) earlBody.visible=false; if(earlFull) earlFull.visible=false; if(ragG&&!G.rag) ragG.visible=false; carried.visible=G.carry&&!G.fill; W.canMesh.visible=!G.carry;
     hands[-1].h.visible=G.mounted; hands[1].h.visible=G.mounted&&!act;
     if(G.rag){ const R=G.rag; poseRag(R); camera.position.set(R.cam[0],R.cam[1],R.cam[2]); camera.lookAt(R.x,R.y+0.3,R.z); }
     else if(G.mounted){
@@ -2233,12 +2366,12 @@ function placeCamera(dt){
     if(G.tased>0){ camera.rotation.z+=rand(-.1,.1); camera.rotation.x+=rand(-.05,.05); }
     camera.fov=(camera.aspect<1?92:70)+Math.sin(t*0.9)*b*3; camera.updateProjectionMatrix();
   } else {
-    rider.visible=false; if(earlBody){ earlBody.visible=true; earlBody.position.set(M.x-Math.cos(M.th)*1.15,0,M.z+Math.sin(M.th)*1.15); earlBody.rotation.y=M.th+0.6; } hand.visible=false; carried.visible=false; hands[-1].h.visible=hands[1].h.visible=false;
+    rider.visible=false; if(earlBody) earlBody.visible=false; if(earlFull) earlFull.visible=!WB(); hand.visible=false; carried.visible=false; hands[-1].h.visible=hands[1].h.visible=false;
     orbit+=dt*0.05; const r=W?Math.max(W.w,W.d)*0.62:20;
     camera.position.set(Math.cos(orbit)*r, 5.2, Math.sin(orbit)*r); camera.lookAt(0,1.0,0);
     if(mode==='done'&&G&&G.bestRag&&ragG&&W){ const I=G.bestRag.init, Q=G.replay||(G.replay=Object.assign({rx:0,rz:0,b:0,wait:0,lying:false,init:I},I));     // instant replay, slowed down
       if(Q.wait>0){ Q.wait-=dt; if(Q.wait<=0) G.replay=null; } else if(stepRag(Q,dt*0.35)===2){ Q.wait=1.8; Q.lying=true; }
-      poseRag(Q); if(earlBody) earlBody.visible=false; camera.position.set(Q.x+Math.cos(orbit*4)*5,4.2,Q.z+Math.sin(orbit*4)*5); camera.lookAt(Q.x,Q.y+0.3,Q.z); }
+      poseRag(Q); if(earlBody) earlBody.visible=false; if(earlFull) earlFull.visible=false; camera.position.set(Q.x+Math.cos(orbit*4)*5,4.2,Q.z+Math.sin(orbit*4)*5); camera.lookAt(Q.x,Q.y+0.3,Q.z); }
     else if(ragG&&ragG.visible){ ragG.visible=false; if(MD.earl&&MD.earl.rw) npcPose(MD.earl,idlePose(0,'')); }
     if(camera.fov!==55){ camera.fov=55; camera.updateProjectionMatrix(); }
   }
@@ -2293,7 +2426,7 @@ function updateHUD(dt){
   hudAcc+=dt; if(hudAcc<0.1) return; hudAcc=0;
   const pct=W.total?W.cutCount/W.total:0;
   $('#mowFill').style.width=(pct*100).toFixed(1)+'%'; $('#mowPct').textContent=Math.floor(pct*100)+'%';
-  $('#clock').textContent=fmtTime(G.time)+' (beat '+fmtTime(W.J.par)+' for a bonus)';
+  $('#clock').textContent=G.derby?fmtTime(G.time):fmtTime(G.time)+' (beat '+fmtTime(W.J.par)+' for a bonus)'; { const mm=$('#mowFill').closest('.meter'); if(mm) mm.style.display=G.derby?'none':''; }
   $('#cash').textContent='$'+S.money;
   $('#stressFill').style.width=G.stress+'%'; $('#stressPct').textContent=Math.round(G.stress);
   $('#gasFill').style.width=(M.fuel/UPG.tank.val[S.up.tank]*100)+'%';
@@ -2304,7 +2437,7 @@ function updateHUD(dt){
     if(M.fuel<=0){ p='Out of gas. '+key('E')+tap+'hop off, then fetch the red can from the slab'; pa='use'; }
     else if(M.x>W.pad.x0-0.5&&M.z<W.pad.z1+0.5&&M.fuel<UPG.tank.val[S.up.tank]*0.9){ p=key('R')+tap+'top off the tank'; pa='gas'; }
     else if(W.ready){ p=key('Enter')+tap+'get paid'; pa='pay'; }
-    else if(!M.blades&&!G.cutAny){ p=TOUCH?'Tap here for blades, then push the stick up to roll':'<kbd>Space</kbd> blades on, then <kbd>W</kbd> to roll'; pa='blades'; }
+    else if(!M.blades&&!G.cutAny&&!G.derby){ p=TOUCH?'Tap here for blades, then push the stick up to roll':'<kbd>Space</kbd> blades on, then <kbd>W</kbd> to roll'; pa='blades'; }
   } else if(n){
     p=key('E')+tap+({on:'hop on',fuel:'fill ’er up',can:'grab the gas can',cooler:'restock the beer',dog:'pet the dog'}[n.t]||''); pa='use';
   }
@@ -2339,29 +2472,33 @@ function partRow(k){
     ${lv<max?`<button class="btn small" data-act="buy" data-arg="${k}" ${S.money<cost?'disabled':''}>Buy $${cost}</button>`:`<span>Maxed</span>`}</div>`;
 }
 let wipeArmed=false;
-function showGarage(){
+let garTab='jobs';
+function showGarage(){ clearDerby();
   mode='garage'; $('#hud').hidden=true; unlockPointer();
   const got=ACH.filter(a=>S.ach[a[0]]).length;
-  showMenu(`<div class="garage">
-    <div class="g-head"><h1>The garage</h1><div class="wallet">$${S.money}</div></div>
-    <div class="g-grid">
-      <section><h2>Work orders</h2>${JOBS.map(jobCard).join('')}</section>
-      <section><h2>Parts counter</h2>${Object.keys(UPG).map(partRow).join('')}
-        <h2>Paint</h2><div class="paints">${PAINTS.map((p,i)=>{ const own_=S.paints.includes(i); return `<button class="swatch ${S.paint===i?'on':''}" data-act="paint" data-arg="${i}"><i style="background:#${p.c.toString(16).padStart(6,'0')}"></i>${p.name}${own_?(S.paint===i?' (on the mower)':''):' $'+p.cost}</button>`; }).join('')}</div></section>
-    </div>
-    <section><h2>Trophy shelf <small>${got} of ${ACH.length}</small></h2><div class="caps">${ACH.map(a=>`<div class="capcard ${S.ach[a[0]]?'':'off'}"><div class="cap">${S.ach[a[0]]?'★':'?'}</div><div><b>${a[1]}</b><span>${a[2]}</span></div></div>`).join('')}</div></section>
-    <section><h2>Mowers</h2><div class="paints">${MOWERS.map((m,i)=>{ const own_=S.mowers.includes(i); return `<button class="swatch ${S.mower===i?'on':''}" data-act="mower" data-arg="${i}">${m.name}${own_?(S.mower===i?' (riding it)':''):' $'+m.cost}</button>`; }).join('')}</div><p style="color:#cfc5ad;margin:8px 0 0">The zero-turn steers with two lap bars, spins on the spot and runs a quarter faster. The walk-behind spins the same way, but you’re on foot behind it.</p></section>
-    <section><h2>Accessories</h2><div class="paints">${ACC.map(a=>{ const st=S.acc[a.id]||0; return `<button class="swatch ${st===1?'on':''}" data-act="acc" data-arg="${a.id}">${a.name}${st?(st===1?' (on)':' (off)'):' $'+a.cost}</button>`; }).join('')}</div></section>
-    <section><h2>Multiplayer</h2><div class="mpbox">${Net.on?`<span>Room</span><b class="code">${Net.code}</b><span>${Net.mode==='versus'?'Versus: most grass cut wins the yard.':'Co-op: split the lawn, split the pay.'}</span><button class="btn small plain" data-act="leave">Leave the room</button><p>${Net.host?'You’re the host. Give friends the room code, then pick a yard above. Anyone who joins drops into the yard you’re mowing.':'You’re in. The host picks the yard and you drop in when it starts.'}</p>`
-      :`${sbKey()?'':'<input id="sbKey" placeholder="Supabase anon key (starts with eyJ)" aria-label="Supabase anon key" style="width:100%"><button class="btn small" data-act="sbkey">Save key</button>'}<input id="mpName" maxlength="12" value="${esc(S.opts.name||'Earl')}" aria-label="Your name"><button class="btn small" data-act="host" data-arg="coop">Host co-op</button><button class="btn small" data-act="host" data-arg="versus">Host versus</button><input id="mpCode" maxlength="4" placeholder="Code" aria-label="Room code" style="width:5.5em;text-transform:uppercase"><button class="btn small plain" data-act="join">Join a room</button><p>${Net.status||'Host a room and share the four-letter code, or type a friend’s code to join. Up to four mowers on one yard.'}</p>`}</div></section>
-    <section><h2>Settings</h2><div class="settings">
+  const tab=garTab, T=(id,label)=>`<button type="button" class="${tab===id?'on':''}" data-act="tab" data-arg="${id}">${label}</button>`;
+  let body='';
+  if(tab==='jobs') body=`<div class="derby-banner"><div><h3>Demolition derby: the back forty</h3><p>No grass. ${Net.on?'Every mower in your room for itself, and the host’s computer mowers fill the empty seats.':'Three other mowers.'} Hit them in the side or the rear, keep your nose pointed at trouble, and be the last one running. Bottle rockets count.</p></div><div class="pay">$${JOBS[DERBY].pay}</div><button class="btn" data-act="job" data-arg="${DERBY}">Wreck ’em</button></div>
+      <h2>Work orders <small>${JOBS.filter((j_,i_)=>!j_.derby&&S.done[i_]).length} of ${JOBS.length-1} done</small></h2><div class="g-jobs">${JOBS.map((J_,i_)=>J_.derby?'':jobCard(J_,i_)).join('')}</div>`;
+  else if(tab==='shop') body=`<div class="g-two"><div><h2>Parts counter</h2>${Object.keys(UPG).map(partRow).join('')}</div><div><section><h2>Mowers</h2><div class="paints">${MOWERS.map((m,i)=>{ const own_=S.mowers.includes(i); return `<button class="swatch ${S.mower===i?'on':''}" data-act="mower" data-arg="${i}">${m.name}${own_?(S.mower===i?' (riding it)':''):' $'+m.cost}</button>`; }).join('')}</div><p style="color:#cfc5ad;margin:8px 0 0">The zero-turn steers with two lap bars, spins on the spot and runs a quarter faster. The walk-behind spins the same way, but you’re on foot behind it.</p></section>
+      <section><h2>Paint</h2><div class="paints">${PAINTS.map((p,i)=>{ const own_=S.paints.includes(i); return `<button class="swatch ${S.paint===i?'on':''}" data-act="paint" data-arg="${i}"><i style="background:#${p.c.toString(16).padStart(6,'0')}"></i>${p.name}${own_?(S.paint===i?' (on the mower)':''):' $'+p.cost}</button>`; }).join('')}</div></section>
+      <section><h2>Accessories</h2><div class="paints">${ACC.map(a=>{ const st=S.acc[a.id]||0; return `<button class="swatch ${st===1?'on':''}" data-act="acc" data-arg="${a.id}">${a.name}${st?(st===1?' (on)':' (off)'):' $'+a.cost}</button>`; }).join('')}</div></section></div></div>`;
+  else if(tab==='mp') body=`<section><h2>Multiplayer</h2><div class="mpbox">${Net.on?`<span>Room</span><b class="code">${Net.code}</b><span>${Net.mode==='versus'?'Versus: most grass cut wins the yard.':'Co-op: split the lawn, split the pay.'}</span><button class="btn small plain" data-act="leave">Leave the room</button><p>${Net.host?'You’re the host. Give friends the room code, then pick a yard above. Anyone who joins drops into the yard you’re mowing.':'You’re in. The host picks the yard and you drop in when it starts.'}</p>`
+      :`${sbKey()?'':'<input id="sbKey" placeholder="Supabase anon key (starts with eyJ)" aria-label="Supabase anon key" style="width:100%"><button class="btn small" data-act="sbkey">Save key</button>'}<input id="mpName" maxlength="12" value="${esc(S.opts.name||'Earl')}" aria-label="Your name"><button class="btn small" data-act="host" data-arg="coop">Host co-op</button><button class="btn small" data-act="host" data-arg="versus">Host versus</button><input id="mpCode" maxlength="4" placeholder="Code" aria-label="Room code" style="width:5.5em;text-transform:uppercase"><button class="btn small plain" data-act="join">Join a room</button><p>${Net.status||'Host a room and share the four-letter code, or type a friend’s code to join. Up to four mowers on one yard.'}</p>`}</div></section>`;
+  else if(tab==='trophies') body=`<section><h2>Trophy shelf <small>${got} of ${ACH.length}</small></h2><div class="caps">${ACH.map(a=>`<div class="capcard ${S.ach[a[0]]?'':'off'}"><div class="cap">${S.ach[a[0]]?'★':'?'}</div><div><b>${a[1]}</b><span>${a[2]}</span></div></div>`).join('')}</div></section>`;
+  else body=`<section><h2>Settings</h2><div class="settings">
       <button class="btn small plain" data-act="gfx">Graphics: ${HI()?'high':'low'}</button>
       <button class="btn small plain" data-act="voice">Voice lines: ${S.opts.voice?'on':'off'}</button>
       <label class="btn small plain">Load your own songs<input type="file" id="songFiles" accept="audio/*" multiple></label>
       <button class="btn small plain" data-act="wipe">${wipeArmed?'Really wipe it? Click again':'Wipe my save'}</button>
       <button class="btn small plain" data-act="title">Back to the title</button>
       <p>If mowing feels choppy, set graphics to low: thinner grass, lighter trees and softer shadows. Songs you load go on the radio as the tape deck (press T to tune to them) and stay until you close the page.${CUSTOM.length?' Loaded: '+CUSTOM.map(c=>c.title).join(', ')+'.':''}</p>
-    </div></section></div>`, '');
+    </div></section>`;
+  showMenu(`<div class="garage">
+    <div class="g-head"><h1>The garage</h1><div class="wallet">$${S.money}</div></div>
+    <div class="g-sub">Riding the ${MOWERS[S.mower].name.toLowerCase()} in ${PAINTS[S.paint].name.toLowerCase()} · ${S.stats.jobs} lawn${S.stats.jobs===1?'':'s'} mowed${Net.on?' · Room '+Net.code:''}</div>
+    <div class="g-tabs">${T('jobs','Jobs')}${T('shop','Shop')}${T('mp','Multiplayer'+(Net.on?' ●':''))}${T('trophies','Trophies <small>'+got+'/'+ACH.length+'</small>')}${T('settings','Settings')}</div>
+    <div class="g-body">${body}</div></div>`, '');
 }
 function showPause(){ mode='pause'; unlockPointer(); showMenu(`<div class="sheet"><h1>Taking five.</h1><p>The grass isn’t going anywhere.</p><div class="row"><button class="btn" data-act="resume">Back to mowing</button><button class="btn plain" data-act="quit">Quit this yard</button></div></div>`,''); }
 function setGfx(v){ S.opts.gfx=v; save(); applyPixelRatio(); resize(); setupShadow(); }
@@ -2369,6 +2506,7 @@ $('#menu').addEventListener('click', e=>{
   const b=e.target.closest('[data-act]'); if(!b||b.disabled) return; initAudio();
   const a=b.dataset.act, arg=b.dataset.arg; if(a!=='wipe') wipeArmed=false;
   { const nmEl=$('#mpName'); if(nmEl){ S.opts.name=esc(nmEl.value).trim().slice(0,12)||'Earl'; save(); } }
+  if(a==='tab'){ garTab=arg; showGarage(); return; }
   if(a==='sbkey'){ S.opts.sbKey=(($('#sbKey')||{}).value||'').trim(); save(); Net.cl=null; Net.status=S.opts.sbKey?'Key saved on this device. Host a room or join one.':''; showGarage(); return; }
   if(a==='host'||a==='join'){
     const code=a==='host'?Array.from({length:4},()=>'ABCDEFGHJKLMNPRSTUVWXYZ'[Math.floor(Math.random()*23)]).join(''):(($('#mpCode')||{}).value||'').toUpperCase().replace(/[^A-Z]/g,'');
@@ -2456,7 +2594,7 @@ buildWorld(JOBS[0]);
 M.x=W.pad.x0+2.0; M.z=W.pad.z0+1.7; M.th=Math.PI/2; syncMowerLook();
 showTitle();
 requestAnimationFrame(frame);
-window.__game = {get G(){ return G; }, boom, debris, eject, startBees, fireRocket, accAll(){ for(const a of ACC) S.acc[a.id]=1; syncMowerLook(); }, applyWeather, WX, callCop(){ W.cop.visit={ph:0,t:0}; }, startJob, brendaVisit, launchBall(){ const p=W.props.find(q=>q.type==='ball'&&q.alive); const wn=W.windows[0]; p.x=wn.x; p.z=-W.d/2+4; p.y=1; launch(p,0,3.2,-14); return p; }, setMower(i){ S.mower=i; syncMowerLook(); }, Net, rms(){ if(!an) return -1; const b=new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let q=0; for(const v of b) q+=v*v; return Math.sqrt(q/b.length); }, radioOff(){ radioSet(-1); }, setBuzz(v){ buzz=v; }, tick(n){ for(let i=0;i<n&&mode==='play';i++){ updatePlay(0.05); bits.update(0.05); puffs.update(0.05); } }, get mode(){return mode;}, get G(){return G;}, get W(){return W;}, M, P, S, K, look, doAction};
+window.__game = {get G(){ return G; }, K, S, boom, debris, eject, startBees, fireRocket, accAll(){ for(const a of ACC) S.acc[a.id]=1; syncMowerLook(); }, applyWeather, WX, callCop(){ W.cop.visit={ph:0,t:0}; }, startJob, brendaVisit, launchBall(){ const p=W.props.find(q=>q.type==='ball'&&q.alive); const wn=W.windows[0]; p.x=wn.x; p.z=-W.d/2+4; p.y=1; launch(p,0,3.2,-14); return p; }, setMower(i){ S.mower=i; syncMowerLook(); }, Net, rms(){ if(!an) return -1; const b=new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let q=0; for(const v of b) q+=v*v; return Math.sqrt(q/b.length); }, radioOff(){ radioSet(-1); }, setBuzz(v){ buzz=v; }, tick(n){ for(let i=0;i<n&&mode==='play';i++){ updatePlay(0.05); bits.update(0.05); puffs.update(0.05); } }, get mode(){return mode;}, get G(){return G;}, get W(){return W;}, M, P, S, K, look, doAction};
 })();
 </script>
 </body>
