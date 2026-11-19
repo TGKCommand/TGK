@@ -1689,7 +1689,7 @@ function netLeave(){ try{ if(Net.dir) Net.dir.untrack(); }catch(e){} Net.members
 function netJoin(code,host,mode,cb){
   const cl=netClient(); if(!cl){ cb(window.supabase?'Multiplayer needs the Supabase anon key. Paste it in the box here, or into the SUPABASE_ANON_KEY line of the file.':'The multiplayer library didn’t load.'); return; }
   netLeave(); Net.code=code; Net.host=host; Net.mode=mode||'coop';
-  const ch=cl.channel('grasshole-'+code,{config:{broadcast:{self:false},presence:{key:Net.id}}}); Net.raw=ch; Net.members=[]; Net.chat=[];
+  const ch=cl.channel('grasshole-'+code,{config:{broadcast:{self:false},presence:{key:Net.id}}}); Net.raw=ch; Net.members=[]; Net.chat=[]; Net.hadHost=!!host;
   ch.on('broadcast',{event:'st'},m=>onSt(m.payload)).on('broadcast',{event:'ev'},m=>onEv(m.payload)).on('broadcast',{event:'hello'},m=>onHello(m.payload)).on('broadcast',{event:'welcome'},m=>onWelcome(m.payload)).on('broadcast',{event:'done'},m=>onDone(m.payload)).on('broadcast',{event:'chat'},m=>onChat(m.payload)).on('presence',{event:'sync'},()=>onPresence(ch));
   let told=false; const to=setTimeout(()=>{ if(!told){ told=true; cb('Couldn’t reach the server. Multiplayer only works when the game is hosted on your own site, not from the Claude link.'); } },9000);
   ch.subscribe(st=>{ if(told) return; if(st==='SUBSCRIBED'){ told=true; clearTimeout(to); Net.ch=ch; Net.on=true; try{ ch.track({id:Net.id,n:S.opts.name||'Earl',host:Net.host?1:0}); }catch(e){} dirOpen(); dirTrack(); cb(null); } else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'){ told=true; clearTimeout(to); cb('Couldn’t connect to that room.'); } });
@@ -1701,7 +1701,8 @@ function dirOpen(){ if(Net.dir) return; const cl=netClient(); if(!cl) return; Ne
   ch.subscribe(st=>{ if(st==='SUBSCRIBED'){ Net.dirOn=true; dirTrack(); } }); }
 function dirTrack(){ if(!Net.dir||!Net.dirOn) return; try{ if(Net.on&&Net.host) Net.dir.track({code:Net.code,host:S.opts.name||'Earl',n:Math.max(1,(Net.members||[]).length),mode:Net.mode}); else Net.dir.untrack(); }catch(e){} }
 function onPresence(ch){ const st=ch.presenceState(), mem=[]; for(const k in st) for(const m of st[k]) if(m&&m.id) mem.push(m); Net.members=mem;
-  if(Net.on&&mem.length&&!mem.some(m=>m.host)&&mem.map(m=>m.id).sort()[0]===Net.id){ Net.host=true; try{ ch.track({id:Net.id,n:S.opts.name||'Earl',host:1}); }catch(e){} addChat('','The host left. You’re the host now.'); if(mode==='lobby'){ showLobby(); return; } }
+  if(mem.some(m=>m.host)) Net.hadHost=true;
+  else if(Net.on&&Net.hadHost&&mem.length&&mem.map(m=>m.id).sort()[0]===Net.id){ Net.host=true; try{ ch.track({id:Net.id,n:S.opts.name||'Earl',host:1}); }catch(e){} addChat('','The host left. You’re the host now.'); if(mode==='lobby'){ showLobby(); return; } }
   dirTrack(); if(mode==='lobby') refreshLobby(); }
 function addChat(n,t){ (Net.chat||(Net.chat=[])).push({n:esc(n||'').slice(0,12),t:esc(t||'').slice(0,140)}); if(Net.chat.length>60) Net.chat.shift(); if(mode==='lobby') refreshLobby();
   if(mode==='play'||mode==='pause'){ chatFeed.hidden=false; chatFeed.innerHTML=Net.chat.slice(-4).map(m=>(m.n?'<b>'+m.n+':</b> ':'')+m.t).join('<br>'); clearTimeout(addChat.to); addChat.to=setTimeout(()=>{ chatFeed.hidden=true; },7000); } }
@@ -1862,13 +1863,13 @@ function stepRag(R,dt){
   const hw=W.w/2-0.4, hd=W.d/2-0.4; if(R.y<1.9){ if(Math.abs(R.x)>hw){ R.x=Math.sign(R.x)*hw; R.vx*=-0.4; } if(Math.abs(R.z)>hd){ R.z=Math.sign(R.z)*hd; R.vz*=-0.4; } }
   if(R.y<=0.3){ R.y=0.3; if(Math.abs(R.vy)>3&&R.b<2){ R.vy=-R.vy*0.38; R.vx*=0.6; R.vz*=0.6; R.b++; return 1; } return 2; }
   return 0; }
-function ragPose(t,down){
-  if(down) return {hipL:0.3,hipR:-0.55,kneeL:1.35+0.12*Math.sin(t*19)*Math.max(0,1-(t%3)),kneeR:0.25,shL:1.8,shR:-0.6,elL:1.2,elR:0.9,abL:-0.3,abR:-0.5,twist:0.25,headYaw:0.9,headNod:-0.2,bob:0,sway:0};
-  return {hipL:0.95*Math.sin(t*11),hipR:0.95*Math.sin(t*11+2.4),kneeL:0.85+0.65*Math.sin(t*13),kneeR:0.85+0.65*Math.sin(t*12+1),shL:0.8+1.0*Math.sin(t*10),shR:0.8+1.0*Math.sin(t*8.5+2),elL:0.7+0.55*Math.sin(t*15),elR:0.7+0.55*Math.sin(t*17),abL:-0.5+0.4*Math.sin(t*7),abR:-0.5+0.4*Math.sin(t*6+1),twist:0.3*Math.sin(t*9),headYaw:0.5*Math.sin(t*8),headNod:0.3*Math.sin(t*10),bob:0,sway:0}; }
+function ragPose(t,down){   /* limp, not frantic: loose limbs that trail and swing, nothing bent past what a body can do */
+  if(down) return {hipL:0.2,hipR:-0.3,kneeL:0.9+0.08*Math.sin(t*14)*Math.max(0,1-(t%3)),kneeR:0.2,shL:1.3,shR:-0.4,elL:0.9,elR:0.6,abL:-0.3,abR:-0.4,twist:0.15,lean:0,headYaw:0.7,headNod:-0.1,bob:0,sway:0};
+  return {hipL:0.35+0.3*Math.sin(t*5),hipR:0.2+0.3*Math.sin(t*4.3+2),kneeL:0.5+0.3*Math.sin(t*6),kneeR:0.6+0.3*Math.sin(t*5.2+1),shL:0.9+0.5*Math.sin(t*4.5),shR:0.7+0.5*Math.sin(t*3.8+2),elL:0.5+0.3*Math.sin(t*6),elR:0.6+0.3*Math.sin(t*5),abL:-0.35,abR:-0.35,twist:0.12*Math.sin(t*3),lean:0.1*Math.sin(t*2.5),headYaw:0.3*Math.sin(t*3),headNod:0.2*Math.sin(t*4),bob:0,sway:0}; }
 function poseRag(R){ if(!ragG) return; ragG.visible=true; if(MD.earl&&MD.earl.rw) npcPose(MD.earl,ragPose(performance.now()/1000,!!(R.lying||R.down>0))); if(R.lying||R.down>0){ ragG.position.set(R.x,0.2,R.z); ragG.rotation.set(-Math.PI/2,R.init.ry,0.4); } else { ragG.position.set(R.x,R.y+0.6,R.z); ragG.rotation.set(R.rx,R.init.ry,R.rz); } }
 function eject(why,sp){
   if(!G||!G.mounted||G.rag||G.sunk>0||G.done) return; sp=Math.max(3.5,sp||0); const fx=-Math.sin(M.th), fz=-Math.cos(M.th);
-  const init={x:M.x,y:1.3,z:M.z,vx:fx*sp*1.15,vy:4.2+sp*0.3,vz:fz*sp*1.15,sx:rand(3.5,6)*(Math.random()<.5?-1:1),sz:rand(-3,3),ry:M.th};
+  const init={x:M.x,y:1.3,z:M.z,vx:fx*sp*1.15,vy:4.2+sp*0.3,vz:fz*sp*1.15,sx:rand(2,3.4)*(Math.random()<.5?-1:1),sz:rand(-1.4,1.4),ry:M.th};
   G.rag=Object.assign({t:0,rx:0,rz:0,b:0,down:0,why,init,cam:[clamp(M.x+fz*5.5+fx*2.5,-W.w/2+0.6,W.w/2-0.6),2.2,clamp(M.z-fx*5.5+fz*2.5,-W.d/2+0.6,W.d/2-0.6)]},init);
   G.mounted=false; G.rags=(G.rags||0)+1; P.x=M.x; P.z=M.z; sfx.thud(); G.jolt=1;
   if(M.eng===2&&!G.wreck&&M.fuel>0) G.runaway={t:0,steer:rand(-.6,.6)};
@@ -1982,7 +1983,7 @@ function shedFor(o,g,hp){ const n=Math.floor((100-Math.max(0,hp))/13); while((o.
 /* a computer driver thrown from his mower: he flies, lies there a second, then has to run his mower down and climb back on */
 function botEject(b,sp,dx,dz){ if(b.off||!b.alive||!(EARL_D&&EARL_D.rw)) return;
   if(!b.ragE){ const md=mdMake(EARL_D), g=new THREE.Group(), m=new THREE.Mesh(md.geo,md.mat); m.castShadow=true; m.frustumCulled=false; m.position.y=-0.9; g.add(m); scene.add(g); b.ragE={g,md}; }
-  const v=Math.max(3.5,sp)*1.1; b.off={st:0,t:0,x:b.x,y:1.3,z:b.z,vx:dx*v,vy:4.2+sp*0.3,vz:dz*v,rx:0,rz:0,sx:rand(3.5,6)*(Math.random()<.5?-1:1),sz:rand(-3,3),b:0,ph:0,ry:b.th}; b.wan=rand(-.5,.5);
+  const v=Math.max(3.5,sp)*1.1; b.off={st:0,t:0,x:b.x,y:1.3,z:b.z,vx:dx*v,vy:4.2+sp*0.3,vz:dz*v,rx:0,rz:0,sx:rand(2,3.4)*(Math.random()<.5?-1:1),sz:rand(-1.4,1.4),b:0,ph:0,ry:b.th}; b.wan=rand(-.5,.5);
   toast(b.name+' got thrown','He has to run his mower down before he can drive again.','!'); }
 function botOff(b,dt){ const O=b.off, E=b.ragE, t=performance.now()/1000; E.g.visible=true;
   if(O.st===0){ const r=stepRag(O,dt); if(r===1) sfx.thud(); if(r===2){ O.st=1; O.t=1.5; sfx.thud(); } E.g.position.set(O.x,O.y+0.6,O.z); E.g.rotation.set(O.rx,O.ry,O.rz); npcPose(E.md,ragPose(t,false)); return; }
