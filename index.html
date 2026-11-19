@@ -3446,6 +3446,8 @@ html.cx-sopen #cx-search-close{display:inline-flex;align-items:center;background
     <div class="mod-grid">
       <div class="mod-card ac-teal" onclick="openTimeAttack()" data-mid="timeattack"><div class="mod-card-icon" style="background:rgba(42,191,170,.1)">&#127937;</div><div class="mod-card-name">Time Attack</div><div class="mod-card-cat">Fun &middot; Daily Course &middot; Leaderboard</div><div class="mod-card-desc">Drive the real TGK fleet &mdash; S6, CC, Touareg, X5 M50i &mdash; on a new autocross course every day. Sim physics, ghosts, daily board.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
       <div class="mod-card ac-red" onclick="showView('arcade')" data-mid="arcade"><div class="mod-card-icon" style="background:rgba(248,113,113,.1)">&#127918;</div><div class="mod-card-name">Arcade</div><div class="mod-card-cat">Fun &middot; Break Time &middot; Game</div><div class="mod-card-desc">Take a break &mdash; TGK Autocross Survival Challenge. Compete for the leaderboard.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-red">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
+
+      <div class="mod-card ac-purple" onclick="openToolUrl('Grass Hole','https://command.tgkmotorsport.com/Grass%20Hole/index.html')" data-mid="grasshole"><div class="mod-card-icon" style="background:rgba(167,139,250,.12)">&#9971;</div><div class="mod-card-name">Grass Hole</div><div class="mod-card-cat">Fun &middot; Break Time &middot; Game</div><div class="mod-card-desc">Take a break &mdash; play Grass Hole.</div><div class="mod-card-footer"><div class="mod-card-tags"><span class="mc-tag mc-live">Live</span><span class="mc-tag mc-gray">Game</span></div><span class="mod-card-arrow">Open &rarr;</span></div></div>
     </div>
   </div>
   <div class="dash-section-block" id="dsec-ext" style="display:none">
@@ -16236,8 +16238,8 @@ function erpToast(msg, detail) {
 /* ─── LAYOUT ─────────────────────────────────────────── */
 var LAYOUT_KEY = 'tgk_layout_v3';
 var layout = {
-  visible: ['launch','social','ideas','fbgroups','box','fitment','sku','calendar','harness','toolbox','arcade','timeattack'],
-  order:   ['launch','social','ideas','fbgroups','box','fitment','sku','calendar','harness','toolbox','arcade','timeattack'],
+  visible: ['launch','social','ideas','fbgroups','box','fitment','sku','calendar','harness','toolbox','arcade','timeattack','grasshole'],
+  order:   ['launch','social','ideas','fbgroups','box','fitment','sku','calendar','harness','toolbox','arcade','timeattack','grasshole'],
   pinned:  [],
   custom:  false
 };
@@ -16261,10 +16263,13 @@ function loadLayout() {
   // Fitment added after Harness Builder - same migration, or a saved layout keeps it hidden.
   if (layout.visible.indexOf('fitment') === -1) layout.visible.push('fitment');
   if (layout.order.indexOf('fitment') === -1) layout.order.push('fitment');
+  // Grass Hole added after Fitment - same migration, or a saved layout keeps it hidden.
+  if (layout.visible.indexOf('grasshole') === -1) layout.visible.push('grasshole');
+  if (layout.order.indexOf('grasshole') === -1) layout.order.push('grasshole');
 }
 
 /* ─── RENDER DASHBOARD ───────────────────────────────── */
-var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','harness','notes','toolbox'], fun:['arcade','timeattack'] };
+var BUILT_IN = { ai:['launch','social','ideas','fbgroups'], ops:['box','sku','calendar','harness','notes','toolbox'], fun:['arcade','timeattack','grasshole'] };
 
 function renderDashboard() {
   var n = document.getElementById('tpl-name');
@@ -16367,13 +16372,13 @@ var _fd=null;
 function openFilter(){_fd=layout.visible.slice();renderFilterBody();document.getElementById('filter-overlay').classList.add('open');document.getElementById('filter-drawer').classList.add('open');}
 function closeFilter(){document.getElementById('filter-overlay').classList.remove('open');document.getElementById('filter-drawer').classList.remove('open');}
 function saveFilter(){layout.visible=_fd?_fd.slice():[];layout.custom=true;saveLayout();closeFilter();renderDashboard();}
-function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','fitment','sku','notes','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
-function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','fitment','sku','notes','toolbox','arcade','timeattack'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
+function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box','fitment','sku','notes','toolbox','arcade','timeattack','grasshole'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();closeFilter();renderDashboard();}
+function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','fitment','sku','notes','toolbox','arcade','timeattack','grasshole'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
 function _fdToggle(id,el){if(!_fd)_fd=[];var i=_fd.indexOf(id);if(i>-1)_fd.splice(i,1);else _fd.push(id);var c=el.querySelector('.fd-chk');if(c)c.classList.toggle('on',_fd.indexOf(id)>-1);}
 var SDEFS=[
   {lbl:'AI-Powered Tools',items:[{id:'launch',icon:'&#128640;',name:'Product Launch'},{id:'social',icon:'&#128247;',name:'Social Engine'},{id:'ideas',icon:'&#128161;',name:'Idea Generator'},{id:'fbgroups',icon:'&#128101;',name:'FB Group Finder'}]},
   {lbl:'Operations',items:[{id:'box',icon:'&#128230;',name:'Box Selector'},{id:'fitment',icon:'&#128663;',name:'Fitment'},{id:'sku',icon:'&#127991;',name:'SKU Manager'},{id:'notes',icon:'&#128221;',name:'Notes'},{id:'toolbox',icon:'&#128279;',name:'Toolbox'}]},
-  {lbl:'Entertainment',items:[{id:'arcade',icon:'&#127918;',name:'Arcade'},{id:'timeattack',icon:'&#127937;',name:'Time Attack'}]}
+  {lbl:'Entertainment',items:[{id:'arcade',icon:'&#127918;',name:'Arcade'},{id:'timeattack',icon:'&#127937;',name:'Time Attack'},{id:'grasshole',icon:'&#9971;',name:'Grass Hole'}]}
 ];
 function renderFilterBody(){
   var body=document.getElementById('filter-body');if(!body)return;
@@ -20874,7 +20879,7 @@ window.ccSkuChanged = function(info){
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.31';
+var TGK_CC_VERSION='v7.32';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -33742,8 +33747,9 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
       '<iframe id="ct-frame" title="Custom tool" allow="clipboard-write; fullscreen" allowfullscreen></iframe>';
     hb.parentNode.insertBefore(v, hb.nextSibling); return true;
   }
-  function openCustomTool(id) {
-    var t = find(id); if (!t) return;
+  function openCustomTool(id) { var t = find(id); if (!t) return; openToolObj(t); }
+  // [v7.32] Opens any tool {id,name,url,newTab,noAuth,game} the way a saved custom tool opens: inside the Command Center, with the breadcrumb and Close button.
+  function openToolObj(t) {
     var url = resolveUrl(t.url); if (!url) { toast('This tool has no valid link - edit the card'); return; }
     if (t.newTab || !ensureViewer()) { window.open(url, '_blank', 'noopener'); return; }
     var main = q('#cc-main'), viewer = q('#ct-viewer'), frame = q('#ct-frame'), loading = q('#ct-loading');
@@ -33756,8 +33762,8 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
       if (loading) loading.classList.remove('hidden');
       var lt = q('#ct-loading-text'); if (lt) lt.textContent = 'Loading ' + t.name + '\u2026';
       if (trusted) frame.removeAttribute('sandbox'); else frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals');
-      frame.dataset.url = url; frame.dataset.tool = t.id; frame.title = t.name;
-      frame.onload = function () { if (loading) loading.classList.add('hidden'); sendAuth(); };
+      frame.dataset.url = url; frame.dataset.tool = t.id; frame.dataset.noauth = t.noAuth ? '1' : ''; frame.title = t.name;
+      frame.onload = function () { if (loading) loading.classList.add('hidden'); sendAuth(); if (t.game) { try { frame.focus(); } catch (e) {} } };
       frame.src = url;
     } else if (loading) { loading.classList.add('hidden'); sendAuth(); }
     var bc = q('#cc-breadcrumb'); if (bc) bc.classList.add('visible');
@@ -33776,6 +33782,7 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
   }
   function sendAuth() {
     var f = q('#ct-frame'); if (!f || !f.contentWindow || !f.dataset.url) return;
+    if (f.dataset.noauth === '1') return;   /* a game has no use for your sign-in */
     var origin; try { origin = new URL(f.dataset.url).origin; } catch (e) { return; }
     if (!CT_TRUST.test(origin)) return;
     var sess = (typeof _getSession === 'function') ? _getSession() : null;
@@ -34382,6 +34389,7 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
       try { var f = q('#ct-frame'); if (f && f.dataset.url && f.contentWindow) { var o = new URL(f.dataset.url).origin; if (CT_TRUST.test(o)) f.contentWindow.postMessage(msg, o); } } catch (e) {}
     };
     window.__ctRestoreBar = restoreBar;
+    window.openToolUrl = function (name, url, o) { openToolObj(Object.assign({ id: 'u:' + name, name: name, url: url, noAuth: true, game: true }, o || {})); };
     window.openCustomTool = openCustomTool; window.closeCustomTool = closeCustomTool; window.openCustomToolsManager = openManager;
     paint(); pull(true); ensureCalTile(); watchStrip(); pullCal(true);
     setInterval(function () { var hv = q('#view-home'); if (hv && hv.classList.contains('active') && !q('#cal-viewer.active')) pullCal(true); }, 300000);
