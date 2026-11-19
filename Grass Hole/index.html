@@ -965,6 +965,7 @@ const trimLine = new THREE.Mesh(new THREE.BoxGeometry(.42,.004,.01),new THREE.Me
 
 /* zero-turn: no hood or steering wheel, lap bars in the fists, caster wheels out front */
 const hoodParts = mower.children.filter(o=>o!==swTilt&&o!==rider&&o!==deck&&o!==gasCap&&o.position.z<0.12&&o.position.y>0.55);
+for(const o of hoodParts) o.userData.det=1; wheels[2].piv.userData.det=2; wheels[3].piv.userData.det=2;      // pieces that can be knocked off in a derby
 const ztParts = new THREE.Group(); mower.add(ztParts);
 { box(0.9,0.05,1.0,MT.dark,0,0.38,-0.62,ztParts);
   for(const s of [-1,1]){ const c=new THREE.Group(); c.position.set(s*0.42,0,-1.08); ztParts.add(c); const g=new THREE.CylinderGeometry(0.12,0.12,0.09,16); g.rotateZ(Math.PI/2); mesh(g,MT.rubber,0,0.12,0.03,c); box(0.03,0.26,0.03,MT.steel,s*0.06,0.26,0,c); box(0.14,0.03,0.05,MT.steel,0,0.39,0,c); }
@@ -1694,7 +1695,7 @@ function dropPeer(id){ const q=Net.peers[id]; if(!q) return; scene.remove(q.g); 
 function onSt(p){
   if((mode!=='play'&&mode!=='pause')||!W||!G||!p||p.id===Net.id) return;
   const q=Net.peers[p.id]||addPeer(p); q.seen=performance.now(); q.tx=p.x; q.tz=p.z; q.tth=p.th; q.mt=p.mt; q.bl=p.bl; q.hp=p.hp;
-  if(p.bots&&G.derby&&!Net.host){ while(derbyBots.length<p.bots.length) derbyBots.push(makeBot(derbyBots.length)); p.bots.forEach((a,i)=>{ const b=derbyBots[i]; b.tx=a[0]; b.tz=a[1]; b.tth=a[2]; b.v=a[3]; b.hp=a[4]; if(b.alive&&!a[5]){ b.x=a[0]; b.z=a[1]; derbyOut(b,false); } }); }
+  if(p.bots&&G.derby&&!Net.host){ while(derbyBots.length<p.bots.length) derbyBots.push(makeBot(derbyBots.length)); p.bots.forEach((a,i)=>{ const b=derbyBots[i]; b.tx=a[0]; b.tz=a[1]; b.tth=a[2]; b.v=a[3]; b.hp=a[4]; b.goff=a[6]; b.gx=a[7]; b.gz=a[8]; if(b.alive&&!a[5]){ b.x=a[0]; b.z=a[1]; derbyOut(b,false); } }); }
   if(!p.mt){ q.px=p.px; q.pz=p.pz; q.py=p.py; }
   if(typeof p.sc==='number') Net.score[p.id]=p.sc;
   if(p.c&&p.c.length){ let any=false; for(const k of p.c){ if(k>=0&&k<W.N&&W.cut[k]===0){ applyCut(k,!!p.l,false); any=true; } }
@@ -1724,7 +1725,7 @@ function netTick(dt){
   if(!Net.on||mode!=='play'||!G||G.done) return;
   Net.acc+=dt; if(Net.acc<0.125) return; Net.acc=0;
   const p={id:Net.id,n:S.opts.name||'Earl',x:+M.x.toFixed(2),z:+M.z.toFixed(2),th:+M.th.toFixed(2),mt:G.mounted?1:0,bl:M.blades?1:0,pc:S.paint,sc:Net.score[Net.id]||0,hp:Math.round(100-(M.dmg||0))};
-  if(G.derby&&Net.host&&derbyBots.length) p.bots=derbyBots.map(b=>[+b.x.toFixed(2),+b.z.toFixed(2),+b.th.toFixed(2),+b.v.toFixed(1),Math.round(b.hp),b.alive?1:0]);
+  if(G.derby&&Net.host&&derbyBots.length) p.bots=derbyBots.map(b=>[+b.x.toFixed(2),+b.z.toFixed(2),+b.th.toFixed(2),+b.v.toFixed(1),Math.round(b.hp),b.alive?1:0,b.off?1:0,b.off?+b.off.x.toFixed(1):0,b.off?+b.off.z.toFixed(1):0]);
   if(!G.mounted){ p.px=+P.x.toFixed(2); p.pz=+P.z.toFixed(2); p.py=+P.yaw.toFixed(2); }
   if(Net.pending.length){ p.c=Net.pending; p.l=Net.light?1:0; Net.pending=[]; }
   netSend('st',p);
@@ -1795,8 +1796,8 @@ function stepRag(R,dt){
   if(R.y<=0.3){ R.y=0.3; if(Math.abs(R.vy)>3&&R.b<2){ R.vy=-R.vy*0.38; R.vx*=0.6; R.vz*=0.6; R.b++; return 1; } return 2; }
   return 0; }
 function ragPose(t,down){
-  if(down) return {hipL:0.3,hipR:-0.55,kneeL:1.35+0.12*Math.sin(t*19)*Math.max(0,1-(t%3)),kneeR:0.25,shL:2.7,shR:-0.8,elL:1.25,elR:0.95,twist:0.3,headYaw:0.9,headNod:-0.2,bob:0,sway:0};
-  return {hipL:0.95*Math.sin(t*11),hipR:0.95*Math.sin(t*11+2.4),kneeL:0.85+0.65*Math.sin(t*13),kneeR:0.85+0.65*Math.sin(t*12+1),shL:t*13,shR:-t*11+1,elL:0.7+0.55*Math.sin(t*15),elR:0.7+0.55*Math.sin(t*17),twist:0.45*Math.sin(t*9),headYaw:0.55*Math.sin(t*8),headNod:0.3*Math.sin(t*10),bob:0,sway:0}; }
+  if(down) return {hipL:0.3,hipR:-0.55,kneeL:1.35+0.12*Math.sin(t*19)*Math.max(0,1-(t%3)),kneeR:0.25,shL:1.8,shR:-0.6,elL:1.2,elR:0.9,abL:-0.3,abR:-0.5,twist:0.25,headYaw:0.9,headNod:-0.2,bob:0,sway:0};
+  return {hipL:0.95*Math.sin(t*11),hipR:0.95*Math.sin(t*11+2.4),kneeL:0.85+0.65*Math.sin(t*13),kneeR:0.85+0.65*Math.sin(t*12+1),shL:0.8+1.0*Math.sin(t*10),shR:0.8+1.0*Math.sin(t*8.5+2),elL:0.7+0.55*Math.sin(t*15),elR:0.7+0.55*Math.sin(t*17),abL:-0.5+0.4*Math.sin(t*7),abR:-0.5+0.4*Math.sin(t*6+1),twist:0.3*Math.sin(t*9),headYaw:0.5*Math.sin(t*8),headNod:0.3*Math.sin(t*10),bob:0,sway:0}; }
 function poseRag(R){ if(!ragG) return; ragG.visible=true; if(MD.earl&&MD.earl.rw) npcPose(MD.earl,ragPose(performance.now()/1000,!!(R.lying||R.down>0))); if(R.lying||R.down>0){ ragG.position.set(R.x,0.2,R.z); ragG.rotation.set(-Math.PI/2,R.init.ry,0.4); } else { ragG.position.set(R.x,R.y+0.6,R.z); ragG.rotation.set(R.rx,R.init.ry,R.rz); } }
 function eject(why,sp){
   if(!G||!G.mounted||G.rag||G.sunk>0||G.done) return; sp=Math.max(3.5,sp||0); const fx=-Math.sin(M.th), fz=-Math.cos(M.th);
@@ -1903,7 +1904,28 @@ function doFlirt(){
 const DERBY = JOBS.findIndex(j=>j.derby);
 let derbyBots = [];
 const derbyEl = document.createElement('div'); derbyEl.id='derbyHud'; derbyEl.hidden=true; derbyEl.style.cssText='position:absolute;left:14px;top:104px;font-weight:700;font-size:17px;text-shadow:0 1px 3px #000;line-height:1.35'; $('#hud').appendChild(derbyEl);
-function clearDerby(){ for(const b of derbyBots) scene.remove(b.g); derbyBots=[]; derbyEl.hidden=true; }
+const derbyJunk = [];
+function clearDerby(){ for(const b of derbyBots){ scene.remove(b.g); if(b.ragE) scene.remove(b.ragE.g); } derbyBots=[]; derbyEl.hidden=true; for(const j of derbyJunk) scene.remove(j.m); derbyJunk.length=0;
+  let any=false; mower.traverse(o=>{ if(o.userData.gone){ o.userData.gone=0; any=true; } }); if(any) syncMowerLook(); }
+/* knock a piece off a mower: hood panels and trim go first, a front wheel last */
+function shedPart(g){ const c=[]; g.traverse(o=>{ if(o.userData.det&&o.visible&&!o.userData.gone&&o.parent) c.push(o); }); if(!c.length) return false;
+  const hood=c.filter(o=>o.userData.det===1), pool=hood.length?hood:c, o=pool[Math.floor(rand(pool.length))]; o.updateWorldMatrix(true,false); const m=o.clone(); m.userData={}; o.matrixWorld.decompose(m.position,m.quaternion,m.scale); scene.add(m); o.visible=false; o.userData.gone=1;
+  derbyJunk.push({m,vx:rand(-3,3),vy:rand(3,6.5),vz:rand(-3,3),wx:rand(-9,9),wz:rand(-9,9),rest:false}); sfx.smash(); for(let i=0;i<8;i++) bits.spawn(m.position.x,m.position.y,m.position.z,rand(-3,3),rand(1,4),rand(-3,3),rand(.2,.5),1,.75,.3,9,0); return true; }
+function shedFor(o,g,hp){ const n=Math.floor((100-Math.max(0,hp))/13); while((o.shedN||0)<n){ o.shedN=(o.shedN||0)+1; shedPart(g); } }
+/* a computer driver thrown from his mower: he flies, lies there a second, then has to run his mower down and climb back on */
+function botEject(b,sp,dx,dz){ if(b.off||!b.alive||!(EARL_D&&EARL_D.rw)) return;
+  if(!b.ragE){ const md=mdMake(EARL_D), g=new THREE.Group(), m=new THREE.Mesh(md.geo,md.mat); m.castShadow=true; m.frustumCulled=false; m.position.y=-0.9; g.add(m); scene.add(g); b.ragE={g,md}; }
+  const v=Math.max(3.5,sp)*1.1; b.off={st:0,t:0,x:b.x,y:1.3,z:b.z,vx:dx*v,vy:4.2+sp*0.3,vz:dz*v,rx:0,rz:0,sx:rand(3.5,6)*(Math.random()<.5?-1:1),sz:rand(-3,3),b:0,ph:0,ry:b.th}; b.wan=rand(-.5,.5);
+  toast(b.name+' got thrown','He has to run his mower down before he can drive again.','!'); }
+function botOff(b,dt){ const O=b.off, E=b.ragE, t=performance.now()/1000; E.g.visible=true;
+  if(O.st===0){ const r=stepRag(O,dt); if(r===1) sfx.thud(); if(r===2){ O.st=1; O.t=1.5; sfx.thud(); } E.g.position.set(O.x,O.y+0.6,O.z); E.g.rotation.set(O.rx,O.ry,O.rz); npcPose(E.md,ragPose(t,false)); return; }
+  if(O.st===1){ O.t-=dt; E.g.position.set(O.x,0.2,O.z); E.g.rotation.set(-Math.PI/2,O.ry,0.4); npcPose(E.md,ragPose(t,true)); if(O.t<=0) O.st=2; return; }
+  const dx=b.x-O.x, dz=b.z-O.z, d=Math.hypot(dx,dz)||1; E.g.rotation.set(0,Math.atan2(-dx,-dz),0);
+  if(!b.alive){ E.g.position.set(O.x,0.9,O.z); npcPose(E.md,idlePose(t,'yell')); return; }                    // nothing left to catch
+  O.x+=dx/d*4.7*dt; O.z+=dz/d*4.7*dt; O.ph+=dt*13; E.g.position.set(O.x,0.9,O.z); npcPose(E.md,walkPose(O.ph,1.35));
+  if(Math.hypot(M.x-O.x,M.z-O.z)<1.15&&Math.abs(M.v)>2.2&&!G.wreck){ const v=Math.abs(M.v); Object.assign(O,{st:0,y:0.9,vx:-Math.sin(M.th)*Math.sign(M.v)*v*1.2,vy:4.5,vz:-Math.cos(M.th)*Math.sign(M.v)*v*1.2,b:0,ry:M.th}); sfx.thud(); relief(3); say(b.name+': '+pick(['MY LEG!','Not the knees, Earl!','That’s a foul!']),false); return; }
+  if(d<1.3){ b.off=null; E.g.visible=false; b.stun=0.4; say(b.name+': '+pick(['Got her!','Back in the saddle!','You’ll pay for that, Earl!']),false); } }
+function clearDerbyNoop(){}
 function makeBot(i){ const names=['Dale','Gary','Darrell'], cols=[0x2f6fb5,0xd8c21a,0x3c8f3a], a=(i+0.5)/3*Math.PI+Math.PI, R0=W.w/2-5, g=mower.clone(true), pm=MT.paint.clone(), kill=[]; pm.color.setHex(cols[i%3]);
   g.traverse(o=>{ if(o.isLight) kill.push(o); if(o.material===MT.paint) o.material=pm; }); for(const o of kill) if(o.parent) o.parent.remove(o);
   let be=null; { const ef=g.getObjectByName('earlFull'), rd0=g.getObjectByName('rider'), gp0=g.getObjectByName('grip'); if(ef){ if(ef.parent) ef.parent.remove(ef); be=makeSitEarl(); be.g.visible=true; g.add(be.g); if(rd0&&rd0.parent) rd0.parent.remove(rd0); if(gp0) gp0.visible=false; } else g.add(makeBody(true)); }
@@ -1927,13 +1949,18 @@ function derbyOut(b,byPlayer){ b.alive=false; b.hp=0; b.v=0; sfx.smash(); debris
 function updateDerby(dt){
   const D=G.derby; if(!D) return; const hw=W.w/2-0.9, hd=W.d/2-0.9, now=G.time, pAlive=!G.wreck, guest=Net.on&&!Net.host;
   for(const b of derbyBots){
+    if(guest){ if(b.goff&&EARL_D&&EARL_D.rw){ if(!b.ragE){ const md=mdMake(EARL_D), g=new THREE.Group(), m=new THREE.Mesh(md.geo,md.mat); m.castShadow=true; m.frustumCulled=false; m.position.y=-0.9; g.add(m); scene.add(g); b.ragE={g,md,x:b.gx,z:b.gz}; }
+        const E=b.ragE; E.g.visible=true; const mx=b.gx-E.x, mz=b.gz-E.z; E.x+=mx*Math.min(1,dt*8); E.z+=mz*Math.min(1,dt*8); E.g.position.set(E.x,0.9,E.z); if(Math.hypot(mx,mz)>0.02) E.g.rotation.set(0,Math.atan2(-mx,-mz),0); npcPose(E.md,walkPose(performance.now()/1000*13,1.3)); }
+      else if(b.ragE) b.ragE.g.visible=false; }
     if(guest&&b.alive){ b.st=clamp(angDiff(b.tth,b.th)*3,-1,1); const k=Math.min(1,dt*9); b.x+=(b.tx-b.x)*k; b.z+=(b.tz-b.z)*k; b.th+=angDiff(b.tth,b.th)*k; continue; }
+    if(b.off) botOff(b,dt);
     if(!b.alive){ if(Math.random()<dt*4) puffs.spawn(b.x,1,b.z,rand(-.3,.3),rand(.6,1.4),rand(-.3,.3),rand(1,2),.1,.1,.1,-0.1,1); continue; }
     b.cd-=dt; if(b.cd<=0||!b.tgt||(b.tgt!=='p'&&b.tgt.alive===false)||(b.tgt==='p'&&!pAlive)){ b.cd=rand(2.5,5); const opts=derbyBots.filter(o=>o!==b&&o.alive); if(pAlive){ opts.push('p'); opts.push('p'); opts.push('p'); } if(Net.on) for(const id in Net.peers){ const q=Net.peers[id]; if((q.hp===undefined?100:q.hp)>0){ opts.push(q); opts.push(q); opts.push(q); } } b.tgt=opts.length?opts[Math.floor(rand(opts.length))]:null; }
     if(b.tgt&&b.tgt!=='p'&&b.tgt.g&&!b.tgt.name0&&b.tgt.hp!==undefined&&b.tgt.alive===undefined&&b.tgt.hp<=0) b.tgt=null;
     let tx=0, tz=0; if(b.tgt==='p'){ tx=M.x; tz=M.z; } else if(b.tgt){ tx=b.tgt.x; tz=b.tgt.z; }
     let want=b.tgt?b.top*(0.55+0.45*b.hp/100):0; if(b.stun>0){ b.stun-=dt; want=-2.2; }
-    const turn=clamp(angDiff(Math.atan2(-(tx-b.x),-(tz-b.z)),b.th),-1,1)*(b.stun>0?-1:1);
+    let turn=clamp(angDiff(Math.atan2(-(tx-b.x),-(tz-b.z)),b.th),-1,1)*(b.stun>0?-1:1);
+    if(b.off){ b.wan=clamp((b.wan||0)+rand(-1,1)*dt*2,-0.6,0.6); turn=b.wan; want=b.stun>0?-1.5:2.3; }           // nobody's driving
     b.st=(b.st||0)+(turn-(b.st||0))*Math.min(1,dt*6);
     b.th+=turn*2.0*dt*clamp(Math.abs(b.v)/2,0.35,1); b.v+=clamp(want-b.v,-4*dt,3*dt); b.x-=Math.sin(b.th)*b.v*dt; b.z-=Math.cos(b.th)*b.v*dt;
     if(Math.abs(b.x)>hw||Math.abs(b.z)>hd){ b.x=clamp(b.x,-hw,hw); b.z=clamp(b.z,-hd,hd); if(Math.abs(b.v)>2.5) b.hp-=2; b.v*=-0.3; b.stun=0.7; }
@@ -1950,10 +1977,15 @@ function updateDerby(dt){
       if(c>1.2&&now-(D.pair[pk]||-9)>0.45){ D.pair[pk]=now; sfx.thud(); if(AC) noise(AC.currentTime,0.18,0.35,'bandpass',900,0.6);
         const mx=(A.x+B.x)/2, mz=(A.z+B.z)/2; for(let q=0;q<14;q++) bits.spawn(mx,.7,mz,rand(-3,3),rand(1,4),rand(-3,3),rand(.2,.5),1,.75,.3,9,0); debris(mx,.5,mz,6,'dirt',3);
         for(const [X,Y,sg] of [[A,B,1],[B,A,-1]]){ const dot=(-Math.sin(X.th)*nx-Math.cos(X.th)*nz)*sg, mult=dot>0.55?0.4:(dot<-0.4?1.35:1), dmg=c*4.2*mult;
-          if(X.b&&X.b.alive){ if(guest){ if(Y.me) netSend('ev',{id:Net.id,k:'dh',i:derbyBots.indexOf(X.b),d:+dmg.toFixed(1)}); } else if(!Y.peer){ X.b.hp-=dmg*(Y.b?0.25:1); X.b.v=-X.b.v*0.3; X.v=X.b.v; X.b.stun=0.6; if(X.b.hp<=0) derbyOut(X.b,!!Y.me); } }
+          if(X.b&&X.b.alive){ if(guest){ if(Y.me) netSend('ev',{id:Net.id,k:'dh',i:derbyBots.indexOf(X.b),d:+dmg.toFixed(1)}); } else if(!Y.peer){ X.b.hp-=dmg*(Y.b?0.25:1); X.b.v=-X.b.v*0.3; X.v=X.b.v; X.b.stun=0.6; if(X.b.hp<=0) derbyOut(X.b,!!Y.me); else if(!X.b.off&&c>5&&mult>=1){ const sg2=Math.sign(Y.v||1); botEject(X.b,c,-Math.sin(Y.th)*sg2,-Math.cos(Y.th)*sg2); } } }
           else if(X.me){ D.lastHit=Y.peer?Y.k:null; damage(dmg*(Math.abs(X.v)<0.7?1.9:1.1)); M.v*=-0.35; X.v=M.v; G.jolt=1; G.stress=Math.min(100,G.stress+1); if(G.mounted&&c>5.5&&mult>=1) eject(Y.name,c); } } } }
   for(const e of E){ if(e.b&&e.b.alive){ e.b.x=e.x; e.b.z=e.z; } else if(e.me){ M.x=e.x; M.z=e.z; } }
-  for(const b of derbyBots){ b.g.position.set(b.x,0,b.z); b.g.rotation.y=b.th; if(b.earl) driveEarl(b.earl,b.alive?(b.st||0):0,b.v,G.time,clamp(b.stun||0,0,1),!b.alive); if(b.alive&&!G.mounted&&!G.rag&&!G.fall&&Math.abs(b.v)>2&&Math.hypot(P.x-b.x,P.z-b.z)<1.0){ G.fall=2.6; sfx.thud(); G.stress=Math.min(100,G.stress+4); say(b.name+': Stay down, Earl!',false); } }
+  for(const b of derbyBots){ b.g.position.set(b.x,0,b.z); b.g.rotation.y=b.th; if(b.earl){ b.earl.g.visible=!(b.off||b.goff); if(b.earl.g.visible) driveEarl(b.earl,b.alive?(b.st||0):0,b.v,G.time,clamp(b.stun||0,0,1),!b.alive); } shedFor(b,b.g,b.hp);
+    if(b.alive&&b.hp<30&&Math.random()<dt*45) bits.spawn(b.x-Math.sin(b.th)*0.75+rand(-.2,.2),rand(.8,1.1),b.z-Math.cos(b.th)*0.75+rand(-.2,.2),rand(-.3,.3),rand(1.2,2.6),rand(-.3,.3),rand(.25,.55),1,rand(.35,.75),.08,-2,0); if(b.alive&&!G.mounted&&!G.rag&&!G.fall&&Math.abs(b.v)>2&&Math.hypot(P.x-b.x,P.z-b.z)<1.0){ G.fall=2.6; sfx.thud(); G.stress=Math.min(100,G.stress+4); say(b.name+': Stay down, Earl!',false); } }
+  shedFor(D,mower,100-(M.dmg||0)); if(Net.on) for(const id in Net.peers){ const q=Net.peers[id]; if(q.hp!==undefined) shedFor(q,q.g,q.hp); }
+  if((M.dmg||0)>70&&!G.wreck&&Math.random()<dt*45) bits.spawn(M.x-Math.sin(M.th)*0.75+rand(-.2,.2),rand(.8,1.1),M.z-Math.cos(M.th)*0.75+rand(-.2,.2),rand(-.3,.3),rand(1.2,2.6),rand(-.3,.3),rand(.25,.55),1,rand(.35,.75),.08,-2,0);
+  for(const j of derbyJunk){ if(j.rest) continue; const m=j.m; j.vy-=9.8*dt; m.position.x+=j.vx*dt; m.position.y+=j.vy*dt; m.position.z+=j.vz*dt; m.rotation.x+=j.wx*dt; m.rotation.z+=j.wz*dt;
+    if(m.position.y<0.14){ m.position.y=0.14; if(Math.abs(j.vy)>1.5){ j.vy=-j.vy*0.35; j.vx*=0.6; j.vz*=0.6; j.wx*=0.5; j.wz*=0.5; } else j.rest=true; } }
   const left=derbyBots.filter(b=>b.alive).length; derbyEl.hidden=false;
   if(Net.on){ for(const id in Net.peers){ const q=Net.peers[id]; if(q.hp!==undefined&&q.hp<=0&&Math.random()<dt*4) puffs.spawn(q.x,1,q.z,rand(-.3,.3),rand(.6,1.4),rand(-.3,.3),rand(1,2),.1,.1,.1,-0.1,1); }
     if(!pAlive&&!D.sentOut){ D.sentOut=true; netSend('ev',{id:Net.id,k:'dout',by:D.lastHit||''}); } }
