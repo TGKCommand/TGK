@@ -228,8 +228,9 @@ const MY_SONGS = [];
    made just for this game: the key is visible to anyone who opens the page.
    No tables are needed; the game only uses Realtime broadcast.
    ===================================================================== */
-const SUPABASE_URL = '';        // 'https://your-project.supabase.co'
-const SUPABASE_ANON_KEY = '';
+const SUPABASE_URL = 'https://piamamighqiielfztgic.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpYW1hbWlnaHFpaWVsZnp0Z2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NjkxMzUsImV4cCI6MjA5MzQ0NTEzNX0.YwLflTw6F4cRzmY78QoAY6Zud2IHGVP5xL_yvMFxheA';   // paste the project's anon (public) key between the quotes so friends connect without typing it
+const sbKey = () => SUPABASE_ANON_KEY || ((typeof S!=='undefined'&&S&&S.opts&&S.opts.sbKey)||'');
 
 /* recorded voice lines and radio songs (base64 MP3), filled in at build time */
 const HANDS = /*__HANDS__*/ null;
@@ -281,6 +282,7 @@ const JOBS = [
   {name:'Shady Rest Cemetery', note:'Quiet customers. Mind the headstones.', w:38, d:32, pay:330, trees:3, gnomes:0, flowers:60, seed:83, stones:true, wx:'sunset'},
   {name:'Pine Hollow putting green', note:'They grade the stripes. Keep ’em straight.', w:32, d:32, pay:380, trees:0, gnomes:0, flowers:0, seed:97, golf:true, wx:'day'}
 ];
+JOBS.forEach(j=>{ j.pay=Math.round(j.pay*1.4/5)*5; });      // money comes a little easier
 JOBS.forEach(j => j.par = Math.round(60 + j.w*j.d*0.3));
 
 const ACH = [
@@ -1518,7 +1520,7 @@ function finishJob(fromNet){
     mpBase=Math.round(JOBS[G.job].pay*(1+0.25*(ids.length-1))*mine/tot);
     if(Net.mode==='versus'&&ids.length>1&&ids.every(k=>sc[k]<=mine)) vsBonus=Math.round(JOBS[G.job].pay*0.5);
     mpRows='<table>'+ids.sort((a,b)=>sc[b]-sc[a]).map(k=>`<tr><td>${esc(nm[k]||'Somebody')}${k===Net.id?' (you)':''}</td><td>${Math.round(sc[k]/tot*100)}% of the lawn</td></tr>`).join('')+'</table>'; }
-  const J=JOBS[G.job], base=mpBase===null?J.pay:mpBase, sharp=Math.round(base*(UPG.blades.val[S.up.blades]-1)), fast=G.time<=J.par?Math.round(base*0.25):0, perfect=W.cutCount>=W.total?Math.round(base*0.2):0, gn=G.gnomes*5, win=-25*(G.windows||0), wxB=(WX.kind==='rain'||WX.kind==='night')?Math.round(base*0.15):0, strP=(J.golf&&(G.strT||0)>5)?(G.strS||0)/G.strT:0, strB=Math.round(base*0.5*strP), poolC=-40*(G.pools||0), fine=-(G.fine||0), gagC=-40*(G.burn||0)-15*(G.sprk||0)-20*(G.potty||0), repC=-Math.round((M.dmg||0)*0.3), total=Math.max(0,base+sharp+fast+perfect+gn+vsBonus+win+wxB+strB+poolC+fine+repC+gagC);
+  const J=JOBS[G.job], base=mpBase===null?J.pay:mpBase, sharp=Math.round(base*(UPG.blades.val[S.up.blades]-1)), fast=G.time<=J.par?Math.round(base*0.25):0, perfect=W.cutCount>=W.total?Math.round(base*0.2):0, gn=G.gnomes*8, win=-25*(G.windows||0), wxB=(WX.kind==='rain'||WX.kind==='night')?Math.round(base*0.15):0, strP=(J.golf&&(G.strT||0)>5)?(G.strS||0)/G.strT:0, strB=Math.round(base*0.5*strP), poolC=-40*(G.pools||0), fine=-(G.fine||0), gagC=-40*(G.burn||0)-15*(G.sprk||0)-20*(G.potty||0), repC=-Math.round((M.dmg||0)*0.3), total=Math.max(0,base+sharp+fast+perfect+gn+vsBonus+win+wxB+strB+poolC+fine+repC+gagC);
   S.money+=total; S.earned+=total; S.stats.jobs++; S.done[G.job]=1; S.unlocked=Math.max(S.unlocked, Math.min(JOBS.length,G.job+2));
   if(!S.best[G.job]||G.time<S.best[G.job]) S.best[G.job]=Math.round(G.time);
   unlock('job1'); if(S.stats.jobs>=5) unlock('job5'); if(JOBS.every((_,i)=>S.done[i])) unlock('all'); if(perfect) unlock('perfect'); if(fast) unlock('fast'); if(S.earned>=1000) unlock('rich');
@@ -1539,14 +1541,14 @@ const Net = {on:false, cl:null, ch:null, raw:null, code:'', mode:'coop', host:fa
 function netNames(){ const o={}; o[Net.id]=S.opts.name||'Earl'; for(const id in Net.peers) o[id]=Net.peers[id].name; return o; }
 function netClient(){
   if(Net.cl) return Net.cl;
-  if(!window.supabase||!(window.__mpTest||(SUPABASE_URL&&SUPABASE_ANON_KEY))) return null;
-  try{ Net.cl=window.supabase.createClient(SUPABASE_URL||'http://test',SUPABASE_ANON_KEY||'test',{realtime:{params:{eventsPerSecond:20}}}); }catch(e){ return null; }
+  if(!window.supabase||!(window.__mpTest||(SUPABASE_URL&&sbKey()))) return null;
+  try{ Net.cl=window.supabase.createClient(SUPABASE_URL||'http://test',sbKey()||'test',{realtime:{params:{eventsPerSecond:20}}}); }catch(e){ return null; }
   return Net.cl;
 }
 function netSend(event,payload){ if(Net.on&&Net.ch){ try{ Net.ch.send({type:'broadcast',event,payload}); }catch(e){} } }
 function netLeave(){ try{ if(Net.raw&&Net.cl) Net.cl.removeChannel(Net.raw); }catch(e){} for(const id in Net.peers) dropPeer(id); Net.ch=null; Net.raw=null; Net.on=false; Net.code=''; Net.host=false; Net.score={}; $('#mp').textContent=''; }
 function netJoin(code,host,mode,cb){
-  const cl=netClient(); if(!cl){ cb(window.supabase?'Multiplayer needs your Supabase URL and anon key pasted in at the top of the file.':'The multiplayer library didn’t load.'); return; }
+  const cl=netClient(); if(!cl){ cb(window.supabase?'Multiplayer needs the Supabase anon key. Paste it in the box here, or into the SUPABASE_ANON_KEY line of the file.':'The multiplayer library didn’t load.'); return; }
   netLeave(); Net.code=code; Net.host=host; Net.mode=mode||'coop';
   const ch=cl.channel('grasshole-'+code,{config:{broadcast:{self:false}}}); Net.raw=ch;
   ch.on('broadcast',{event:'st'},m=>onSt(m.payload)).on('broadcast',{event:'ev'},m=>onEv(m.payload)).on('broadcast',{event:'hello'},m=>onHello(m.payload)).on('broadcast',{event:'welcome'},m=>onWelcome(m.payload)).on('broadcast',{event:'done'},m=>onDone(m.payload));
@@ -2351,7 +2353,7 @@ function showGarage(){
     <section><h2>Mowers</h2><div class="paints">${MOWERS.map((m,i)=>{ const own_=S.mowers.includes(i); return `<button class="swatch ${S.mower===i?'on':''}" data-act="mower" data-arg="${i}">${m.name}${own_?(S.mower===i?' (riding it)':''):' $'+m.cost}</button>`; }).join('')}</div><p style="color:#cfc5ad;margin:8px 0 0">The zero-turn steers with two lap bars, spins on the spot and runs a quarter faster. The walk-behind spins the same way, but you’re on foot behind it.</p></section>
     <section><h2>Accessories</h2><div class="paints">${ACC.map(a=>{ const st=S.acc[a.id]||0; return `<button class="swatch ${st===1?'on':''}" data-act="acc" data-arg="${a.id}">${a.name}${st?(st===1?' (on)':' (off)'):' $'+a.cost}</button>`; }).join('')}</div></section>
     <section><h2>Multiplayer</h2><div class="mpbox">${Net.on?`<span>Room</span><b class="code">${Net.code}</b><span>${Net.mode==='versus'?'Versus: most grass cut wins the yard.':'Co-op: split the lawn, split the pay.'}</span><button class="btn small plain" data-act="leave">Leave the room</button><p>${Net.host?'You’re the host. Give friends the room code, then pick a yard above. Anyone who joins drops into the yard you’re mowing.':'You’re in. The host picks the yard and you drop in when it starts.'}</p>`
-      :`<input id="mpName" maxlength="12" value="${esc(S.opts.name||'Earl')}" aria-label="Your name"><button class="btn small" data-act="host" data-arg="coop">Host co-op</button><button class="btn small" data-act="host" data-arg="versus">Host versus</button><input id="mpCode" maxlength="4" placeholder="Code" aria-label="Room code" style="width:5.5em;text-transform:uppercase"><button class="btn small plain" data-act="join">Join a room</button><p>${Net.status||'Host a room and share the four-letter code, or type a friend’s code to join. Up to four mowers on one yard.'}</p>`}</div></section>
+      :`${sbKey()?'':'<input id="sbKey" placeholder="Supabase anon key (starts with eyJ)" aria-label="Supabase anon key" style="width:100%"><button class="btn small" data-act="sbkey">Save key</button>'}<input id="mpName" maxlength="12" value="${esc(S.opts.name||'Earl')}" aria-label="Your name"><button class="btn small" data-act="host" data-arg="coop">Host co-op</button><button class="btn small" data-act="host" data-arg="versus">Host versus</button><input id="mpCode" maxlength="4" placeholder="Code" aria-label="Room code" style="width:5.5em;text-transform:uppercase"><button class="btn small plain" data-act="join">Join a room</button><p>${Net.status||'Host a room and share the four-letter code, or type a friend’s code to join. Up to four mowers on one yard.'}</p>`}</div></section>
     <section><h2>Settings</h2><div class="settings">
       <button class="btn small plain" data-act="gfx">Graphics: ${HI()?'high':'low'}</button>
       <button class="btn small plain" data-act="voice">Voice lines: ${S.opts.voice?'on':'off'}</button>
@@ -2367,6 +2369,7 @@ $('#menu').addEventListener('click', e=>{
   const b=e.target.closest('[data-act]'); if(!b||b.disabled) return; initAudio();
   const a=b.dataset.act, arg=b.dataset.arg; if(a!=='wipe') wipeArmed=false;
   { const nmEl=$('#mpName'); if(nmEl){ S.opts.name=esc(nmEl.value).trim().slice(0,12)||'Earl'; save(); } }
+  if(a==='sbkey'){ S.opts.sbKey=(($('#sbKey')||{}).value||'').trim(); save(); Net.cl=null; Net.status=S.opts.sbKey?'Key saved on this device. Host a room or join one.':''; showGarage(); return; }
   if(a==='host'||a==='join'){
     const code=a==='host'?Array.from({length:4},()=>'ABCDEFGHJKLMNPRSTUVWXYZ'[Math.floor(Math.random()*23)]).join(''):(($('#mpCode')||{}).value||'').toUpperCase().replace(/[^A-Z]/g,'');
     if(code.length!==4){ Net.status='Room codes are four letters.'; showGarage(); return; }
