@@ -1857,17 +1857,17 @@ function showLobby(){
   if(!Net.on){ showGarage(); return; } clearDerby(); mode='lobby'; $('#hud').hidden=true; unlockPointer(); const games=JOBS.map((J,i)=>({J,i})).filter(o=>o.J.derby||o.i<S.unlocked);
   showMenu(`<div class="garage"><div class="g-head"><h1>Lobby ${Net.code}</h1><div class="wallet">$${S.money}</div></div>
     <div class="lobby"><div><h2>Party</h2><div id="lobMembers"></div>
-      <h2>${Net.host?'Pick a game':'Waiting for the host'}</h2>${Net.host?`<div class="settings"><button class="btn small ${Net.mode==='coop'?'':'plain'}" data-act="lobMode" data-arg="coop">Co-op</button><button class="btn small ${Net.mode==='versus'?'':'plain'}" data-act="lobMode" data-arg="versus">Versus</button></div><div class="lob-games">${games.map(o=>o.J.race?TRACKS.map((t_,k_)=>`<button class="btn small" data-act="race" data-arg="${k_}">Race: ${t_}</button>`).join(''):`<button class="btn small ${o.J.derby?'':'plain'}" data-act="job" data-arg="${o.i}">${o.J.derby?'Demolition derby':o.J.name}</button>`).join('')}</div>`:'<p style="color:#cfc5ad">The host picks the yard or the derby. You drop in when it starts.</p>'}
+      <h2>${Net.host?'Pick a game':'Waiting for the host'}</h2>${Net.host?`<div class="settings"><button class="btn small ${Net.mode==='coop'?'':'plain'}" data-act="lobMode" data-arg="coop">Co-op</button><button class="btn small ${Net.mode==='versus'?'':'plain'}" data-act="lobMode" data-arg="versus">Versus</button></div><div class="lob-games">${Net.host?evPanel():''}${games.map(o=>o.J.race?TRACKS.map((t_,k_)=>`<button class="btn small" data-act="race" data-arg="${k_}">Race: ${t_}</button>`).join(''):`<button class="btn small ${o.J.derby?'':'plain'}" data-act="job" data-arg="${o.i}">${o.J.derby?'Demolition derby':o.J.name}</button>`).join('')}</div>`:'<p style="color:#cfc5ad">The host picks the yard or the derby. You drop in when it starts.</p>'}
       <div class="settings" style="margin-top:16px"><button class="btn small plain" data-act="garage">Garage and shop</button><button class="btn small plain" data-act="leave">Leave the party</button></div></div>
     <div><h2>Chat</h2><div id="chatLog"></div><div class="chatrow"><input id="chatIn" maxlength="140" placeholder="Say something" aria-label="Chat message"><button class="btn small" data-act="chatSend">Send</button></div></div></div></div>`,'');
   refreshLobby();
 }
 function cutBits(){ const b=new Uint8Array(Math.ceil(W.N/8)); for(let k=0;k<W.N;k++) if(W.cut[k]===1) b[k>>3]|=1<<(k&7); let s=''; for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
-function welcomeMsg(to){ return {to, tr:S.track||0, job:G.job, mode:Net.mode, t:G.time, cut:cutBits(), gn:W.gnomes.map(g=>g.alive?1:0), sc:Net.score}; }
+function welcomeMsg(to){ return {to, tr:S.track||0, lp:evCfg().laps, job:G.job, mode:Net.mode, t:G.time, cut:cutBits(), gn:W.gnomes.map(g=>g.alive?1:0), sc:Net.score}; }
 function onHello(p){ if(Net.host&&mode==='play'&&G&&!G.done) netSend('welcome',welcomeMsg(p.id)); }
 function onWelcome(p){
   if(Net.host||(p.to!=='*'&&p.to!==Net.id)) return;
-  Net.mode=p.mode; if(p.tr!==undefined) S.track=p.tr; startJob(p.job,true); G.time=p.t||0; Object.assign(Net.score,p.sc||{}); Net.score[Net.id]=0;
+  Net.mode=p.mode; if(p.tr!==undefined) S.track=p.tr; Net.laps=p.lp||0; startJob(p.job,true); G.time=p.t||0; Object.assign(Net.score,p.sc||{}); Net.score[Net.id]=0;
   try{ const s=atob(p.cut); for(let k=0;k<W.N;k++) if(((s.charCodeAt(k>>3)>>(k&7))&1)&&W.cut[k]===0) applyCut(k,((k/W.nx)|0)%8<4,false); }catch(e){}
   (p.gn||[]).forEach((a,i)=>{ const gn=W.gnomes[i]; if(gn&&!a){ gn.alive=false; gn.g.visible=false; } });
   W.grass.instanceMatrix.needsUpdate=true; W.grass.instanceColor.needsUpdate=true; W.flowers.instanceMatrix.needsUpdate=true; W.tex.needsUpdate=true;
@@ -2250,11 +2250,16 @@ function botOff(b,dt){ const O=b.off, E=b.ragE, t=performance.now()/1000; E.g.vi
   if(Math.hypot(M.x-O.x,M.z-O.z)<1.15&&Math.abs(M.v)>2.2&&!G.wreck){ const v=Math.abs(M.v); Object.assign(O,{st:0,y:0.9,vx:-Math.sin(M.th)*Math.sign(M.v)*v*1.2,vy:4.5,vz:-Math.cos(M.th)*Math.sign(M.v)*v*1.2,b:0,ry:M.th}); sfx.thud(); relief(3); say(b.name+': '+pick(['MY LEG!','Not the knees, Earl!','That’s a foul!']),false); return; }
   if(d<1.3){ b.off=null; E.g.visible=false; b.stun=0.4; say(b.name+': '+pick(['Got her!','Back in the saddle!','You’ll pay for that, Earl!']),false); } }
 function clearDerbyNoop(){}
-function makeBot(i){ const names=['Dale','Gary','Darrell'], cols=[0x2f6fb5,0xd8c21a,0x3c8f3a], a=(i+0.5)/3*Math.PI+Math.PI, R0=W.w/2-5, g=mower.clone(true), pm=MT.paint.clone(), kill=[]; pm.color.setHex(cols[i%3]); const col0=cols[i%3];
+const DIFFS=['Easy','Normal','Hard'], LAPOPT=[1,2,3,5,8,10];
+function evCfg(){ const c=S.opts.ev||(S.opts.ev={}); if(c.diff===undefined) c.diff=1; if(!c.bots) c.bots=3; if(!c.laps) c.laps=3; return c; }
+function evPanel(){ const c=evCfg(); return `<div class="mpbox" style="margin-top:14px"><button class="btn small plain" data-act="evopt" data-arg="bots">Computer mowers: ${c.bots}</button><button class="btn small plain" data-act="evopt" data-arg="diff">Difficulty: ${DIFFS[c.diff]}</button><button class="btn small plain" data-act="evopt" data-arg="laps">Race laps: ${c.laps}</button><p>For the derby and the races. Click to change. In a lobby the host’s choices are used.</p></div>`; }
+function makeBot(i){ const names=['Dale','Gary','Darrell','Cletus','Bubba','Skeeter','Hank'], cols=[0x2f6fb5,0xd8c21a,0x3c8f3a,0xc8641a,0x7a3fa0,0x1aa3a3,0xb8b8b8], a=(i+0.5)/Math.max(3,evCfg().bots)*Math.PI+Math.PI, R0=W.w/2-5, g=mower.clone(true), pm=MT.paint.clone(), kill=[]; pm.color.setHex(cols[i%7]); const col0=cols[i%7];
   g.traverse(o=>{ if(o.isLight) kill.push(o); if(o.material===MT.paint) o.material=pm; }); for(const o of kill) if(o.parent) o.parent.remove(o);
   let be=null; { const ef=g.getObjectByName('earlFull'), rd0=g.getObjectByName('rider'), gp0=g.getObjectByName('grip'); if(ef){ if(ef.parent) ef.parent.remove(ef); be=makeSitEarl(WB()); be.g.visible=true; g.add(be.g); if(rd0&&rd0.parent) rd0.parent.remove(rd0); if(gp0){ gp0.visible=true; for(const ch of gp0.children) ch.visible=true; } g.traverse(o=>{ if(o.userData.fpArm) o.visible=false; }); { const st0=g.getObjectByName('swTilt'); if(st0) st0.position.z=0.2+(WB()?1.0:0); } } else g.add(makeBody(true)); }
-  scene.add(g); const x=Math.cos(a)*R0, z=Math.sin(a)*R0*0.9; return {g,earl:be,pm,col0,wh:wheelRefs(g),name:names[i%3],x,z,th:Math.atan2(x,z),tx:x,tz:z,tth:Math.atan2(x,z),v:0,hp:100,alive:true,top:rand(4.0,5.0),cd:0,stun:0,tgt:null}; }
+  scene.add(g); const x=Math.cos(a)*R0, z=Math.sin(a)*R0*0.9; return {g,earl:be,pm,col0,wh:wheelRefs(g),name:names[i%7],x,z,th:Math.atan2(x,z),tx:x,tz:z,tth:Math.atan2(x,z),v:0,hp:100,alive:true,top:rand(4.0,5.0),cd:0,stun:0,tgt:null}; }
 const TRACKS=['Oval','Figure 8','Road course'];
+function mergeGeo(parts){ const pos=[], nor=[], m=new THREE.Matrix4(); for(const q of parts){ const g=q[0].index?q[0].toNonIndexed():q[0].clone(); m.compose(new THREE.Vector3(q[1]||0,q[2]||0,q[3]||0),new THREE.Quaternion().setFromEuler(new THREE.Euler(q[4]||0,q[5]||0,q[6]||0)),new THREE.Vector3(q[7]||1,q[8]||1,q[9]||1)); g.applyMatrix4(m); const a=g.attributes.position.array, b=g.attributes.normal.array; for(let i=0;i<a.length;i++){ pos.push(a[i]); nor.push(b[i]); } }
+  const out=new THREE.BufferGeometry(); out.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); out.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3)); return out; }
 function raceTrack(){ const Rc=G.derby.race, a=W.w/2-9, b=W.d/2-8, kind=S.track||0, pts=[], HW=3.6;
   if(kind===1){ for(let i=0;i<16;i++){ const u=Math.PI*0.25+i/16*6.283; pts.push([a*Math.sin(u),b*0.95*Math.sin(2*u)]); } }
   else if(kind===2){ for(const q of [[0,.92],[-.55,.92],[-.92,.55],[-.88,0],[-.5,-.3],[-.12,.15],[.25,.2],[.3,-.4],[-.2,-.72],[.1,-.92],[.6,-.9],[.92,-.5],[.72,0],[.92,.5],[.6,.9]]) pts.push([q[0]*a,q[1]*b]); }
@@ -2263,11 +2268,27 @@ function raceTrack(){ const Rc=G.derby.race, a=W.w/2-9, b=W.d/2-8, kind=S.track|
   for(let i=0;i<nW;i++){ const q=C.getPointAt(i/nW), t=C.getTangentAt(i/nW); Rc.wp.push([q.x,q.z]); Rc.wn.push([t.z,-t.x]); }
   for(let i=0;i<nD;i++){ const q=C.getPointAt(i/nD), t=C.getTangentAt(i/nD); dense.push([q.x,q.z,t.x,t.z]); }
   /* dirt: paint it on the ground and pull the grass off it */
-  const g=W.ctx; g.lineJoin='round'; g.lineCap='round'; for(const [col,wd] of [['#6d4f31',2*HW+0.5],['#7c5c3a',2*HW-0.4],['rgba(58,40,24,.35)',2.4]]){ g.strokeStyle=col; g.lineWidth=wd/W.cw*PX; g.beginPath(); dense.forEach((q,i)=>{ if(i) g.lineTo(W.tx(q[0]),W.tz(q[1])); else g.moveTo(W.tx(q[0]),W.tz(q[1])); }); g.closePath(); g.stroke(); } W.tex.needsUpdate=true;
-  dummy.position.set(0,-9,0); dummy.scale.setScalar(0.0001); dummy.updateMatrix(); const rc=Math.ceil((HW+0.3)/W.cw);
-  for(const q of dense){ const ci=Math.floor((q[0]+W.w/2)/W.cw), cj=Math.floor((q[1]+W.d/2)/W.cd); for(let jj=cj-rc;jj<=cj+rc;jj++) for(let ii=ci-rc;ii<=ci+rc;ii++){ if(ii<0||jj<0||ii>=W.nx||jj>=W.nz) continue; const x=-W.w/2+(ii+.5)*W.cw, z=-W.d/2+(jj+.5)*W.cd; if(Math.hypot(x-q[0],z-q[1])<HW+0.15) W.grass.setMatrixAt(jj*W.nx+ii,dummy.matrix); } } W.grass.instanceMatrix.needsUpdate=true;
+  const g=W.ctx; g.lineJoin='round'; g.lineCap='round'; for(const [col,wd] of [['#5d6b34',2*HW+2.2],['#6d4f31',2*HW-0.6]]){ g.strokeStyle=col; g.lineWidth=wd/W.cw*PX; g.beginPath(); dense.forEach((q,i)=>{ if(i) g.lineTo(W.tx(q[0]),W.tz(q[1])); else g.moveTo(W.tx(q[0]),W.tz(q[1])); }); g.closePath(); g.stroke(); } W.tex.needsUpdate=true;
+  /* how far every patch of ground is from the racing line */
+  const near=new Float32Array(W.N).fill(99), RR=HW+3.2, rc=Math.ceil(RR/W.cw);
+  for(const q of dense){ const ci=Math.floor((q[0]+W.w/2)/W.cw), cj=Math.floor((q[1]+W.d/2)/W.cd); for(let jj=cj-rc;jj<=cj+rc;jj++) for(let ii=ci-rc;ii<=ci+rc;ii++){ if(ii<0||jj<0||ii>=W.nx||jj>=W.nz) continue; const x=-W.w/2+(ii+.5)*W.cw, z=-W.d/2+(jj+.5)*W.cd, dd=Math.hypot(x-q[0],z-q[1]), k=jj*W.nx+ii; if(dd<near[k]) near[k]=dd; } }
+  /* fairground grass: real blades, kept short, lush in the infield and worn to straw and bare earth toward the dirt */
+  const gc=new THREE.Color(); for(let k=0;k<W.N;k++){ const dd=near[k], wear=1-clamp((dd-HW)/3,0,1), v=W.tone[k];
+    if(W.cut[k]===2||dd<HW-0.25||(wear>0.25&&Math.random()<wear*0.55)){ dummy.position.set(0,-9,0); dummy.rotation.set(0,0,0); dummy.scale.setScalar(0.0001); }
+    else { dummy.position.set(W.jx[k],0,W.jz[k]); dummy.rotation.set(0,W.rot[k],0); dummy.scale.set(W.sc[k]*1.05,W.hgt[k]*lerp(0.42,0.2,wear)*(0.8+Math.random()*0.4),W.sc[k]*1.05); gc.setRGB(lerp(v*0.92,0.74,wear),lerp(v*0.98,0.66,wear),lerp(v*0.72,0.36,wear)); W.grass.setColorAt(k,gc); }
+    dummy.updateMatrix(); W.grass.setMatrixAt(k,dummy.matrix); } W.grass.instanceMatrix.needsUpdate=true; W.grass.instanceColor.needsUpdate=true;
+  /* the dirt itself: a strip of packed clay laid along the line, rutted where the wheels run, ragged at the edges */
+  { const dT=canvasTex(512,512,c=>{ c.fillStyle='#75573a'; c.fillRect(0,0,512,512); for(let i=0;i<2600;i++){ const x=Math.random()*512, y=Math.random()*512, r=1+Math.random()*9, l=Math.random(); c.fillStyle=l<.5?'rgba(52,36,22,'+(0.05+Math.random()*0.1)+')':'rgba(168,134,92,'+(0.04+Math.random()*0.09)+')'; c.beginPath(); c.ellipse(x,y,r,r*(0.4+Math.random()*0.6),Math.random()*3,0,6.283); c.fill(); }
+      for(const u of [0.2,0.33,0.5,0.67,0.8]){ for(let y=0;y<512;y+=3){ const x=u*512+Math.sin(y*0.03+u*20)*7; c.fillStyle='rgba(46,31,18,'+(0.1+Math.random()*0.14)+')'; c.fillRect(x-9-Math.random()*5,y,18+Math.random()*10,3); if(Math.random()<.5){ c.fillStyle='rgba(30,20,12,.22)'; c.fillRect(x-8+((y/9)%2)*8,y,7,2); } } }
+      for(let i=0;i<500;i++){ c.fillStyle=Math.random()<.5?'#9c8a72':'#3f2e1e'; const r=0.6+Math.random()*1.8; c.beginPath(); c.arc(Math.random()*512,Math.random()*512,r,0,6.283); c.fill(); } });
+    dT.wrapS=THREE.ClampToEdgeWrapping; dT.wrapT=THREE.RepeatWrapping; dT.anisotropy=8;
+    const aT=canvasTex(128,256,c=>{ c.fillStyle='#000'; c.fillRect(0,0,128,256); for(let y=0;y<256;y+=2){ const l=10+Math.sin(y*0.11)*4+Math.random()*7, r_=118-Math.sin(y*0.07+2)*4-Math.random()*7, gr=c.createLinearGradient(l-8,0,l+10,0); gr.addColorStop(0,'#000'); gr.addColorStop(1,'#fff'); c.fillStyle=gr; c.fillRect(l-8,y,18,2); c.fillStyle='#fff'; c.fillRect(l+10,y,r_-l-20,2); const g2=c.createLinearGradient(r_-10,0,r_+8,0); g2.addColorStop(0,'#fff'); g2.addColorStop(1,'#000'); c.fillStyle=g2; c.fillRect(r_-10,y,18,2); } }); aT.wrapT=THREE.RepeatWrapping; aT.encoding=THREE.LinearEncoding;
+    const pos=[], uv=[], nrm=[], idx=[], Wd=HW+0.9; let run=0; for(let i=0;i<=nD;i++){ const q=dense[i%nD], pq=dense[(i+nD-1)%nD]; if(i) run+=Math.hypot(q[0]-pq[0],q[1]-pq[1]); pos.push(q[0]+q[3]*Wd,0.022,q[1]-q[2]*Wd, q[0]-q[3]*Wd,0.022,q[1]+q[2]*Wd); uv.push(0,run/7,1,run/7); nrm.push(0,1,0,0,1,0); if(i<nD){ const a_=i*2; idx.push(a_,a_+1,a_+2,a_+1,a_+3,a_+2); } }
+    const rg=new THREE.BufferGeometry(); rg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); rg.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); rg.setAttribute('normal',new THREE.Float32BufferAttribute(nrm,3)); rg.setIndex(idx);
+    const rm=new THREE.Mesh(rg,new THREE.MeshStandardMaterial({map:dT,bumpMap:dT,bumpScale:0.035,alphaMap:aT,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:.15,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2})); rm.receiveShadow=true; rm.renderOrder=1; world.add(rm);
+    const cg=new THREE.DodecahedronGeometry(.05,0), cm=new THREE.InstancedMesh(cg,new THREE.MeshStandardMaterial({color:0x5a412a,roughness:1,envMapIntensity:.1}),340); for(let i=0;i<340;i++){ const q=dense[Math.floor(rand(nD))], sd=Math.random()<.5?-1:1, off=sd*(Math.random()<.7?rand(HW-0.5,HW+0.9):rand(0,HW)), s_=rand(.5,2.4); dummy.position.set(q[0]+q[3]*off,0.02+0.02*s_,q[1]-q[2]*off); dummy.rotation.set(rand(6),rand(6),rand(6)); dummy.scale.set(s_,s_*0.6,s_); dummy.updateMatrix(); cm.setMatrixAt(i,dummy.matrix); } cm.receiveShadow=true; world.add(cm); }
   /* hay bales down both edges, left open wherever the track runs alongside or across itself */
-  const hay=std({color:0xb8943c,roughness:1,envMapIntensity:.15});
+  const hayT=canvasTex(256,128,c=>{ c.fillStyle='#b08d3c'; c.fillRect(0,0,256,128); for(let i=0;i<1500;i++){ c.strokeStyle=['#d9bd6a','#8f6f28','#c6a650','#a07f33'][i%4]; c.lineWidth=0.6+Math.random(); const x=Math.random()*256, y=Math.random()*128, l=6+Math.random()*22, a_=(Math.random()-.5)*0.5; c.beginPath(); c.moveTo(x,y); c.lineTo(x+Math.cos(a_)*l,y+Math.sin(a_)*l); c.stroke(); } c.fillStyle='rgba(40,60,120,.75)'; c.fillRect(70,0,4,128); c.fillRect(182,0,4,128); }), hay=new THREE.MeshStandardMaterial({map:hayT,bumpMap:hayT,bumpScale:.02,roughness:1,envMapIntensity:.15});
   for(let i=0;i<nD;i+=2){ const q=dense[i]; for(const sd of [-1,1]){ const x=q[0]+q[3]*sd*(HW+0.75), z=q[1]-q[2]*sd*(HW+0.75); if(Math.abs(x)>W.w/2-1.4||Math.abs(z)>W.d/2-1.4) continue; let clear=true; for(let k=0;k<nD;k++){ const dk=Math.min(Math.abs(k-i),nD-Math.abs(k-i)); if(dk>7&&Math.hypot(dense[k][0]-x,dense[k][1]-z)<HW+0.9){ clear=false; break; } } if(!clear) continue;
       box(1.1,.55,.6,hay,x,.275,z,world).rotation.y=Math.atan2(q[2],q[3])+Math.PI/2; W.stones.push({x,z,r:.62,stump:true}); } }
   /* start and finish */
@@ -2282,9 +2303,21 @@ function fairScene(){ const hw=W.w/2, hd=W.d/2, alu=std({color:0x9aa0a6,roughnes
   const gz=hd+2.2, GL=34, tiers=7; for(let k=0;k<tiers;k++){ box(GL,.12,.8,alu,0,.75+k*.5,gz+k*.85,world); box(GL,.5,.06,dk,0,.5+k*.5,gz+.4+k*.85,world); } box(GL,tiers*.5+.6,.2,dk,0,(tiers*.5+.6)/2,gz+tiers*.85,world);
   for(const x of [-GL/2,-GL/4,0,GL/4,GL/2]) cyl(.09,.09,6.4,alu,x,3.2,gz+tiers*.85-.2,world,8); const roof=box(GL+1,.14,tiers*.85+1.5,red,0,6.3,gz+tiers*.42,world); roof.rotation.x=0.07;
   mesh(new THREE.PlaneGeometry(16,2),sign('COUNTY FAIR MOWER RACES',16,2,'#f2c230','#1a1410'),0,7.6,gz+0.2,world).rotation.y=Math.PI; box(4,1.6,2,wht,0,7.2,gz+tiers*.85-1.2,world); box(3.6,.7,.05,dk,0,7.3,gz+tiers*.85-2.22,world);
-  const nP=tiers*40, cb=new THREE.InstancedMesh(new THREE.BoxGeometry(.42,.6,.3),new THREE.MeshLambertMaterial(),nP), ch=new THREE.InstancedMesh(new THREE.SphereGeometry(.15,8,6),new THREE.MeshLambertMaterial(),nP), col=new THREE.Color(), ppl=[]; cb.frustumCulled=ch.frustumCulled=false; let pi=0;
-  for(let k=0;k<tiers;k++) for(let q=0;q<40;q++){ if(Math.random()<0.18) continue; const x=-GL/2+0.6+q*(GL-1.2)/39+rand(-.1,.1); ppl.push([x,1.12+k*.5,gz+k*.85-0.05,rand(6.28),rand(1.5,4)]); col.setHSL(Math.random(),0.55,0.32+Math.random()*0.25); cb.setColorAt(pi,col); col.setHSL(0.06+Math.random()*0.04,0.4,0.35+Math.random()*0.3); ch.setColorAt(pi,col); pi++; }
-  cb.count=ch.count=pi; world.add(cb); world.add(ch); W.fair={cb,ch,ppl,cheer:0};
+  /* the crowd: seated people with heads, hair or caps, shirts, jeans and bare arms that go up when they cheer */
+  const C8=(r1,r2,h)=>new THREE.CylinderGeometry(r1,r2,h,9), SP=(r,a,b)=>new THREE.SphereGeometry(r,a||10,b||8), HP=Math.PI/2;
+  const gTorso=mergeGeo([[C8(.15,.17,.46),0,.27,0,0,0,0,1,1,.62],[SP(.1,8,6),.17,.45,0,0,0,0,1,.8,.8],[SP(.1,8,6),-.17,.45,0,0,0,0,1,.8,.8],[SP(.17),0,.04,0,0,0,0,1,.55,.8]]);
+  const gLegs=mergeGeo([[C8(.075,.065,.42),.09,.03,-.2,HP,0,0],[C8(.075,.065,.42),-.09,.03,-.2,HP,0,0],[C8(.055,.045,.42),.09,-.2,-.4],[C8(.055,.045,.42),-.09,-.2,-.4],[new THREE.BoxGeometry(.09,.07,.2),.09,-.43,-.45],[new THREE.BoxGeometry(.09,.07,.2),-.09,-.43,-.45]]);
+  const gHead=mergeGeo([[SP(.105,12,10),0,.66,0,0,0,0,.92,1.08,1],[C8(.045,.05,.08),0,.53,0],[SP(.02,6,5),0,.65,-.105]]);
+  const gHair=mergeGeo([[new THREE.SphereGeometry(.113,12,8,0,6.283,0,Math.PI*0.55),0,.665,.014]]), gCap=mergeGeo([[new THREE.SphereGeometry(.114,12,8,0,6.283,0,Math.PI*0.42),0,.675,0],[new THREE.BoxGeometry(.15,.012,.11),0,.69,-.14]]);
+  const gArms=mergeGeo([[C8(.045,.04,.26),.2,-.13,-.02],[C8(.045,.04,.26),-.2,-.13,-.02],[C8(.038,.033,.24),.19,-.27,-.12,1.2,0,0],[C8(.038,.033,.24),-.19,-.27,-.12,1.2,0,0],[SP(.04,7,6),.18,-.3,-.24],[SP(.04,7,6),-.18,-.3,-.24]]);
+  const nP=tiers*44, pmat=()=>new THREE.MeshStandardMaterial({roughness:.9,envMapIntensity:.25}), IM=g_=>{ const m_=new THREE.InstancedMesh(g_,pmat(),nP); m_.frustumCulled=false; world.add(m_); return m_; }, P={torso:IM(gTorso),legs:IM(gLegs),head:IM(gHead),arms:IM(gArms),hair:IM(gHair),cap:IM(gCap)}, col=new THREE.Color(), ppl=[];
+  const skins=[0xe8c2a0,0xd9a57e,0xc68d63,0xa9744e,0x8a5a3a,0x5e3d28,0xf0cdb0], pants=[0x2b3f63,0x34507d,0x1f2a40,0x8a7a58,0x23231f,0x4a5236], hairs=[0x1a1410,0x3a2616,0x5a3a1c,0x8a6a3a,0xb8a070,0x9a9a96,0x6a2a14]; let pi=0;
+  for(let k=0;k<tiers;k++) for(let q=0;q<44;q++){ if(Math.random()<0.16) continue; const x=-GL/2+0.5+q*(GL-1.0)/43+rand(-.08,.08), kid=Math.random()<0.12, sc=kid?rand(.66,.78):rand(.92,1.1), cap=Math.random()<0.42;
+    ppl.push({x,y:.81+k*.5,z:gz+k*.85-0.02,sc,yaw:rand(-.3,.3),ph:rand(6.28),f:rand(1.2,3.2),ex:Math.random(),cap});
+    const r=Math.random(); if(r<.1) col.setHex(0xe9e6dc); else if(r<.18) col.setHex(0x1c1c1c); else if(r<.26) col.setHex(0x4a5236); else col.setHSL(Math.random(),0.5+Math.random()*0.3,0.2+Math.random()*0.22); P.torso.setColorAt(pi,col);
+    P.legs.setColorAt(pi,col.setHex(pants[Math.floor(rand(pants.length))])); const sk=skins[Math.floor(rand(skins.length))]; P.head.setColorAt(pi,col.setHex(sk)); P.arms.setColorAt(pi,col.setHex(sk));
+    P.hair.setColorAt(pi,col.setHex(hairs[Math.floor(rand(hairs.length))])); if(Math.random()<.5) col.setHSL(Math.random(),.6,.3); else col.setHex([0x9c1d14,0x1d4f8a,0x2f6b2f,0x111111,0xc9a544][Math.floor(rand(5))]); P.cap.setColorAt(pi,col); pi++; }
+  for(const k in P) P[k].count=pi; W.fair={P,ppl,cheer:0};
   /* Ferris wheel */
   const fw=new THREE.Group(), wheel=new THREE.Group(), FR=8.5, fx=-hw-13; fw.position.set(fx,0,-2); fw.rotation.y=Math.PI/2; world.add(fw); wheel.position.y=FR+1.6; fw.add(wheel);
   for(const zz of [-.7,.7]){ mesh(new THREE.TorusGeometry(FR,.09,6,48),wht,0,0,zz,wheel); mesh(new THREE.TorusGeometry(FR*.55,.06,6,36),wht,0,0,zz,wheel); for(let k=0;k<12;k++){ const sp=cyl(.04,.04,FR*2,wht,0,0,zz,wheel,5); sp.rotation.z=k*Math.PI/12; } }
@@ -2299,12 +2332,20 @@ function fairScene(){ const hw=W.w/2, hd=W.d/2, alu=std({color:0x9aa0a6,roughnes
   for(let k=0;k<nF;k++){ let dd=k*0.75, x, z, ry; if(dd<2*hw){ x=-hw+dd; z=-hd; ry=0; } else if(dd<2*hw+2*hd){ x=hw; z=-hd+(dd-2*hw); ry=Math.PI/2; } else if(dd<4*hw+2*hd){ x=hw-(dd-2*hw-2*hd); z=hd; ry=0; } else { x=-hw; z=hd-(dd-4*hw-2*hd); ry=Math.PI/2; } const sag=Math.sin((dd%8)/8*Math.PI)*0.3; dummy.position.set(x,2.75-sag,z); dummy.rotation.set(0,ry,0); dummy.scale.set(1,1,1); dummy.updateMatrix(); pn.setMatrixAt(k,dummy.matrix); pn.setColorAt(k,col.setHex(pc[k%5])); } world.add(pn);
   for(let dd=0;dd<per;dd+=8){ let x,z; if(dd<2*hw){ x=-hw+dd; z=-hd; } else if(dd<2*hw+2*hd){ x=hw; z=-hd+(dd-2*hw); } else if(dd<4*hw+2*hd){ x=hw-(dd-2*hw-2*hd); z=hd; } else { x=-hw; z=hd-(dd-4*hw-2*hd); } cyl(.04,.04,2.85,wht,x,1.42,z,world,5); }
   for(const sx of [-1,1]) for(const sz of [-1,1]){ cyl(.12,.14,9,alu,sx*(hw+1),4.5,sz*(hd+1),world,8); const lamp=box(1.6,.5,.25,new THREE.MeshBasicMaterial({color:0xfff6d8}),sx*(hw+1),9.1,sz*(hd+1),world); lamp.lookAt(0,0,0); } }
-function updateFair(dt){ const F=W.fair; if(!F) return; F.cheer=Math.max(0,F.cheer-dt*0.5); if(F.wheel){ F.wheel.rotation.z+=dt*0.12; for(const gg of F.gond) gg.rotation.z=-F.wheel.rotation.z; }
-  const t=G.time, amp=0.03+0.16*Math.min(1,F.cheer); for(let i=0;i<F.ppl.length;i++){ const q=F.ppl[i], y=q[1]+Math.abs(Math.sin(t*q[4]+q[3]))*amp; dummy.position.set(q[0],y,q[2]); dummy.rotation.set(0,0,0); dummy.scale.set(1,1,1); dummy.updateMatrix(); F.cb.setMatrixAt(i,dummy.matrix); dummy.position.y=y+0.44; dummy.updateMatrix(); F.ch.setMatrixAt(i,dummy.matrix); } F.cb.instanceMatrix.needsUpdate=true; F.ch.instanceMatrix.needsUpdate=true;
-  if(AC&&cooldown('crowd',1.6)) noise(AC.currentTime,2.4,0.03+0.09*Math.min(1,F.cheer),'bandpass',850,0.35); }
+const fairM=new THREE.Matrix4(), fairA=new THREE.Matrix4(), fairB=new THREE.Matrix4(), fairQ=new THREE.Quaternion(), fairE=new THREE.Euler(), fairV=new THREE.Vector3(), fairS=new THREE.Vector3(), fairZ=new THREE.Matrix4().makeScale(0.0001,0.0001,0.0001);
+function updateFair(dt){ const F=W.fair; if(!F) return; F.cheer=Math.max(0,F.cheer-dt*0.4); if(F.wheel){ F.wheel.rotation.z+=dt*0.12; for(const gg of F.gond) gg.rotation.z=-F.wheel.rotation.z; }
+  const t=G.time, ch=Math.min(1,F.cheer), P=F.P;
+  for(let i=0;i<F.ppl.length;i++){ const q=F.ppl[i], w_=Math.sin(t*q.f+q.ph), up=ch*q.ex>0.45?0.2*ch:0, y=q.y+up+Math.max(0,w_)*(0.01+0.05*ch*q.ex);
+    fairE.set(0.04*w_*(0.3+ch),q.yaw+0.12*Math.sin(t*0.5+q.ph),0); fairQ.setFromEuler(fairE); fairM.compose(fairV.set(q.x,y,q.z),fairQ,fairS.setScalar(q.sc));
+    P.torso.setMatrixAt(i,fairM); P.legs.setMatrixAt(i,fairM); P.head.setMatrixAt(i,fairM); P.hair.setMatrixAt(i,q.cap?fairZ:fairM); P.cap.setMatrixAt(i,q.cap?fairM:fairZ);
+    const raise=Math.pow(Math.max(0,Math.sin(t*q.f*1.3+q.ph*2)),2)*(0.12+2.5*ch*q.ex); fairA.makeTranslation(0,0.43,0); fairB.makeRotationX(raise); fairA.multiply(fairB); fairB.copy(fairM).multiply(fairA); P.arms.setMatrixAt(i,fairB); }
+  for(const k in P) P[k].instanceMatrix.needsUpdate=true;
+  /* dust off the dirt */
+  for(const v of [{x:M.x,z:M.z,th:M.th,v:M.v,ok:G.mounted}].concat(derbyBots.map(b=>({x:b.x,z:b.z,th:b.th,v:b.v,ok:b.alive&&!b.off})))) if(v.ok&&Math.abs(v.v)>1.6&&Math.random()<dt*10) puffs.spawn(v.x+Math.sin(v.th)*0.8+rand(-.4,.4),0.15,v.z+Math.cos(v.th)*0.8+rand(-.4,.4),rand(-.3,.3),rand(.2,.6),rand(-.3,.3),rand(1,1.9),.66,.54,.38,-0.05,1.1);
+  if(AC&&cooldown('crowd',1.6)) noise(AC.currentTime,2.4,0.03+0.09*ch,'bandpass',850,0.35); }
 function fairCheer(k,line){ if(W.fair){ W.fair.cheer=Math.max(W.fair.cheer,k); if(AC&&k>=1){ const t=AC.currentTime; tone('sawtooth',430,430,t,0.5,0.15); tone('sawtooth',540,540,t,0.5,0.12); } } if(line) say('Announcer: '+line,false); }
 function setupDerby(){
-  G.derby={kills:0,over:0,win:false,pair:{},maxPeers:0}; if(W.J.race) G.derby.race={laps:3,lap:0,pi:0,wp:[],prog:0}; W.brenda=null; W.cop=null; for(const q of W.props||[]){ q.alive=false; q.m.visible=false; }
+  G.derby={kills:0,over:0,win:false,pair:{},maxPeers:0}; if(W.J.race) G.derby.race={laps:(Net.on&&!Net.host&&Net.laps)||evCfg().laps,lap:0,pi:0,wp:[],prog:0}; W.brenda=null; W.cop=null; for(const q of W.props||[]){ q.alive=false; q.m.visible=false; }
   for(let k=0;k<W.N;k++) if(W.cut[k]===0) applyCut(k,(Math.floor(k/W.nx)%4)<2,false);
   W.grass.instanceMatrix.needsUpdate=true; W.grass.instanceColor.needsUpdate=true; W.flowers.instanceMatrix.needsUpdate=true; W.tex.needsUpdate=true; W.ready=false;
   const tire=std({color:0x141414,roughness:.9}), hay=std({color:0xc9a544,roughness:1});
@@ -2312,12 +2353,12 @@ function setupDerby(){
     if(i%2){ for(let k=0;k<3;k++){ const t=mesh(new THREE.TorusGeometry(.32,.13,8,16),tire,x,.13+k*.26,z,world); t.rotation.x=Math.PI/2; } W.stones.push({x,z,r:.5,stump:true}); }
     else { box(1.1,.55,.6,hay,x,.275,z,world).rotation.y=i*1.3; W.stones.push({x,z,r:.6,stump:true}); } }
   /* alone you get three computer mowers; in a room the host fills the empty seats and runs them for everybody */
-  if(!Net.on||Net.host){ const n=Math.max(0,3-Object.keys(Net.peers).length); for(let i=0;i<n;i++) derbyBots.push(makeBot(i)); }
+  if(!Net.on||Net.host){ const n=clamp(evCfg().bots,(Net.on&&Object.keys(Net.peers).length)?0:1,7), df=evCfg().diff; for(let i=0;i<n;i++){ const bt=makeBot(i); bt.top*=[0.78,1,1.2][df]; derbyBots.push(bt); } G.derby.diff=df; }
   M.x=0; M.z=W.d/2-5; M.th=0; M.vh=0;
   if(W.J.race){ const Rc=G.derby.race, C=Rc.curve, L=Rc.len, vm=UPG.engine.val[S.up.engine]*(WB()?0.8:ZT()?1.25:1), place=(back,lat)=>{ const u=(((1-back/L)%1)+1)%1, q=C.getPointAt(u), t=C.getTangentAt(u); return {x:q.x+t.z*lat,z:q.z-t.x*lat,th:Math.atan2(-t.x,-t.z)}; };
     const me=place(2.6,-1.6); M.x=me.x; M.z=me.z; M.th=me.th; M.vh=me.th;
-    derbyBots.forEach((bt,i)=>{ const q=place(2.6+4.4*Math.floor((i+1)/2),i%2?-1.6:1.6); bt.x=q.x; bt.z=q.z; bt.th=q.th; bt.wi=0; bt.lap=0; bt.lo=[1.7,-1.7,0.3][i%3]; bt.top=vm*rand(0.88,1.0); bt.v=0; bt.stun=0; });
-    toast('County fair mower race',TRACKS[S.track||0]+'. Three laps. Rubbin’ is racin’.','!'); setTimeout(()=>{ if(mode==='play') fairCheer(1,'And they’re OFF! Somebody wake up Earl!'); },900); return; }
+    derbyBots.forEach((bt,i)=>{ const q=place(2.6+4.4*Math.floor((i+1)/2),i%2?-1.6:1.6); bt.x=q.x; bt.z=q.z; bt.th=q.th; bt.wi=0; bt.lap=0; bt.lo=[1.7,-1.7,0.3][i%3]; { const rg=[[0.74,0.86],[0.88,1.0],[1.0,1.08]][evCfg().diff]; bt.top=vm*rand(rg[0],rg[1]); } bt.v=0; bt.stun=0; });
+    toast('County fair mower race',TRACKS[S.track||0]+'. '+Rc.laps+(Rc.laps===1?' lap':' laps')+', '+DIFFS[evCfg().diff].toLowerCase()+' field. Rubbin’ is racin’.','!'); setTimeout(()=>{ if(mode==='play') fairCheer(1,'And they’re OFF! Somebody wake up Earl!'); },900); return; }
   toast('Demolition derby',Net.on?'Every mower for itself. Last one running wins.':'Three other mowers. Hit them in the side or the rear. Last one running takes the pot.','!');
 }
 function derbyOut(b,byPlayer){ b.alive=false; b.hp=0; b.v=0; sfx.smash(); debris(b.x,.6,b.z,30,'dirt',5); for(let i=0;i<12;i++) puffs.spawn(b.x+rand(-.4,.4),1,b.z+rand(-.4,.4),rand(-.6,.6),rand(.8,2),rand(-.6,.6),rand(1.5,2.6),.12,.12,.12,-0.1,1);
@@ -2356,7 +2397,7 @@ function updateDerby(dt){
         const mx=(A.x+B.x)/2, mz=(A.z+B.z)/2; for(let q=0;q<14;q++) bits.spawn(mx,.7,mz,rand(-3,3),rand(1,4),rand(-3,3),rand(.2,.5),1,.75,.3,9,0); debris(mx,.5,mz,6,'dirt',3);
         for(const [X,Y,sg] of [[A,B,1],[B,A,-1]]){ const dot=(-Math.sin(X.th)*nx-Math.cos(X.th)*nz)*sg, mult=dot>0.55?0.4:(dot<-0.4?1.35:1), dmg=c*4.2*mult*(D.race?0.3:1);
           if(X.b&&X.b.alive){ if(guest){ if(Y.me) netSend('ev',{id:Net.id,k:'dh',i:derbyBots.indexOf(X.b),d:+dmg.toFixed(1)}); } else if(!Y.peer){ X.b.hp-=dmg*(Y.b?0.25:1); X.b.v=-X.b.v*0.3; X.v=X.b.v; X.b.stun=0.6; if(X.b.hp<=0) derbyOut(X.b,!!Y.me); else if(!X.b.off&&c>5&&mult>=1){ const sg2=Math.sign(Y.v||1); botEject(X.b,c,-Math.sin(Y.th)*sg2,-Math.cos(Y.th)*sg2); } } }
-          else if(X.me){ D.lastHit=Y.peer?Y.k:null; damage(dmg*(D.race?0.5:(Math.abs(X.v)<0.7?1.9:1.1))); M.v*=-0.35; X.v=M.v; G.jolt=1; G.stress=Math.min(100,G.stress+1); if(G.mounted&&c>5.5&&mult>=1) eject(Y.name,c); } } } }
+          else if(X.me){ D.lastHit=Y.peer?Y.k:null; damage(dmg*[0.65,1,1.35][D.diff===undefined?1:D.diff]*(D.race?0.5:(Math.abs(X.v)<0.7?1.9:1.1))); M.v*=-0.35; X.v=M.v; G.jolt=1; G.stress=Math.min(100,G.stress+1); if(G.mounted&&c>5.5&&mult>=1) eject(Y.name,c); } } } }
   for(const e of E){ if(e.b&&e.b.alive){ e.b.x=e.x; e.b.z=e.z; } else if(e.me){ M.x=e.x; M.z=e.z; } }
   for(const b of derbyBots){ b.g.position.set(b.x,0,b.z); b.g.rotation.y=b.th; if(b.alive) rollWheels(b,b.v,b.st||0,dt); if(b.earl){ b.earl.g.visible=!(b.off||b.goff); if(b.earl.g.visible) driveEarl(b.earl,b.alive?(b.st||0):0,b.v,G.time,clamp(b.stun||0,0,1),!b.alive); } shedFor(b,b.g,b.hp); if(b.pm&&b.hpS!==Math.round(b.hp/5)){ b.hpS=Math.round(b.hp/5); b.pm.color.setHex(b.col0).multiplyScalar(0.38+0.62*Math.max(0,b.hp)/100); }
     if(b.alive&&b.hp<30&&Math.random()<dt*45) bits.spawn(b.x-Math.sin(b.th)*0.75+rand(-.2,.2),rand(.8,1.1),b.z-Math.cos(b.th)*0.75+rand(-.2,.2),rand(-.3,.3),rand(1.2,2.6),rand(-.3,.3),rand(.25,.55),1,rand(.35,.75),.08,-2,0); if(b.alive&&!G.mounted&&!G.rag&&!G.fall&&Math.abs(b.v)>2&&Math.hypot(P.x-b.x,P.z-b.z)<1.0){ G.fall=2.6; sfx.thud(); G.stress=Math.min(100,G.stress+4); say(b.name+': Stay down, Earl!',false); } }
@@ -2813,6 +2854,21 @@ function mow(moved){
 }
 
 /* ---------------------------------------------------------------- update */
+/* The tractor as a real two-axle vehicle. Each axle's tires make sideways force from their slip angle, up to what the ground and the
+   weight on them allow; the rear tires share that grip between driving, braking and cornering. Weight shifts back when she pulls and
+   forward when she brakes. Below walking pace the tires just roll where they point. */
+function tireStep(dt,target,accRaw,mu,eb,gas){ const m=320, Iz=95, a=0.70, b=0.50, L=1.2, h=0.5, g=9.8, Cs=4.4+1.2*mu, n=4, hdt=dt/n, dl=M.delta; let vx=M.v, vy=M.vy||0, r=M.r||0, push=false, spin=false; if(!isFinite(vy)) vy=0; if(!isFinite(r)) r=0;
+  if(M.jy>0.05){ return {om:r,push:false,spin:false}; }
+  for(let i=0;i<n;i++){ const axP=M.axF||0, Fzf=Math.max(0.15*m*g,m*g*b/L-m*axP*h/L), Fzr=Math.max(0.15*m*g,m*g*a/L+m*axP*h/L), capR=mu*Fzr, axd=clamp((target-vx)/hdt,-accRaw,accRaw);
+    let FxR=m*axd; if(eb>0.05) FxR=lerp(FxR,-Math.sign(vx||1)*capR*0.95*(Math.abs(vx)>0.05?1:0),eb);
+    if(Math.abs(FxR)>capR){ if(eb<=0.05&&axd>0&&Math.abs(target)>Math.abs(vx)) spin=true; FxR=Math.sign(FxR)*capR; }
+    const latR=Math.sqrt(Math.max(0,capR*capR-FxR*FxR))*(1-0.78*eb)+capR*0.06, k=vx>0?clamp((vx-0.6)/1.0,0,1):0; let Fyf=0, Fyr=0;
+    if(k>0){ const af=dl-Math.atan2(vy+a*r,vx), ar=-Math.atan2(vy-b*r,vx); Fyf=mu*Fzf*Math.tanh(Cs*af); Fyr=latR*Math.tanh(Cs*ar); if(Math.abs(af)>0.3&&Math.abs(dl)>0.2) push=true; }
+    const ax=(FxR-Fyf*Math.sin(dl))/m+vy*r*k-(Math.abs(vx)>0.15?0.035*g*Math.sign(vx):0); vx+=ax*hdt;
+    const vyd=vy+((Fyf*Math.cos(dl)+Fyr)/m-vx*r)*hdt, rd=r+((a*Fyf*Math.cos(dl)-b*Fyr)/Iz)*hdt, rk=vx*Math.tan(dl)/L;
+    vy=lerp(b*rk,vyd,k); r=lerp(rk,rd,k); M.axF=lerp(axP,ax,0.25); }
+  if(target===0&&Math.abs(vx)<0.06) vx=0;
+  M.v=vx; M.vy=vy; M.r=r; return {om:r,push,spin}; }
 function collideMower(vmax){
   const mx=W.w/2-0.5, mz=W.d/2-0.5; let hit=false; const sp=Math.abs(M.v);
   if(M.x>mx){M.x=mx;hit=true;} if(M.x<-mx){M.x=-mx;hit=true;} if(M.z>mz){M.z=mz;hit=true;}
@@ -2880,29 +2936,31 @@ function updatePlay(dt){
     if(M.spinning&&Math.random()<dt*45) bits.spawn(M.x+Math.sin(M.th)*0.55+rand(-.35,.35),0.06,M.z+Math.cos(M.th)*0.55+rand(-.35,.35),Math.sin(M.th)*rand(1,3)+rand(-.5,.5),rand(.6,1.8),Math.cos(M.th)*rand(1,3)+rand(-.5,.5),.5,.24,.17,.09,9,.4);
     if(ZT()){ /* two wheel motors, each with its own inertia */ const tR=gas?target+M.steer*1.2:0, tL=gas?target-M.steer*1.2:0, wa=Math.min(6,grip*0.8)*dt; if(M.wl===undefined){ M.wl=M.v; M.wr=M.v; }
       const cur=(M.wl+M.wr)/2; M.wl+=M.v-cur; M.wr+=M.v-cur; M.wl+=clamp(tL-M.wl,-wa,wa); M.wr+=clamp(tR-M.wr,-wa,wa); M.v=(M.wl+M.wr)/2; }
-    else M.v+=clamp(target-M.v,-acc*dt,acc*dt);
+    /* (the tractor's drive, braking and cornering are all worked out together at the tires, in tireStep below) */
     /* handbrake: locks the back wheels. They stop driving, stop gripping sideways, and dig in. */
     const eb=Math.max(K.KeyV?1:0,PAD.eb||0); M.eb=eb;
-    if(eb>0.05){ const dec=grip*0.7*eb*dt; M.v=Math.abs(M.v)<=dec?0:M.v-Math.sign(M.v)*dec; if(ZT()&&M.wl!==undefined){ M.wl=M.wr=M.v; } }
+    if(eb>0.05&&ZT()){ const dec=grip*0.7*eb*dt; M.v=Math.abs(M.v)<=dec?0:M.v-Math.sign(M.v)*dec; if(ZT()&&M.wl!==undefined){ M.wl=M.wr=M.v; } }
     /* front wheels steer, the mower pivots around its rear axle; a lawn tractor turns at full lock at mowing speed, and scrubs off a little speed doing it */
-    M.delta=M.steer*lerp(0.9,0.5,clamp((sp-3.2)/4,0,1)); M.v*=1-0.22*Math.abs(M.delta)*dt;
+    M.delta=M.steer*(PAD.wheel?0.7:lerp(0.78,0.42,clamp((sp-3.0)/4,0,1))); if(ZT()) M.v*=1-0.22*Math.abs(M.delta)*dt;
     let om, push=false;
     if(ZT()) om=(M.wr-M.wl)/1.04;                    // a zero-turn spins on the spot: one wheel forward, one back
-    else { const omK=M.v*Math.tan(M.delta)/1.15, alat=Math.abs(M.v*omK); om=omK; if(alat>grip){ om=omK*grip/alat; push=true; M.v*=1-0.5*dt; } }      // past the limit the front tires just scrub
+    else { const d_=tireStep(dt,target,accRaw,mu,eb,gas); om=d_.om; push=d_.push; M.spinning=d_.spin; }
     /* crank the wheel at speed on dry ground and the inside wheels lift; hold it and she goes over */
-    { const latG=Math.abs(M.v*om)/9.8; if(!ZT()&&latG>0.6&&sp>4.2&&mu>0.6&&!(M.jy>0)) M.tip=Math.min(1.2,(M.tip||0)+dt*1.5); else M.tip=Math.max(0,(M.tip||0)-dt*2.5);
+    { const latG=Math.abs(M.v*om)/9.8; if(!ZT()&&latG>0.74&&sp>2.5&&!(M.jy>0)) M.tip=Math.min(1.2,(M.tip||0)+dt*1.5); else M.tip=Math.max(0,(M.tip||0)-dt*2.5);
       if(M.tip>0.45&&!M.tipSaid){ M.tipSaid=true; say('Whoa, she’s liftin’!',false); } if(M.tip<0.1) M.tipSaid=false;
       if(M.tip>=1.2){ M.tip=0; const s0=sp; damage(18); M.v*=0.2; sfx.thud(); toast('Rolled her','Ease off before you crank the wheel.','!'); eject('his own drivin’',s0); } }
-    if(eb>0.3&&Math.abs(M.v)>1.2&&!ZT()) om*=1+0.45*eb;
     const dth=om*dt;
     /* the tires only hold so well: at speed the mower keeps sliding the way it was going for a moment */
+    const ox=M.x, oz=M.z;
+    if(ZT()){
     M.vh+=angDiff(M.th,M.vh)*Math.min(1,lerp(45,16,clamp((sp-3)/4,0,1))*Math.pow(mu/0.85,3)*(push?0.5:1)*(1-0.86*eb)*dt);
     const rx0=M.x+Math.sin(M.th)*0.5, rz0=M.z+Math.cos(M.th)*0.5;
     M.th+=dth;
     const rx1=rx0-Math.sin(M.vh)*M.v*dt, rz1=rz0-Math.cos(M.vh)*M.v*dt;
-    const ox=M.x, oz=M.z; M.x=rx1-Math.sin(M.th)*0.5; M.z=rz1-Math.cos(M.th)*0.5;
-    M.slide=Math.abs(angDiff(M.th,M.vh))>0.12&&sp>3.5;
-    collideMower(vmax); airUpdate(dt);
+    M.x=rx1-Math.sin(M.th)*0.5; M.z=rz1-Math.cos(M.th)*0.5;
+    } else { M.th+=dth; const vy_=M.vy||0; M.x+=(-Math.sin(M.th)*M.v-Math.cos(M.th)*vy_)*dt; M.z+=(-Math.cos(M.th)*M.v+Math.sin(M.th)*vy_)*dt; M.vh=M.v>0.3?M.th+Math.atan2(vy_,M.v):M.th; }
+    M.slide=Math.abs(angDiff(M.th,M.vh))>0.12&&sp>3.0;
+    { const v0_=M.v; collideMower(vmax); if(Math.abs(M.v-v0_)>0.8){ M.vy=(M.vy||0)*0.2; M.r=(M.r||0)*0.3; } } airUpdate(dt);
     const moved=Math.hypot(M.x-ox,M.z-oz), ax=(M.v-prevV)/Math.max(dt,1e-4);
     M.pitch+=(clamp(ax*0.006,-0.05,0.05)-M.pitch)*Math.min(1,dt*6);
     M.roll+=(clamp(-M.v*om*0.009,-0.07,0.07)-Math.sign(M.v*om)*(M.tip||0)*0.3-M.roll)*Math.min(1,dt*5);
@@ -3084,7 +3142,7 @@ function showGarage(){ clearDerby();
   const got=ACH.filter(a=>S.ach[a[0]]).length;
   const tab=garTab, T=(id,label)=>`<button type="button" class="${tab===id?'on':''}" data-act="tab" data-arg="${id}">${label}</button>`;
   let body='';
-  if(tab==='jobs') body=`<div class="derby-banner"><div><h3>Demolition derby: the back forty</h3><p>No grass. ${Net.on?'Every mower in your room for itself, and the host’s computer mowers fill the empty seats.':'Three other mowers.'} Hit them in the side or the rear, keep your nose pointed at trouble, and be the last one running. Bottle rockets count.</p></div><div class="pay">$${JOBS[DERBY].pay}</div><button class="btn" data-act="job" data-arg="${DERBY}">Wreck ’em</button></div><div class="derby-banner" style="border-color:#b58a1c;border-left-color:#f2c230;background:linear-gradient(100deg,#3d3210,#1d1612 70%)"><div><h3>County fair mower race</h3><p>Pick a track: oval, figure 8 with a crossover in the middle, or a road course. Three laps in front of the grandstand against ${Net.on?'your party and the computer mowers':'three other mowers'}. Their speed matches your engine, so it comes down to the corners. Rubbin’ is racin’.</p></div><div class="pay">$${JOBS[RACE].pay}</div><div style="display:flex;flex-direction:column;gap:6px">${TRACKS.map((t_,k_)=>`<button class="btn small" data-act="race" data-arg="${k_}">${t_}</button>`).join('')}</div></div>
+  if(tab==='jobs') body=`${evPanel()}<div class="derby-banner"><div><h3>Demolition derby: the back forty</h3><p>No grass. ${Net.on?'Every mower in your room for itself, and the host’s computer mowers fill the empty seats.':'Three other mowers.'} Hit them in the side or the rear, keep your nose pointed at trouble, and be the last one running. Bottle rockets count.</p></div><div class="pay">$${JOBS[DERBY].pay}</div><button class="btn" data-act="job" data-arg="${DERBY}">Wreck ’em</button></div><div class="derby-banner" style="border-color:#b58a1c;border-left-color:#f2c230;background:linear-gradient(100deg,#3d3210,#1d1612 70%)"><div><h3>County fair mower race</h3><p>Pick a track: oval, figure 8 with a crossover in the middle, or a road course. In front of the grandstand, against ${Net.on?'your party and the computer mowers':'three other mowers'}. Their speed matches your engine, so it comes down to the corners. Rubbin’ is racin’.</p></div><div class="pay">$${JOBS[RACE].pay}</div><div style="display:flex;flex-direction:column;gap:6px">${TRACKS.map((t_,k_)=>`<button class="btn small" data-act="race" data-arg="${k_}">${t_}</button>`).join('')}</div></div>
       <h2>Work orders <small>${JOBS.filter((j_,i_)=>!j_.derby&&S.done[i_]).length} of ${JOBS.length-1} done</small></h2><div class="g-jobs">${JOBS.map((J_,i_)=>J_.derby?'':jobCard(J_,i_)).join('')}</div>`;
   else if(tab==='shop') body=`<div class="g-two"><div><h2>Parts counter</h2>${Object.keys(UPG).map(partRow).join('')}<h2>Gas station counter</h2><div class="mpbox"><button class="btn small" data-act="scratch">Scratch-off ticket · $5</button><button class="btn small plain" data-act="flowers">${S.flowers?'Flowers bought ♥':'Gas station flowers for Brenda · $15'}</button><p>${garMsg||'Lottery: a tax on people who mow for a living. Flowers: Brenda starts the next yard a little less mad.'}</p></div></div><div><section><h2>Mowers</h2><div class="paints">${MOWERS.map((m,i)=>{ const own_=S.mowers.includes(i); return `<button class="swatch ${S.mower===i?'on':''}" data-act="mower" data-arg="${i}">${m.name}${own_?(S.mower===i?' (riding it)':''):' $'+m.cost}</button>`; }).join('')}</div><p style="color:#cfc5ad;margin:8px 0 0">The zero-turn steers with two lap bars, spins on the spot and runs a quarter faster. The walk-behind spins the same way, but you’re on foot behind it.</p></section>
       <section><h2>Paint</h2><div class="paints">${PAINTS.map((p,i)=>{ const own_=S.paints.includes(i); return `<button class="swatch ${S.paint===i?'on':''}" data-act="paint" data-arg="${i}"><i style="background:#${p.c.toString(16).padStart(6,'0')}"></i>${p.name}${own_?(S.paint===i?' (on the mower)':''):' $'+p.cost}</button>`; }).join('')}</div></section>
@@ -3135,6 +3193,7 @@ $('#menu').addEventListener('click', e=>{
   if(a==='joinLobby'){ S.opts.name=esc((($('#mpName')||{}).value||S.opts.name||'Earl')).slice(0,12)||'Earl'; save(); Net.status='Joining…'; netJoin(String(arg).toUpperCase(),false,'coop',err=>{ Net.status=err||''; if(!err){ netSend('hello',{id:Net.id,n:S.opts.name}); showLobby(); } else if(mode==='garage') showGarage(); }); return; }
   if(a==='garage'){ sfx.click(); showGarage(); }
   else if(a==='title'){ showTitle(); }
+  else if(a==='evopt'){ const c=evCfg(); if(arg==='bots') c.bots=c.bots%7+1; else if(arg==='diff') c.diff=(c.diff+1)%3; else c.laps=LAPOPT[(LAPOPT.indexOf(c.laps)+1)%LAPOPT.length]; save(); showGarage(); }
   else if(a==='race'){ S.track=+arg||0; save(); if(!(Net.on&&!Net.host)) startJob(RACE); }
   else if(a==='job'){ startJob(+arg); }
   else if(a==='buy'){ const U=UPG[arg], lv=S.up[arg], cost=U.cost[lv]; if(cost!==undefined&&S.money>=cost){ S.money-=cost; S.up[arg]++; S.stats.bought++; sfx.cash(); if(S.stats.bought>=5) unlock('spender'); if(S.up[arg]>=U.cost.length) unlock('maxed'); save(); syncMowerLook(); if(radioGain) radioGain.gain.value=radioVol(); showGarage(); } }
