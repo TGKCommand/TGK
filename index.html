@@ -3487,6 +3487,7 @@ html.cx-sopen #cx-search-close{display:inline-flex;align-items:center;background
     <span class="slbl">Tools</span>
     <button class="nav" id="nav-convert" onclick="sv('convert',this)"><div class="nicon" style="background:rgba(224,123,40,.2);color:var(--orange)">↻</div> Convert existing</button>
     <button class="nav" id="nav-edit" onclick="sv('edit',this)"><div class="nicon" style="background:rgba(42,191,170,.2);color:var(--teal)"><span class="ic ic-pencil"></span></div> Product Page Editor</button>
+    <button class="nav" id="nav-docs" onclick="sv('docs',this)"><div class="nicon" style="background:rgba(42,191,170,.2);color:var(--teal)">&#128196;</div> Documents</button>
     <button class="nav" id="nav-tpllib" onclick="sv('tpllib',this)"><div class="nicon" style="background:rgba(42,191,170,.2);color:var(--teal)">&#9741;</div> Template Library</button>
     <div class="sidebar-foot"><p>Built for TGK Motorsport.<br>Powered by Claude AI.</p></div>
   </div>
@@ -3603,6 +3604,13 @@ html.cx-sopen #cx-search-close{display:inline-flex;align-items:center;background
         <div class="howto-step"><div class="howto-num">5</div><div class="howto-txt">Wrap each in <code>&lt;script type="application/ld+json"&gt; ... &lt;/script&gt;</code></div></div>
       </div>
     </div>
+
+    <!-- DOCUMENTS VIEW -->
+    <div id="v-docs" class="view">
+      <div class="view-header"><div class="view-title">Documents</div><div class="view-desc">Upload install instructions once and put them on as many parts as you like. They show in the Documentation box on each product page.</div></div>
+      <div id="docs-root"></div>
+    </div>
+    <!-- END DOCUMENTS VIEW -->
 
     <!-- TEMPLATE LIBRARY VIEW -->
     <div id="v-tpllib" class="view">
@@ -20879,7 +20887,7 @@ window.ccSkuChanged = function(info){
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.32';
+var TGK_CC_VERSION='v7.33';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -31587,6 +31595,381 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
 
   decorate(); sidebar(); syncHome(); benchState(currentSub());
   document.addEventListener('DOMContentLoaded', function () { syncHome(); });
+})();
+</script>
+<style id="tgk-docs-css">
+#docs-root .dc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+#docs-root .dc-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+#docs-root .dc-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:22px}
+@media (max-width:900px){#docs-root .dc-grid{grid-template-columns:minmax(0,1fr)}}
+#docs-root .dc-l{font-size:var(--t-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin:14px 0 5px}
+#docs-root .dc-l:first-child{margin-top:0}
+#docs-root .dc-in{width:100%;box-sizing:border-box;font:inherit;font-size:var(--t-sm);padding:9px 10px;border:1px solid var(--border2);border-radius:2px;background:var(--card-bg);color:var(--text)}
+#docs-root textarea.dc-in{resize:vertical;min-height:58px}
+#docs-root .dc-h{font-size:var(--t-xs);color:var(--text2);margin-top:5px;line-height:1.45}
+#docs-root .dc-file{border:1px solid var(--border);border-radius:2px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#docs-root .dc-file-n{font-weight:700;font-size:var(--t-sm);color:var(--text);overflow-wrap:anywhere}
+#docs-root .dc-file-m{font-size:var(--t-xs);color:var(--text2);margin-top:2px}
+#docs-root .dc-st{font-size:var(--t-xs);font-weight:700;padding:2px 8px;border-radius:2px;white-space:nowrap;color:var(--text)}
+#docs-root .dc-st-on{background:rgba(42,191,170,.18)}
+#docs-root .dc-st-old{background:rgba(224,123,40,.2)}
+#docs-root .dc-st-off{background:rgba(128,128,128,.16)}
+#docs-root .dc-add{display:flex;gap:8px;align-items:flex-start}
+#docs-root .dc-add .dc-in{flex:1;min-width:0}
+#docs-root .dc-count{font-weight:700;font-size:var(--t-sm);color:var(--text);margin:14px 0 4px}
+#docs-root .dc-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#docs-root .dc-note{font-size:var(--t-sm);color:var(--text2);margin-top:8px;line-height:1.45}
+#docs-root .dc-bad{color:#b42318}
+#docs-root .dc-picks{margin-top:6px;border:1px solid var(--border);border-radius:2px}
+#docs-root .dc-picks .wt-row{padding:8px 10px}
+@media (max-width:640px){#docs-root .dc-add{flex-direction:column}#docs-root .dc-add .gbtn,#docs-root .dc-acts .gbtn{width:100%}}
+</style>
+<script id="tgk-docs-js">
+/* ============================================================================
+   PRODUCT PAGES > DOCUMENTS   (Command Center v7.33)
+   Upload a PDF once (it goes straight to Shopify Files) and put it on many parts at once as the
+   custom.install_instructions metafield, which the theme's Documentation box already reads.
+   A video link works the same way for custom.install_instructions_video.
+   Server side: the shopify-documents edge function. ASCII-only on purpose.
+   ============================================================================ */
+(function () {
+  'use strict';
+  var KEY = 'tgk_product_docs', MAXB = 8 * 1024 * 1024;
+  var SLOT = { pdf: 'install_instructions', video: 'install_instructions_video' };
+  var D = { items: [], loaded: false, cur: null, busy: false };
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function plural(n, a, b) { return n + ' ' + (n === 1 ? a : b); }
+  function uid() { return 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function who() { try { return (JSON.parse(localStorage.getItem('tgk_cc_session') || '{}') || {}).email || ''; } catch (e) { return ''; } }
+  function toast(msg) {
+    var t = el('tgk-shp-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'tgk-shp-toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.textContent = msg; t.className = 'on'; clearTimeout(t._h); t._h = setTimeout(function () { t.className = ''; }, 3800);
+  }
+  function size(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function refOf(d) { return d.kind === 'video' ? (d.url || '') : (d.fileId || ''); }
+  function statusOf(p, d) { var r = refOf(d); return p.ref && p.ref === r ? 'on' : (p.ref ? 'old' : 'off'); }
+
+  /* ---------------------------------------------------------------- server calls */
+  async function docCall(body) {
+    var anon = (typeof TGK_SB_JWT !== 'undefined') ? TGK_SB_JWT : TGK_SB_KEY, tok = '';
+    try { tok = await _tgkFreshToken(); } catch (e) { tok = ''; }
+    var r;
+    try {
+      r = await fetch(TGK_SB_URL + '/functions/v1/shopify-documents', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: anon, Authorization: 'Bearer ' + (tok || anon) }, body: JSON.stringify(body) });
+    } catch (e) { var er = new Error('Could not reach the documents function. Check your connection and try again.'); er.code = 'network'; throw er; }
+    var j = null; try { j = await r.json(); } catch (e) { j = null; }
+    if (r.status === 404 && !(j && j.error)) { var e4 = new Error('The documents function is not set up yet.'); e4.code = 'not_deployed'; throw e4; }
+    if (!r.ok || !j || j.error) { var e2 = new Error((j && j.error) || ('Documents error (HTTP ' + r.status + ').')); e2.code = (j && j.code) || ''; throw e2; }
+    return j;
+  }
+  function setupHelp() {
+    window.shpModal.open('Set up Documents (one time)',
+      '<ol class="shp-steps"><li>In the Supabase dashboard, open <b>Edge Functions</b>, create a function named <b>shopify-documents</b>, paste in the code from <b>shopify-documents/index.ts</b> and deploy it.</li>'
+      + '<li>In the function\'s <b>Secrets</b>, make sure <b>SHOPIFY_ADMIN_TOKEN</b> and <b>SHOPIFY_STORE_DOMAIN</b> (for example your-store.myshopify.com) are there. Optional: <b>STAFF_EMAIL_DOMAIN</b>.</li>'
+      + '<li>In Shopify, the app behind that token needs the <b>write_files</b>, <b>read_files</b> and <b>write_products</b> scopes. Add them and approve the change.</li></ol>'
+      + '<p class="shp-note">Then come back here and upload a PDF.</p>', [{ label: 'Done', onclick: window.shpModal.close }]);
+  }
+  function ask(title, body, buttons) {
+    window.shpModal.open(title, body, buttons.map(function (b) {
+      return { label: b.label, secondary: b.secondary, onclick: function () { window.shpModal.close(); if (b.fn) b.fn(); } };
+    }));
+  }
+
+  /* ---------------------------------------------------------------- storage of the doc list (shared, like the backups) */
+  async function load() {
+    if (D.loaded) return;
+    var v = null;
+    try { v = await sbGet(KEY); } catch (e) { v = null; }
+    if (!Array.isArray(v)) { try { v = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { v = []; } }
+    D.items = Array.isArray(v) ? v : []; D.loaded = true;
+  }
+  async function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(D.items)); } catch (e) { }
+    var ts = null; try { ts = await sbSet(KEY, D.items); } catch (e) { ts = null; }
+    if (!ts) toast('Saved on this computer only. Could not reach the shared store.');
+    return !!ts;
+  }
+  function isEmpty(d) { return !d.name && !d.fileId && !d.url && !(d.parts && d.parts.length); }
+
+  /* ---------------------------------------------------------------- list screen */
+  function renderList(r) {
+    var head = '<div class="dc-head"><div class="wt-row-m" style="margin:0">Install instructions and guides you put on many parts at once. They show in the Documentation box on each product page.</div>'
+      + '<button type="button" class="gbtn" data-docs-act="new">New document</button></div>';
+    if (!D.items.length) {
+      r.innerHTML = head + '<div class="wt-empty"><b>Add your first document</b><span>Upload a PDF, pick the parts it applies to, and it appears on their product pages.</span></div>'; return;
+    }
+    r.innerHTML = head + D.items.map(function (d) {
+      var need = d.parts.filter(function (p) { return statusOf(p, d) !== 'on'; }).length;
+      var meta = (d.kind === 'video' ? 'Video link' : 'PDF' + (d.filename ? ' &middot; ' + esc(d.filename) : '')) + ' &middot; ' + plural(d.parts.length, 'part', 'parts') + (need && refOf(d) ? ' &middot; ' + need + ' to update' : '');
+      return '<div class="wt-row"><div class="wt-row-t"><div class="wt-row-n">' + esc(d.name || 'Untitled document') + '</div><div class="wt-row-m">' + meta + '</div></div>'
+        + '<div class="wt-row-a"><button type="button" class="gbtn sec" data-docs-act="open" data-id="' + esc(d.id) + '">Open</button></div></div>';
+    }).join('');
+  }
+
+  /* ---------------------------------------------------------------- editor screen */
+  function renderEdit(r) {
+    var d = D.cur, locked = !!(d.fileId || d.url || d.parts.length);
+    r.innerHTML = '<div class="dc-top"><button type="button" class="gbtn sec" data-docs-act="back">&larr; All documents</button>'
+      + '<button type="button" class="gbtn sec" data-docs-act="delete">Delete document</button></div>'
+      + '<div class="dc-grid"><div>'
+      + '<label class="dc-l" for="dc-name">Name</label><input id="dc-name" class="dc-in" type="text" autocomplete="off" placeholder="EA839 breather kit install" value="' + esc(d.name) + '">'
+      + '<div class="dc-h">For your team only. Customers see the Install Instructions button.</div>'
+      + '<div class="dc-l">Type</div><div class="wt-pills">'
+      + '<button type="button" class="wt-pill' + (d.kind === 'pdf' ? ' on' : '') + '" data-docs-act="kind" data-k="pdf"' + (locked ? ' disabled' : '') + '>PDF document</button> '
+      + '<button type="button" class="wt-pill' + (d.kind === 'video' ? ' on' : '') + '" data-docs-act="kind" data-k="video"' + (locked ? ' disabled' : '') + '>Video link</button></div>'
+      + '<div class="dc-l">' + (d.kind === 'video' ? 'Video link' : 'PDF file') + '</div><div id="dc-file"></div><div class="dc-note" id="dc-fmsg" role="status" aria-live="polite"></div>'
+      + '</div><div>'
+      + '<div class="dc-l">Add parts</div><div class="dc-add"><textarea id="dc-add" class="dc-in" rows="2" placeholder="A SKU, or several separated by commas or new lines"></textarea><button type="button" class="gbtn sec" id="dc-add-go" data-docs-act="addparts">Add</button></div>'
+      + '<div class="dc-h">End a SKU with * to add every part that starts with it, for example TGK-BL-*.</div>'
+      + '<div class="dc-note" id="dc-msg" role="status" aria-live="polite"></div><div id="dc-picks"></div>'
+      + '<div id="dc-parts"></div><div id="dc-acts"></div></div></div>';
+    renderFile(); renderParts();
+  }
+  function fmsg(t, bad) { var m = el('dc-fmsg'); if (m) { m.textContent = t || ''; m.className = 'dc-note' + (bad ? ' dc-bad' : ''); } }
+  function dmsg(t, bad) { var m = el('dc-msg'); if (m) { m.textContent = t || ''; m.className = 'dc-note' + (bad ? ' dc-bad' : ''); } }
+  function renderFile() {
+    var d = D.cur, h = el('dc-file'); if (!h || !d) return;
+    if (d.kind === 'video') {
+      h.innerHTML = '<input id="dc-video" class="dc-in" type="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=..." value="' + esc(d.url || '') + '">'
+        + '<div class="dc-h">This becomes the Install Video button on each part.</div>'; return;
+    }
+    if (d.fileId) {
+      h.innerHTML = '<div class="dc-file"><div><div class="dc-file-n">' + esc(d.filename || 'PDF') + '</div><div class="dc-file-m">' + (d.size ? size(d.size) + ' &middot; ' : '') + 'in Shopify Files' + (d.uploaded ? ' &middot; ' + esc(new Date(d.uploaded).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : '') + '</div></div>'
+        + '<div class="wt-row-a">' + (d.url ? '<a class="gbtn sec" href="' + esc(d.url) + '" target="_blank" rel="noopener">View</a>' : '')
+        + '<button type="button" class="gbtn sec" data-docs-act="pick">Replace file</button></div></div>';
+    } else {
+      h.innerHTML = '<div class="dc-file"><div class="dc-file-m" style="margin:0">Goes straight to Shopify Files. PDF, up to 8 MB.</div><button type="button" class="gbtn" data-docs-act="pick">Choose PDF</button></div>';
+    }
+    h.innerHTML += '<input type="file" id="dc-pdf" accept="application/pdf,.pdf" style="display:none">';
+  }
+  function renderParts() {
+    var d = D.cur, h = el('dc-parts'), a = el('dc-acts'); if (!h || !a || !d) return;
+    var ref = refOf(d);
+    h.innerHTML = (d.parts.length ? '<div class="dc-count">' + plural(d.parts.length, 'part', 'parts') + '</div>' : '')
+      + d.parts.map(function (p) {
+        var s = statusOf(p, d), lab = s === 'on' ? 'On page' : (s === 'old' ? 'Needs update' : 'Not added');
+        return '<div class="wt-row"><div class="wt-row-t"><div class="wt-row-n">' + esc(p.title) + '</div><div class="wt-row-m">' + esc(p.sku || 'no SKU') + '</div></div>'
+          + '<div class="wt-row-a"><span class="dc-st dc-st-' + s + '">' + lab + '</span><button type="button" class="gbtn sec" data-docs-act="rm" data-id="' + esc(p.id) + '">Remove</button></div></div>';
+      }).join('');
+    var pend = d.parts.filter(function (p) { return p.ref !== ref; }), anyOff = pend.some(function (p) { return !p.ref; });
+    a.innerHTML = '<div class="dc-acts"><button type="button" class="gbtn" id="dc-apply" data-docs-act="apply"' + (D.busy ? ' disabled' : '') + '>'
+      + (pend.length && ref ? (anyOff ? 'Add to ' : 'Update ') + plural(pend.length, 'part', 'parts') : 'Add to parts') + '</button></div>'
+      + (d.parts.length && !ref ? '<div class="dc-note">' + (d.kind === 'video' ? 'Paste the video link' : 'Upload the PDF') + ' first, then add it to these parts.</div>' : '')
+      + (!d.parts.length ? '<div class="dc-note">Add the parts this applies to, then press the button. Nothing changes on Shopify until you do.</div>' : '');
+  }
+  function setBusy(b) { D.busy = b; var x = el('dc-apply'); if (x) x.disabled = b; }
+
+  function render() {
+    var r = el('docs-root'); if (!r) return;
+    if (!D.loaded) { r.innerHTML = '<div class="wt-empty">Loading...</div>'; return; }
+    if (D.cur) renderEdit(r); else renderList(r);
+  }
+
+  /* ---------------------------------------------------------------- upload */
+  function toB64(f) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result).split(',')[1] || ''); };
+      fr.onerror = function () { rej(new Error('Could not read that file.')); };
+      fr.readAsDataURL(f);
+    });
+  }
+  async function upload(f) {
+    var d = D.cur; if (!f || !d) return;
+    if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { fmsg('That is not a PDF.', 1); return; }
+    if (f.size > MAXB) { fmsg('That file is over 8 MB. Compress it and try again.', 1); return; }
+    setBusy(true); fmsg('Uploading to Shopify...');
+    try {
+      var j = await docCall({ action: 'upload', filename: f.name, mimeType: 'application/pdf', dataBase64: await toB64(f) });
+      d.fileId = j.fileId; d.url = j.url || ''; d.filename = f.name; d.size = f.size; d.uploaded = new Date().toISOString(); d.by = who();
+      if (!d.name) { d.name = f.name.replace(/\.pdf$/i, '').replace(/[-_]+/g, ' '); var n = el('dc-name'); if (n) n.value = d.name; }
+      await save(); renderFile(); renderParts();
+      var old = d.parts.filter(function (p) { return p.ref && p.ref !== d.fileId; }).length;
+      fmsg(old ? 'Uploaded. Press Update to put the new file on ' + plural(old, 'part', 'parts') + '.' : 'Uploaded to Shopify Files.');
+      if (j.status === 'PROCESSING') fmsg('Uploaded. Shopify is still processing the file, which is fine.');
+    } catch (e) { fail(e, fmsg); }
+    setBusy(false); renderParts();
+  }
+  function fail(e, say) {
+    (say || dmsg)(e.message, 1);
+    if (e.code === 'not_deployed') setupHelp();
+  }
+
+  /* ---------------------------------------------------------------- adding parts */
+  function hasPart(d, id) { return d.parts.some(function (p) { return p.id === id; }); }
+  function addPart(d, p) { if (hasPart(d, p.id)) return false; d.parts.push({ id: p.id, title: p.title, sku: (p.skus || [])[0] || '', ref: '' }); return true; }
+  async function addParts() {
+    var d = D.cur; if (!d) return;
+    var raw = el('dc-add').value, toks = raw.split(/[\n,;\t]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!toks.length) { dmsg('Type a SKU, or paste a list.', 1); return; }
+    var cfg = await window.shpEnsureStatus();
+    if (!cfg || !cfg.ok) { dmsg('Shopify is not connected yet. Open Product Pages > Dashboard for the setup steps.', 1); return; }
+    var go = el('dc-add-go'); if (go) go.disabled = true; dmsg('Searching Shopify...'); el('dc-picks').innerHTML = '';
+    var added = 0, dupes = 0, missing = [], picks = [];
+    try {
+      for (var i = 0; i < toks.length; i++) {
+        var t = toks[i], wild = /\*$/.test(t), q = t.replace(/\*+$/, '');
+        var j = await window.shpCall({ action: 'search', query: q }), list = j.products || [];
+        if (wild) {
+          var pre = q.toLowerCase(), hits = list.filter(function (p) { return (p.skus || []).some(function (s) { return String(s).toLowerCase().indexOf(pre) === 0; }); });
+          if (!hits.length) missing.push(t);
+          hits.forEach(function (p) { if (addPart(d, p)) added++; else dupes++; });
+          continue;
+        }
+        var exact = list.filter(function (p) { return (p.skus || []).some(function (s) { return String(s).toLowerCase() === q.toLowerCase(); }); });
+        if (exact.length === 1) { if (addPart(d, exact[0])) added++; else dupes++; }
+        else if (list.length) { picks = picks.concat(list.slice(0, 6)); }
+        else missing.push(t);
+      }
+    } catch (e) { fail(e); if (go) go.disabled = false; return; }
+    if (go) go.disabled = false;
+    await save(); renderParts();
+    var parts = [];
+    if (added) parts.push('Added ' + plural(added, 'part', 'parts') + '.');
+    if (dupes) parts.push(plural(dupes, 'was', 'were') + ' already on the list.');
+    if (missing.length) parts.push('Not found: ' + missing.join(', ') + '.');
+    if (picks.length) parts.push('Pick the right one below.');
+    dmsg(parts.join(' ') || 'Nothing added.', !added && !picks.length);
+    if (added || !picks.length) el('dc-add').value = '';
+    var ph = el('dc-picks');
+    if (picks.length && ph) {
+      ph.innerHTML = '<div class="dc-picks">' + picks.map(function (p) {
+        return '<div class="wt-row"><div class="wt-row-t"><div class="wt-row-n">' + esc(p.title) + '</div><div class="wt-row-m">' + esc((p.skus || []).slice(0, 3).join(', ') || 'no SKU') + '</div></div>'
+          + '<div class="wt-row-a"><button type="button" class="gbtn sec" data-docs-act="pickpart" data-id="' + esc(p.id) + '">Add</button></div></div>';
+      }).join('') + '</div>';
+      D._picks = {}; picks.forEach(function (p) { D._picks[p.id] = p; });
+    }
+  }
+
+  /* ---------------------------------------------------------------- putting it on Shopify */
+  async function applyAll() {
+    var d = D.cur; if (!d || D.busy) return;
+    var ref = refOf(d);
+    if (!ref) { dmsg(d.kind === 'video' ? 'Paste the video link first.' : 'Upload the PDF first.', 1); return; }
+    var pend = d.parts.filter(function (p) { return p.ref !== ref; });
+    if (!pend.length) { dmsg(d.parts.length ? 'Every part on the list already has this.' : 'Add some parts first.', !d.parts.length); return; }
+    setBusy(true); dmsg('Checking the parts...');
+    var foreign = [];
+    try {
+      var cur = await docCall({ action: 'read', key: SLOT[d.kind], productIds: pend.map(function (p) { return p.id; }) });
+      foreign = pend.filter(function (p) { return !p.ref && cur.values && cur.values[p.id]; });
+    } catch (e) { setBusy(false); fail(e); return; }
+    setBusy(false); dmsg('');
+    if (foreign.length) {
+      ask('Replace what is already there?',
+        '<p>' + plural(foreign.length, 'part already has', 'parts already have') + ' a different ' + (d.kind === 'video' ? 'install video' : 'install instructions file') + '. Putting this on will replace it.</p><ul>'
+        + foreign.slice(0, 8).map(function (p) { return '<li>' + esc(p.title) + '</li>'; }).join('') + (foreign.length > 8 ? '<li>and ' + (foreign.length - 8) + ' more</li>' : '') + '</ul>',
+        [{ label: 'Cancel', secondary: true }, { label: 'Replace and continue', fn: function () { doApply(pend); } }]);
+    } else doApply(pend);
+  }
+  async function doApply(pend) {
+    var d = D.cur; if (!d) return;
+    var ref = refOf(d); setBusy(true); dmsg('Updating ' + plural(pend.length, 'part', 'parts') + ' on Shopify...');
+    try {
+      var j = await docCall({ action: 'apply', key: SLOT[d.kind], productIds: pend.map(function (p) { return p.id; }), fileId: d.fileId || '', url: d.url || '' });
+      var ok = {}, moved = 0; (j.ok || []).forEach(function (id) { ok[id] = 1; });
+      d.parts.forEach(function (p) { if (ok[p.id]) p.ref = ref; });
+      D.items.forEach(function (o) {
+        if (o.id === d.id || o.kind !== d.kind) return;
+        var before = o.parts.length; o.parts = o.parts.filter(function (p) { return !ok[p.id]; }); moved += before - o.parts.length;
+      });
+      d.updated = new Date().toISOString(); await save(); renderParts();
+      var bad = j.errors || [], n = (j.ok || []).length;
+      var say = n ? 'Done: ' + plural(n, 'part now has', 'parts now have') + ' this.' : '';
+      if (moved) say += ' ' + plural(moved, 'part was', 'parts were') + ' moved over from another document.';
+      if (bad.length) {
+        var names = bad.slice(0, 3).map(function (b) { var p = d.parts.filter(function (x) { return x.id === b.id; })[0]; return (p ? p.title : b.id) + ' (' + b.message + ')'; }).join('; ');
+        say += ' ' + plural(bad.length, 'part failed', 'parts failed') + ': ' + names + '.';
+      }
+      dmsg(say.trim(), !n);
+      if (n) toast('On ' + plural(n, 'part', 'parts') + ' on Shopify');
+    } catch (e) { fail(e); }
+    setBusy(false); renderParts();
+  }
+
+  /* ---------------------------------------------------------------- removing */
+  async function clearOnShopify(d, ids) {
+    var j = await docCall({ action: 'clear', key: SLOT[d.kind], productIds: ids });
+    return j;
+  }
+  function removePart(id) {
+    var d = D.cur, p = d.parts.filter(function (x) { return x.id === id; })[0]; if (!p) return;
+    function drop() { d.parts = d.parts.filter(function (x) { return x.id !== id; }); save(); renderParts(); renderFile(); }
+    if (!p.ref) { drop(); return; }
+    ask('Remove ' + esc(p.title) + '?', '<p>This part has the document on its product page. Do you want to take it off the page too?</p>', [
+      { label: 'Cancel', secondary: true },
+      { label: 'Only from this list', secondary: true, fn: drop },
+      { label: 'Remove from the page too', fn: async function () {
+        try { var j = await clearOnShopify(d, [id]); if ((j.errors || []).length) { dmsg(j.errors[0].message, 1); return; } drop(); toast('Removed from the product page'); }
+        catch (e) { fail(e); } } }]);
+  }
+  function deleteDoc() {
+    var d = D.cur; if (!d) return;
+    var live = d.parts.filter(function (p) { return p.ref; });
+    function gone() { D.items = D.items.filter(function (x) { return x.id !== d.id; }); D.cur = null; save(); render(); toast('Document deleted'); }
+    if (!live.length) { ask('Delete this document?', '<p>It is not on any product page, so nothing changes on Shopify.</p>', [{ label: 'Cancel', secondary: true }, { label: 'Delete', fn: gone }]); return; }
+    ask('Delete this document?', '<p>It is on ' + plural(live.length, 'product page', 'product pages') + '. The PDF stays in Shopify Files either way.</p>', [
+      { label: 'Cancel', secondary: true },
+      { label: 'Delete, leave it on the pages', secondary: true, fn: gone },
+      { label: 'Delete and take it off the pages', fn: async function () {
+        try { var j = await clearOnShopify(d, live.map(function (p) { return p.id; })); if ((j.errors || []).length) { dmsg(plural(j.errors.length, 'part', 'parts') + ' could not be cleared: ' + j.errors[0].message, 1); return; } gone(); }
+        catch (e) { fail(e); } } }]);
+  }
+
+  /* ---------------------------------------------------------------- events */
+  function closeDoc() {
+    if (D.cur && isEmpty(D.cur)) D.items = D.items.filter(function (x) { return x.id !== D.cur.id; });
+    D.cur = null; save(); render();
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target; while (t && t !== document && !(t.getAttribute && t.getAttribute('data-docs-act'))) t = t.parentNode;
+    if (!t || t === document || !el('docs-root') || !el('docs-root').contains(t)) return;
+    var act = t.getAttribute('data-docs-act');
+    if (act === 'new') { D.cur = { id: uid(), name: '', kind: 'pdf', fileId: '', url: '', filename: '', size: 0, uploaded: '', by: who(), updated: '', parts: [] }; D.items.unshift(D.cur); render(); var n = el('dc-name'); if (n) n.focus(); }
+    else if (act === 'open') { D.cur = D.items.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0] || null; render(); }
+    else if (act === 'back') closeDoc();
+    else if (act === 'kind') { if (D.cur && !(D.cur.fileId || D.cur.url || D.cur.parts.length)) { D.cur.kind = t.getAttribute('data-k'); render(); } }
+    else if (act === 'pick') { var f = el('dc-pdf'); if (f) f.click(); }
+    else if (act === 'addparts') addParts();
+    else if (act === 'pickpart') { var p = D._picks && D._picks[t.getAttribute('data-id')]; if (p && addPart(D.cur, p)) { save(); renderParts(); dmsg('Added ' + p.title + '.'); el('dc-picks').innerHTML = ''; } }
+    else if (act === 'rm') removePart(t.getAttribute('data-id'));
+    else if (act === 'apply') applyAll();
+    else if (act === 'delete') deleteDoc();
+  });
+  document.addEventListener('change', function (ev) {
+    var t = ev.target; if (!t || !el('docs-root') || !el('docs-root').contains(t) || !D.cur) return;
+    if (t.id === 'dc-pdf') { var f = t.files && t.files[0]; t.value = ''; upload(f); }
+    else if (t.id === 'dc-name') { D.cur.name = t.value.trim(); save(); }
+    else if (t.id === 'dc-video') {
+      var u = t.value.trim();
+      if (u && !/^https:\/\//i.test(u)) { fmsg('The link must start with https://', 1); return; }
+      D.cur.url = u; save(); fmsg(''); renderParts();
+    }
+  });
+
+  /* ---------------------------------------------------------------- navigation glue */
+  async function show() { render(); await load(); render(); }
+  function nav() {
+    var d = el('nav-docs'), l = el('nav-tpllib');
+    if (d && l && l.parentNode === d.parentNode) l.parentNode.insertBefore(d, l);
+    var chip = document.querySelector('#v-docs .wt-chip'); if (chip) chip.textContent = 'Documents';
+  }
+  var _sv = window.sv;
+  if (typeof _sv === 'function') window.sv = function (id) {
+    var r = _sv.apply(this, arguments);
+    if (id === 'docs') { var l = el('cc-bc-label'), v = el('view-launch'); if (l && v && v.classList.contains('active')) l.textContent = 'Documents'; D.cur = null; show(); }
+    return r;
+  };
+  var _showView = window.showView;
+  if (typeof _showView === 'function') window.showView = function (name) {
+    var r = _showView.apply(this, arguments);
+    if (name === 'launch') { var v = document.querySelector('#view-launch .main > .view.on'); if (v && v.id === 'v-docs') { var l = el('cc-bc-label'); if (l) l.textContent = 'Documents'; } }
+    return r;
+  };
+  nav();
+  document.addEventListener('DOMContentLoaded', nav);
 })();
 </script>
 <script>
