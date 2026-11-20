@@ -2893,10 +2893,10 @@ function updatePlay(dt){
     { const latG=Math.abs(M.v*om)/9.8; if(!ZT()&&latG>0.6&&sp>4.2&&mu>0.6&&!(M.jy>0)) M.tip=Math.min(1.2,(M.tip||0)+dt*1.5); else M.tip=Math.max(0,(M.tip||0)-dt*2.5);
       if(M.tip>0.45&&!M.tipSaid){ M.tipSaid=true; say('Whoa, she’s liftin’!',false); } if(M.tip<0.1) M.tipSaid=false;
       if(M.tip>=1.2){ M.tip=0; const s0=sp; damage(18); M.v*=0.2; sfx.thud(); toast('Rolled her','Ease off before you crank the wheel.','!'); eject('his own drivin’',s0); } }
-    if(eb>0.3&&Math.abs(M.v)>1.2&&!ZT()) om*=1+0.9*eb;
+    if(eb>0.3&&Math.abs(M.v)>1.2&&!ZT()) om*=1+0.45*eb;
     const dth=om*dt;
     /* the tires only hold so well: at speed the mower keeps sliding the way it was going for a moment */
-    M.vh+=angDiff(M.th,M.vh)*Math.min(1,lerp(45,16,clamp((sp-3)/4,0,1))*Math.pow(mu/0.85,3)*(push?0.5:1)*(1-0.93*eb)*dt);
+    M.vh+=angDiff(M.th,M.vh)*Math.min(1,lerp(45,16,clamp((sp-3)/4,0,1))*Math.pow(mu/0.85,3)*(push?0.5:1)*(1-0.86*eb)*dt);
     const rx0=M.x+Math.sin(M.th)*0.5, rz0=M.z+Math.cos(M.th)*0.5;
     M.th+=dth;
     const rx1=rx0-Math.sin(M.vh)*M.v*dt, rz1=rz0-Math.cos(M.vh)*M.v*dt;
