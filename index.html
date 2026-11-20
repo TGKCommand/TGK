@@ -3292,7 +3292,7 @@ html.cx-sopen #cx-search-close{display:inline-flex;align-items:center;background
     </button>
     <button class="cc-navbtn" id="cc-nav-launch" onclick="showView('launch')" draggable="true">
       <div class="cc-icon" style="background:rgba(224,123,40,.15);color:#E07B28">&#10022;</div>
-      Product Launch
+      Product Pages
       <span class="cc-badge badge-live">LIVE</span>
       <span class="cc-drag-handle">⠿</span>
     </button>
@@ -3498,7 +3498,7 @@ html.cx-sopen #cx-search-close{display:inline-flex;align-items:center;background
     <div id="v-hub" class="view on wt-hub">
   <div class="view-header"><div class="view-title">Product Pages</div><div class="view-desc">Find any part on Shopify, edit its description, and bring old descriptions up to the TGK template. Everything is backed up before it changes.</div></div>
   <div class="wt-stats" id="wt-stats"></div>
-  <div class="dash-section-block"><div class="dash-section-lbl">Start here</div><div class="wt-card wt-start"><div id="shp-find-hub"></div><div class="wt-start-act"><button type="button" class="gbtn" onclick="showLaunchSub('product')">New product</button><button type="button" class="gbtn sec" onclick="showLaunchSub('edit')">Paste a description</button></div></div></div>
+  <div class="dash-section-block"><div class="dash-section-lbl">Start here</div><div class="wt-card wt-start"><div id="shp-find-hub"></div></div></div>
   <div class="dash-section-block"><div class="dash-section-lbl">Needs updating</div><div class="wt-card" id="wt-needs"></div></div>
   <div class="wt-two"><div class="dash-section-block"><div class="dash-section-lbl">Recent Shopify updates</div><div class="wt-card" id="wt-recent"></div></div><div class="dash-section-block"><div class="dash-section-lbl">TGK template standard</div><div class="wt-card" id="wt-std"></div></div></div>
 </div>
@@ -4931,7 +4931,7 @@ function showView(name) {
   if (name === 'arcade') { arcInit(); }
   else if (typeof arcPause === 'function') { arcPause(); }
   // Breadcrumb
-  const TOOL_NAMES = {launch:'Product Launch','launch-product':'Product Launch','launch-convert':'Convert Existing','launch-edit':'Product Page Editor','launch-tpllib':'Template Library',box:'Box Selector',fitment:'Fitment',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',timeattack:'Time Attack',toolbox:'Toolbox',projects:'Project Workflow'};
+  const TOOL_NAMES = {launch:'Product Pages','launch-product':'New Product','launch-convert':'Convert Existing','launch-edit':'Product Page Editor','launch-tpllib':'Template Library',box:'Box Selector',fitment:'Fitment',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',timeattack:'Time Attack',toolbox:'Toolbox',projects:'Project Workflow'};
   const bc = document.getElementById('cc-breadcrumb');
   if (name === 'home') {
     if (bc) bc.classList.remove('visible');
@@ -16384,7 +16384,7 @@ function resetFilter(){layout.visible=['launch','social','ideas','fbgroups','box
 function dashShowAll(){layout.visible=['launch','social','ideas','fbgroups','box','fitment','sku','notes','toolbox','arcade','timeattack','grasshole'].concat(layout.pinned.map(function(p){return'pin_'+p.id;}));layout.custom=false;saveLayout();renderDashboard();}
 function _fdToggle(id,el){if(!_fd)_fd=[];var i=_fd.indexOf(id);if(i>-1)_fd.splice(i,1);else _fd.push(id);var c=el.querySelector('.fd-chk');if(c)c.classList.toggle('on',_fd.indexOf(id)>-1);}
 var SDEFS=[
-  {lbl:'AI-Powered Tools',items:[{id:'launch',icon:'&#128640;',name:'Product Launch'},{id:'social',icon:'&#128247;',name:'Social Engine'},{id:'ideas',icon:'&#128161;',name:'Idea Generator'},{id:'fbgroups',icon:'&#128101;',name:'FB Group Finder'}]},
+  {lbl:'AI-Powered Tools',items:[{id:'launch',icon:'&#128640;',name:'Product Pages'},{id:'social',icon:'&#128247;',name:'Social Engine'},{id:'ideas',icon:'&#128161;',name:'Idea Generator'},{id:'fbgroups',icon:'&#128101;',name:'FB Group Finder'}]},
   {lbl:'Operations',items:[{id:'box',icon:'&#128230;',name:'Box Selector'},{id:'fitment',icon:'&#128663;',name:'Fitment'},{id:'sku',icon:'&#127991;',name:'SKU Manager'},{id:'notes',icon:'&#128221;',name:'Notes'},{id:'toolbox',icon:'&#128279;',name:'Toolbox'}]},
   {lbl:'Entertainment',items:[{id:'arcade',icon:'&#127918;',name:'Arcade'},{id:'timeattack',icon:'&#127937;',name:'Time Attack'},{id:'grasshole',icon:'&#9971;',name:'Grass Hole'}]}
 ];
@@ -16425,7 +16425,7 @@ function dashLoadExt(){
   window.showView=function(name){
     if(_orig)_orig(name);
     var bc=document.getElementById('cc-breadcrumb');
-    var NAMES={launch:'Product Launch',box:'Box Selector',fitment:'Fitment',fitment:'Fitment',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',timeattack:'Time Attack',toolbox:'Toolbox'};
+    var NAMES={launch:'Product Pages',box:'Box Selector',fitment:'Fitment',fitment:'Fitment',social:'Social Engine',ideas:'Idea Generator',fbgroups:'FB Group Finder',arcade:'Arcade',timeattack:'Time Attack',toolbox:'Toolbox'};
     if(name==='home'){if(bc)bc.classList.remove('visible');dashLoadExt();}
     else{if(bc)bc.classList.add('visible');var lbl=document.getElementById('cc-bc-label');if(lbl)lbl.textContent=NAMES[name]||name;}
     // Bridge: watch product form
@@ -20887,7 +20887,7 @@ window.ccSkuChanged = function(info){
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.34';
+var TGK_CC_VERSION='v7.35';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -31995,6 +31995,100 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
   document.addEventListener('DOMContentLoaded', nav);
 })();
 </script>
+<style id="tgk-split-css">
+html body #view-launch[data-mode="pages"] .sidebar #nav-product,
+html body #view-launch[data-mode="pages"] .sidebar #nav-seo,
+html body #view-launch[data-mode="pages"] .sidebar #nav-copy,
+html body #view-launch[data-mode="pages"] .sidebar #nav-schema,
+html body #view-launch[data-mode="pages"] .sidebar #nav-launch,
+html body #view-launch[data-mode="pages"] .sidebar #wt-lbl-new,
+html body #view-launch[data-mode="pages"] .sidebar #wt-lbl-bench,
+html body #view-launch[data-mode="pages"] .sidebar #ref-chips,
+html body #view-launch[data-mode="pages"] .sidebar #nav-back,
+html body #view-launch[data-mode="new"] .sidebar #nav-hub,
+html body #view-launch[data-mode="new"] .sidebar #nav-edit,
+html body #view-launch[data-mode="new"] .sidebar #nav-docs,
+html body #view-launch[data-mode="new"] .sidebar #nav-tpllib,
+html body #view-launch[data-mode="new"] .sidebar #wt-lbl-overview,
+html body #view-launch[data-mode="new"] .sidebar #wt-newbtn{display:none!important}
+html body #view-launch .sidebar .wt-backnav::before{display:none!important}
+#view-launch .sidebar #wt-newbtn{padding:14px 14px 4px;flex:none}
+#view-launch .sidebar #wt-newbtn .gbtn{width:100%;justify-content:center}
+@media (max-width:900px){#view-launch .sidebar #wt-newbtn{padding:0 0 0 6px}#view-launch .sidebar #wt-newbtn .gbtn{width:auto;white-space:nowrap}}
+</style>
+<script id="tgk-split-js">
+/* ============================================================================
+   PRODUCT PAGES and NEW PRODUCT are two tools   (Command Center v7.35)
+   Same screens as before; the sidebar, header and home card now follow which job you are in:
+     Product Pages : Dashboard, Edit a part, Documents, Template Library
+     New Product   : the five launch steps (+ benchmark chips)
+   ASCII-only on purpose.
+   ============================================================================ */
+(function () {
+  'use strict';
+  var STEPS = /^(product|seo|copy|schema|launch)$/;
+  var COPY = {
+    pages: ['Product Pages', 'Edit parts already on Shopify, add documents, and keep descriptions on the TGK template'],
+    'new': ['New Product', 'Create a new listing: SEO, description, schema and a draft on Shopify']
+  };
+  function el(id) { return document.getElementById(id); }
+  function sub() { var v = document.querySelector('#view-launch .main > .view.on'); return v ? v.id.replace(/^v-/, '') : ''; }
+
+  function build() {
+    var sb = document.querySelector('#view-launch .sidebar'); if (!sb) return;
+    if (!el('wt-lbl-overview')) { var f = sb.querySelector('.slbl'); if (f) f.id = 'wt-lbl-overview'; }
+    if (!el('nav-back')) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'nav wt-backnav'; b.id = 'nav-back';
+      b.innerHTML = '&larr; Product Pages'; b.setAttribute('onclick', "showLaunchSub('hub')");
+      sb.insertBefore(b, sb.firstChild);
+    }
+    if (!el('wt-newbtn')) {
+      var w = document.createElement('div'); w.id = 'wt-newbtn';
+      w.innerHTML = '<button type="button" class="gbtn" onclick="showLaunchSub(\'product\')">+ New product</button>';
+      var lib = el('nav-tpllib');
+      if (lib && lib.parentNode === sb) sb.insertBefore(w, lib.nextSibling); else sb.appendChild(w);
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('#view-launch .main > .view'), function (v) {
+      if (!STEPS.test(v.id.replace(/^v-/, ''))) return;
+      var bk = v.querySelector('.wt-back'); if (bk && !bk.getAttribute('data-split')) { bk.innerHTML = '&larr; Product Pages'; bk.setAttribute('data-split', '1'); }
+    });
+    var home = document.querySelector('.mod-card[data-mid="launch-tpllib"]'); if (home) home.classList.add('wt-gone');   // lives inside Product Pages now
+  }
+  function apply() {
+    var root = el('view-launch'); if (!root) return;
+    build();
+    var m = STEPS.test(sub()) ? 'new' : 'pages';
+    root.setAttribute('data-mode', m);
+    var band = root.querySelector(':scope > .sk-band');
+    if (band) {
+      var t = band.querySelector('.sk-t b'), d = band.querySelector('.sk-t span');
+      if (t && t.textContent !== COPY[m][0]) t.textContent = COPY[m][0];
+      if (d && d.textContent !== COPY[m][1]) d.textContent = COPY[m][1];
+    }
+  }
+
+  var _sv = window.sv;
+  if (typeof _sv === 'function') window.sv = function () { var r = _sv.apply(this, arguments); apply(); return r; };
+  var _sls = window.showLaunchSub;
+  if (typeof _sls === 'function') window.showLaunchSub = function () {
+    window.__tgkSubNav = true;
+    try { return _sls.apply(this, arguments); } finally { window.__tgkSubNav = false; apply(); }
+  };
+  var _showView = window.showView;
+  if (typeof _showView === 'function') window.showView = function (name) {
+    var r = _showView.apply(this, arguments);
+    if (name === 'launch') {
+      // opening the tool from the menu lands on Product Pages, not on whatever launch step was left open
+      if (!window.__tgkSubNav && STEPS.test(sub()) && typeof window.sv === 'function') window.sv('hub', el('nav-hub'));
+      apply();
+    }
+    return r;
+  };
+  apply();
+  document.addEventListener('DOMContentLoaded', apply);
+  window.addEventListener('load', apply);
+})();
+</script>
 <script>
 /* ===== Template styles panel (Product Pages > Template Library): one set of style controls for every product description ===== */
 (function () {
@@ -33630,7 +33724,7 @@ html[data-theme="dark"] .sk-band{display:none!important}
     host.insertBefore(d,host.firstChild); return d;
   }
   function run(){
-    band('#view-launch','Product Launch','Create, convert and update product pages on Shopify');
+    band('#view-launch','Product Pages','Edit parts already on Shopify, add documents, and keep descriptions on the TGK template');
     band('#view-fitment','Fitment','Match every product to the vehicles it fits');
     band('#view-box','Box Selector','Pick the products in an order and get the right box');
     var tb=band('#view-toolbox','Toolbox','External tools \u2014 open in a new tab');
@@ -34572,7 +34666,7 @@ html[data-theme="dark"] #ct-cal-fly .cf-ft button{background:#101315;color:#dfe5
     }, 0);
   });
   /* ------------------------------------------------------------ same breadcrumb + Close on every module */
-  var VIEW_LABEL = { launch: 'Product Launch', box: 'Box Selector', social: 'Social Engine', ideas: 'Idea Generator', fbgroups: 'FB Group Finder',
+  var VIEW_LABEL = { launch: 'Product Pages', box: 'Box Selector', social: 'Social Engine', ideas: 'Idea Generator', fbgroups: 'FB Group Finder',
     toolbox: 'Toolbox', arcade: 'Arcade', fitment: 'Fitment', projects: 'Projects' };
   function nativeBar(name) {
     if (!name || name === 'home') return;
