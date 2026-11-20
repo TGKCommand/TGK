@@ -2876,7 +2876,7 @@ function tireStep(dt,target,accRaw,mu,eb,gas){ const m=320, Iz=95, a=0.70, b=0.5
   for(let i=0;i<n;i++){ const axP=M.axF||0, Fzf=Math.max(0.15*m*g,m*g*b/L-m*axP*h/L), Fzr=Math.max(0.15*m*g,m*g*a/L+m*axP*h/L), capR=mu*Fzr, axd=clamp((target-vx)/hdt,-accRaw,accRaw);
     let FxR=m*axd; if(eb>0.05) FxR=lerp(FxR,-Math.sign(vx||1)*capR*0.95*(Math.abs(vx)>0.05?1:0),eb);
     if(Math.abs(FxR)>capR){ if(eb<=0.05&&axd>0&&Math.abs(target)>Math.abs(vx)) spin=true; FxR=Math.sign(FxR)*capR; }
-    const latR=Math.sqrt(Math.max(0,capR*capR-FxR*FxR))*(1-0.78*eb)+capR*0.06, k=vx>0?clamp((vx-0.6)/1.0,0,1):0; let Fyf=0, Fyr=0;
+    const latR=Math.sqrt(Math.max(0,capR*capR-FxR*FxR))*(1-0.78*eb)+capR*0.06, k=vx>0?clamp((vx-1.6)/2.2,0,1):0; let Fyf=0, Fyr=0;
     if(k>0){ const af=dl-Math.atan2(vy+a*r,vx), ar=-Math.atan2(vy-b*r,vx); Fyf=mu*Fzf*Math.tanh(Cs*af); Fyr=latR*Math.tanh(Cs*ar); if(Math.abs(af)>0.3&&Math.abs(dl)>0.2) push=true; }
     const ax=(FxR-Fyf*Math.sin(dl))/m+vy*r*k-(Math.abs(vx)>0.15?0.035*g*Math.sign(vx):0); vx+=ax*hdt;
     const vyd=vy+((Fyf*Math.cos(dl)+Fyr)/m-vx*r)*hdt, rd=r+((a*Fyf*Math.cos(dl)-b*Fyr)/Iz)*hdt, rk=vx*Math.tan(dl)/L;
