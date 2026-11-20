@@ -20887,7 +20887,7 @@ window.ccSkuChanged = function(info){
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.33';
+var TGK_CC_VERSION='v7.34';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -31622,6 +31622,13 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
 #docs-root .dc-bad{color:#b42318}
 #docs-root .dc-picks{margin-top:6px;border:1px solid var(--border);border-radius:2px}
 #docs-root .dc-picks .wt-row{padding:8px 10px}
+#docs-root .dc-sug-list{border:1px solid var(--border);border-radius:2px;margin-top:4px;max-height:300px;overflow:auto;background:var(--card-bg)}
+#docs-root .dc-sug{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer}
+#docs-root .dc-sug:last-child{border-bottom:0}
+#docs-root .dc-sug:hover,#docs-root .dc-sug.on{background:rgba(42,191,170,.14)}
+#docs-root .dc-sug.is-added{opacity:.5;cursor:default}
+#docs-root .dc-sug-msg{padding:8px 10px;font-size:var(--t-sm);color:var(--text2)}
+#docs-root .dc-plus{margin-top:10px}
 @media (max-width:640px){#docs-root .dc-add{flex-direction:column}#docs-root .dc-add .gbtn,#docs-root .dc-acts .gbtn{width:100%}}
 </style>
 <script id="tgk-docs-js">
@@ -31721,11 +31728,9 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
       + '<button type="button" class="wt-pill' + (d.kind === 'video' ? ' on' : '') + '" data-docs-act="kind" data-k="video"' + (locked ? ' disabled' : '') + '>Video link</button></div>'
       + '<div class="dc-l">' + (d.kind === 'video' ? 'Video link' : 'PDF file') + '</div><div id="dc-file"></div><div class="dc-note" id="dc-fmsg" role="status" aria-live="polite"></div>'
       + '</div><div>'
-      + '<div class="dc-l">Add parts</div><div class="dc-add"><textarea id="dc-add" class="dc-in" rows="2" placeholder="A SKU, or several separated by commas or new lines"></textarea><button type="button" class="gbtn sec" id="dc-add-go" data-docs-act="addparts">Add</button></div>'
-      + '<div class="dc-h">End a SKU with * to add every part that starts with it, for example TGK-BL-*.</div>'
-      + '<div class="dc-note" id="dc-msg" role="status" aria-live="polite"></div><div id="dc-picks"></div>'
-      + '<div id="dc-parts"></div><div id="dc-acts"></div></div></div>';
-    renderFile(); renderParts();
+      + '<div class="dc-l">Parts</div><div id="dc-parts"></div><div id="dc-adder"></div>'
+      + '<div class="dc-note" id="dc-msg" role="status" aria-live="polite"></div><div id="dc-acts"></div></div></div>';
+    D.adding = !d.parts.length; D._sug = []; renderFile(); renderParts(); renderAdder();
   }
   function fmsg(t, bad) { var m = el('dc-fmsg'); if (m) { m.textContent = t || ''; m.className = 'dc-note' + (bad ? ' dc-bad' : ''); } }
   function dmsg(t, bad) { var m = el('dc-msg'); if (m) { m.textContent = t || ''; m.className = 'dc-note' + (bad ? ' dc-bad' : ''); } }
@@ -31757,7 +31762,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     a.innerHTML = '<div class="dc-acts"><button type="button" class="gbtn" id="dc-apply" data-docs-act="apply"' + (D.busy ? ' disabled' : '') + '>'
       + (pend.length && ref ? (anyOff ? 'Add to ' : 'Update ') + plural(pend.length, 'part', 'parts') : 'Add to parts') + '</button></div>'
       + (d.parts.length && !ref ? '<div class="dc-note">' + (d.kind === 'video' ? 'Paste the video link' : 'Upload the PDF') + ' first, then add it to these parts.</div>' : '')
-      + (!d.parts.length ? '<div class="dc-note">Add the parts this applies to, then press the button. Nothing changes on Shopify until you do.</div>' : '');
+      + (!d.parts.length ? '<div class="dc-note">Nothing changes on Shopify until you press the button.</div>' : '');
   }
   function setBusy(b) { D.busy = b; var x = el('dc-apply'); if (x) x.disabled = b; }
 
@@ -31797,51 +31802,69 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     if (e.code === 'not_deployed') setupHelp();
   }
 
-  /* ---------------------------------------------------------------- adding parts */
+  /* ---------------------------------------------------------------- adding parts: type a SKU, pick from Shopify, press + for the next one */
   function hasPart(d, id) { return d.parts.some(function (p) { return p.id === id; }); }
   function addPart(d, p) { if (hasPart(d, p.id)) return false; d.parts.push({ id: p.id, title: p.title, sku: (p.skus || [])[0] || '', ref: '' }); return true; }
-  async function addParts() {
-    var d = D.cur; if (!d) return;
-    var raw = el('dc-add').value, toks = raw.split(/[\n,;\t]+/).map(function (s) { return s.trim(); }).filter(Boolean);
-    if (!toks.length) { dmsg('Type a SKU, or paste a list.', 1); return; }
-    var cfg = await window.shpEnsureStatus();
-    if (!cfg || !cfg.ok) { dmsg('Shopify is not connected yet. Open Product Pages > Dashboard for the setup steps.', 1); return; }
-    var go = el('dc-add-go'); if (go) go.disabled = true; dmsg('Searching Shopify...'); el('dc-picks').innerHTML = '';
-    var added = 0, dupes = 0, missing = [], picks = [];
-    try {
-      for (var i = 0; i < toks.length; i++) {
-        var t = toks[i], wild = /\*$/.test(t), q = t.replace(/\*+$/, '');
-        var j = await window.shpCall({ action: 'search', query: q }), list = j.products || [];
-        if (wild) {
-          var pre = q.toLowerCase(), hits = list.filter(function (p) { return (p.skus || []).some(function (s) { return String(s).toLowerCase().indexOf(pre) === 0; }); });
-          if (!hits.length) missing.push(t);
-          hits.forEach(function (p) { if (addPart(d, p)) added++; else dupes++; });
-          continue;
-        }
-        var exact = list.filter(function (p) { return (p.skus || []).some(function (s) { return String(s).toLowerCase() === q.toLowerCase(); }); });
-        if (exact.length === 1) { if (addPart(d, exact[0])) added++; else dupes++; }
-        else if (list.length) { picks = picks.concat(list.slice(0, 6)); }
-        else missing.push(t);
-      }
-    } catch (e) { fail(e); if (go) go.disabled = false; return; }
-    if (go) go.disabled = false;
-    await save(); renderParts();
-    var parts = [];
-    if (added) parts.push('Added ' + plural(added, 'part', 'parts') + '.');
-    if (dupes) parts.push(plural(dupes, 'was', 'were') + ' already on the list.');
-    if (missing.length) parts.push('Not found: ' + missing.join(', ') + '.');
-    if (picks.length) parts.push('Pick the right one below.');
-    dmsg(parts.join(' ') || 'Nothing added.', !added && !picks.length);
-    if (added || !picks.length) el('dc-add').value = '';
-    var ph = el('dc-picks');
-    if (picks.length && ph) {
-      ph.innerHTML = '<div class="dc-picks">' + picks.map(function (p) {
-        return '<div class="wt-row"><div class="wt-row-t"><div class="wt-row-n">' + esc(p.title) + '</div><div class="wt-row-m">' + esc((p.skus || []).slice(0, 3).join(', ') || 'no SKU') + '</div></div>'
-          + '<div class="wt-row-a"><button type="button" class="gbtn sec" data-docs-act="pickpart" data-id="' + esc(p.id) + '">Add</button></div></div>';
-      }).join('') + '</div>';
-      D._picks = {}; picks.forEach(function (p) { D._picks[p.id] = p; });
-    }
+  var sugSeq = 0, sugTimer = null, sugIdx = -1;
+  function renderAdder() {
+    var h = el('dc-adder'), d = D.cur; if (!h || !d) return;
+    if (!D.adding) { h.innerHTML = '<button type="button" class="gbtn sec dc-plus" data-docs-act="plus">+ Add another part</button>'; return; }
+    h.innerHTML = '<div class="dc-l" style="margin-top:12px">' + (d.parts.length ? 'Add another part' : 'Add a part') + '</div>'
+      + '<input id="dc-add" class="dc-in" type="text" autocomplete="off" placeholder="Start typing a SKU or part name" aria-label="Find a part on Shopify" role="combobox" aria-expanded="false" aria-controls="dc-sug-list">'
+      + '<div id="dc-sug-list" role="listbox"></div>';
+    var i = el('dc-add'); if (i && D.focusAdd !== false) i.focus();
   }
+  function sugRender(msg) {
+    var h = el('dc-sug-list'), i = el('dc-add'); if (!h) return;
+    if (msg) { h.innerHTML = '<div class="dc-sug-list"><div class="dc-sug-msg">' + esc(msg) + '</div></div>'; if (i) i.setAttribute('aria-expanded', 'true'); return; }
+    var list = D._sug || [];
+    if (!list.length) { h.innerHTML = ''; if (i) i.setAttribute('aria-expanded', 'false'); return; }
+    h.innerHTML = '<div class="dc-sug-list">' + list.map(function (p, n) {
+      var added = hasPart(D.cur, p.id);
+      return '<div class="dc-sug' + (added ? ' is-added' : '') + (n === sugIdx ? ' on' : '') + '" role="option" data-docs-act="sugpick" data-id="' + esc(p.id) + '"><div class="wt-row-t"><div class="wt-row-n">' + esc(p.title) + '</div><div class="wt-row-m">'
+        + esc((p.skus || []).slice(0, 3).join(', ') || 'no SKU') + ' &middot; ' + esc(String(p.status || '').toLowerCase()) + '</div></div>' + (added ? '<span class="dc-st dc-st-off">Added</span>' : '') + '</div>';
+    }).join('') + '</div>';
+    if (i) i.setAttribute('aria-expanded', 'true');
+  }
+  function sugSearch(q) {
+    var my = ++sugSeq;
+    (async function () {
+      try {
+        var cfg = await window.shpEnsureStatus();
+        if (!cfg || !cfg.ok) { if (my === sugSeq) sugRender('Shopify is not connected yet. Open Product Pages > Dashboard for the setup steps.'); return; }
+        var j = await window.shpCall({ action: 'search', query: q });
+        if (my !== sugSeq) return;
+        D._sug = (j.products || []).slice(0, 8); sugIdx = D._sug.length ? 0 : -1;
+        if (!D._sug.length) sugRender('No part found for "' + q + '". Check the SKU or try a word from the name.'); else sugRender();
+      } catch (e) { if (my === sugSeq) sugRender(e.message); }
+    })();
+  }
+  function sugPick(id) {
+    var d = D.cur, p = (D._sug || []).filter(function (x) { return x.id === id; })[0]; if (!d || !p) return;
+    if (hasPart(d, p.id)) return;
+    addPart(d, p); save(); D._sug = []; D.adding = false; D.focusAdd = true;
+    renderParts(); renderAdder(); renderFile(); dmsg('Added ' + p.title + '.');
+  }
+  document.addEventListener('input', function (ev) {
+    var t = ev.target; if (!t || t.id !== 'dc-add' || !D.cur) return;
+    var q = t.value.trim(); clearTimeout(sugTimer); sugSeq++;
+    if (q.length < 2) { D._sug = []; sugRender(); return; }
+    sugRender('Searching Shopify...'); sugTimer = setTimeout(function () { sugSearch(q); }, 250);
+  });
+  document.addEventListener('keydown', function (ev) {
+    var t = ev.target; if (!t || t.id !== 'dc-add' || !D.cur) return;
+    var n = (D._sug || []).length;
+    if (ev.key === 'ArrowDown' && n) { ev.preventDefault(); sugIdx = (sugIdx + 1) % n; sugRender(); }
+    else if (ev.key === 'ArrowUp' && n) { ev.preventDefault(); sugIdx = (sugIdx - 1 + n) % n; sugRender(); }
+    else if (ev.key === 'Escape') { D._sug = []; sugRender(); }
+    else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      var q = t.value.trim().toLowerCase(), list = D._sug || [], pick = null;
+      list.forEach(function (p) { if (!pick && (p.skus || []).some(function (s) { return String(s).toLowerCase() === q; })) pick = p; });
+      if (!pick && sugIdx >= 0) pick = list[sugIdx];
+      if (pick) sugPick(pick.id);
+    }
+  });
 
   /* ---------------------------------------------------------------- putting it on Shopify */
   async function applyAll() {
@@ -31932,8 +31955,8 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     else if (act === 'back') closeDoc();
     else if (act === 'kind') { if (D.cur && !(D.cur.fileId || D.cur.url || D.cur.parts.length)) { D.cur.kind = t.getAttribute('data-k'); render(); } }
     else if (act === 'pick') { var f = el('dc-pdf'); if (f) f.click(); }
-    else if (act === 'addparts') addParts();
-    else if (act === 'pickpart') { var p = D._picks && D._picks[t.getAttribute('data-id')]; if (p && addPart(D.cur, p)) { save(); renderParts(); dmsg('Added ' + p.title + '.'); el('dc-picks').innerHTML = ''; } }
+    else if (act === 'plus') { D.adding = true; D.focusAdd = true; D._sug = []; renderAdder(); dmsg(''); }
+    else if (act === 'sugpick') sugPick(t.getAttribute('data-id'));
     else if (act === 'rm') removePart(t.getAttribute('data-id'));
     else if (act === 'apply') applyAll();
     else if (act === 'delete') deleteDoc();
