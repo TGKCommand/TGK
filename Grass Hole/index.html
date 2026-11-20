@@ -314,6 +314,7 @@ JOBS.forEach(j=>{ j.pay=Math.round(j.pay*1.4/5)*5; });      // money comes a lit
 JOBS.forEach(j => j.par = Math.round(60 + j.w*j.d*0.3));
 
 const ACH = [
+  ['drift','Sideways is a direction','Hold a powered drift for three seconds.'],['bale','Bale out','Blow a hay bale apart at speed.'],
   ['ebrake','Scandinavian flick','Hold a handbrake slide for two full seconds.'],
   ['race','Checkered flag','Win the county fair mower race.'],['coon','Trash panda','Run a raccoon off before he reaches your cooler.'],['kid','Get off my lawn','Send the kid with the BB gun home crying.'],['heat','Hotter’n hell','Go down with heatstroke.'],
   ['mole','Varmint control','Get a mole while his head is up.'],['caddy','Bushwood','Settle it with a bottle rocket.'],['tape','Engineer','Fix the mower with duct tape.'],['spitgnome','Right in the hat','Spit on a gnome.'],['mudbog','Mud bogger','Take the mud at full speed.'],['lotto','Retirement plan','Win big on a scratch-off.'],
@@ -1437,7 +1438,7 @@ function buildWorld(J){
 
   W.ramp=null; if(JOBS.indexOf(J)>=1&&!J.golf&&!J.stones&&!J.derby){ for(let q=0;q<40;q++){ const x=rr(-w/2+4,w/2-4), z=rr(-d/2+6,d/2-4); if(inPad(x,z,4)||inBed(x,z,3)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<3)) continue; const th=rr(0,6.283), g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=th;
       const pl=mesh(uvBox(1.5,.05,2.4,1,1.5),MT.wood,0,.32,0,g); pl.rotation.x=0.27; mesh(uvBox(1.4,.6,.08,1,.4),MT.wood,0,.3,-1.1,g); mesh(uvBox(.08,.3,.08,.1,.2),MT.wood,.6,.15,-.3,g); mesh(uvBox(.08,.3,.08,.1,.2),MT.wood,-.6,.15,-.3,g); world.add(g); W.ramp={x,z,th}; break; } }
-  W.pool=pool; W.stones=[]; W.dale=null; W.caus=null; W.cans=[]; W.flat=null; W.torn=null; W.moles=[]; W.crit=null; W.kid=undefined;
+  W.pool=pool; W.stones=[]; W.dale=null; W.caus=null; W.cans=[]; W.flat=null; W.torn=null; W.moles=[]; W.bales=[]; W.crit=null; W.kid=undefined;
   if(MD.stump&&!J.golf&&!J.derby&&JOBS.indexOf(J)>=1){ for(let q=0;q<40;q++){ const x=rr(-w/2+3,w/2-3), z=rr(-d/2+5,d/2-3); if(inPad(x,z,3)||inBed(x,z,2)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<2.5)||(W.ramp&&Math.hypot(W.ramp.x-x,W.ramp.z-z)<3)) continue; const m=mdMesh('stump',world); m.position.set(x,0,z); m.rotation.y=rr(0,6.28); m.scale.setScalar(1.5); W.stones.push({x,z,r:.5,stump:true}); break; } }
   if(MD.wreck&&houseHW>0&&JOBS.indexOf(J)>=1){ const x=houseX-houseHW+1.6, z=-d/2+2.6, m=mdMesh('wreck',world); m.position.set(x,0,z); m.rotation.y=rr(-.4,.4); W.stones.push({x,z,r:.95,wreck:true}); }
   { /* Earl's truck and trailer at the curb, just past the front fence */
@@ -2298,7 +2299,7 @@ function raceTrack(){ const Rc=G.derby.race, a=W.w/2-9, b=W.d/2-8, kind=S.track|
   /* hay bales down both edges, left open wherever the track runs alongside or across itself */
   const hayT=canvasTex(256,128,c=>{ c.fillStyle='#b08d3c'; c.fillRect(0,0,256,128); for(let i=0;i<1500;i++){ c.strokeStyle=['#d9bd6a','#8f6f28','#c6a650','#a07f33'][i%4]; c.lineWidth=0.6+Math.random(); const x=Math.random()*256, y=Math.random()*128, l=6+Math.random()*22, a_=(Math.random()-.5)*0.5; c.beginPath(); c.moveTo(x,y); c.lineTo(x+Math.cos(a_)*l,y+Math.sin(a_)*l); c.stroke(); } c.fillStyle='rgba(40,60,120,.75)'; c.fillRect(70,0,4,128); c.fillRect(182,0,4,128); }), hay=new THREE.MeshStandardMaterial({map:hayT,bumpMap:hayT,bumpScale:.02,roughness:1,envMapIntensity:.15});
   for(let i=0;i<nD;i+=2){ const q=dense[i]; for(const sd of [-1,1]){ const x=q[0]+q[3]*sd*(HW+0.75), z=q[1]-q[2]*sd*(HW+0.75); if(Math.abs(x)>W.w/2-1.4||Math.abs(z)>W.d/2-1.4) continue; let clear=true; for(let k=0;k<nD;k++){ const dk=Math.min(Math.abs(k-i),nD-Math.abs(k-i)); if(dk>7&&Math.hypot(dense[k][0]-x,dense[k][1]-z)<HW+0.9){ clear=false; break; } } if(!clear) continue;
-      box(1.1,.55,.6,hay,x,.275,z,world).rotation.y=Math.atan2(q[2],q[3])+Math.PI/2; W.stones.push({x,z,r:.62,stump:true}); } }
+      const th_=Math.atan2(q[2],q[3])+Math.PI/2, bm=box(1.1,.55,.6,hay,x,.275,z,world); bm.rotation.y=th_; (W.bales||(W.bales=[])).push({m:bm,x,z,th:th_,vx:0,vz:0,w:0,y:0,vy:0,rx:0,wx:0}); } }
   /* start and finish */
   const s0=dense[0], nx=s0[3], nz=-s0[2], wht=std({color:0xf2efe6,roughness:.7}), chk=canvasTex(256,32,c=>{ for(let y=0;y<2;y++) for(let x=0;x<16;x++){ c.fillStyle=(x+y)%2?'#111':'#f4f4f0'; c.fillRect(x*16,y*16,16,16); } }), ang=Math.atan2(-nz,nx);
   const ln=mesh(new THREE.PlaneGeometry(2*HW,0.7),new THREE.MeshBasicMaterial({map:chk}),s0[0],0.04,s0[1],world,false,false); ln.rotation.set(-Math.PI/2,0,ang);
@@ -2341,7 +2342,27 @@ function fairScene(){ const hw=W.w/2, hd=W.d/2, alu=std({color:0x9aa0a6,roughnes
   for(let dd=0;dd<per;dd+=8){ let x,z; if(dd<2*hw){ x=-hw+dd; z=-hd; } else if(dd<2*hw+2*hd){ x=hw; z=-hd+(dd-2*hw); } else if(dd<4*hw+2*hd){ x=hw-(dd-2*hw-2*hd); z=hd; } else { x=-hw; z=hd-(dd-4*hw-2*hd); } cyl(.04,.04,2.85,wht,x,1.42,z,world,5); }
   for(const sx of [-1,1]) for(const sz of [-1,1]){ cyl(.12,.14,9,alu,sx*(hw+1),4.5,sz*(hd+1),world,8); const lamp=box(1.6,.5,.25,new THREE.MeshBasicMaterial({color:0xfff6d8}),sx*(hw+1),9.1,sz*(hd+1),world); lamp.lookAt(0,0,0); } }
 const fairM=new THREE.Matrix4(), fairA=new THREE.Matrix4(), fairB=new THREE.Matrix4(), fairQ=new THREE.Quaternion(), fairE=new THREE.Euler(), fairV=new THREE.Vector3(), fairS=new THREE.Vector3(), fairZ=new THREE.Matrix4().makeScale(0.0001,0.0001,0.0001);
-function updateFair(dt){ const F=W.fair; if(!F) return; F.cheer=Math.max(0,F.cheer-dt*0.4); if(F.wheel){ F.wheel.rotation.z+=dt*0.12; for(const gg of F.gond) gg.rotation.z=-F.wheel.rotation.z; }
+/* A small square bale weighs about fifty pounds. A mower shoves it aside and barely slows; hit one flat out and it comes apart;
+   slide into one sideways and it can trip her over. Bales knock into each other and stay wherever they end up. */
+function baleBurst(b){ b.dead=true; world.remove(b.m); for(let q=0;q<46;q++){ const g_=rand(.65,.9); chunks.spawn(b.x+rand(-.4,.4),.2+rand(.5),b.z+rand(-.4,.4),b.vx*0.4+rand(-3,3),rand(1.5,6),b.vz*0.4+rand(-3,3),rand(1,2.4),g_,g_*0.82,g_*0.36,rand(.012,.035)); } if(AC){ const t=AC.currentTime; noise(t,0.25,0.5,'lowpass',500,0.8); } }
+function baleHit(b,ox,oz,vxw,vzw,mm,rad){ const dx=b.x-ox, dz=b.z-oz, d=Math.hypot(dx,dz)||0.001; if(d>=rad+0.5||b.y>0.5) return null; const nx=dx/d, nz=dz/d, vrel=(vxw-b.vx)*nx+(vzw-b.vz)*nz; b.x=ox+nx*(rad+0.5); b.z=oz+nz*(rad+0.5); if(vrel<=0) return {vrel:0,dvx:0,dvz:0};
+  const mb=24, j=1.25*vrel/(1/mm+1/mb); b.vx+=j/mb*nx; b.vz+=j/mb*nz; b.w+=rand(-1,1)*vrel*0.9; if(vrel>4.5){ b.vy=1.5+vrel*0.16; b.wx=rand(-7,7); }
+  if(vrel>2) for(let q=0;q<Math.min(14,vrel*1.5);q++){ const g_=rand(.65,.9); bits.spawn(b.x+rand(-.3,.3),.3,b.z+rand(-.3,.3),nx*rand(1,3)+rand(-1,1),rand(1,3),nz*rand(1,3)+rand(-1,1),rand(.5,1),g_,g_*0.82,g_*0.36,9,.5); }
+  return {vrel,dvx:-j/mm*nx,dvz:-j/mm*nz}; }
+function updateBales(dt){ const L=W.bales; if(!L||!L.length) return; const hw=W.w/2-0.6, hd=W.d/2-0.6;
+  if(G.mounted&&!G.rag){ const fxx=-Math.sin(M.th), fzz=-Math.cos(M.th), lxx=-Math.cos(M.th), lzz=Math.sin(M.th), vy_=M.vy||0, vxw=fxx*M.v+lxx*vy_, vzw=fzz*M.v+lzz*vy_;
+    for(const b of L){ if(b.dead||Math.abs(b.x-M.x)>2||Math.abs(b.z-M.z)>2) continue; const h=baleHit(b,M.x,M.z,vxw,vzw,320,0.68); if(!h||h.vrel<=0) continue;
+      M.v+=h.dvx*fxx+h.dvz*fzz; M.vy=vy_+h.dvx*lxx+h.dvz*lzz; if(h.vrel>1.5&&cooldown('baleThud',0.12)){ sfx.thud(); G.jolt=Math.max(G.jolt||0,Math.min(1,h.vrel/8)); }
+      if(Math.abs(vy_)>3&&h.vrel>3){ M.tip=Math.abs(vy_)>6?1.4:(M.tip||0)+0.7; }                 /* caught one sideways */
+      if(h.vrel>11){ baleBurst(b); damage(2); unlock('bale'); fairCheer(0.9,cooldown('baleLine',10)?pick(['HAY everywhere! Somebody get a rake!','That bale had a family!','He’s mowin’ the hay now, folks!']):''); } } }
+  for(const bt of derbyBots){ if(!bt.alive||bt.off) continue; const vxw=-Math.sin(bt.th)*bt.v, vzw=-Math.cos(bt.th)*bt.v; for(const b of L){ if(b.dead||Math.abs(b.x-bt.x)>2||Math.abs(b.z-bt.z)>2) continue; const h=baleHit(b,bt.x,bt.z,vxw,vzw,320,0.68); if(h&&h.vrel>0){ bt.v+=h.dvx*-Math.sin(bt.th)+h.dvz*-Math.cos(bt.th); if(h.vrel>11) baleBurst(b); } } }
+  for(let i=0;i<L.length;i++){ const b=L[i]; if(b.dead) continue; const sp=Math.hypot(b.vx,b.vz); if(sp<0.02&&b.y<=0&&Math.abs(b.w)<0.02) continue;
+    b.x+=b.vx*dt; b.z+=b.vz*dt; b.th+=b.w*dt; if(b.y>0||b.vy>0){ b.vy-=9.8*dt; b.y+=b.vy*dt; b.rx+=b.wx*dt; if(b.y<=0){ b.y=0; b.vy=0; b.wx=0; b.rx=Math.round(b.rx/(Math.PI/2))*(Math.PI/2); } }
+    else if(sp>0){ const dec=5.5*dt, k=sp<=dec?0:(sp-dec)/sp; b.vx*=k; b.vz*=k; } b.w*=Math.max(0,1-4*dt);
+    if(Math.abs(b.x)>hw){ b.x=Math.sign(b.x)*hw; b.vx*=-0.25; } if(Math.abs(b.z)>hd){ b.z=Math.sign(b.z)*hd; b.vz*=-0.25; }
+    if(sp>0.3) for(let j=0;j<L.length;j++){ if(j===i) continue; const c=L[j]; if(c.dead||Math.abs(c.x-b.x)>1||Math.abs(c.z-b.z)>1) continue; const dx=c.x-b.x, dz=c.z-b.z, d=Math.hypot(dx,dz)||0.001; if(d<0.95){ const nx=dx/d, nz=dz/d, vr=(b.vx-c.vx)*nx+(b.vz-c.vz)*nz; c.x=b.x+nx*0.95; c.z=b.z+nz*0.95; if(vr>0){ const jj=vr*0.6; b.vx-=jj*nx; b.vz-=jj*nz; c.vx+=jj*nx; c.vz+=jj*nz; c.w+=rand(-1,1)*vr; } } }
+    b.m.position.set(b.x,0.275+b.y,b.z); b.m.rotation.set(b.rx,b.th,0); } }
+function updateFair(dt){ updateBales(dt); const F=W.fair; if(!F) return; F.cheer=Math.max(0,F.cheer-dt*0.4); if(F.wheel){ F.wheel.rotation.z+=dt*0.12; for(const gg of F.gond) gg.rotation.z=-F.wheel.rotation.z; }
   const t=G.time, ch=Math.min(1,F.cheer), P=F.P;
   for(let i=0;i<F.ppl.length;i++){ const q=F.ppl[i], w_=Math.sin(t*q.f+q.ph), up=ch*q.ex>0.45?0.2*ch:0, y=q.y+up+Math.max(0,w_)*(0.01+0.05*ch*q.ex);
     fairE.set(0.04*w_*(0.3+ch),q.yaw+0.12*Math.sin(t*0.5+q.ph),0); fairQ.setFromEuler(fairE); fairM.compose(fairV.set(q.x,y,q.z),fairQ,fairS.setScalar(q.sc));
@@ -2871,15 +2892,17 @@ function mow(moved){
 /* The tractor as a real two-axle vehicle. Each axle's tires make sideways force from their slip angle, up to what the ground and the
    weight on them allow; the rear tires share that grip between driving, braking and cornering. Weight shifts back when she pulls and
    forward when she brakes. Below walking pace the tires just roll where they point. */
-function tireStep(dt,target,accRaw,mu,eb,gas){ const m=320, Iz=95, a=0.70, b=0.50, L=1.2, h=0.5, g=9.8, Cs=4.4+1.2*mu, n=4, hdt=dt/n, dl=M.delta; let vx=M.v, vy=M.vy||0, r=M.r||0, push=false, spin=false; if(!isFinite(vy)) vy=0; if(!isFinite(r)) r=0;
+function tireStep(dt,target,accRaw,mu,eb,gas){ const m=320, Iz=95, a=0.70, b=0.50, L=1.2, h=M.cgH||0.5, g=9.8, Cs=M.Cs||(4.4+1.2*mu), n=4, hdt=dt/n, dl=M.delta; let vx=M.v, vy=M.vy||0, r=M.r||0, push=false, spin=false; if(!isFinite(vy)) vy=0; if(!isFinite(r)) r=0;
   if(M.jy>0.05){ return {om:r,push:false,spin:false}; }
-  for(let i=0;i<n;i++){ const axP=M.axF||0, Fzf=Math.max(0.15*m*g,m*g*b/L-m*axP*h/L), Fzr=Math.max(0.15*m*g,m*g*a/L+m*axP*h/L), capR=mu*Fzr, axd=clamp((target-vx)/hdt,-accRaw,accRaw);
+  for(let i=0;i<n;i++){ const axP=M.axF||0, Fzf=Math.max(0.15*m*g,m*g*b/L-m*axP*h/L), Fzr=Math.max(0.15*m*g,m*g*a/L+m*axP*h/L), capR=mu*(M.rearK||1.06)*Fzr, axd=clamp((target-vx)/hdt,-accRaw,accRaw);
     let FxR=m*axd; if(eb>0.05) FxR=lerp(FxR,-Math.sign(vx||1)*capR*0.95*(Math.abs(vx)>0.05?1:0),eb);
-    if(Math.abs(FxR)>capR){ if(eb<=0.05&&axd>0&&Math.abs(target)>Math.abs(vx)) spin=true; FxR=Math.sign(FxR)*capR; }
-    const latR=Math.sqrt(Math.max(0,capR*capR-FxR*FxR))*(1-0.78*eb)+capR*0.06, k=vx>0?clamp((vx-1.6)/2.2,0,1):0; let Fyf=0, Fyr=0;
-    if(k>0){ const af=dl-Math.atan2(vy+a*r,vx), ar=-Math.atan2(vy-b*r,vx); Fyf=mu*Fzf*Math.tanh(Cs*af); Fyr=latR*Math.tanh(Cs*ar); if(Math.abs(af)>0.3&&Math.abs(dl)>0.2) push=true; }
+    { const kq=vx>1.6?1:0, arq=kq?-Math.atan2(vy-b*r,vx):0, need=kq?Math.abs(capR*Math.tanh(Cs*1.3*arq)):0, drifting=kq&&Math.abs(arq)>0.16&&(M.thr||0)>0.6&&eb<=0.05, lim=eb>0.05?capR:(drifting?lerp(0.9,0.2,clamp((Math.abs(Math.atan2(vy,Math.max(1,vx)))-0.33)/0.25,0,1))*capR:Math.max(0.3*capR,Math.sqrt(Math.max(0,0.94*0.94*capR*capR-need*need)))); if(drifting) M.driftF=2;      /* back end already out and his foot is in it: now the power goes to the tires first, and that is what holds the slide */ if(Math.abs(FxR)>lim){ if(eb<=0.05&&axd>0&&Math.abs(target)>Math.abs(vx)&&Math.abs(FxR)>capR) spin=true; FxR=Math.sign(FxR)*lim; } }      /* a driver feathers it at the edge of wheelspin; he does not sit there with the tires lit */
+    const latR=Math.sqrt(Math.max(0,capR*capR-FxR*FxR))*(1-0.78*eb)+capR*0.06, vt=Math.hypot(vx,vy), k0=vx>0?clamp((vt-1.6)/2.2,0,1):(Math.abs(vy)>1.2?1:0), k=(vt>1&&(eb>0.2||Math.abs(vy)>1.0))?Math.max(k0,clamp((vt-0.8)/0.8,0,1)):k0;      /* sliding sideways is still moving: the tires keep working on it until she has actually stopped */ let Fyf=0, Fyr=0;
+    if(k>0){ const af=dl-Math.atan2(vy+a*r,vx), ar=-Math.atan2(vy-b*r,vx); Fyf=mu*Fzf*Math.tanh(Cs*af); Fyr=latR*Math.tanh(Cs*1.3*ar); if(Math.abs(af)>0.3&&Math.abs(dl)>0.2) push=true; }
+    /* handbrake: a locked tire has no grip to steer with. It just drags, straight against whichever way that end of the mower is sliding. */
+    if(eb>0.05){ const vyr=vy-b*r, s_=Math.hypot(vx,vyr); if(s_>0.3){ const fk=0.8*capR; FxR=lerp(FxR,-fk*vx/s_,eb); Fyr=lerp(Fyr,-fk*vyr/s_,eb); } }
     const ax=(FxR-Fyf*Math.sin(dl))/m+vy*r*k-(Math.abs(vx)>0.15?0.035*g*Math.sign(vx):0); vx+=ax*hdt;
-    const vyd=vy+((Fyf*Math.cos(dl)+Fyr)/m-vx*r)*hdt, rd=r+((a*Fyf*Math.cos(dl)-b*Fyr)/Iz)*hdt, rk=vx*Math.tan(dl)/L;
+    const vyd=vy+((Fyf*Math.cos(dl)+Fyr)/m-vx*r)*hdt, bq=Math.atan2(vy,Math.max(1,vx)), cast=(Math.abs(bq)>0.36&&vx>2)?-Math.sign(r||1)*Math.min(30,60*(Math.abs(bq)-0.36)):0, rd=r+((a*Fyf*Math.cos(dl)-b*Fyr)/Iz+cast)*hdt, rk=vx*Math.tan(dl)/L;      /* past about 25 degrees of slide the front wheels' own caster pulls them into the skid, which is what stops a drift becoming a spin */
     vy=lerp(b*rk,vyd,k); r=lerp(rk,rd,k); M.axF=lerp(axP,ax,0.25); M.ay=k>0?(Fyf*Math.cos(dl)+Fyr)/m:vx*rk; }
   if(target===0&&Math.abs(vx)<0.06) vx=0;
   M.v=vx; M.vy=vy; M.r=r; return {om:r,push,spin}; }
@@ -2940,14 +2963,14 @@ function updatePlay(dt){
     const wob=(Math.sin(t*0.9)+0.6*Math.sin(t*2.3+1))*Math.max(0,buzz-0.15)*0.34;
     M.thr+=clamp(fz-M.thr,-dt*3.5,dt*3.5);
     const sp=Math.abs(M.v), want=clamp(-fx+wob,-1,1);
-    const srate=(PAD.wheel?14:(ZT()?5.5:(fx!==0?3.8:0.5+0.5*sp)))/(1+2.2*buzz);      // rolling forward pulls the wheel back toward straight
+    const srate=(PAD.wheel?14:(ZT()?5.5:(fx!==0?(Math.abs(M.vy||0)>1.2?7:3.8/(1+sp/7)):Math.min(4,0.5+0.5*sp))))/(1+2.2*buzz);      // rolling forward pulls the wheel back toward straight
     M.steer+=clamp(want-M.steer,-srate*dt,srate*dt);
     /* hydrostatic drive: tall grass loads the engine and bogs it down; lifting off coasts, reversing the pedal brakes hard */
     M.load+=((M.cutN>0?Math.min(1,M.cutN/12):0)-M.load)*Math.min(1,dt*4);
     const bog=1-0.3*M.load*(1-0.12*S.up.engine);
     const target=gas?(M.thr>0?vmax*M.thr*bog:Math.min(3.2,vmax*0.4)*M.thr):0;
     /* grip: dry cut grass holds well, tall grass less, wet grass hardly at all. It caps how hard she can launch, brake and corner. */
-    const mu=Math.max(0.2,(WX.kind==='rain'?0.45:0.85)-0.12*M.load-(M.mud?0.4:0)), grip=mu*9.8;
+    const mu=Math.max(0.2,(WX.kind==='rain'?0.45:0.85)-0.12*M.load-(M.mud?0.4:0))*(KL?[1,1.06,1.16,1.26,1.36][G.derby.cls||0]:1), grip=mu*9.8; M.cgH=KL?[0.5,0.46,0.4,0.34,0.3][G.derby.cls||0]:0.5; M.Cs=(KL?[5.6,7,9,11,13][G.derby.cls||0]:5.6)*(0.8+0.25*mu); M.rearK=KL?[1.06,1.14,1.26,1.38,1.5][G.derby.cls||0]:1.06;      /* wide rear tires: the back end holds on a little longer than the front, so at the limit she pushes wide before she spins */
     const speeding=Math.abs(target)>Math.abs(M.v)&&Math.sign(target)===Math.sign(M.v||target), accRaw=speeding?(KL?KL.acc:3.4):(fz===0?2.6:(KL?Math.max(6.5,KL.acc*1.2):6.5)), accLim=speeding?grip*0.5:grip*0.9, acc=Math.min(accRaw,accLim), prevV=M.v;
     M.spinning=gas&&speeding&&accRaw>accLim+0.15&&Math.abs(M.thr)>0.6;
     if(M.spinning&&Math.random()<dt*45) bits.spawn(M.x+Math.sin(M.th)*0.55+rand(-.35,.35),0.06,M.z+Math.cos(M.th)*0.55+rand(-.35,.35),Math.sin(M.th)*rand(1,3)+rand(-.5,.5),rand(.6,1.8),Math.cos(M.th)*rand(1,3)+rand(-.5,.5),.5,.24,.17,.09,9,.4);
@@ -2958,13 +2981,13 @@ function updatePlay(dt){
     const eb=Math.max(K.KeyV?1:0,PAD.eb||0); M.eb=eb;
     if(eb>0.05&&ZT()){ const dec=grip*0.7*eb*dt; M.v=Math.abs(M.v)<=dec?0:M.v-Math.sign(M.v)*dec; if(ZT()&&M.wl!==undefined){ M.wl=M.wr=M.v; } }
     /* front wheels steer, the mower pivots around its rear axle; a lawn tractor turns at full lock at mowing speed, and scrubs off a little speed doing it */
-    M.delta=M.steer*(PAD.wheel?0.7:lerp(0.78,0.42,clamp((sp-3.0)/4,0,1)))*(sp>7.5?7.5/sp:1); if(ZT()) M.v*=1-0.22*Math.abs(M.delta)*dt;
+    M.delta=M.steer*Math.min(PAD.wheel?0.7:lerp(0.78,0.42,clamp((sp-3.0)/4,0,1)),Math.atan(1.35*grip*1.2/Math.max(1,sp*sp))+1.3/(M.Cs||5.6)+((M.steer*(M.r||0)<0)?Math.min(1.0,Math.abs(Math.atan2(M.vy||0,Math.max(1.5,sp)))+0.2):0));      /* and when she is sideways you get the lock back, to catch it */      /* the faster she goes, the less wheel it takes: full lock asks for a little more than the tires can give, never ten times more */ if(ZT()) M.v*=1-0.22*Math.abs(M.delta)*dt;
     let om, push=false;
     if(ZT()) om=(M.wr-M.wl)/1.04;                    // a zero-turn spins on the spot: one wheel forward, one back
     else { const d_=tireStep(dt,target,accRaw,mu,eb,gas); om=d_.om; push=d_.push; M.spinning=d_.spin; }
     /* crank the wheel at speed on dry ground and the inside wheels lift; hold it and she goes over */
     /* She goes over two ways: cornering harder than a tall, narrow tractor can stand, or sliding sideways until the tires dig in and trip her. */
-    { const latG=ZT()?Math.abs(M.v*om)/9.8:Math.abs(M.ay||0)/9.8, tipG=KL?[0.70,0.74,0.78,0.80,0.82][G.derby.cls||0]:0.9, vyT=KL?[1.5,1.9,2.3,2.8,3.4][G.derby.cls||0]:1.8, trip=Math.abs(M.vy||0)>vyT&&mu>0.5; if(!ZT()&&sp>2.5&&!(M.jy>0)&&(latG>tipG||trip)) M.tip=Math.min(1.2,(M.tip||0)+dt*(trip?2.2+0.8*(Math.abs(M.vy)-vyT):1.6)); else M.tip=Math.max(0,(M.tip||0)-dt*2.5);
+    { const latG=ZT()?Math.abs(M.v*om)/9.8:Math.abs(M.ay||0)/9.8, tipG=KL?[0.72,0.85,1.05,1.35,1.6][G.derby.cls||0]:0.9, vyT=KL?[1.6,2.6,99,99,99][G.derby.cls||0]:1.8, trip=Math.abs(M.vy||0)>vyT&&mu>0.5; if(!ZT()&&sp>2.5&&!(M.jy>0)&&(latG>tipG||trip)) M.tip=Math.min(1.2,(M.tip||0)+dt*(trip?2.2+0.8*(Math.abs(M.vy)-vyT):1.6)); else M.tip=Math.max(0,(M.tip||0)-dt*2.5);
       if(M.tip>0.45&&!M.tipSaid){ M.tipSaid=true; say('Whoa, she’s liftin’!',false); } if(M.tip<0.1) M.tipSaid=false;
       if(M.tip>=1.2){ M.tip=0; const s0=sp, sd=Math.sign(M.v*om)||1; damage(18); sfx.thud(); eject('his own drivin’',s0); G.runaway=null; M.rolled={sd:(Math.abs(M.vy||0)>1?-Math.sign(M.vy):sd),a:0,to:s0>7?Math.PI:Math.PI/2,need:s0>7?6:3,n:0,slide:Math.min(6,s0*0.7)}; M.v=0; M.vy=0; M.om=0; M.r=0; M.eng=0; M.rpm=0; M.blades=false; toast(s0>7?'Rolled her onto her lid':'Rolled her','She stays there until you walk over and heave her back onto her wheels.','!'); } }
     const dth=om*dt;
@@ -2992,6 +3015,8 @@ function updatePlay(dt){
         M[key]=[wx,wz]; const ci=Math.floor((wx+W.w/2)/W.cw), cj=Math.floor((wz+W.d/2)/W.cd); if(ci>=0&&cj>=0&&ci<W.nx&&cj<W.nz){ const k=cj*W.nx+ci; if(W.cut[k]!==2&&!(W.torn&&W.torn[k])){ (W.torn||(W.torn=new Uint8Array(W.N)))[k]=1; if(W.flat&&W.flat.has(k)){ fM.fromArray(W.flat.get(k).m0); W.flat.delete(k); } else W.grass.getMatrixAt(k,fM); fM.decompose(fP,fQ,fS); fS.y*=0.22; fM.compose(fP,fQ,fS); W.grass.setMatrixAt(k,fM); W.grass.instanceMatrix.needsUpdate=true; } } }
       if(!G.derby&&(G.ruts||0)>12&&!G.rutSaid){ G.rutSaid=true; say(pick(['That’ll grow back. Probably.','Gonna tell ’em the dog did that.']),false); } }
     else { M.rutL=M.rutR=null; M.ebT=0; M.ebAch=false; }
+    { const beta=Math.abs(Math.atan2(M.vy||0,Math.max(1,Math.abs(M.v)))); M.driftF=Math.max(0,(M.driftF||0)-1); if(beta>0.2&&sp>4&&(M.driftF>0||eb>0.3)){ M.driftT=(M.driftT||0)+dt; if(M.driftT>3&&!M.driftAch){ M.driftAch=true; unlock('drift'); if(G.derby&&G.derby.race) fairCheer(1,'LOOK at that! Sideways on a LAWN MOWER!'); } } else { M.driftT=0; M.driftAch=false; }
+      if(beta>0.16&&sp>3.5&&!(M.jy>0.05)&&Math.random()<dt*45){ const sx=Math.random()<.5?-0.52:0.52, c_=Math.cos(M.th), s_=Math.sin(M.th), dirt=!!(G.derby&&G.derby.race); puffs.spawn(M.x+sx*c_+0.55*s_,0.12,M.z-sx*s_+0.55*c_,rand(-.5,.5),rand(.3,.9),rand(-.5,.5),rand(.9,1.8),dirt?.66:.4,dirt?.54:.5,dirt?.38:.25,-0.05,1.2); } }
     if(M.slide&&Math.abs(M.v)>2&&Math.random()<dt*30) bits.spawn(M.x+Math.sin(M.th)*0.5+rand(-.4,.4),0.05,M.z+Math.cos(M.th)*0.5+rand(-.4,.4),rand(-1,1),rand(.5,1.5),rand(-1,1),.6,.22,.15,.08,8,.5);
     if(gas){ M.fuel-=dt*((Math.abs(M.v)>0.3||M.blades)?(1+0.5*M.load):0.3); if(M.fuel<=0){ M.fuel=0; M.blades=false; M.eng=0; sfx.sputter(); say(pick(LINES.dry)); unlock('dry'); } }
     M.cutN=0;
