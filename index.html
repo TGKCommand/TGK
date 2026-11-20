@@ -20887,7 +20887,7 @@ window.ccSkuChanged = function(info){
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.35';
+var TGK_CC_VERSION='v7.36';
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
@@ -31623,10 +31623,10 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
 #docs-root .dc-picks{margin-top:6px;border:1px solid var(--border);border-radius:2px}
 #docs-root .dc-picks .wt-row{padding:8px 10px}
 #docs-root .dc-sug-list{border:1px solid var(--border);border-radius:2px;margin-top:4px;max-height:300px;overflow:auto;background:var(--card-bg)}
-#docs-root .dc-sug{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer}
+#docs-root .dc-sug{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border)}
 #docs-root .dc-sug:last-child{border-bottom:0}
 #docs-root .dc-sug:hover,#docs-root .dc-sug.on{background:rgba(42,191,170,.14)}
-#docs-root .dc-sug.is-added{opacity:.5;cursor:default}
+#docs-root .dc-sug.is-added .wt-row-t{opacity:.55}
 #docs-root .dc-sug-msg{padding:8px 10px;font-size:var(--t-sm);color:var(--text2)}
 #docs-root .dc-plus{margin-top:10px}
 @media (max-width:640px){#docs-root .dc-add{flex-direction:column}#docs-root .dc-add .gbtn,#docs-root .dc-acts .gbtn{width:100%}}
@@ -31811,8 +31811,13 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     if (!D.adding) { h.innerHTML = '<button type="button" class="gbtn sec dc-plus" data-docs-act="plus">+ Add another part</button>'; return; }
     h.innerHTML = '<div class="dc-l" style="margin-top:12px">' + (d.parts.length ? 'Add another part' : 'Add a part') + '</div>'
       + '<input id="dc-add" class="dc-in" type="text" autocomplete="off" placeholder="Start typing a SKU or part name" aria-label="Find a part on Shopify" role="combobox" aria-expanded="false" aria-controls="dc-sug-list">'
-      + '<div id="dc-sug-list" role="listbox"></div>';
+      + '<div id="dc-sug-list" role="listbox"></div><div id="dc-done"></div>';
+    updateDone();
     var i = el('dc-add'); if (i && D.focusAdd !== false) i.focus();
+  }
+  function updateDone() {
+    var h = el('dc-done'), d = D.cur; if (!h || !d) return;
+    h.innerHTML = d.parts.length ? '<button type="button" class="gbtn sec dc-plus" data-docs-act="doneadd">Done adding</button>' : '';
   }
   function sugRender(msg) {
     var h = el('dc-sug-list'), i = el('dc-add'); if (!h) return;
@@ -31821,8 +31826,8 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     if (!list.length) { h.innerHTML = ''; if (i) i.setAttribute('aria-expanded', 'false'); return; }
     h.innerHTML = '<div class="dc-sug-list">' + list.map(function (p, n) {
       var added = hasPart(D.cur, p.id);
-      return '<div class="dc-sug' + (added ? ' is-added' : '') + (n === sugIdx ? ' on' : '') + '" role="option" data-docs-act="sugpick" data-id="' + esc(p.id) + '"><div class="wt-row-t"><div class="wt-row-n">' + esc(p.title) + '</div><div class="wt-row-m">'
-        + esc((p.skus || []).slice(0, 3).join(', ') || 'no SKU') + ' &middot; ' + esc(String(p.status || '').toLowerCase()) + '</div></div>' + (added ? '<span class="dc-st dc-st-off">Added</span>' : '') + '</div>';
+      return '<div class="dc-sug' + (added ? ' is-added' : '') + (n === sugIdx ? ' on' : '') + '" role="option"><div class="wt-row-t"><div class="wt-row-n">' + esc(p.title) + '</div><div class="wt-row-m">'
+        + esc((p.skus || []).slice(0, 3).join(', ') || 'no SKU') + ' &middot; ' + esc(String(p.status || '').toLowerCase()) + '</div></div>' + (added ? '<span class="dc-st dc-st-on">Added</span>' : '<button type="button" class="gbtn sec" data-docs-act="sugpick" data-id="' + esc(p.id) + '">Add</button>') + '</div>';
     }).join('') + '</div>';
     if (i) i.setAttribute('aria-expanded', 'true');
   }
@@ -31834,7 +31839,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
         if (!cfg || !cfg.ok) { if (my === sugSeq) sugRender('Shopify is not connected yet. Open Product Pages > Dashboard for the setup steps.'); return; }
         var j = await window.shpCall({ action: 'search', query: q });
         if (my !== sugSeq) return;
-        D._sug = (j.products || []).slice(0, 8); sugIdx = D._sug.length ? 0 : -1;
+        D._sug = (j.products || []).slice(0, 30); sugIdx = D._sug.length ? 0 : -1;
         if (!D._sug.length) sugRender('No part found for "' + q + '". Check the SKU or try a word from the name.'); else sugRender();
       } catch (e) { if (my === sugSeq) sugRender(e.message); }
     })();
@@ -31842,8 +31847,8 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
   function sugPick(id) {
     var d = D.cur, p = (D._sug || []).filter(function (x) { return x.id === id; })[0]; if (!d || !p) return;
     if (hasPart(d, p.id)) return;
-    addPart(d, p); save(); D._sug = []; D.adding = false; D.focusAdd = true;
-    renderParts(); renderAdder(); renderFile(); dmsg('Added ' + p.title + '.');
+    addPart(d, p); save();
+    renderParts(); renderFile(); sugRender(); updateDone(); dmsg('Added ' + p.title + '.');
   }
   document.addEventListener('input', function (ev) {
     var t = ev.target; if (!t || t.id !== 'dc-add' || !D.cur) return;
@@ -31957,6 +31962,7 @@ window.fmOpen=fmOpen;window.fmLoad=fmLoad;
     else if (act === 'pick') { var f = el('dc-pdf'); if (f) f.click(); }
     else if (act === 'plus') { D.adding = true; D.focusAdd = true; D._sug = []; renderAdder(); dmsg(''); }
     else if (act === 'sugpick') sugPick(t.getAttribute('data-id'));
+    else if (act === 'doneadd') { D.adding = false; D._sug = []; renderAdder(); }
     else if (act === 'rm') removePart(t.getAttribute('data-id'));
     else if (act === 'apply') applyAll();
     else if (act === 'delete') deleteDoc();
