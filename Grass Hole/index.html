@@ -139,6 +139,10 @@ kbd{font-family:var(--body);font-weight:700;background:var(--paper);color:var(--
 .g-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px}
 .g-jobs .ticket{margin:0}
 .g-two{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+.padgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:6px 16px}
+.padrow{display:grid;grid-template-columns:1fr 90px auto 64px;gap:8px;align-items:center;background:var(--panel);border:2px solid var(--line);border-radius:6px;padding:5px 10px}
+.padrow.on{border-color:var(--yellow)}
+.padrow b{color:var(--yellow)}
 .lobby{display:grid;grid-template-columns:1fr 1.25fr;gap:0 28px}
 #chatLog{height:300px;overflow:auto;background:rgba(0,0,0,.35);border:2px solid var(--line);border-radius:8px;padding:8px 10px;line-height:1.45}
 .chatrow{display:flex;gap:8px;margin-top:8px} .chatrow input{flex:1;min-width:0;font:inherit;padding:8px 10px;border-radius:6px;border:2px solid var(--line);background:var(--paper);color:var(--ink)}
@@ -310,6 +314,7 @@ JOBS.forEach(j=>{ j.pay=Math.round(j.pay*1.4/5)*5; });      // money comes a lit
 JOBS.forEach(j => j.par = Math.round(60 + j.w*j.d*0.3));
 
 const ACH = [
+  ['ebrake','Scandinavian flick','Hold a handbrake slide for two full seconds.'],
   ['race','Checkered flag','Win the county fair mower race.'],['coon','Trash panda','Run a raccoon off before he reaches your cooler.'],['kid','Get off my lawn','Send the kid with the BB gun home crying.'],['heat','Hotter’n hell','Go down with heatstroke.'],
   ['mole','Varmint control','Get a mole while his head is up.'],['caddy','Bushwood','Settle it with a bottle rocket.'],['tape','Engineer','Fix the mower with duct tape.'],['spitgnome','Right in the hat','Spit on a gnome.'],['mudbog','Mud bogger','Take the mud at full speed.'],['lotto','Retirement plan','Win big on a scratch-off.'],
   ['puke','Spin cycle','Do donuts drunk until it comes back up.'],['recycle','Recycling','Run over your own empty with the blades on.'],
@@ -1432,7 +1437,7 @@ function buildWorld(J){
 
   W.ramp=null; if(JOBS.indexOf(J)>=1&&!J.golf&&!J.stones&&!J.derby){ for(let q=0;q<40;q++){ const x=rr(-w/2+4,w/2-4), z=rr(-d/2+6,d/2-4); if(inPad(x,z,4)||inBed(x,z,3)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<3)) continue; const th=rr(0,6.283), g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=th;
       const pl=mesh(uvBox(1.5,.05,2.4,1,1.5),MT.wood,0,.32,0,g); pl.rotation.x=0.27; mesh(uvBox(1.4,.6,.08,1,.4),MT.wood,0,.3,-1.1,g); mesh(uvBox(.08,.3,.08,.1,.2),MT.wood,.6,.15,-.3,g); mesh(uvBox(.08,.3,.08,.1,.2),MT.wood,-.6,.15,-.3,g); world.add(g); W.ramp={x,z,th}; break; } }
-  W.pool=pool; W.stones=[]; W.dale=null; W.caus=null; W.cans=[]; W.flat=null; W.moles=[]; W.crit=null; W.kid=undefined;
+  W.pool=pool; W.stones=[]; W.dale=null; W.caus=null; W.cans=[]; W.flat=null; W.torn=null; W.moles=[]; W.crit=null; W.kid=undefined;
   if(MD.stump&&!J.golf&&!J.derby&&JOBS.indexOf(J)>=1){ for(let q=0;q<40;q++){ const x=rr(-w/2+3,w/2-3), z=rr(-d/2+5,d/2-3); if(inPad(x,z,3)||inBed(x,z,2)||W.trees.some(t=>Math.hypot(t.x-x,t.z-z)<2.5)||(W.ramp&&Math.hypot(W.ramp.x-x,W.ramp.z-z)<3)) continue; const m=mdMesh('stump',world); m.position.set(x,0,z); m.rotation.y=rr(0,6.28); m.scale.setScalar(1.5); W.stones.push({x,z,r:.5,stump:true}); break; } }
   if(MD.wreck&&houseHW>0&&JOBS.indexOf(J)>=1){ const x=houseX-houseHW+1.6, z=-d/2+2.6, m=mdMesh('wreck',world); m.position.set(x,0,z); m.rotation.y=rr(-.4,.4); W.stones.push({x,z,r:.95,wreck:true}); }
   { /* Earl's truck and trailer at the curb, just past the front fence */
@@ -1778,7 +1783,7 @@ function finishJob(fromNet){
     mpBase=Math.round(JOBS[G.job].pay*(1+0.25*(ids.length-1))*mine/tot);
     if(Net.mode==='versus'&&ids.length>1&&ids.every(k=>sc[k]<=mine)) vsBonus=Math.round(JOBS[G.job].pay*0.5);
     mpRows='<table>'+ids.sort((a,b)=>sc[b]-sc[a]).map(k=>`<tr><td>${esc(nm[k]||'Somebody')}${k===Net.id?' (you)':''}</td><td>${Math.round(sc[k]/tot*100)}% of the lawn</td></tr>`).join('')+'</table>'; }
-  const J=JOBS[G.job], base=mpBase===null?J.pay:mpBase, sharp=Math.round(base*(UPG.blades.val[S.up.blades]-1)), fast=G.time<=J.par?Math.round(base*0.25):0, perfect=W.cutCount>=W.total?Math.round(base*0.2):0, gn=G.gnomes*8, win=-25*(G.windows||0), wxB=(WX.kind==='rain'||WX.kind==='night')?Math.round(base*0.15):0, strP=(J.golf&&(G.strT||0)>5)?(G.strS||0)/G.strT:0, strB=Math.round(base*0.5*strP), poolC=-40*(G.pools||0), fine=-(G.fine||0), gagC=-40*(G.burn||0)-15*(G.sprk||0)-20*(G.potty||0)-25*(G.garden||0)-3*(G.fenceB||0), qPay=questPay(), moleC=10*(G.moles||0), repC=-Math.round((M.dmg||0)*0.3), total=Math.max(0,base+sharp+fast+perfect+gn+vsBonus+win+wxB+strB+poolC+fine+repC+gagC+qPay+moleC);
+  const J=JOBS[G.job], base=mpBase===null?J.pay:mpBase, sharp=Math.round(base*(UPG.blades.val[S.up.blades]-1)), fast=G.time<=J.par?Math.round(base*0.25):0, perfect=W.cutCount>=W.total?Math.round(base*0.2):0, gn=G.gnomes*8, win=-25*(G.windows||0), wxB=(WX.kind==='rain'||WX.kind==='night')?Math.round(base*0.15):0, strP=(J.golf&&(G.strT||0)>5)?(G.strS||0)/G.strT:0, strB=Math.round(base*0.5*strP), poolC=-40*(G.pools||0), fine=-(G.fine||0), gagC=-40*(G.burn||0)-15*(G.sprk||0)-20*(G.potty||0)-25*(G.garden||0)-3*(G.fenceB||0)-Math.min(40,Math.floor((G.ruts||0)/3)), qPay=questPay(), moleC=10*(G.moles||0), repC=-Math.round((M.dmg||0)*0.3), total=Math.max(0,base+sharp+fast+perfect+gn+vsBonus+win+wxB+strB+poolC+fine+repC+gagC+qPay+moleC);
   S.money+=total; S.earned+=total; S.stats.jobs++; S.done[G.job]=1; S.unlocked=Math.max(S.unlocked, Math.min(JOBS.length,G.job+2));
   if(!S.best[G.job]||G.time<S.best[G.job]) S.best[G.job]=Math.round(G.time);
   unlock('job1'); if(S.stats.jobs>=5) unlock('job5'); if(JOBS.every((j_,i)=>j_.derby||S.done[i])) unlock('all'); if(perfect) unlock('perfect'); if(fast) unlock('fast'); if(S.earned>=1000) unlock('rich');
@@ -2428,7 +2433,7 @@ function review(){
   const dd=[], Pd=G.peed||{};
   if(Pd.hyd) dd.push('urinated on my hydrangeas'); if(Pd.pool) dd.push('peed in my pool'); if(G.burn) dd.push('set my fence on fire with my own grill'); if(G.potty) dd.push('tipped over a porta-potty with my husband in it');
   if(G.rags) dd.push('was thrown off his own mower '+(G.rags>1?G.rags+' times':'and chased it across the yard')); if(G.tasedN) dd.push('got tased by the police on my lawn'); if(G.windows) dd.push('put a ball through my window');
-  if(G.wet) dd.push('wet himself'); if((G.flirtN||0)>=2) dd.push('hit on my neighbor '+G.flirtN+' times'); if(G.sprk) dd.push('ran over my sprinkler'); if(G.garden) dd.push('drove through my vegetable garden'); if((G.horns||0)>=6) dd.push('laid on the horn '+G.horns+' times'); if(G.puked) dd.push('threw up on my lawn'); if(G.heatN) dd.push('passed out from the heat in my flower bed'); if((G.spits||0)>=8) dd.push('spat tobacco all over my driveway'); if(W.cans&&W.cans.length>=2) dd.push('left '+W.cans.length+' beer cans in my yard'); if((G.fenceB||0)>=6) dd.push('knocked '+G.fenceB+' boards out of my fence'); if(G.gnomes>=2) dd.push('murdered '+G.gnomes+' gnomes');
+  if(G.wet) dd.push('wet himself'); if((G.flirtN||0)>=2) dd.push('hit on my neighbor '+G.flirtN+' times'); if(G.sprk) dd.push('ran over my sprinkler'); if(G.garden) dd.push('drove through my vegetable garden'); if((G.horns||0)>=6) dd.push('laid on the horn '+G.horns+' times'); if(G.puked) dd.push('threw up on my lawn'); if((G.ruts||0)>25) dd.push('did handbrake turns across my lawn and left ruts'); if(G.heatN) dd.push('passed out from the heat in my flower bed'); if((G.spits||0)>=8) dd.push('spat tobacco all over my driveway'); if(W.cans&&W.cans.length>=2) dd.push('left '+W.cans.length+' beer cans in my yard'); if((G.fenceB||0)>=6) dd.push('knocked '+G.fenceB+' boards out of my fence'); if(G.gnomes>=2) dd.push('murdered '+G.gnomes+' gnomes');
   if(dd.length){ const k=dd.slice(0,3), st=clamp(5-dd.length,1,4), txt='He '+(k.length>1?k.slice(0,-1).join(', ')+' and '+k[k.length-1]:k[0])+'. '+(W.cutCount>=W.total?'Lawn looks great, though.':'And he missed a spot.'); return '★'.repeat(st)+'☆'.repeat(5-st)+' “'+txt+'”'; }
   const r=[];
   if(G.farts>=5) r.push([1,'He farted so loud my dog filed a noise complaint.']);
@@ -2537,6 +2542,7 @@ function doAction(id){
     case 'rocket': if(cooldown('rocket',0.5)) fireRocket(); break;
     case 'trim': if(G.mounted) say('The trimmer’s for when you’re on foot.',false); else { G.trim=!G.trim; sfx.click(); say(G.trim?'Trimmer’s out. Walk it along the edges.':'Trimmer’s put away.',false); } break;
     case 'chat': if(!Net.on) say('Nobody to talk to. Join a lobby first.',false); else { const t=window.prompt('Say to your party:'); if(t) sendChat(t); } break;
+    case 'ebrake': break;
     case 'horn': doHorn(); break;
     case 'tape': doTape(); break;
     case 'spit': doSpit(); break;
@@ -2875,6 +2881,9 @@ function updatePlay(dt){
     if(ZT()){ /* two wheel motors, each with its own inertia */ const tR=gas?target+M.steer*1.2:0, tL=gas?target-M.steer*1.2:0, wa=Math.min(6,grip*0.8)*dt; if(M.wl===undefined){ M.wl=M.v; M.wr=M.v; }
       const cur=(M.wl+M.wr)/2; M.wl+=M.v-cur; M.wr+=M.v-cur; M.wl+=clamp(tL-M.wl,-wa,wa); M.wr+=clamp(tR-M.wr,-wa,wa); M.v=(M.wl+M.wr)/2; }
     else M.v+=clamp(target-M.v,-acc*dt,acc*dt);
+    /* handbrake: locks the back wheels. They stop driving, stop gripping sideways, and dig in. */
+    const eb=Math.max(K.KeyV?1:0,PAD.eb||0); M.eb=eb;
+    if(eb>0.05){ const dec=grip*0.7*eb*dt; M.v=Math.abs(M.v)<=dec?0:M.v-Math.sign(M.v)*dec; if(ZT()&&M.wl!==undefined){ M.wl=M.wr=M.v; } }
     /* front wheels steer, the mower pivots around its rear axle; a lawn tractor turns at full lock at mowing speed, and scrubs off a little speed doing it */
     M.delta=M.steer*lerp(0.9,0.5,clamp((sp-3.2)/4,0,1)); M.v*=1-0.22*Math.abs(M.delta)*dt;
     let om, push=false;
@@ -2884,9 +2893,10 @@ function updatePlay(dt){
     { const latG=Math.abs(M.v*om)/9.8; if(!ZT()&&latG>0.6&&sp>4.2&&mu>0.6&&!(M.jy>0)) M.tip=Math.min(1.2,(M.tip||0)+dt*1.5); else M.tip=Math.max(0,(M.tip||0)-dt*2.5);
       if(M.tip>0.45&&!M.tipSaid){ M.tipSaid=true; say('Whoa, she’s liftin’!',false); } if(M.tip<0.1) M.tipSaid=false;
       if(M.tip>=1.2){ M.tip=0; const s0=sp; damage(18); M.v*=0.2; sfx.thud(); toast('Rolled her','Ease off before you crank the wheel.','!'); eject('his own drivin’',s0); } }
+    if(eb>0.3&&Math.abs(M.v)>1.2&&!ZT()) om*=1+0.9*eb;
     const dth=om*dt;
     /* the tires only hold so well: at speed the mower keeps sliding the way it was going for a moment */
-    M.vh+=angDiff(M.th,M.vh)*Math.min(1,lerp(45,16,clamp((sp-3)/4,0,1))*Math.pow(mu/0.85,3)*(push?0.5:1)*dt);
+    M.vh+=angDiff(M.th,M.vh)*Math.min(1,lerp(45,16,clamp((sp-3)/4,0,1))*Math.pow(mu/0.85,3)*(push?0.5:1)*(1-0.93*eb)*dt);
     const rx0=M.x+Math.sin(M.th)*0.5, rz0=M.z+Math.cos(M.th)*0.5;
     M.th+=dth;
     const rx1=rx0-Math.sin(M.vh)*M.v*dt, rz1=rz0-Math.cos(M.vh)*M.v*dt;
@@ -2899,6 +2909,13 @@ function updatePlay(dt){
     M.rpm+=((gas?((M.blades||fz!==0)?1:0.45)-0.22*M.load:0)-M.rpm)*Math.min(1,dt*3);
     if(WX.kind==='rain'&&Math.abs(M.v)>1.4&&Math.random()<dt*50){ const sd=Math.random()<.5?-1:1; bits.spawn(M.x+Math.sin(M.th)*0.6+Math.cos(M.th)*0.5*sd,0.08,M.z+Math.cos(M.th)*0.6-Math.sin(M.th)*0.5*sd,Math.sin(M.th)*rand(.5,2)+rand(-.6,.6),rand(.8,2.2),Math.cos(M.th)*rand(.5,2)+rand(-.6,.6),rand(.3,.6),.75,.85,.95,9.8,0); }
     if((M.dmg||0)>55&&M.eng===2&&Math.random()<dt*0.35*(M.dmg/100)){ if(AC){ const t=AC.currentTime; noise(t,0.05,0.7,'lowpass',900,0.8); tone('sine',130,48,t,0.09,0.5); } for(let q=0;q<4;q++) puffs.spawn(M.x-Math.sin(M.th)*0.9+rand(-.1,.1),1.1,M.z-Math.cos(M.th)*0.9+rand(-.1,.1),rand(-.4,.4),rand(.6,1.4),rand(-.4,.4),rand(.6,1.1),.06,.06,.06,-0.1,1); M.rpm*=0.55; M.v*=0.9; G.jolt=Math.max(G.jolt||0,0.25); if(cooldown('cough',25)) say(pick(['She’s runnin’ on spite.','That don’t sound cheap.','C’mon, girl. One more yard.']),false); }
+    if(eb>0.4&&Math.abs(M.v)>1.0&&!(M.jy>0.05)){ const c_=Math.cos(M.th), s_=Math.sin(M.th); M.ebT=(M.ebT||0)+dt; if(M.ebT>2&&!M.ebAch){ M.ebAch=true; unlock('ebrake'); }
+      if(AC&&cooldown('skid',0.16)) noise(AC.currentTime,0.2,0.16*eb,'bandpass',420,0.9);
+      for(const sx of [0.52,-0.52]){ const wx=M.x+sx*c_+0.55*s_, wz=M.z-sx*s_+0.55*c_, key=sx>0?'rutR':'rutL', lp=M[key]; if(Math.random()<dt*40){ const g_=rand(.3,.5); chunks.spawn(wx,0.08,wz,Math.sin(M.th)*rand(.5,2.5)+rand(-1,1),rand(.8,2.4),Math.cos(M.th)*rand(.5,2.5)+rand(-1,1),rand(.8,1.6),Math.random()<.5?g_*0.6:.26,Math.random()<.5?g_:.18,.09,rand(.012,.03)); }
+        if(lp&&Math.hypot(wx-lp[0],wz-lp[1])<1.5){ const g2=W.ctx; g2.strokeStyle='rgba(64,46,28,.85)'; g2.lineCap='round'; g2.lineWidth=0.2/W.cw*PX; g2.beginPath(); g2.moveTo(W.tx(lp[0]),W.tz(lp[1])); g2.lineTo(W.tx(wx),W.tz(wz)); g2.stroke(); W.tex.needsUpdate=true; if(!G.derby) G.ruts=(G.ruts||0)+Math.hypot(wx-lp[0],wz-lp[1])/2; }
+        M[key]=[wx,wz]; const ci=Math.floor((wx+W.w/2)/W.cw), cj=Math.floor((wz+W.d/2)/W.cd); if(ci>=0&&cj>=0&&ci<W.nx&&cj<W.nz){ const k=cj*W.nx+ci; if(W.cut[k]!==2&&!(W.torn&&W.torn[k])){ (W.torn||(W.torn=new Uint8Array(W.N)))[k]=1; if(W.flat&&W.flat.has(k)){ fM.fromArray(W.flat.get(k).m0); W.flat.delete(k); } else W.grass.getMatrixAt(k,fM); fM.decompose(fP,fQ,fS); fS.y*=0.22; fM.compose(fP,fQ,fS); W.grass.setMatrixAt(k,fM); W.grass.instanceMatrix.needsUpdate=true; } } }
+      if(!G.derby&&(G.ruts||0)>12&&!G.rutSaid){ G.rutSaid=true; say(pick(['That’ll grow back. Probably.','Gonna tell ’em the dog did that.']),false); } }
+    else { M.rutL=M.rutR=null; M.ebT=0; M.ebAch=false; }
     if(M.slide&&Math.abs(M.v)>2&&Math.random()<dt*30) bits.spawn(M.x+Math.sin(M.th)*0.5+rand(-.4,.4),0.05,M.z+Math.cos(M.th)*0.5+rand(-.4,.4),rand(-1,1),rand(.5,1.5),rand(-1,1),.6,.22,.15,.08,8,.5);
     if(gas){ M.fuel-=dt*((Math.abs(M.v)>0.3||M.blades)?(1+0.5*M.load):0.3); if(M.fuel<=0){ M.fuel=0; M.blades=false; M.eng=0; sfx.sputter(); say(pick(LINES.dry)); unlock('dry'); } }
     M.cutN=0;
@@ -2935,7 +2952,7 @@ function placeCamera(dt){ padPoll(dt);
   mower.position.set(M.x,(bounce)+(M.jy||0)-((G&&G.sunk>0)?Math.min(0.95,(3.2-G.sunk)*0.55):0),M.z); mower.rotation.set(M.pitch+(wn(M.x*1.1+9,M.z*1.1)-.5)*0.03*Math.min(1,Math.abs(M.v)/2),M.th,M.roll+(M.rpm>0.05?Math.sin(t*(38+30*M.rpm))*0.0035*(1.3-M.rpm):0));
   swSpin.rotation.z=M.steer*1.2;
   fuelNeedle.rotation.z=2.0-4.0*clamp(M.fuel/UPG.tank.val[S.up.tank],0,1); rpmNeedle.rotation.z=2.0-4.0*clamp(M.rpm*0.78+(M.rpm>0.05?Math.sin(t*37)*0.012:0),0,1); M.spin+=M.v*dt/0.3; pto.position.z=M.blades?0.075:0.05;
-  wheels[0].m.rotation.x=wheels[1].m.rotation.x=-M.spin; wheels[2].m.rotation.x=wheels[3].m.rotation.x=-M.spin*1.5;
+  if(!((M.eb||0)>0.5&&G&&G.mounted)) M.spinR=M.spin; wheels[0].m.rotation.x=wheels[1].m.rotation.x=-(M.spinR||0); wheels[2].m.rotation.x=wheels[3].m.rotation.x=-M.spin*1.5;
   wheels[2].piv.rotation.y=wheels[3].piv.rotation.y=M.delta;
   { const k=clamp(((M.dmg||0)-40)/60,0,1); wheels[0].piv.rotation.z=Math.sin(M.spin)*0.1*k; wheels[3].piv.rotation.z=Math.sin(M.spin*1.5+1)*0.15*k; wheels[2].piv.rotation.z=0; wheels[1].piv.rotation.z=0; }
   const roll=Math.sin(t*1.3)*b*0.06+Math.sin(t*0.5+1)*b*0.05, sway=Math.sin(t*0.7)*b*0.07, nod=Math.sin(t*0.9+1)*b*0.04+(G?G.jolt*0.035:0);
@@ -2995,7 +3012,7 @@ function updateAudio(){
   engine.o.frequency.setTargetAtTime(f,t,0.05); engine.bo.frequency.setTargetAtTime(bq,t,0.3); engine.nf.frequency.setTargetAtTime(nq,t,0.15);
   engine.hg.gain.setTargetAtTime(hg,t,0.1); engine.hy.frequency.setTargetAtTime(hf,t,0.1);
 }
-const ACTIONS=[['Mow',[['use','E','Hop on/off'],['blades','Space','Blades'],['trim','Q','Trimmer'],['gas','R','Gas up'],['tape','K','Duct tape']]],['Trouble',[['punch','F','Punch'],['rocket','G','Rocket'],['horn','H','Horn']]],['Earl',[['beer','1','Beer'],['smoke','2','Smoke'],['burp','3','Burp'],['fart','4','Fart'],['swear','5','Cuss'],['pee','6','Leak'],['flirt','7','Flirt'],['spit','8','Spit']]],['',[['radio','T','Radio'],['chat','C','Chat'],['pause','P','Pause']]]];
+const ACTIONS=[['Mow',[['use','E','Hop on/off'],['blades','Space','Blades'],['trim','Q','Trimmer'],['gas','R','Gas up'],['tape','K','Duct tape'],['ebrake','V','E-brake']]],['Trouble',[['punch','F','Punch'],['rocket','G','Rocket'],['horn','H','Horn']]],['Earl',[['beer','1','Beer'],['smoke','2','Smoke'],['burp','3','Burp'],['fart','4','Fart'],['swear','5','Cuss'],['pee','6','Leak'],['flirt','7','Flirt'],['spit','8','Spit']]],['',[['radio','T','Radio'],['chat','C','Chat'],['pause','P','Pause']]]];
 $('#actions').innerHTML=ACTIONS.map(g=>`<div class="grp">${g[0]?`<i>${g[0]}</i>`:''}${g[1].map(a=>`<button type="button" data-do="${a[0]}"><kbd>${a[1]}</kbd><span>${a[2]}</span></button>`).join('')}</div>`).join('');
 const IS_TOUCH=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);
 let tMain=null, tA=null;
@@ -3094,9 +3111,12 @@ $('#menu').addEventListener('click', e=>{
   const b=e.target.closest('[data-act]'); if(!b||b.disabled) return; initAudio();
   const a=b.dataset.act, arg=b.dataset.arg; if(a!=='wipe') wipeArmed=false;
   { const nmEl=$('#mpName'); if(nmEl){ S.opts.name=esc(nmEl.value).trim().slice(0,12)||'Earl'; save(); } }
-  if(a==='tab'){ garTab=arg; garMsg=''; PAD.learn=null; showGarage(); return; }
+  if(a==='tab'){ garTab=arg; garMsg=''; PAD.learn=null; PAD.bind=null; showGarage(); return; }
   if(a==='padsetup'){ const g=padGet(); if(!g){ PAD.msg='Nothing found yet. Plug it in, then press any button on it so the browser can see it.'; } else { S.opts.pad={id:g.id,btn:{}}; PAD.learn={i:0,t:0,base:null,hold:0}; PAD.msg=''; } showGarage(); return; }
   if(a==='padskip'){ if(PAD.learn){ PAD.learn.i++; PAD.learn.base=null; PAD.learn.hold=0; if(PAD.learn.i>=PADSTEPS.length){ PAD.learn=null; save(); } } showGarage(); return; }
+  if(a==='padbind'){ PAD.bind=PAD.bind===arg?null:arg; showGarage(); return; }
+  if(a==='padunbind'&&arg==='ebrake'&&S.opts.pad&&S.opts.pad.ebrake){ delete S.opts.pad.ebrake; save(); showGarage(); return; }
+  if(a==='padunbind'){ const g=padGet(), c=S.opts.pad||(S.opts.pad={id:g?g.id:'',btn:{}}); c.btn=padBtns(g); delete c.btn[arg]; if(!c.steer&&g&&g.mapping==='standard') c.btnAll=1; save(); showGarage(); return; }
   if(a==='padclear'){ delete S.opts.pad; PAD.learn=null; PAD.msg='Setup forgotten.'; save(); showGarage(); return; }
   if(a==='scratch'){ if(S.money<5){ garMsg='You’re five dollars short of a dream.'; } else { S.money-=5; const r=Math.random(), win=r<0.56?0:r<0.80?5:r<0.92?15:r<0.975?50:r<0.997?200:1000; S.money+=win; if(win>=200) unlock('lotto'); sfx.cash();
       garMsg=win===0?pick(['Three cherries and a lemon. Nothing.','“Better luck next time.” It says that every time.','You scratched it with your truck key and your hopes.','Loser. The ticket, not you. Mostly.']):win===5?'Won your five bucks back. That’s basically profit.':win===15?'Fifteen dollars! Beer’s on the lottery.':win===50?'FIFTY. Tell nobody. Especially not Dale.':win===200?'TWO HUNDRED DOLLARS. Earl does a little dance in the parking lot.':'ONE THOUSAND DOLLARS. The cashier has to call a manager.'; save(); } showGarage(); return; }
@@ -3146,12 +3166,15 @@ document.addEventListener('pointerlockchange', ()=>{ locked=document.pointerLock
 const PAD={x:0,z:0,wheel:false,prev:[],learn:null,msg:'',rum:0};
 const PADSTEPS=[['sl','Turn the wheel all the way LEFT and hold it'],['sr','Turn the wheel all the way RIGHT and hold it'],['gas','Press the GAS pedal to the floor and hold it'],['brake','Press the BRAKE pedal to the floor and hold it (it is also reverse)'],
   ['b:blades','Press the button you want for BLADES'],['b:use','Press the button for HOP ON / OFF'],['b:horn','Press the button for the HORN'],['b:punch','Press the button for PUNCH'],['b:rocket','Press the button for BOTTLE ROCKET'],['b:beer','Press the button for BEER'],['b:pause','Press the button for PAUSE']];
+const PADACTS=[['use','Hop on / off'],['blades','Blades'],['trim','Trimmer'],['gas','Gas up'],['tape','Duct tape'],['punch','Punch'],['rocket','Bottle rocket'],['horn','Horn'],['beer','Beer'],['smoke','Smoke'],['burp','Burp'],['fart','Fart'],['swear','Cuss'],['pee','Leak'],['flirt','Flirt'],['spit','Spit'],['radio','Radio'],['chat','Chat'],['pause','Pause'],['ebrake','E-brake (hold)']];
+const PADSTD={use:0,punch:1,blades:2,horn:3,beer:4,rocket:5,pause:9,radio:12,fart:13,burp:14,swear:15};
+function padBtns(g){ const c=S.opts.pad; return Object.assign({},(g&&g.mapping==='standard'&&!(c&&c.steer))?PADSTD:{},(c&&c.btn)||{}); }
 function padGet(){ const gs=navigator.getGamepads?navigator.getGamepads():[], want=S.opts.pad&&S.opts.pad.id; let best=null; for(const g of gs){ if(!g||!g.connected) continue; if(want&&g.id===want) return g; if(!best) best=g; } return best; }
 function padPanel(){ const g=padGet(), c=S.opts.pad, L=PAD.learn; let st;
   if(L) st='<b>Step '+(L.i+1)+' of '+PADSTEPS.length+':</b> '+PADSTEPS[L.i][1]+'.';
   else if(!g) st=PAD.msg||'No wheel or controller seen. Plug it in, then press any button on it. Works in Chrome and Edge.';
   else st='Found: <b>'+esc(g.id.slice(0,60))+'</b>. '+(c&&c.steer?'Set up: steering, '+(c.gas?'gas, ':'')+(c.brake?'brake, ':'')+Object.keys(c.btn||{}).length+' buttons.':(g.mapping==='standard'?'This is a standard controller, so it works already: left stick steers, right trigger is gas, left trigger is brake and reverse.':'Run the setup so the game learns which pedal is which.'))+(PAD.msg?' '+PAD.msg:'');
-  return `<section><h2>Wheel, pedals or controller</h2><div class="mpbox"><p id="padStat" style="flex-basis:100%;margin:0 0 6px">${st}</p><button class="btn small" data-act="padsetup">${c&&c.steer?'Run setup again':'Set up wheel and pedals'}</button>${L?'<button class="btn small plain" data-act="padskip">Skip this one</button>':''}${c?'<button class="btn small plain" data-act="padclear">Forget setup</button>':''}<p id="padLive" style="flex-basis:100%;margin:6px 0 0;font-family:monospace;font-size:13px;opacity:.85"></p></div></section>`; }
+  return `<section><h2>Wheel, pedals or controller</h2><div class="mpbox"><p id="padStat" style="flex-basis:100%;margin:0 0 6px">${st}</p><button class="btn small" data-act="padsetup">${c&&c.steer?'Run setup again':'Set up wheel and pedals'}</button>${L?'<button class="btn small plain" data-act="padskip">Skip this one</button>':''}${c?'<button class="btn small plain" data-act="padclear">Forget setup</button>':''}<p id="padLive" style="flex-basis:100%;margin:6px 0 0;font-family:monospace;font-size:13px;opacity:.85"></p></div>${g&&!L?`<h2>Buttons</h2><p style="color:#cfc5ad;margin:0 0 8px">${PAD.bind?'Now press the button on the wheel or controller you want for <b>'+(PADACTS.find(a_=>a_[0]===PAD.bind)||['',''])[1]+'</b>.':'Click Assign next to an action, then press the button you want for it. One button per action; assigning a button that is already used moves it. For the e-brake you can pull a lever instead, even if it is its own USB device.'}</p><div class="padgrid">${(()=>{ const bt=padBtns(g); return PADACTS.map(a_=>`<div class="padrow${PAD.bind===a_[0]?' on':''}"><span>${a_[1]}</span><b>${(a_[0]==='ebrake'&&S.opts.pad&&S.opts.pad.ebrake)?'Lever (axis '+(S.opts.pad.ebrake.i+1)+')':(bt[a_[0]]!==undefined?'Button '+(bt[a_[0]]+1):'—')}</b><button class="btn small ${PAD.bind===a_[0]?'':'plain'}" data-act="padbind" data-arg="${a_[0]}">${PAD.bind===a_[0]?'Waiting…':'Assign'}</button>${bt[a_[0]]!==undefined?`<button class="btn small plain" data-act="padunbind" data-arg="${a_[0]}">Clear</button>`:'<i></i>'}</div>`).join(''); })()}</div>`:''}</section>`; }
 function padLearn(g,dt){ const L=PAD.learn, step=PADSTEPS[L.i][0], c=S.opts.pad; if(!L.base){ L.base={a:Array.from(g.axes),b:g.buttons.map(b=>b.value)}; L.hold=0; L.t=0; return; } L.t+=dt; if(L.t<0.35){ L.base={a:Array.from(g.axes),b:g.buttons.map(b=>b.value)}; return; }
   let done=false;
   if(step.slice(0,2)==='b:'){ for(let i=0;i<g.buttons.length;i++) if(g.buttons[i].value>0.6&&L.base.b[i]<0.3){ c.btn[step.slice(2)]=i; done=true; break; } }
@@ -3162,12 +3185,19 @@ function padLearn(g,dt){ const L=PAD.learn, step=PADSTEPS[L.i][0], c=S.opts.pad;
   if(done){ sfx.ding(); L.i++; L.base=null; if(L.i>=PADSTEPS.length){ PAD.learn=null; PAD.msg='All set. Go mow something.'; save(); } if(mode==='garage') showGarage(); } }
 function padVal(g,m){ if(!m) return 0; if(m.t==='b'){ const b=g.buttons[m.i]; return b?clamp(b.value,0,1):0; } const v=g.axes[m.i]||0, d=(m.full-m.rest)||1; return clamp((v-m.rest)/d,0,1); }
 function padPoll(dt){ PAD.x=0; PAD.z=0; PAD.wheel=false; const g=padGet(); if(!g) return; { const now=performance.now()/1000, rdt=Math.min(0.6,now-(PAD.lt||now)); PAD.lt=now; if(PAD.learn){ padLearn(g,rdt); return; } }
+  PAD.eb=0;
+  if(PAD.bind==='ebrake'){ const all=(navigator.getGamepads?Array.from(navigator.getGamepads()):[]).filter(q=>q&&q.connected); if(!PAD.bb){ PAD.bb=all.map(q=>({id:q.id,a:Array.from(q.axes)})); PAD.bt=performance.now(); }
+    else if(performance.now()-PAD.bt>400){ for(const q of all){ const b0=PAD.bb.find(z=>z.id===q.id); if(!b0) continue; for(let i=0;i<q.axes.length;i++){ if(S.opts.pad&&S.opts.pad.steer&&q.id===g.id&&i===S.opts.pad.steer.i) continue; if(Math.abs(q.axes[i]-b0.a[i])>0.5){ const c0=S.opts.pad||(S.opts.pad={id:g.id,btn:{}}); c0.ebrake={pad:q.id,i,rest:b0.a[i],full:q.axes[i]}; if(c0.btn) delete c0.btn.ebrake; PAD.bind=null; PAD.bb=null; save(); sfx.ding(); if(mode==='garage') showGarage(); return; } } } } }
+  else PAD.bb=null;
+  if(PAD.bind){ for(let i=0;i<g.buttons.length;i++){ const on=g.buttons[i].value>0.5; if(on&&!PAD.prev[i]){ const c0=S.opts.pad||(S.opts.pad={id:g.id,btn:{}}); c0.btn=padBtns(g); for(const k in c0.btn) if(c0.btn[k]===i) delete c0.btn[k]; c0.btn[PAD.bind]=i; if(!c0.steer&&g.mapping==='standard') c0.btnAll=1; PAD.bind=null; save(); sfx.ding(); for(let q=0;q<g.buttons.length;q++) PAD.prev[q]=g.buttons[q].value>0.5; if(mode==='garage') showGarage(); return; } } for(let i=0;i<g.buttons.length;i++) PAD.prev[i]=g.buttons[i].value>0.5; return; }
   const c=S.opts.pad, std_=g.mapping==='standard'&&!(c&&c.steer), dz=v=>Math.abs(v)<0.06?0:v; let steer=0, gas=0, brake=0, btn={};
   if(c&&c.steer){ const m=c.steer, v=g.axes[m.i]||0; steer=clamp(v>=m.c===(m.r>=m.c)?(v-m.c)/((m.r-m.c)||1):-(v-m.c)/((m.l-m.c)||1),-1,1); if(Math.abs(steer)<0.015) steer=0; gas=padVal(g,c.gas); brake=padVal(g,c.brake); btn=c.btn||{}; PAD.wheel=true; }
+  else if(std_&&c&&c.btnAll){ steer=dz(g.axes[0]||0); gas=g.buttons[7]?g.buttons[7].value:0; brake=g.buttons[6]?g.buttons[6].value:0; btn=c.btn||{}; }
   else if(std_){ steer=dz(g.axes[0]||0); gas=g.buttons[7]?g.buttons[7].value:0; brake=g.buttons[6]?g.buttons[6].value:0; btn={use:0,punch:1,blades:2,horn:3,beer:4,rocket:5,pause:9,radio:12,fart:13,burp:14,swear:15}; }
   else return;
   const live=$('#padLive'); if(live&&mode==='garage') live.textContent='steer '+steer.toFixed(2)+'   gas '+gas.toFixed(2)+'   brake '+brake.toFixed(2);
-  for(const k in btn){ const i=btn[k], on=!!(g.buttons[i]&&g.buttons[i].value>0.5); if(on&&!PAD.prev[i]&&(mode==='play'||k==='pause')) doAction(k); } for(let i=0;i<g.buttons.length;i++) PAD.prev[i]=g.buttons[i].value>0.5;
+  { const e=c&&c.ebrake; if(e){ const q=(navigator.getGamepads?Array.from(navigator.getGamepads()):[]).find(z=>z&&z.connected&&z.id===e.pad); if(q) PAD.eb=clamp(((q.axes[e.i]||0)-e.rest)/((e.full-e.rest)||1),0,1); } if(btn.ebrake!==undefined&&g.buttons[btn.ebrake]&&g.buttons[btn.ebrake].value>0.5) PAD.eb=1; if(PAD.eb<0.06) PAD.eb=0; }
+  for(const k in btn){ if(k==='ebrake') continue; const i=btn[k], on=!!(g.buttons[i]&&g.buttons[i].value>0.5); if(on&&!PAD.prev[i]&&(mode==='play'||k==='pause')) doAction(k); } for(let i=0;i<g.buttons.length;i++) PAD.prev[i]=g.buttons[i].value>0.5;
   if(mode!=='play'||!G) return;
   if(G.mounted){ PAD.x=steer; PAD.z=gas-brake; }
   else if(PAD.wheel){ lookBy(steer*dt*520,0); PAD.z=gas-brake; }
