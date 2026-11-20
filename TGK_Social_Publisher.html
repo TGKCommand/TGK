@@ -95,6 +95,7 @@ html[data-theme="dark"] .inp,html[data-theme="dark"] .sel,html[data-theme="dark"
 .st.published{color:var(--green);background:var(--green-l);border-color:rgba(21,128,61,.3)}
 .st.partial{color:var(--amber);background:var(--amber-l);border-color:rgba(217,119,6,.35)}
 .st.failed{color:var(--red);background:var(--red-l);border-color:rgba(220,38,38,.35)}
+.st.manual{color:var(--amber);background:var(--amber-l);border-color:rgba(217,119,6,.35)}
 .st.cancelled{color:var(--text3);background:var(--bg3);border-color:var(--border)}
 .pcode{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:20px;padding:0 5px;border-radius:var(--r);background:#2c3237;color:#e4e9ec;font-size:10.5px;font-weight:800;letter-spacing:.04em}
 .pcode.ok{background:var(--green);color:#fff}.pcode.bad{background:var(--red);color:#fff}
@@ -261,20 +262,15 @@ var SB_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 var BUCKET = 'social-media';
 var POST_PFX = 'tgk_social_post_';
 var SET_ID = 'tgk_social_settings_v1';
-var EDGE_SRC = "// TGK Social Publisher backend - Supabase Edge Function name: social-publish\n// Posting provider: Ayrshare (one API key reaches Instagram, Facebook, TikTok, YouTube,\n// X, Threads, Pinterest, LinkedIn, Google Business and Bluesky).\n// Secrets to set on this function:\n//   AYRSHARE_API_KEY       (required)\n//   AYRSHARE_PROFILE_KEY   (optional - only if you use an Ayrshare Business plan profile)\n// Only signed-in TGK users can call it. Provider-specific option names live in buildPayload()\n// below - if the provider ever rejects an option, that is the one place to edit.\n\nconst CORS: Record<string, string> = {\n  'Access-Control-Allow-Origin': '*',\n  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',\n  'Access-Control-Allow-Methods': 'POST, OPTIONS',\n};\n\nfunction out(body: unknown, status = 200): Response {\n  return new Response(JSON.stringify(body), {\n    status: status,\n    headers: Object.assign({ 'Content-Type': 'application/json' }, CORS),\n  });\n}\n\nasync function signedIn(req: Request): Promise<boolean> {\n  const tok = (req.headers.get('authorization') || '').replace(/^Bearer\\s+/i, '');\n  if (!tok) return false;\n  try {\n    const r = await fetch((Deno.env.get('SUPABASE_URL') || '') + '/auth/v1/user', {\n      headers: { apikey: Deno.env.get('SUPABASE_ANON_KEY') || '', Authorization: 'Bearer ' + tok },\n    });\n    return r.ok;\n  } catch (_e) {\n    return false;\n  }\n}\n\nasync function ay(path: string, method: string, body?: unknown): Promise<{ status: number; data: any }> {\n  const key = Deno.env.get('AYRSHARE_API_KEY');\n  if (!key) return { status: 500, data: { message: 'AYRSHARE_API_KEY secret is not set on this function' } };\n  const headers: Record<string, string> = { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' };\n  const profile = Deno.env.get('AYRSHARE_PROFILE_KEY');\n  if (profile) headers['Profile-Key'] = profile;\n  const r = await fetch('https://api.ayrshare.com/api' + path, {\n    method: method,\n    headers: headers,\n    body: body ? JSON.stringify(body) : undefined,\n  });\n  let data: any = null;\n  try { data = await r.json(); } catch (_e) { data = null; }\n  return { status: r.status, data: data };\n}\n\n// Neutral job from the app -> provider payload. ONE place for provider option names.\nfunction buildPayload(j: any): any {\n  const o = j.options || {};\n  const p: any = { post: j.text || '', platforms: j.platforms };\n  if (j.mediaUrls && j.mediaUrls.length) {\n    p.mediaUrls = j.mediaUrls;\n    if (j.isVideo) p.isVideo = true;\n  }\n  if (j.scheduleDate) p.scheduleDate = j.scheduleDate;\n  if (o.instagram && o.instagram.format === 'reel') p.instagramOptions = { reels: true };\n  if (o.instagram && o.instagram.format === 'story') p.instagramOptions = { stories: true };\n  if (o.facebook && o.facebook.format === 'reel') p.faceBookOptions = { reels: true };\n  if (o.facebook && o.facebook.format === 'story') p.faceBookOptions = { stories: true };\n  if (o.youtube) {\n    p.youTubeOptions = {\n      title: String(o.youtube.title || j.text || 'Video').split('\\n')[0].slice(0, 100),\n      visibility: o.youtube.visibility || 'public',\n    };\n  }\n  if (o.pinterest) {\n    p.pinterestOptions = {\n      title: String(o.pinterest.title || '').slice(0, 100) || undefined,\n      link: o.pinterest.link || undefined,\n      boardId: o.pinterest.board || undefined,\n    };\n  }\n  return p;\n}\n\nfunction statusOf(s: any): string {\n  const t = String(s || '').toLowerCase();\n  if (/success|publish|posted/.test(t)) return 'published';\n  if (/error|fail/.test(t)) return 'failed';\n  if (/schedul|pending|process|queue/.test(t)) return 'scheduled';\n  if (/delet|cancel/.test(t)) return 'cancelled';\n  return '';\n}\n\nfunction results(item: any): any[] {\n  const rs: any[] = [];\n  const ids = (item && item.postIds) || [];\n  for (let i = 0; i < ids.length; i++) {\n    rs.push({ platform: ids[i].platform, status: statusOf(ids[i].status) || 'published', url: ids[i].postUrl || '', error: '' });\n  }\n  const errs = (item && item.errors) || [];\n  for (let i = 0; i < errs.length; i++) {\n    rs.push({ platform: errs[i].platform || '', status: 'failed', url: '', error: String(errs[i].message || errs[i].code || 'Error') });\n  }\n  return rs;\n}\n\nfunction normPost(d: any, platforms: string[], scheduled: boolean, http: number): any {\n  const item = Array.isArray(d) ? d[0] : d;\n  const ref = item && item.id ? String(item.id) : '';\n  let rs = results(item);\n  const top = statusOf(item && item.status);\n  if (!rs.length) {\n    const msg = String((item && (item.message || (item.errors && item.errors[0] && item.errors[0].message))) || '');\n    const st = http < 300 && top !== 'failed' ? (scheduled ? 'scheduled' : 'published') : 'failed';\n    rs = platforms.map(function (p) { return { platform: p, status: st, url: '', error: st === 'failed' ? (msg || 'Provider refused the post (HTTP ' + http + ')') : '' }; });\n  }\n  return { ref: ref, scheduled: scheduled, results: rs };\n}\n\nDeno.serve(async function (req: Request) {\n  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });\n  if (!(await signedIn(req))) return out({ ok: false, error: 'Not signed in' }, 401);\n  let body: any = {};\n  try { body = await req.json(); } catch (_e) { body = {}; }\n  const action = body.action;\n\n  if (action === 'status') {\n    const r = await ay('/user', 'GET');\n    const d = r.data || {};\n    if (r.status >= 300) return out({ ok: false, error: String(d.message || 'Provider error HTTP ' + r.status) });\n    return out({ ok: true, connected: d.activeSocialAccounts || [], names: d.displayNames || [] });\n  }\n\n  if (action === 'publish') {\n    const jobs = body.jobs || [];\n    const res: any[] = [];\n    for (let i = 0; i < jobs.length; i++) {\n      const j = jobs[i];\n      const r = await ay('/post', 'POST', buildPayload(j));\n      res.push(normPost(r.data, j.platforms || [], !!j.scheduleDate, r.status));\n    }\n    return out({ ok: true, jobs: res });\n  }\n\n  if (action === 'delete') {\n    const r = await ay('/post', 'DELETE', { id: body.ref });\n    const d = r.data || {};\n    const gone = r.status < 300 || /not found|already/i.test(String(d.message || ''));\n    return out({ ok: gone, error: gone ? '' : String(d.message || 'Provider error HTTP ' + r.status) });\n  }\n\n  if (action === 'history') {\n    const r = await ay('/history?lastRecords=100', 'GET');\n    const d = r.data;\n    const arr: any[] = Array.isArray(d) ? d : (d && d.history) || [];\n    const items = arr.map(function (h: any) {\n      return { ref: String(h.id || ''), status: statusOf(h.status), results: results(h) };\n    }).filter(function (x: any) { return x.ref; });\n    return out({ ok: r.status < 300, items: items });\n  }\n\n  return out({ ok: false, error: 'Unknown action' }, 400);\n});\n";
+var EDGE_SRC = "// TGK Social Publisher backend - Supabase Edge Function name: social-publish\n// No paid service. Posts straight to Instagram + Facebook (Meta Graph API) and Bluesky.\n// TikTok and YouTube are \"post by hand\" tasks (their free APIs only allow private posts\n// until the app is audited), so this function just marks them as waiting for you.\n// Scheduling: a Supabase cron job calls action \"run_due\" every minute.\n//\n// Secrets (Edge Functions > Secrets):\n//   META_PAGE_ID, META_PAGE_TOKEN, META_IG_USER_ID   (Facebook + Instagram)\n//   BSKY_HANDLE, BSKY_APP_PASSWORD                   (Bluesky)\n//   CRON_SECRET                                      (lets the cron job call run_due)\n//   META_GRAPH_VERSION                               (optional, default below)\n// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically.\n\nconst CORS: Record<string, string> = {\n  'Access-Control-Allow-Origin': '*',\n  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',\n  'Access-Control-Allow-Methods': 'POST, OPTIONS',\n};\nconst GV = Deno.env.get('META_GRAPH_VERSION') || 'v24.0';\nconst G = 'https://graph.facebook.com/' + GV;\nconst MANUAL = ['tiktok', 'youtube'];\n\nfunction out(body: unknown, status = 200): Response {\n  return new Response(JSON.stringify(body), { status: status, headers: Object.assign({ 'Content-Type': 'application/json' }, CORS) });\n}\nfunction sleep(ms: number): Promise<void> { return new Promise(function (r) { setTimeout(r, ms); }); }\nfunction env(k: string): string { return Deno.env.get(k) || ''; }\n\nasync function signedIn(req: Request): Promise<boolean> {\n  const tok = (req.headers.get('authorization') || '').replace(/^Bearer\\s+/i, '');\n  if (!tok) return false;\n  try {\n    const r = await fetch(env('SUPABASE_URL') + '/auth/v1/user', { headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: 'Bearer ' + tok } });\n    return r.ok;\n  } catch (_e) { return false; }\n}\n\n// ---- Supabase rows (workspace table) with the service role ----\nasync function sb(path: string, method = 'GET', body?: unknown, prefer = ''): Promise<any> {\n  const k = env('SUPABASE_SERVICE_ROLE_KEY');\n  const h: Record<string, string> = { apikey: k, Authorization: 'Bearer ' + k, 'Content-Type': 'application/json' };\n  if (prefer) h['Prefer'] = prefer;\n  const r = await fetch(env('SUPABASE_URL') + '/rest/v1' + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined });\n  const t = await r.text();\n  if (!r.ok) throw new Error('Database error ' + r.status + ': ' + t.slice(0, 200));\n  return t ? JSON.parse(t) : null;\n}\n\n// ---- Meta Graph helpers ----\nasync function gcall(method: string, path: string, params: Record<string, string>, token: string): Promise<any> {\n  const p = new URLSearchParams(params); p.set('access_token', token);\n  const r = method === 'GET'\n    ? await fetch(G + path + '?' + p.toString())\n    : await fetch(G + path, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: p.toString() });\n  let d: any = null; try { d = await r.json(); } catch (_e) { d = null; }\n  if (!r.ok || !d || d.error) throw new Error((d && d.error && (d.error.error_user_msg || d.error.message)) || ('Meta returned HTTP ' + r.status));\n  return d;\n}\n\nasync function postFacebook(rec: any, text: string): Promise<any> {\n  const pid = env('META_PAGE_ID'), tok = env('META_PAGE_TOKEN');\n  if (!pid || !tok) throw new Error('Facebook is not set up (META_PAGE_ID / META_PAGE_TOKEN)');\n  const media: any[] = rec.media || [];\n  const vids = media.filter(function (m) { return m.type === 'video'; });\n  const imgs = media.filter(function (m) { return m.type !== 'video'; });\n  let id = '';\n  if (vids.length) {\n    const d = await gcall('POST', '/' + pid + '/videos', { file_url: vids[0].url, description: text }, tok);\n    id = d.id;\n  } else if (imgs.length === 1) {\n    const d = await gcall('POST', '/' + pid + '/photos', { url: imgs[0].url, caption: text }, tok);\n    id = d.post_id || d.id;\n  } else if (imgs.length > 1) {\n    const ids: any[] = [];\n    for (let i = 0; i < imgs.length; i++) {\n      const d = await gcall('POST', '/' + pid + '/photos', { url: imgs[i].url, published: 'false' }, tok);\n      ids.push({ media_fbid: d.id });\n    }\n    const d2 = await gcall('POST', '/' + pid + '/feed', { message: text, attached_media: JSON.stringify(ids) }, tok);\n    id = d2.id;\n  } else {\n    const d = await gcall('POST', '/' + pid + '/feed', { message: text }, tok);\n    id = d.id;\n  }\n  return { url: 'https://www.facebook.com/' + id };\n}\n\nasync function igWait(id: string, tok: string): Promise<void> {\n  for (let i = 0; i < 40; i++) {\n    const d = await gcall('GET', '/' + id, { fields: 'status_code,status' }, tok);\n    const sc = d.status_code;\n    if (!sc || sc === 'FINISHED') return;\n    if (sc === 'ERROR' || sc === 'EXPIRED') throw new Error('Instagram could not process the media: ' + (d.status || sc));\n    await sleep(3000);\n  }\n  throw new Error('Instagram took too long to process the media - check the account before retrying');\n}\n\nasync function postInstagram(rec: any, text: string): Promise<any> {\n  const ig = env('META_IG_USER_ID'), tok = env('META_PAGE_TOKEN');\n  if (!ig || !tok) throw new Error('Instagram is not set up (META_IG_USER_ID / META_PAGE_TOKEN)');\n  const media: any[] = rec.media || [];\n  if (!media.length) throw new Error('Instagram needs a picture or video');\n  const fmt = (rec.opts && rec.opts.instagram && rec.opts.instagram.format) || 'feed';\n  let cid = '';\n  if (fmt === 'story') {\n    const m = media[0];\n    const p: Record<string, string> = { media_type: 'STORIES' };\n    if (m.type === 'video') p.video_url = m.url; else p.image_url = m.url;\n    cid = (await gcall('POST', '/' + ig + '/media', p, tok)).id;\n  } else if (media.length > 1) {\n    const kids: string[] = [];\n    for (let i = 0; i < media.length && i < 10; i++) {\n      const m = media[i];\n      const p: Record<string, string> = { is_carousel_item: 'true' };\n      if (m.type === 'video') { p.media_type = 'VIDEO'; p.video_url = m.url; } else { p.image_url = m.url; }\n      const kid = (await gcall('POST', '/' + ig + '/media', p, tok)).id;\n      await igWait(kid, tok);\n      kids.push(kid);\n    }\n    cid = (await gcall('POST', '/' + ig + '/media', { media_type: 'CAROUSEL', children: kids.join(','), caption: text }, tok)).id;\n  } else {\n    const m = media[0];\n    const p: Record<string, string> = { caption: text };\n    if (m.type === 'video') { p.media_type = 'REELS'; p.video_url = m.url; } else { p.image_url = m.url; }\n    cid = (await gcall('POST', '/' + ig + '/media', p, tok)).id;\n  }\n  await igWait(cid, tok);\n  const pub = await gcall('POST', '/' + ig + '/media_publish', { creation_id: cid }, tok);\n  let url = '';\n  try { url = (await gcall('GET', '/' + pub.id, { fields: 'permalink' }, tok)).permalink || ''; } catch (_e) { url = ''; }\n  return { url: url };\n}\n\n// ---- Bluesky ----\nfunction bskyFacets(text: string): any[] {\n  const enc = new TextEncoder(); const res: any[] = []; const re = /(https?:\\/\\/[^\\s]+)|(#[A-Za-z0-9_]+)/g; let m: any;\n  while ((m = re.exec(text)) !== null) {\n    let tok = m[0]; if (m[1]) tok = tok.replace(/[.,;:!?)]+$/, '');\n    const s = enc.encode(text.slice(0, m.index)).length, e = s + enc.encode(tok).length;\n    if (m[1]) res.push({ index: { byteStart: s, byteEnd: e }, features: [{ $type: 'app.bsky.richtext.facet#link', uri: tok }] });\n    else res.push({ index: { byteStart: s, byteEnd: e }, features: [{ $type: 'app.bsky.richtext.facet#tag', tag: tok.slice(1) }] });\n  }\n  return res;\n}\nasync function bskySession(): Promise<any> {\n  const id = env('BSKY_HANDLE'), pw = env('BSKY_APP_PASSWORD');\n  if (!id || !pw) throw new Error('Bluesky is not set up (BSKY_HANDLE / BSKY_APP_PASSWORD)');\n  const r = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier: id, password: pw }) });\n  const d = await r.json();\n  if (!r.ok) throw new Error('Bluesky login failed: ' + (d.message || r.status));\n  return d;\n}\nasync function postBluesky(rec: any, text: string): Promise<any> {\n  const s = await bskySession();\n  const imgs: any[] = (rec.media || []).filter(function (m: any) { return m.type !== 'video'; }).slice(0, 4);\n  const record: any = { $type: 'app.bsky.feed.post', text: text, createdAt: new Date().toISOString() };\n  const f = bskyFacets(text); if (f.length) record.facets = f;\n  if (imgs.length) {\n    const list: any[] = [];\n    for (let i = 0; i < imgs.length; i++) {\n      const src = imgs[i].small || imgs[i].url;\n      const bytes = await (await fetch(src)).arrayBuffer();\n      const up = await fetch('https://bsky.social/xrpc/com.atproto.repo.uploadBlob', { method: 'POST', headers: { Authorization: 'Bearer ' + s.accessJwt, 'Content-Type': imgs[i].small ? 'image/jpeg' : (imgs[i].mime || 'image/jpeg') }, body: bytes });\n      const ud = await up.json();\n      if (!up.ok) throw new Error('Bluesky rejected a picture: ' + (ud.message || up.status));\n      list.push({ alt: '', image: ud.blob });\n    }\n    record.embed = { $type: 'app.bsky.embed.images', images: list };\n  }\n  const r = await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord', { method: 'POST', headers: { Authorization: 'Bearer ' + s.accessJwt, 'Content-Type': 'application/json' }, body: JSON.stringify({ repo: s.did, collection: 'app.bsky.feed.post', record: record }) });\n  const d = await r.json();\n  if (!r.ok) throw new Error('Bluesky refused the post: ' + (d.message || r.status));\n  return { url: 'https://bsky.app/profile/' + s.handle + '/post/' + String(d.uri).split('/').pop() };\n}\n\n// ---- publish one record to its platforms ----\nfunction effText(rec: any, pid: string): string {\n  const o = rec.overrides && rec.overrides[pid];\n  return (o != null && String(o).trim() !== '') ? String(o) : String(rec.text || '');\n}\nasync function publishRec(rec: any): Promise<any[]> {\n  const pls: string[] = rec.platforms || [];\n  return await Promise.all(pls.map(async function (pid: string) {\n    if (MANUAL.indexOf(pid) >= 0) return { platform: pid, status: 'manual', url: '', error: '' };\n    try {\n      const t = effText(rec, pid);\n      let r: any;\n      if (pid === 'instagram') r = await postInstagram(rec, t);\n      else if (pid === 'facebook') r = await postFacebook(rec, t);\n      else if (pid === 'bluesky') r = await postBluesky(rec, t);\n      else throw new Error('Unknown platform ' + pid);\n      return { platform: pid, status: 'published', url: r.url || '', error: '' };\n    } catch (e) {\n      return { platform: pid, status: 'failed', url: '', error: String((e as any).message || e).slice(0, 300) };\n    }\n  }));\n}\nfunction computeStatus(results: any[]): string {\n  let f = 0, p = 0, s = 0, m = 0;\n  results.forEach(function (r: any) { if (r.status === 'failed') f++; else if (r.status === 'published') p++; else if (r.status === 'scheduled') s++; else if (r.status === 'manual') m++; });\n  if (!results.length) return 'failed';\n  if (f && (p || s || m)) return 'partial';\n  if (f) return 'failed';\n  if (s) return 'scheduled';\n  if (m) return 'manual';\n  return 'published';\n}\n\n// ---- scheduler: called every minute by the Supabase cron job ----\nasync function runDue(): Promise<any> {\n  const rows = await sb('/workspace?id=like.tgk_social_post_*&data->>status=eq.scheduled&select=id,data');\n  const now = Date.now(); let done = 0;\n  for (let i = 0; i < (rows || []).length; i++) {\n    const row = rows[i]; const rec = row.data;\n    if (!rec || !rec.scheduleAt || new Date(rec.scheduleAt).getTime() > now) continue;\n    rec.status = 'publishing'; rec.updated = new Date().toISOString();\n    const claim = await sb('/workspace?id=eq.' + encodeURIComponent(row.id) + '&data->>status=eq.scheduled', 'PATCH', { data: rec }, 'return=representation');\n    if (!claim || !claim.length) continue; // another run already took it\n    const results = await publishRec(rec);\n    rec.jobs = [{ ref: '', platforms: rec.platforms, status: computeStatus(results), results: results }];\n    rec.status = computeStatus(results);\n    if (rec.status === 'published' || rec.status === 'partial' || rec.status === 'manual') rec.postedAt = new Date().toISOString();\n    rec.note = results.filter(function (r: any) { return r.status === 'failed'; }).map(function (r: any) { return r.platform + ': ' + r.error; }).join(' | ');\n    rec.updated = new Date().toISOString();\n    await sb('/workspace?id=eq.' + encodeURIComponent(row.id), 'PATCH', { data: rec });\n    done++;\n  }\n  await sb('/workspace', 'POST', { id: 'tgk_social_cron_v1', data: { at: new Date().toISOString(), sent: done }, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal');\n  return { ok: true, sent: done };\n}\n\nDeno.serve(async function (req: Request) {\n  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });\n  let body: any = {};\n  try { body = await req.json(); } catch (_e) { body = {}; }\n  const action = body.action;\n  const cs = env('CRON_SECRET');\n  const isCron = !!cs && req.headers.get('x-cron-secret') === cs;\n  if (!(isCron && action === 'run_due') && !(await signedIn(req))) return out({ ok: false, error: 'Not signed in' }, 401);\n\n  try {\n    if (action === 'status') {\n      const connected: string[] = []; const notes: Record<string, string> = {};\n      if (env('META_PAGE_ID') && env('META_PAGE_TOKEN')) {\n        try { await gcall('GET', '/' + env('META_PAGE_ID'), { fields: 'name' }, env('META_PAGE_TOKEN')); connected.push('facebook'); if (env('META_IG_USER_ID')) connected.push('instagram'); }\n        catch (e) { notes.facebook = String((e as any).message); }\n      }\n      if (env('BSKY_HANDLE') && env('BSKY_APP_PASSWORD')) {\n        try { await bskySession(); connected.push('bluesky'); } catch (e) { notes.bluesky = String((e as any).message); }\n      }\n      let cronAt = '';\n      try { const c = await sb('/workspace?id=eq.tgk_social_cron_v1&select=data'); cronAt = (c && c[0] && c[0].data && c[0].data.at) || ''; } catch (_e) { cronAt = ''; }\n      return out({ ok: true, connected: connected, manual: MANUAL, notes: notes, cronAt: cronAt });\n    }\n    if (action === 'publish') {\n      const rec = body.post || {};\n      const results = await publishRec(rec);\n      return out({ ok: true, results: results });\n    }\n    if (action === 'run_due') {\n      return out(await runDue());\n    }\n    if (action === 'meta_connect') {\n      const u = new URLSearchParams({ grant_type: 'fb_exchange_token', client_id: String(body.app_id || ''), client_secret: String(body.app_secret || ''), fb_exchange_token: String(body.user_token || '') });\n      const r = await fetch(G + '/oauth/access_token?' + u.toString());\n      const d = await r.json();\n      if (!r.ok || d.error) return out({ ok: false, error: (d.error && d.error.message) || 'Meta refused the token' });\n      const pr = await fetch(G + '/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&limit=50&access_token=' + encodeURIComponent(d.access_token));\n      const pd = await pr.json();\n      if (!pr.ok || pd.error) return out({ ok: false, error: (pd.error && pd.error.message) || 'Could not list your Pages' });\n      const pages = (pd.data || []).map(function (p: any) { return { id: p.id, name: p.name, token: p.access_token, ig_id: p.instagram_business_account ? p.instagram_business_account.id : '', ig_username: p.instagram_business_account ? p.instagram_business_account.username : '' }; });\n      return out({ ok: true, pages: pages });\n    }\n    return out({ ok: false, error: 'Unknown action' }, 400);\n  } catch (e) {\n    return out({ ok: false, error: String((e as any).message || e) });\n  }\n});\n";
 var SQL_SRC = "-- TGK Social Publisher: public bucket for the pictures and videos you post.\n-- Platforms fetch the media from a public link, so the bucket must be public.\n-- Only signed-in TGK users can upload or delete.\ninsert into storage.buckets (id, name, public)\nvalues ('social-media', 'social-media', true)\non conflict (id) do update set public = true;\n\ndrop policy if exists \"social media read\" on storage.objects;\ncreate policy \"social media read\" on storage.objects\n  for select using (bucket_id = 'social-media');\n\ndrop policy if exists \"social media upload\" on storage.objects;\ncreate policy \"social media upload\" on storage.objects\n  for insert to authenticated with check (bucket_id = 'social-media');\n\ndrop policy if exists \"social media delete\" on storage.objects;\ncreate policy \"social media delete\" on storage.objects\n  for delete to authenticated using (bucket_id = 'social-media');\n";
 
 var PLATFORMS = [
   { id: 'instagram', code: 'IG', name: 'Instagram', limit: 2200 },
   { id: 'facebook', code: 'FB', name: 'Facebook', limit: 63000 },
-  { id: 'tiktok', code: 'TT', name: 'TikTok', limit: 2200 },
-  { id: 'youtube', code: 'YT', name: 'YouTube', limit: 5000 },
-  { id: 'twitter', code: 'X', name: 'X (Twitter)', limit: 280 },
-  { id: 'threads', code: 'TH', name: 'Threads', limit: 500 },
-  { id: 'pinterest', code: 'PI', name: 'Pinterest', limit: 500 },
-  { id: 'linkedin', code: 'IN', name: 'LinkedIn', limit: 3000 },
-  { id: 'gmb', code: 'GB', name: 'Google Business', limit: 1500 },
-  { id: 'bluesky', code: 'BS', name: 'Bluesky', limit: 300 }
+  { id: 'bluesky', code: 'BS', name: 'Bluesky', limit: 300 },
+  { id: 'tiktok', code: 'TT', name: 'TikTok', limit: 2200, manual: true, open: 'https://www.tiktok.com/upload', openLbl: 'Open TikTok upload' },
+  { id: 'youtube', code: 'YT', name: 'YouTube', limit: 5000, manual: true, open: 'https://studio.youtube.com', openLbl: 'Open YouTube Studio' }
 ];
 function P(id) { for (var i = 0; i < PLATFORMS.length; i++) if (PLATFORMS[i].id === id) return PLATFORMS[i]; return { id: id, code: String(id).slice(0, 2).toUpperCase(), name: id, limit: 5000 }; }
 
@@ -298,7 +294,7 @@ function ic(n, s) { s = s || 16; return '<svg width="' + s + '" height="' + s + 
 /* ---------------- state ---------------- */
 var S = {
   view: 'compose', posts: [], postsLoaded: false, settings: { enabled: {} },
-  connected: null, connNames: [], connErr: '', session: null,
+  connected: null, connNotes: {}, connErr: '', cronAt: '', meta: { pages: [], err: '', busy: false }, session: null,
   draft: null, editingId: null, tab: 'all', filter: 'all', cal: new Date(), busy: false, uploads: 0
 };
 var TZ = (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })();
@@ -402,7 +398,7 @@ async function saveSettings() {
 }
 function updateCounts() {
   var n = S.posts.filter(function (p) { return p.status === 'scheduled' || p.status === 'publishing'; }).length;
-  var bad = S.posts.filter(function (p) { return p.status === 'failed' || p.status === 'partial'; }).length;
+  var bad = S.posts.filter(function (p) { return p.status === 'failed' || p.status === 'partial' || p.status === 'manual'; }).length;
   var c = $('ct-queue'); if (!c) return;
   c.textContent = bad ? (n + ' / ' + bad + '!') : String(n);
   c.className = 'ct' + (bad ? ' warn' : '');
@@ -433,68 +429,98 @@ async function api(action, body, ms) {
 async function checkConn(quiet) {
   var dot = $('conn-dot'), txt = $('conn-txt');
   try {
-    var d = await api('status', {}, 20000);
-    if (d.ok) { S.connected = d.connected || []; S.connNames = d.names || []; S.connErr = ''; if (dot) dot.className = 'ok'; if (txt) txt.textContent = S.connected.length + ' account' + (S.connected.length === 1 ? '' : 's') + ' linked'; }
-    else { S.connected = null; S.connErr = d.error || 'The provider refused the check'; if (dot) dot.className = 'bad'; if (txt) txt.textContent = 'Backend error'; }
+    var d = await api('status', {}, 30000);
+    if (d.ok) { S.connected = d.connected || []; S.connNotes = d.notes || {}; S.cronAt = d.cronAt || ''; S.connErr = ''; if (dot) dot.className = 'ok'; if (txt) txt.textContent = S.connected.length + ' auto account' + (S.connected.length === 1 ? '' : 's') + ' linked'; }
+    else { S.connected = null; S.connErr = d.error || 'The backend refused the check'; if (dot) dot.className = 'bad'; if (txt) txt.textContent = 'Backend error'; }
   } catch (e) {
     S.connected = null; S.connErr = e.message; if (dot) dot.className = 'bad'; if (txt) txt.textContent = e.code === 'MISSING' ? 'Backend not set up' : 'Backend unreachable';
   }
   if (!quiet) render();
 }
+function schedulerOk() { return !!S.cronAt && (Date.now() - new Date(S.cronAt).getTime()) < 5 * 60000; }
+function isLinked(pid) { var p = P(pid); if (p.manual) return true; return S.connected !== null && S.connected.indexOf(pid) >= 0; }
 
 /* ---------------- media upload ---------------- */
 var OK_TYPES = { 'image/jpeg': 1, 'image/png': 1, 'image/webp': 1, 'image/gif': 1, 'video/mp4': 1, 'video/quicktime': 1, 'video/webm': 1 };
 function safeName(n) { return String(n || 'file').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-60) || 'file'; }
+function pubUrl(path) { return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path; }
+function readDims(file, kind) {
+  return new Promise(function (res) {
+    var u = URL.createObjectURL(file), done = false;
+    function fin(o) { if (!done) { done = true; try { URL.revokeObjectURL(u); } catch (e) {} res(o); } }
+    setTimeout(function () { fin({}); }, 4000);
+    if (kind === 'video') { var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = function () { fin({ w: v.videoWidth, h: v.videoHeight, dur: v.duration }); }; v.onerror = function () { fin({}); }; v.src = u; }
+    else { var im = new Image(); im.onload = function () { fin({ w: im.naturalWidth, h: im.naturalHeight }); }; im.onerror = function () { fin({}); }; im.src = u; }
+  });
+}
+function encodeJpeg(blob, maxEdge, q) {
+  return new Promise(function (res, rej) {
+    var u = URL.createObjectURL(blob), im = new Image();
+    im.onload = function () {
+      var w = im.naturalWidth, h = im.naturalHeight, sc = Math.min(1, maxEdge / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * sc)); c.height = Math.max(1, Math.round(h * sc));
+      var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+      c.toBlob(function (b) { URL.revokeObjectURL(u); if (b) res(b); else rej(new Error('Could not convert the picture')); }, 'image/jpeg', q);
+    };
+    im.onerror = function () { URL.revokeObjectURL(u); rej(new Error('Could not read the picture')); };
+    im.src = u;
+  });
+}
+function paintBar(it) { var b = document.querySelector('[data-bar="' + it.id + '"]'); if (b) b.style.width = it.pct + '%'; }
 function addFiles(files) {
   var arr = Array.prototype.slice.call(files || []);
   arr.forEach(function (f) {
     if (!OK_TYPES[f.type]) { toast(f.name + ': unsupported type (' + (f.type || 'unknown') + '). Use JPG, PNG, WebP, GIF, MP4, MOV or WebM.', 'bad'); return; }
-    var now = new Date();
-    var it = { id: uid(), name: f.name, type: f.type.indexOf('video/') === 0 ? 'video' : 'image', mime: f.type, size: f.size, local: URL.createObjectURL(f), url: '', path: 'uploads/' + now.getFullYear() + '/' + pad(now.getMonth() + 1) + '/' + Date.now().toString(36) + '-' + safeName(f.name), pct: 0, state: 'up', err: '' };
+    var now = new Date(), kind = f.type.indexOf('video/') === 0 ? 'video' : 'image';
+    var base = 'uploads/' + now.getFullYear() + '/' + pad(now.getMonth() + 1) + '/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5) + '-' + safeName(f.name).replace(/\.[a-z0-9]+$/, '');
+    var it = { id: uid(), name: f.name, type: kind, mime: f.type, size: f.size, local: URL.createObjectURL(f), url: '', small: '', path: '', w: 0, h: 0, dur: 0, pct: 0, state: 'up', err: '' };
     S.draft.media.push(it); S.uploads++;
     renderThumbs(); refresh();
-    uploadOne(it, f);
+    processAndUpload(it, f, base);
   });
 }
-async function uploadOne(it, file) {
+async function processAndUpload(it, f, base) {
   try {
-    var tok = await token();
-    await new Promise(function (resolve, reject) {
-      var x = new XMLHttpRequest();
-      x.open('POST', SB_URL + '/storage/v1/object/' + BUCKET + '/' + it.path);
-      x.setRequestHeader('Authorization', 'Bearer ' + tok); x.setRequestHeader('apikey', SB_JWT);
-      x.setRequestHeader('x-upsert', 'false'); x.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-      x.upload.onprogress = function (e) { if (e.lengthComputable) { it.pct = Math.round(e.loaded / e.total * 100); var b = document.querySelector('[data-bar="' + it.id + '"]'); if (b) b.style.width = it.pct + '%'; } };
-      x.onload = function () { if (x.status >= 200 && x.status < 300) resolve(); else { var m = ''; try { m = JSON.parse(x.responseText).message || ''; } catch (e) {} reject(new Error(x.status === 404 || /bucket/i.test(m) ? 'Storage bucket missing - run the SQL in Backend Setup' : x.status === 413 ? 'File is bigger than your Supabase plan allows' : (m || 'Upload failed (HTTP ' + x.status + ')'))); } };
-      x.onerror = function () { reject(new Error('Upload failed - network')); };
-      x.send(file);
-    });
-    it.url = SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + it.path; it.state = 'ok'; it.pct = 100;
+    var main = f, ext = (f.name.match(/\.([a-z0-9]+)$/i) || [0, 'bin'])[1].toLowerCase(), small = null;
+    var d = await readDims(f, it.type); it.w = d.w || 0; it.h = d.h || 0; it.dur = d.dur || 0;
+    if (it.type === 'image' && f.type !== 'image/jpeg' && f.type !== 'image/gif') { try { main = await encodeJpeg(f, 4096, 0.92); ext = 'jpg'; it.mime = 'image/jpeg'; it.size = main.size; } catch (e) {} }
+    if (it.type === 'image' && f.type !== 'image/gif' && main.size > 950000) { var edge = 2000, q = 0.85; try { do { small = await encodeJpeg(main, edge, q); edge = Math.round(edge * 0.8); q = Math.max(0.5, q - 0.05); } while (small.size > 950000 && edge > 400); } catch (e) { small = null; } }
+    it.path = base + '.' + ext;
+    await uploadFile(main, it.path, it.mime || f.type, function (p) { it.pct = small ? Math.round(p * 0.8) : p; paintBar(it); });
+    it.url = pubUrl(it.path);
+    if (small) { var sp = base + '.small.jpg'; await uploadFile(small, sp, 'image/jpeg', function (p) { it.pct = 80 + Math.round(p * 0.2); paintBar(it); }); it.small = pubUrl(sp); }
+    it.state = 'ok'; it.pct = 100;
   } catch (e) { it.state = 'err'; it.err = e.message === 'NOT_SIGNED_IN' ? 'Not signed in' : e.message; }
   S.uploads = Math.max(0, S.uploads - 1);
   if (S.view === 'compose') { renderThumbs(); refresh(); }
 }
+async function uploadFile(blob, path, mime, onp) {
+  var tok = await token();
+  await new Promise(function (resolve, reject) {
+    var x = new XMLHttpRequest();
+    x.open('POST', SB_URL + '/storage/v1/object/' + BUCKET + '/' + path);
+    x.setRequestHeader('Authorization', 'Bearer ' + tok); x.setRequestHeader('apikey', SB_JWT);
+    x.setRequestHeader('x-upsert', 'false'); x.setRequestHeader('Content-Type', mime || 'application/octet-stream');
+    x.upload.onprogress = function (e) { if (e.lengthComputable && onp) onp(Math.round(e.loaded / e.total * 100)); };
+    x.onload = function () { if (x.status >= 200 && x.status < 300) resolve(); else { var m = ''; try { m = JSON.parse(x.responseText).message || ''; } catch (e) {} reject(new Error(x.status === 404 || /bucket/i.test(m) ? 'Storage bucket missing - run the SQL in Backend Setup' : x.status === 413 ? 'File is bigger than your Supabase plan allows' : (m || 'Upload failed (HTTP ' + x.status + ')'))); } };
+    x.onerror = function () { reject(new Error('Upload failed - network')); };
+    x.send(blob);
+  });
+}
 
 /* ---------------- compose ---------------- */
 function allowedIds() {
-  var o = [];
-  PLATFORMS.forEach(function (p) {
-    var conn = S.connected !== null && S.connected.indexOf(p.id) >= 0;
-    if (conn && S.settings.enabled[p.id] !== false) o.push(p.id);
-  });
-  return o;
+  return PLATFORMS.filter(function (p) { return isLinked(p.id) && S.settings.enabled[p.id] !== false; }).map(function (p) { return p.id; });
 }
 function newDraft() {
   return { id: '', text: '', media: [], platforms: allowedIds(), overrides: {}, touched: false, mode: 'now', when: '',
-    opts: { instagram: { format: 'feed' }, facebook: { format: 'feed' }, youtube: { title: '', visibility: 'public' }, pinterest: { title: '', link: '', board: '' } } };
+    opts: { instagram: { format: 'feed' }, youtube: { title: '' } } };
 }
 function effText(d, pid) { var o = d.overrides && d.overrides[pid]; return (o != null && String(o).trim() !== '') ? o : (d.text || ''); }
 function optsFor(d, pid) {
   var o = d.opts || {};
   if (pid === 'instagram') return { format: (o.instagram && o.instagram.format) || 'feed' };
-  if (pid === 'facebook') return { format: (o.facebook && o.facebook.format) || 'feed' };
-  if (pid === 'youtube') return { title: (o.youtube && o.youtube.title) || '', visibility: (o.youtube && o.youtube.visibility) || 'public' };
-  if (pid === 'pinterest') return { title: (o.pinterest && o.pinterest.title) || '', link: (o.pinterest && o.pinterest.link) || '', board: (o.pinterest && o.pinterest.board) || '' };
+  if (pid === 'youtube') return { title: (o.youtube && o.youtube.title) || '' };
   return null;
 }
 function renderCompose() {
@@ -539,7 +565,7 @@ function renderRecent() {
   }).join('');
   el._list = list;
 }
-function reuseMedia(i) { var l = $('recent')._list; if (!l || !l[i]) return; var m = l[i]; S.draft.media.push({ id: uid(), name: m.name, type: m.type, mime: m.mime, size: m.size, local: '', url: m.url, path: m.path, pct: 100, state: 'ok', err: '' }); renderThumbs(); refresh(); }
+function reuseMedia(i) { var l = $('recent')._list; if (!l || !l[i]) return; var m = l[i]; S.draft.media.push({ id: uid(), name: m.name, type: m.type, mime: m.mime, size: m.size, local: '', url: m.url, small: m.small || '', w: m.w || 0, h: m.h || 0, path: m.path, pct: 100, state: 'ok', err: '' }); renderThumbs(); refresh(); }
 function rmMedia(i) { S.draft.media.splice(i, 1); renderThumbs(); refresh(); }
 function mvMedia(i, dir) { var a = S.draft.media, j = i + dir; if (j < 0 || j >= a.length) return; var t = a[i]; a[i] = a[j]; a[j] = t; renderThumbs(); refresh(); }
 
@@ -562,13 +588,11 @@ function renderPostCard() {
 }
 function optsHtml(pid) {
   var o = S.draft.opts, h = '';
-  if (pid === 'instagram' || pid === 'facebook') {
-    var f = o[pid].format;
-    h = '<div style="margin-top:12px"><span class="lbl">Format</span><div class="seg">' + ['feed', 'reel', 'story'].map(function (x) { return '<button class="' + (f === x ? 'on' : '') + '" onclick="setOpt(\'' + pid + '\',\'format\',\'' + x + '\')">' + (x === 'feed' ? 'Post' : x) + '</button>'; }).join('') + '</div></div>';
+  if (pid === 'instagram') {
+    var f = o.instagram.format;
+    h = '<div style="margin-top:12px"><span class="lbl">Format</span><div class="seg">' + ['feed', 'reel', 'story'].map(function (x) { return '<button class="' + (f === x ? 'on' : '') + '" onclick="setOpt(\'instagram\',\'format\',\'' + x + '\')">' + (x === 'feed' ? 'Post' : x) + '</button>'; }).join('') + '</div><div class="muted" style="margin-top:6px;font-size:12px">A single video always goes out as a Reel. Stories use the first picture or video and no caption.</div></div>';
   } else if (pid === 'youtube') {
-    h = '<div class="grid2" style="margin-top:12px"><div><span class="lbl">Video title</span><input class="inp" value="' + esc(o.youtube.title) + '" maxlength="100" placeholder="First line of caption" oninput="setOpt(\'youtube\',\'title\',this.value,1)"></div><div><span class="lbl">Visibility</span><select class="sel" onchange="setOpt(\'youtube\',\'visibility\',this.value,1)">' + ['public', 'unlisted', 'private'].map(function (v) { return '<option' + (o.youtube.visibility === v ? ' selected' : '') + '>' + v + '</option>'; }).join('') + '</select></div></div>';
-  } else if (pid === 'pinterest') {
-    h = '<div class="grid2" style="margin-top:12px"><div><span class="lbl">Pin title</span><input class="inp" value="' + esc(o.pinterest.title) + '" maxlength="100" oninput="setOpt(\'pinterest\',\'title\',this.value,1)"></div><div><span class="lbl">Board ID</span><input class="inp" value="' + esc(o.pinterest.board) + '" placeholder="Required for Pinterest" oninput="setOpt(\'pinterest\',\'board\',this.value,1)"></div></div><div style="margin-top:10px"><span class="lbl">Destination link</span><input class="inp" value="' + esc(o.pinterest.link) + '" placeholder="https://tgkmotorsport.com/..." oninput="setOpt(\'pinterest\',\'link\',this.value,1)"></div>';
+    h = '<div style="margin-top:12px"><span class="lbl">Video title (shown on your hand-off card)</span><input class="inp" value="' + esc(o.youtube.title) + '" maxlength="100" placeholder="First line of caption" oninput="setOpt(\'youtube\',\'title\',this.value,1)"></div>';
   }
   return h;
 }
@@ -585,17 +609,16 @@ function paintCounts() {
 function renderAccts() {
   var el = $('accts'); if (!el) return; var d = S.draft;
   el.innerHTML = PLATFORMS.map(function (p) {
-    var conn = S.connected === null ? null : S.connected.indexOf(p.id) >= 0;
-    var allowed = S.settings.enabled[p.id] !== false;
-    var on = d.platforms.indexOf(p.id) >= 0;
-    var off = conn === false || !allowed;
-    var sub = conn === null ? 'Not checked' : conn === false ? 'Not linked' : !allowed ? 'Paused' : 'Linked';
+    var allowed = S.settings.enabled[p.id] !== false, on = d.platforms.indexOf(p.id) >= 0, linked = isLinked(p.id);
+    var sub = p.manual ? 'Post by hand' : S.connected === null ? 'Not checked' : !linked ? 'Not set up' : !allowed ? 'Paused' : 'Linked';
+    if (p.manual && !allowed) sub = 'Paused';
+    var off = !linked || !allowed;
     return '<button class="acct' + (on ? ' on' : '') + (off ? ' off' : '') + '" onclick="togAcct(\'' + p.id + '\')"><span class="pcode">' + p.code + '</span><span>' + esc(p.name) + '<small>' + sub + '</small></span></button>';
   }).join('');
 }
 function togAcct(pid) {
-  var d = S.draft, conn = S.connected === null ? null : S.connected.indexOf(pid) >= 0;
-  if (conn === false) { toast(P(pid).name + ' is not linked yet. Link it in the provider dashboard (Accounts tab).', 'bad'); return; }
+  var d = S.draft;
+  if (!isLinked(pid)) { toast(P(pid).name + ' is not set up yet - see Backend Setup.', 'bad'); return; }
   if (S.settings.enabled[pid] === false) { toast(P(pid).name + ' is paused. Turn it back on in the Accounts tab.', 'bad'); return; }
   var i = d.platforms.indexOf(pid); if (i >= 0) d.platforms.splice(i, 1); else d.platforms.push(pid);
   d.touched = true; renderAccts(); renderPostCard(); refresh();
@@ -624,11 +647,19 @@ function plan(d) {
   var vids = d.media.filter(function (m) { return m.type === 'video'; }).length, imgs = d.media.length - vids, send = [], skip = [];
   d.platforms.forEach(function (pid) {
     var why = '';
-    if (pid === 'instagram') { if (!d.media.length) why = 'needs a picture or video'; else if (d.opts.instagram.format === 'reel' && !(vids === 1 && !imgs)) why = 'Reel needs exactly one video'; }
-    if (pid === 'facebook' && d.opts.facebook.format !== 'feed' && !d.media.length) why = d.opts.facebook.format + ' needs media';
-    if (pid === 'tiktok' && !(vids === 1 && !imgs)) why = 'needs exactly one video';
+    if (pid === 'instagram') {
+      var fmt = d.opts.instagram.format;
+      if (!d.media.length) why = 'needs a picture or video';
+      else if (fmt === 'reel' && !(vids === 1 && !imgs)) why = 'Reel needs exactly one video';
+      else if (fmt !== 'story') d.media.forEach(function (m) {
+        if (m.mime === 'image/gif') why = 'GIFs are not supported';
+        else if (m.type === 'image' && m.w && m.h) { var r = m.w / m.h; if (r < 0.79 || r > 1.92) why = "a picture is outside Instagram's 4:5 to 1.91:1 shape"; }
+      });
+    }
+    if (pid === 'facebook' && vids > 1) why = 'Facebook takes one video per post';
+    if (pid === 'bluesky' && vids) why = 'video is not supported yet';
+    if (pid === 'tiktok' && !d.media.length) why = 'needs a video or pictures';
     if (pid === 'youtube' && !(vids === 1 && !imgs)) why = 'needs exactly one video';
-    if (pid === 'pinterest') { if (!imgs) why = 'needs a picture'; else if (!String(d.opts.pinterest.board).trim()) why = 'needs a Board ID (Pinterest tab)'; }
     if (why) skip.push({ pid: pid, why: why }); else send.push(pid);
   });
   return { send: send, skip: skip };
@@ -652,12 +683,14 @@ function validate(d) {
       if (d.media.length > 10) add('bad', n + ' allows up to 10 items in one post');
       if ((t.match(/#\w+/g) || []).length > 30) add('warn', n + ': more than 30 hashtags');
     }
-    if (pid === 'twitter' && imgs > 4) add('warn', n + ' shows at most 4 pictures');
+    if (pid === 'bluesky' && imgs > 4) add('warn', n + ' takes 4 pictures - the first 4 will be used');
+    if (p.manual) add('ok', n + ' is posted by hand - you will get a ready-to-post card');
   });
   if (d.mode === 'schedule') {
     var t = d.when ? new Date(d.when) : null;
     if (!t || isNaN(t)) add('bad', 'Pick a date and time');
-    else if (t.getTime() < Date.now() + 4 * 60000) add('bad', 'Scheduled time must be at least 5 minutes from now');
+    else if (t.getTime() < Date.now() + 2 * 60000) add('bad', 'Scheduled time must be at least 2 minutes from now');
+    if (S.connected !== null && !schedulerOk() && pl.send.some(function (x) { return !P(x).manual; })) add('warn', 'The scheduler is not running yet (Backend Setup, scheduler step) - scheduled posts will not go out until it is');
   }
   if (S.connected === null) add('warn', 'Posting backend not reachable yet (' + (S.connErr || 'checking') + ')');
   if (!bad) add('ok', 'Ready to ' + (d.mode === 'schedule' ? 'schedule' : 'post') + ' to ' + pl.send.length + ' account' + (pl.send.length === 1 ? '' : 's'));
@@ -706,7 +739,7 @@ async function aiRun() {
     var m = txt.replace(/```json|```/g, '').match(/\{[\s\S]*\}/); if (!m) throw new Error('The AI did not return a caption. Try again.');
     var o = JSON.parse(m[0]);
     if (o.long) d.text = String(o.long);
-    if (o.short) ['twitter', 'bluesky', 'threads', 'pinterest'].forEach(function (pid) { if (d.platforms.indexOf(pid) >= 0 && String(o.short).length <= P(pid).limit) d.overrides[pid] = String(o.short); });
+    if (o.short) ['bluesky'].forEach(function (pid) { if (d.platforms.indexOf(pid) >= 0 && String(o.short).length <= P(pid).limit) d.overrides[pid] = String(o.short); });
     closeModal(); S.tab = 'all'; renderPostCard(); refresh(); toast('Caption written - edit it however you like', 'ok');
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Generate'; }
@@ -720,7 +753,7 @@ function recFromDraft(status) {
   return {
     id: d.id || uid(), by: (S.session && S.session.email) || '', created: old.created || new Date().toISOString(), status: status,
     text: d.text, overrides: JSON.parse(JSON.stringify(d.overrides)), opts: JSON.parse(JSON.stringify(d.opts)), platforms: d.platforms.slice(),
-    media: d.media.filter(function (m) { return m.state === 'ok'; }).map(function (m) { return { name: m.name, type: m.type, mime: m.mime, size: m.size, url: m.url, path: m.path }; }),
+    media: d.media.filter(function (m) { return m.state === 'ok'; }).map(function (m) { return { name: m.name, type: m.type, mime: m.mime, size: m.size, url: m.url, small: m.small || '', w: m.w || 0, h: m.h || 0, path: m.path }; }),
     mode: d.mode, scheduleAt: d.mode === 'schedule' && d.when ? new Date(d.when).toISOString() : '', jobs: old.jobs || [], note: '', postedAt: old.postedAt || ''
   };
 }
@@ -738,51 +771,41 @@ function goPublish() {
   var when = d.mode === 'schedule' ? 'Scheduled for <b>' + esc(fmt(new Date(d.when).toISOString())) + '</b> (' + esc(TZ || 'your time zone') + ')' : '<b>Goes out immediately.</b> It cannot be pulled back from here once it is live.';
   confirmBox(d.mode === 'schedule' ? 'Schedule this post?' : 'Post right now?', '<div style="margin-bottom:10px">' + when + '</div><div style="line-height:2">' + names + '</div><div class="muted" style="margin-top:10px">' + d.media.length + ' media file' + (d.media.length === 1 ? '' : 's') + '</div>', d.mode === 'schedule' ? 'Schedule' : 'Post now', 'pri', runPublish);
 }
-function buildJobs(rec) {
-  var urls = rec.media.map(function (m) { return m.url; }), isVideo = rec.media.some(function (m) { return m.type === 'video'; });
-  var groups = {}, order = [];
-  rec.platforms.forEach(function (pid) {
-    var text = effText(rec, pid), o = optsFor(rec, pid), key = text;
-    if (!groups[key]) { groups[key] = { platforms: [], text: text, options: {}, mediaUrls: urls, isVideo: isVideo }; order.push(key); }
-    groups[key].platforms.push(pid); if (o) groups[key].options[pid] = o;
-  });
-  return order.map(function (k) { var j = groups[k]; if (rec.scheduleAt) j.scheduleDate = rec.scheduleAt.replace(/\.\d{3}Z$/, 'Z'); return j; });
-}
 function computeStatus(jobs) {
-  var f = 0, p = 0, s = 0, c = 0, n = 0;
-  (jobs || []).forEach(function (j) { (j.results || []).forEach(function (r) { n++; if (r.status === 'failed') f++; else if (r.status === 'published') p++; else if (r.status === 'scheduled') s++; else if (r.status === 'cancelled') c++; }); });
+  var f = 0, p = 0, s = 0, c = 0, m = 0, n = 0;
+  (jobs || []).forEach(function (j) { (j.results || []).forEach(function (r) { n++; if (r.status === 'failed') f++; else if (r.status === 'published') p++; else if (r.status === 'scheduled') s++; else if (r.status === 'cancelled') c++; else if (r.status === 'manual') m++; }); });
   if (!n) return 'failed';
   if (c === n) return 'cancelled';
-  if (f && (p || s)) return 'partial';
+  if (f && (p || s || m)) return 'partial';
   if (f) return 'failed';
   if (s) return 'scheduled';
+  if (m) return 'manual';
   return 'published';
 }
 async function runPublish() {
   if (S.busy) return;
-  var d = S.draft, old = S.posts.find(function (x) { return x.id === d.id; });
-  var rec = recFromDraft('publishing'); rec.jobs = []; d.id = rec.id;
+  var d = S.draft, rec = recFromDraft('publishing'); rec.jobs = []; d.id = rec.id;
   var pln = plan(d); rec.platforms = pln.send; rec.skipped = pln.skip.map(function (x) { return P(x.pid).name + ': ' + x.why; });
   S.busy = true; refresh();
   try {
-    if (old && old.jobs && old.jobs.length) {
-      for (var i = 0; i < old.jobs.length; i++) {
-        var oj = old.jobs[i]; if (oj.ref && oj.status === 'scheduled') { var dr = await api('delete', { ref: oj.ref }, 30000); if (!dr.ok) throw new Error('Could not cancel the earlier scheduled version: ' + (dr.error || 'unknown error')); }
-      }
+    if (rec.mode === 'schedule') {
+      rec.jobs = [{ ref: '', platforms: rec.platforms, status: 'scheduled', results: rec.platforms.map(function (p) { return { platform: p, status: P(p).manual ? 'manual' : 'scheduled', url: '', error: '' }; }) }];
+      rec.status = computeStatus(rec.jobs);
+      await savePost(rec);
+    } else {
+      await savePost(rec);
+      var res = await api('publish', { post: rec }, 170000);
+      if (!res.ok) throw new Error(res.error || 'The backend refused the post');
+      rec.jobs = [{ ref: '', platforms: rec.platforms, status: computeStatus([{ results: res.results }]), results: res.results || [] }];
+      rec.status = computeStatus(rec.jobs);
+      if (rec.status === 'published' || rec.status === 'partial' || rec.status === 'manual') rec.postedAt = new Date().toISOString();
+      var fails = []; rec.jobs.forEach(function (j) { (j.results || []).forEach(function (r) { if (r.status === 'failed') fails.push(P(r.platform).name + ': ' + (r.error || 'failed')); }); });
+      rec.note = fails.join(' | ');
+      await savePost(rec);
     }
-    await savePost(rec);
-    var jobs = buildJobs(rec);
-    var res = await api('publish', { jobs: jobs }, 170000);
-    if (!res.ok) throw new Error(res.error || 'The backend refused the post');
-    rec.jobs = (res.jobs || []).map(function (r, i) { return { ref: r.ref || '', platforms: jobs[i] ? jobs[i].platforms : [], status: computeStatus([r]), results: r.results || [] }; });
-    rec.status = computeStatus(rec.jobs);
-    if (rec.status === 'published' || rec.status === 'partial') rec.postedAt = new Date().toISOString();
-    var fails = []; rec.jobs.forEach(function (j) { (j.results || []).forEach(function (r) { if (r.status === 'failed') fails.push(P(r.platform).name + ': ' + (r.error || 'failed')); }); });
-    rec.note = fails.join(' | ');
-    await savePost(rec);
     S.busy = false; S.draft = newDraft(); S.editingId = null; S.tab = 'all';
-    toast(rec.status === 'scheduled' ? 'Scheduled' : rec.status === 'published' ? 'Posted' : rec.status === 'partial' ? 'Posted to some accounts - see details' : 'Failed - see details', rec.status === 'failed' || rec.status === 'partial' ? 'bad' : 'ok');
-    go('queue'); if (rec.status === 'failed' || rec.status === 'partial') openDrawer(rec.id);
+    toast(rec.status === 'scheduled' ? 'Scheduled' : rec.status === 'published' ? 'Posted' : rec.status === 'manual' ? 'Done - finish the by-hand accounts from the Queue' : rec.status === 'partial' ? 'Some accounts failed - see details' : 'Failed - see details', rec.status === 'failed' || rec.status === 'partial' ? 'bad' : 'ok');
+    go('queue'); if (rec.status === 'failed' || rec.status === 'partial' || (rec.status === 'manual' && rec.mode !== 'schedule')) openDrawer(rec.id);
   } catch (e) {
     S.busy = false;
     rec.status = 'failed';
@@ -793,7 +816,7 @@ async function runPublish() {
 }
 
 /* ---------------- queue ---------------- */
-var STATUS_LBL = { draft: 'Draft', scheduled: 'Scheduled', publishing: 'Publishing', published: 'Published', partial: 'Partial', failed: 'Failed', cancelled: 'Cancelled' };
+var STATUS_LBL = { draft: 'Draft', scheduled: 'Scheduled', publishing: 'Publishing', published: 'Published', partial: 'Partial', failed: 'Failed', cancelled: 'Cancelled', manual: 'Post by hand' };
 function whenOf(p) { return p.scheduleAt || p.postedAt || p.created || ''; }
 function thumbHtml(p) {
   var m = (p.media || [])[0]; if (!m) return '<div class="mini">TXT</div>';
@@ -806,11 +829,12 @@ function codesHtml(p) {
 function renderQueue() {
   var f = S.filter, list = S.posts.slice();
   var counts = { all: list.length, scheduled: 0, published: 0, draft: 0, failed: 0 };
-  list.forEach(function (p) { if (p.status === 'scheduled' || p.status === 'publishing') counts.scheduled++; else if (p.status === 'published') counts.published++; else if (p.status === 'draft') counts.draft++; else if (p.status === 'failed' || p.status === 'partial') counts.failed++; });
-  if (f !== 'all') list = list.filter(function (p) { return f === 'scheduled' ? (p.status === 'scheduled' || p.status === 'publishing') : f === 'failed' ? (p.status === 'failed' || p.status === 'partial') : p.status === f; });
+  list.forEach(function (p) { if (p.status === 'scheduled' || p.status === 'publishing') counts.scheduled++; else if (p.status === 'published') counts.published++; else if (p.status === 'draft') counts.draft++; else if (p.status === 'failed' || p.status === 'partial' || p.status === 'manual') counts.failed++; });
+  if (f !== 'all') list = list.filter(function (p) { return f === 'scheduled' ? (p.status === 'scheduled' || p.status === 'publishing') : f === 'failed' ? (p.status === 'failed' || p.status === 'partial' || p.status === 'manual') : p.status === f; });
   list.sort(function (a, b) { var x = String(whenOf(a)), y = String(whenOf(b)); return f === 'scheduled' ? x.localeCompare(y) : y.localeCompare(x); });
   var fl = [['all', 'All'], ['scheduled', 'Scheduled'], ['published', 'Published'], ['draft', 'Drafts'], ['failed', 'Needs attention']];
   var h = '<div class="filters">' + fl.map(function (x) { return '<button class="fbtn' + (f === x[0] ? ' on' : '') + '" onclick="S.filter=\'' + x[0] + '\';render()">' + x[1] + ' (' + counts[x[0]] + ')</button>'; }).join('') + '</div>';
+  if (S.connected !== null && !schedulerOk() && S.posts.some(function (p) { return p.status === 'scheduled'; })) h += '<div class="note warn" style="margin-bottom:14px"><b>The scheduler is not running.</b> Scheduled posts will not go out until the Supabase cron job is set up (Backend Setup, scheduler step).</div>';
   if (!S.postsLoaded) h += '<div class="empty"><b>Loading posts...</b></div>';
   else if (!list.length) h += '<div class="card"><div class="empty"><b>Nothing here yet</b>Posts you save, schedule or send show up in this list.<br><br><button class="btn pri" onclick="go(\'compose\')">New post</button></div></div>';
   else h += '<div class="card" style="overflow:hidden"><table class="tbl"><thead><tr><th style="width:60px"></th><th>Caption</th><th>Accounts</th><th>When</th><th>Status</th><th>By</th></tr></thead><tbody>' +
@@ -826,12 +850,18 @@ function openDrawer(id) {
   var media = (p.media || []).length ? '<div class="thumbs" style="margin:0 0 14px">' + p.media.map(function (m) { return '<div class="th">' + (m.type === 'video' ? '<video src="' + esc(m.url) + '#t=0.1" controls muted playsinline preload="metadata"></video>' : '<img src="' + esc(m.url) + '" alt="">') + '</div>'; }).join('') + '</div>' : '';
   var res = [];
   (p.jobs || []).forEach(function (j) { (j.results || []).forEach(function (r) { res.push('<div class="chk ' + (r.status === 'failed' ? 'bad' : r.status === 'published' ? 'ok' : 'warn') + '"><i>' + (r.status === 'failed' ? '\u00d7' : r.status === 'published' ? '\u2713' : '\u2022') + '</i><span><b>' + esc(P(r.platform).name) + '</b> - ' + esc(r.status) + (r.url ? ' - <a href="' + esc(r.url) + '" target="_blank" rel="noopener" style="color:var(--teal-t)">open post</a>' : '') + (r.error ? '<br><span class="muted">' + esc(r.error) + '</span>' : '') + '</span></div>'); }); });
+  var man = []; if (p.status !== 'cancelled') (p.jobs || []).forEach(function (j) { (j.results || []).forEach(function (r) { if (r.status === 'manual') man.push(r.platform); }); });
+  var manHtml = man.map(function (pid) {
+    var pp = P(pid), dl = (p.media || []).map(function (m, i) { return '<a class="btn sm" href="' + esc(m.url + '?download=' + encodeURIComponent(m.name)) + '">Download ' + (m.type === 'video' ? 'video' : 'picture') + ' ' + (i + 1) + '</a>'; }).join(' ');
+    return '<div class="card" style="margin-bottom:14px;border-left:3px solid var(--amber)"><div class="card-h"><span class="pcode">' + pp.code + '</span>' + esc(pp.name) + ' - post by hand</div><div class="card-b"><div class="muted" style="margin-bottom:10px;font-size:13px">' + (p.scheduleAt ? 'Planned for ' + esc(fmt(p.scheduleAt)) + '. ' : '') + 'Download the media, copy the caption, post it in the app, then mark it done.' + (pid === 'youtube' && p.opts && p.opts.youtube && p.opts.youtube.title ? '<br><b>Title:</b> ' + esc(p.opts.youtube.title) : '') + '</div><div class="row">' + dl + '<button class="btn sm" onclick="copyCaption(\'' + p.id + '\',\'' + pid + '\')">' + ic('copy', 13) + 'Copy caption</button><a class="btn sm" href="' + pp.open + '" target="_blank" rel="noopener">' + esc(pp.openLbl) + '</a><button class="btn sm sec" onclick="markDone(\'' + p.id + '\',\'' + pid + '\')">Mark as posted</button></div></div></div>';
+  }).join('');
   var ovs = Object.keys(p.overrides || {}).filter(function (k) { return String(p.overrides[k]).trim(); });
   var h = '<div class="row" style="margin-bottom:12px"><span class="st ' + p.status + '">' + STATUS_LBL[p.status] + '</span><span class="mono muted">' + esc(fmt(whenOf(p))) + '</span><span class="sp"></span><span>' + codesHtml(p) + '</span></div>' + media +
     '<span class="lbl">Caption</span><div class="pv-t" style="border:1px solid var(--border);border-radius:2px;max-height:none;margin-bottom:14px">' + (p.text ? esc(p.text) : '<span class="muted">(none)</span>') + '</div>' +
     (ovs.length ? '<span class="lbl">Custom captions</span>' + ovs.map(function (k) { return '<div class="pv-t" style="border:1px solid var(--border);border-radius:2px;max-height:none;margin-bottom:8px"><b>' + esc(P(k).name) + '</b><br>' + esc(p.overrides[k]) + '</div>'; }).join('') : '') +
     ((p.skipped && p.skipped.length) ? '<div class="note warn" style="margin-bottom:14px"><b>Skipped:</b> ' + esc(p.skipped.join(' | ')) + '</div>' : '') +
     (p.note ? '<div class="note ' + (p.status === 'failed' ? 'bad' : 'warn') + '" style="margin-bottom:14px">' + esc(p.note) + '</div>' : '') +
+    (manHtml ? '<span class="lbl">Waiting for you</span>' + manHtml : '') +
     (res.length ? '<span class="lbl">Per account</span>' + res.join('') : '') +
     '<div class="muted" style="margin-top:14px;font-size:12px">Created ' + esc(fmt(p.created)) + (p.by ? ' by ' + esc(p.by) : '') + '</div>';
   $('dr-body').innerHTML = h;
@@ -849,7 +879,7 @@ function editPost(id, failedOnly, dup) {
   var p = findPost(id); if (!p) return; closeDrawer();
   var d = newDraft();
   d.id = dup ? '' : p.id; d.text = p.text || ''; d.overrides = JSON.parse(JSON.stringify(p.overrides || {})); d.opts = Object.assign(d.opts, JSON.parse(JSON.stringify(p.opts || {})));
-  d.media = (p.media || []).map(function (m) { return { id: uid(), name: m.name, type: m.type, mime: m.mime, size: m.size, local: '', url: m.url, path: m.path, pct: 100, state: 'ok', err: '' }; });
+  d.media = (p.media || []).map(function (m) { return { id: uid(), name: m.name, type: m.type, mime: m.mime, size: m.size, local: '', url: m.url, small: m.small || '', w: m.w || 0, h: m.h || 0, path: m.path, pct: 100, state: 'ok', err: '' }; });
   d.platforms = (p.platforms || []).slice(); d.touched = true;
   if (failedOnly) { var bad = {}; (p.jobs || []).forEach(function (j) { (j.results || []).forEach(function (r) { if (r.status === 'failed') bad[r.platform] = 1; }); }); var fp = d.platforms.filter(function (x) { return bad[x]; }); if (fp.length) d.platforms = fp; d.id = ''; }
   if (p.scheduleAt && new Date(p.scheduleAt).getTime() > Date.now() && !dup && !failedOnly) { d.mode = 'schedule'; d.when = toLocalInput(new Date(p.scheduleAt)); } else { d.mode = 'now'; }
@@ -857,12 +887,20 @@ function editPost(id, failedOnly, dup) {
 }
 function cancelPost(id) {
   confirmBox('Cancel this scheduled post?', 'It will not go out. The post stays in the list as Cancelled.', 'Cancel schedule', 'dng', async function () {
-    var p = findPost(id); if (!p) return;
     try {
-      for (var i = 0; i < (p.jobs || []).length; i++) { var j = p.jobs[i]; if (j.ref && j.status === 'scheduled') { var r = await api('delete', { ref: j.ref }, 30000); if (!r.ok) throw new Error(r.error || 'Provider refused'); j.status = 'cancelled'; (j.results || []).forEach(function (x) { x.status = 'cancelled'; }); } }
+      await loadPosts(); var p = findPost(id); if (!p) return;
+      if (p.status !== 'scheduled') { toast('It already went out (or is going out now) - nothing to cancel.', 'bad'); closeDrawer(); render(); return; }
+      (p.jobs || []).forEach(function (j) { j.status = 'cancelled'; (j.results || []).forEach(function (x) { x.status = 'cancelled'; }); });
       p.status = 'cancelled'; await savePost(p); closeDrawer(); render(); toast('Schedule cancelled', 'ok');
     } catch (e) { toast('Could not cancel: ' + e.message, 'bad'); }
   });
+}
+function copyCaption(id, pid) { var p = findPost(id); if (p) copyText(effText(p, pid), 'Caption'); }
+async function markDone(id, pid) {
+  var p = findPost(id); if (!p) return;
+  (p.jobs || []).forEach(function (j) { (j.results || []).forEach(function (r) { if (r.platform === pid && r.status === 'manual') r.status = 'published'; }); });
+  p.status = computeStatus(p.jobs); if (p.status === 'published' && !p.postedAt) p.postedAt = new Date().toISOString();
+  try { await savePost(p); toast(P(pid).name + ' marked as posted', 'ok'); openDrawer(id); render(); } catch (e) { toast('Could not save: ' + e.message, 'bad'); }
 }
 function deletePost(id) {
   var p = findPost(id); if (!p) return;
@@ -870,27 +908,10 @@ function deletePost(id) {
     try { await removePost(id); closeDrawer(); render(); toast('Deleted', 'ok'); } catch (e) { toast('Could not delete: ' + e.message, 'bad'); }
   });
 }
-async function syncHistory(manual) {
-  var open = S.posts.filter(function (p) { return p.status === 'scheduled' || p.status === 'publishing' || p.status === 'partial'; });
-  if (!open.length) { if (manual) toast('Nothing waiting to sync', 'ok'); return; }
-  try {
-    var d = await api('history', {}, 30000); if (!d.ok) { if (manual) toast('Sync failed: ' + (d.error || 'provider error'), 'bad'); return; }
-    var map = {}; (d.items || []).forEach(function (i) { map[i.ref] = i; });
-    var changed = [];
-    open.forEach(function (p) {
-      var touched = false;
-      (p.jobs || []).forEach(function (j) {
-        var h = map[j.ref]; if (!h || !h.status || h.status === 'scheduled') return;
-        if (j.status === h.status && h.status !== 'published') return;
-        if (h.results && h.results.length) j.results = h.results; else (j.results || []).forEach(function (r) { r.status = h.status; });
-        j.status = h.status; touched = true;
-      });
-      if (touched) { var ns = computeStatus(p.jobs); if (ns !== p.status) { p.status = ns; if ((ns === 'published' || ns === 'partial') && !p.postedAt) p.postedAt = new Date().toISOString(); changed.push(p); } }
-    });
-    for (var i = 0; i < changed.length; i++) await savePost(changed[i]);
-    if (changed.length && (S.view === 'queue' || S.view === 'calendar')) render();
-    if (manual) toast(changed.length ? changed.length + ' post' + (changed.length === 1 ? '' : 's') + ' updated' : 'Everything is up to date', 'ok');
-  } catch (e) { if (manual) toast('Sync failed: ' + e.message, 'bad'); }
+async function sendDueNow() {
+  try { var d = await api('run_due', {}, 170000); if (!d.ok) throw new Error(d.error || 'failed'); await loadPosts(); toast(d.sent ? d.sent + ' post' + (d.sent === 1 ? '' : 's') + ' sent' : 'Nothing was due', 'ok'); }
+  catch (e) { toast('Could not run the scheduler: ' + e.message, 'bad'); }
+  render();
 }
 
 /* ---------------- calendar ---------------- */
@@ -919,12 +940,13 @@ function calDay(y, m, d) {
 function renderAccounts() {
   var h = '';
   if (S.connected === null) h += '<div class="note bad" style="margin-bottom:14px"><b>Posting backend is not reachable.</b> ' + esc(S.connErr || 'Not checked yet') + '<br>Finish the steps in <a href="#" onclick="go(\'setup\');return false" style="color:var(--teal-t);font-weight:700">Backend Setup</a>, then press Check again.</div>';
-  h += '<div class="row" style="margin-bottom:14px"><button class="btn sec" onclick="checkConn()">' + ic('refresh', 14) + 'Check again</button><button class="btn" onclick="window.open(\'https://app.ayrshare.com/\',\'_blank\',\'noopener\')">' + ic('link', 14) + 'Link accounts (provider dashboard)</button></div>' +
-    '<div class="note" style="margin-bottom:16px">Accounts are linked once, in the posting provider\'s dashboard (that is where Instagram, Facebook, TikTok and the rest ask for your login). They appear here automatically. Use <b>Allowed</b> to decide which linked accounts this tool may post to - paused accounts cannot be selected.</div>' +
+  h += '<div class="row" style="margin-bottom:14px"><button class="btn sec" onclick="checkConn()">' + ic('refresh', 14) + 'Check again</button><span class="muted">Scheduler: ' + (schedulerOk() ? '<b style="color:var(--green)">running</b>' : '<b style="color:var(--red)">not running</b>') + '</span></div>' +
+    '<div class="note" style="margin-bottom:16px">Instagram and Facebook post through one Meta connection, Bluesky through an app password. TikTok and YouTube are posted by hand: the tool prepares everything and gives you a ready-to-post card. Use <b>Allowed</b> to decide which accounts this tool may post to.</div>' +
     '<div class="card" style="overflow:hidden"><table class="tbl"><thead><tr><th>Platform</th><th>Status</th><th style="width:150px">Allowed to post</th></tr></thead><tbody>' +
     PLATFORMS.map(function (p) {
-      var conn = S.connected === null ? null : S.connected.indexOf(p.id) >= 0, al = S.settings.enabled[p.id] !== false;
-      return '<tr style="cursor:default"><td><span class="pcode">' + p.code + '</span> &nbsp;<b>' + esc(p.name) + '</b></td><td>' + (conn === null ? '<span class="muted">Unknown</span>' : conn ? '<span class="st published">Linked</span>' : '<span class="st cancelled">Not linked</span>') + '</td><td><div class="seg"><button class="' + (al ? 'on' : '') + '" onclick="setAllow(\'' + p.id + '\',true)">On</button><button class="' + (!al ? 'on' : '') + '" onclick="setAllow(\'' + p.id + '\',false)">Paused</button></div></td></tr>';
+      var al = S.settings.enabled[p.id] !== false, note = S.connNotes && S.connNotes[p.id];
+      var st = p.manual ? '<span class="st manual">By hand</span>' : S.connected === null ? '<span class="muted">Unknown</span>' : S.connected.indexOf(p.id) >= 0 ? '<span class="st published">Linked</span>' : '<span class="st cancelled">Not set up</span>';
+      return '<tr style="cursor:default"><td><span class="pcode">' + p.code + '</span> &nbsp;<b>' + esc(p.name) + '</b></td><td>' + st + (note ? '<div class="muted" style="font-size:12px;margin-top:4px">' + esc(note) + '</div>' : '') + '</td><td><div class="seg"><button class="' + (al ? 'on' : '') + '" onclick="setAllow(\'' + p.id + '\',true)">On</button><button class="' + (!al ? 'on' : '') + '" onclick="setAllow(\'' + p.id + '\',false)">Paused</button></div></td></tr>';
     }).join('') + '</tbody></table></div>' +
     '<div class="card" style="margin-top:16px"><div class="card-h">Posting defaults</div><div class="card-b"><span class="lbl">Default hashtags (adds a button in Compose)</span><textarea class="txt" id="tags" style="min-height:70px" placeholder="#TGKMotorsport #B9S4 #VAG #motormounts">' + esc(S.settings.hashtags || '') + '</textarea><div style="margin-top:10px"><button class="btn sec" onclick="saveTags()">Save hashtags</button></div></div></div>';
   $('view').innerHTML = h;
@@ -933,14 +955,44 @@ function setAllow(pid, on) { S.settings.enabled[pid] = on; if (!on) S.draft && (
 function saveTags() { S.settings.hashtags = ($('tags').value || '').trim(); saveSettings().then(function () { toast('Hashtags saved', 'ok'); }); }
 
 /* ---------------- setup ---------------- */
+function cronSecret() {
+  var k = 'tgk_social_cron_secret', v = '';
+  try { v = localStorage.getItem(k) || ''; } catch (e) {}
+  if (!v) { var a = new Uint8Array(24); crypto.getRandomValues(a); v = Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); try { localStorage.setItem(k, v); } catch (e) {} }
+  return v;
+}
+function cronSql() {
+  return ['-- Runs the scheduler every minute (free, built into Supabase).', 'create extension if not exists pg_cron;', 'create extension if not exists pg_net;',
+    "do $$ begin perform cron.unschedule('tgk-social-run-due'); exception when others then null; end $$;",
+    "select cron.schedule('tgk-social-run-due', '* * * * *', $job$", '  select net.http_post(', "    url := '" + SB_URL + "/functions/v1/social-publish',",
+    "    headers := jsonb_build_object('Content-Type','application/json','Authorization','Bearer " + SB_JWT + "','x-cron-secret','" + cronSecret() + "'),",
+    "    body := '{\"action\":\"run_due\"}'::jsonb", '  );', '$job$);'].join('\n');
+}
+function codeBox(t, label) { return '<pre class="code">' + esc(t) + '</pre><div style="margin-top:8px"><button class="btn sm sec" onclick="copyText(this.getAttribute(\'data-t\'),\'' + label + '\')" data-t="' + esc(t) + '">' + ic('copy', 14) + 'Copy ' + label + '</button></div>'; }
+async function metaConnect() {
+  var t = ($('mt-token').value || '').trim(), a = ($('mt-app').value || '').trim(), sc = ($('mt-secret').value || '').trim();
+  if (!t || !a || !sc) { S.meta.err = 'Fill in all three boxes.'; return renderSetup(); }
+  S.meta.busy = true; S.meta.err = ''; renderSetup();
+  try { var d = await api('meta_connect', { user_token: t, app_id: a, app_secret: sc }, 60000); if (d.ok) S.meta.pages = d.pages || []; else S.meta.err = d.error || 'Failed'; if (d.ok && !S.meta.pages.length) S.meta.err = 'No Pages found on that login. Make sure you ticked the Page permissions and picked your Page.'; }
+  catch (e) { S.meta.err = e.message; }
+  S.meta.busy = false; renderSetup();
+}
 function renderSetup() {
-  var h = '<div class="note" style="margin-bottom:16px"><b>How posting works.</b> This tool uploads your media to your own Supabase storage, then hands the post to a posting service (Ayrshare) through one small Supabase function. The service holds the logins for Instagram, Facebook, TikTok and the rest, and it keeps scheduled posts on its own side - so scheduled posts go out even if nobody has this page open. Ayrshare is a paid service; check its current plans before you subscribe.</div>' +
+  var keep = { t: ($('mt-token') || {}).value || '', a: ($('mt-app') || {}).value || '', s: ($('mt-secret') || {}).value || '' };
+  var pagesHtml = (S.meta.pages || []).map(function (p, i) {
+    return '<div class="card" style="margin-top:10px"><div class="card-h">' + esc(p.name) + '<span class="sp"></span><span class="muted" style="text-transform:none;letter-spacing:0">' + (p.ig_id ? 'Instagram: @' + esc(p.ig_username || p.ig_id) : 'No Instagram linked to this Page') + '</span></div><div class="card-b"><div class="row"><button class="btn sm sec" onclick="copyText(S.meta.pages[' + i + '].id,\'META_PAGE_ID\')">Copy META_PAGE_ID</button><button class="btn sm sec" onclick="copyText(S.meta.pages[' + i + '].token,\'META_PAGE_TOKEN\')">Copy META_PAGE_TOKEN</button>' + (p.ig_id ? '<button class="btn sm sec" onclick="copyText(S.meta.pages[' + i + '].ig_id,\'META_IG_USER_ID\')">Copy META_IG_USER_ID</button>' : '') + '</div></div></div>';
+  }).join('');
+  var h = '<div class="note" style="margin-bottom:16px"><b>No paid service.</b> Instagram and Facebook post straight through Meta, Bluesky through its own API, and scheduling runs on a free Supabase job. TikTok and YouTube are posted by hand from a ready-to-post card (their free APIs only allow private posts until the app passes the platform audit). Menu names on Meta and Supabase move around, so follow the idea if a label differs.</div>' +
     '<div class="steps">' +
-    '<div class="stp"><h3>Create the posting-service account</h3><div class="muted">Sign up at ayrshare.com, link your Instagram, Facebook, TikTok, YouTube and the others inside their dashboard, then copy your API key from its API page. Instagram needs a Business or Creator account connected to a Facebook Page.</div></div>' +
-    '<div class="stp"><h3>Run this SQL in Supabase (SQL editor)</h3><div class="muted" style="margin-bottom:8px">Creates the public media bucket and lets signed-in TGK users upload to it.</div><pre class="code">' + esc(SQL_SRC) + '</pre><div style="margin-top:8px"><button class="btn sm sec" onclick="copyText(SQL_SRC,\'SQL\')">' + ic('copy', 14) + 'Copy SQL</button></div></div>' +
-    '<div class="stp"><h3>Deploy the function</h3><div class="muted" style="margin-bottom:8px">Supabase dashboard &gt; Edge Functions &gt; Deploy a new function &gt; name it exactly <b class="mono">social-publish</b> &gt; paste this code &gt; Deploy. Leave the JWT check on.</div><pre class="code">' + esc(EDGE_SRC) + '</pre><div style="margin-top:8px"><button class="btn sm sec" onclick="copyText(EDGE_SRC,\'Function code\')">' + ic('copy', 14) + 'Copy function code</button></div></div>' +
-    '<div class="stp"><h3>Add the secret</h3><div class="muted">Edge Functions &gt; Secrets &gt; add <b class="mono">AYRSHARE_API_KEY</b> with the key from step 1.</div></div>' +
-    '<div class="stp"><h3>Test it</h3><div class="muted" style="margin-bottom:8px">Should list the accounts you linked.</div><button class="btn pri" onclick="checkConn()">' + ic('refresh', 14) + 'Check connection</button> <span id="setup-res" class="muted" style="margin-left:8px">' + (S.connected === null ? esc(S.connErr || '') : esc(S.connected.length + ' linked: ' + S.connected.join(', '))) + '</span></div>' +
+    '<div class="stp"><h3>Storage for your media</h3><div class="muted" style="margin-bottom:8px">Supabase SQL editor &gt; run this once. Platforms fetch your pictures and videos from a public link.</div>' + codeBox(SQL_SRC, 'SQL') + '</div>' +
+    '<div class="stp"><h3>Deploy the function</h3><div class="muted" style="margin-bottom:8px">Edge Functions &gt; Deploy a new function &gt; name it exactly <b class="mono">social-publish</b> &gt; paste &gt; Deploy. Leave the JWT check on.</div>' + codeBox(EDGE_SRC, 'function code') + '</div>' +
+    '<div class="stp"><h3>Connect Instagram and Facebook (Meta)</h3><div class="muted" style="margin-bottom:10px">Instagram must be a Business or Creator account linked to your Facebook Page.<br>1. developers.facebook.com &gt; My Apps &gt; Create App (Business type). Leave it in Development mode and do not publish it - you are the admin, so it posts to your own accounts without Meta review.<br>2. App settings &gt; Basic: copy the App ID and App Secret.<br>3. Tools &gt; Graph API Explorer: pick your app, Generate Access Token, tick <span class="mono">pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic, instagram_content_publish</span> (add <span class="mono">business_management</span> if your Page sits in a Business portfolio), and copy the token.<br>4. Paste all three below. The tool swaps it for a long-lived Page token.</div>' +
+    '<div class="grid2"><div><span class="lbl">App ID</span><input class="inp" id="mt-app" value="' + esc(keep.a) + '"></div><div><span class="lbl">App Secret</span><input class="inp" id="mt-secret" type="password" value="' + esc(keep.s) + '"></div></div><div style="margin-top:10px"><span class="lbl">Access token from Graph API Explorer</span><input class="inp" id="mt-token" value="' + esc(keep.t) + '"></div>' +
+    '<div style="margin-top:10px"><button class="btn pri" onclick="metaConnect()"' + (S.meta.busy ? ' disabled' : '') + '>' + (S.meta.busy ? 'Working...' : 'Get my Page values') + '</button></div>' + (S.meta.err ? '<div class="note bad" style="margin-top:10px">' + esc(S.meta.err) + '</div>' : '') + pagesHtml +
+    '<div class="muted" style="margin-top:10px">Then add each value as a secret on the function: <b class="mono">META_PAGE_ID</b>, <b class="mono">META_PAGE_TOKEN</b>, <b class="mono">META_IG_USER_ID</b>.</div></div>' +
+    '<div class="stp"><h3>Connect Bluesky (optional)</h3><div class="muted">Bluesky app &gt; Settings &gt; Privacy and security &gt; App passwords &gt; create one. Add secrets <b class="mono">BSKY_HANDLE</b> (like tgkmotorsport.bsky.social) and <b class="mono">BSKY_APP_PASSWORD</b>.</div></div>' +
+    '<div class="stp"><h3>Start the scheduler</h3><div class="muted" style="margin-bottom:8px">First add the secret <b class="mono">CRON_SECRET</b> with this value (generated for you, keep it): <span class="mono" style="word-break:break-all">' + esc(cronSecret()) + '</span><br>Then run this in the SQL editor. It checks for due posts every minute.</div>' + codeBox(cronSql(), 'scheduler SQL') + '</div>' +
+    '<div class="stp"><h3>Test it</h3><div class="muted" style="margin-bottom:8px">Should show your linked accounts, and the scheduler as running within a minute or two.</div><button class="btn pri" onclick="checkConn()">' + ic('refresh', 14) + 'Check connection</button> <span class="muted" style="margin-left:8px">' + (S.connected === null ? esc(S.connErr || '') : esc(S.connected.length + ' linked: ' + (S.connected.join(', ') || 'none yet') + ' | scheduler ' + (schedulerOk() ? 'running' : 'not running'))) + '</span></div>' +
     '</div>';
   $('view').innerHTML = h;
 }
@@ -958,10 +1010,10 @@ function render() {
   var V = VIEWS[S.view] || VIEWS.compose;
   document.querySelectorAll('.nav').forEach(function (n) { n.classList.toggle('on', n.getAttribute('data-v') === S.view); });
   $('h-title').textContent = V.t; $('h-sub').textContent = V.s;
-  $('h-act').innerHTML = S.view === 'queue' ? '<button class="btn sm" onclick="refreshQueue()" style="background:rgba(255,255,255,.08);color:#E4E9EC;border-color:rgba(255,255,255,.25)">' + ic('refresh', 14) + 'Refresh</button>' : '';
+  $('h-act').innerHTML = S.view === 'queue' ? '<button class="btn sm" onclick="sendDueNow()" style="background:rgba(255,255,255,.08);color:#E4E9EC;border-color:rgba(255,255,255,.25)">' + ic('send', 14) + 'Send due now</button> <button class="btn sm" onclick="refreshQueue()" style="background:rgba(255,255,255,.08);color:#E4E9EC;border-color:rgba(255,255,255,.25)">' + ic('refresh', 14) + 'Refresh</button>' : '';
   V.r();
 }
-async function refreshQueue() { try { await loadPosts(); await syncHistory(true); } catch (e) { toast('Could not load posts: ' + e.message, 'bad'); } render(); }
+async function refreshQueue() { try { await loadPosts(); } catch (e) { toast('Could not load posts: ' + e.message, 'bad'); } render(); }
 function boot() {
   document.querySelectorAll('[data-ic]').forEach(function (el) { el.innerHTML = ic(el.getAttribute('data-ic'), 17); });
   $('h-tz').textContent = TZ; $('ver').textContent = TGK_SOCIAL_VERSION; paintWho();
@@ -980,8 +1032,7 @@ function boot() {
     await checkConn(true);
     if (S.draft && !S.draft.touched && !S.draft.text && !S.draft.media.length) S.draft.platforms = allowedIds();
     if (S.view === 'compose') { renderAccts(); renderPostCard(); refresh(); } else render();
-    syncHistory(false);
-    setInterval(function () { if (!document.hidden) { loadPosts().then(function () { return syncHistory(false); }).then(function () { if (S.view === 'queue' || S.view === 'calendar') render(); }).catch(function () {}); } }, 90000);
+    setInterval(function () { if (!document.hidden) { loadPosts().then(function () { if (S.view === 'queue' || S.view === 'calendar') render(); }).catch(function () {}); } }, 90000);
   })();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
