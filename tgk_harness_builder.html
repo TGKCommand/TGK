@@ -342,6 +342,9 @@ tbody tr:hover td{background:rgba(13,148,136,.05)}
 .tbar.wrap{flex-wrap:wrap;max-width:calc(100% - 28px)}
 svg.cv.isoc{cursor:grab;touch-action:none}
 svg.cv.isoc.tool-dim{cursor:crosshair}
+.d3c{display:flex;gap:6px;margin:6px 0 8px}
+.d3sw{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--border);cursor:pointer;padding:0}
+.d3sw.on{box-shadow:0 0 0 2px var(--text)}
 #print svg{max-width:100%;height:auto}
 </style>
 <style>
@@ -732,7 +735,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.12.0';
+var HB_VERSION = '2.13.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -1435,7 +1438,7 @@ document.addEventListener('keydown',function(ev){
   if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='y' && !typing){ ev.preventDefault(); redo(); return; }
   if(typing || !P()) return;
   if(ev.key==='Escape'){ if($('modalRoot').innerHTML){ closeModal(); return; }
-    if(S.view==='iso' && (S.iso.tool || $('dimPop') || $('lenPop'))){ S.iso.tool=null; S.iso.dimStart=null; S.iso.hover=null; closeDimPop(); closeLenPop(); renderView(); return; }
+    if(S.view==='iso' && (S.iso.tool || $('dimPop') || $('lenPop'))){ S.iso.tool=null; S.iso.dimStart=null; S.iso.hover=null; S.iso.chain=null; closeDimPop(); closeLenPop(); renderView(); return; }
     closeMenu(); S.segStart=null; S.sel=null; S.hiNet=null; render(); return; }
   if((ev.key==='Delete'||ev.key==='Backspace') && S.sel){ ev.preventDefault(); deleteSel(); return; }
   if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='d' && S.sel && S.sel.kind==='comp'){ ev.preventDefault(); duplicateComp(S.sel.id); return; }
@@ -1443,6 +1446,7 @@ document.addEventListener('keydown',function(ev){
   if(ev.key==='f' && (S.view==='layout'||S.view==='schematic')) fitView();
   if(ev.key==='f' && S.view==='iso') isoFit();
   if(ev.key==='h' && S.view==='iso') isoHideSel();
+  if(ev.key==='Enter' && S.view==='iso' && S.iso.tool && S.iso.dimStart) isoDimEndRun();
 });
 
 // ===== model operations =====
@@ -2348,11 +2352,12 @@ function dimPt(a,sc){
 function dim3Mode(d){ return d.mode||'auto'; }
 function dim3Len(d,sc){ if(d.len!=null && dim3Mode(d)!=='auto') return +d.len; return pdist(dimPt(d.a,sc),dimPt(d.b,sc)); }
 function dim3Text(d,sc){ return (d.label?d.label+': ':'')+(dim3Mode(d)==='exact'?'':'~')+fmtLen(dim3Len(d,sc)); }
-function dim3LineSVG(A,B){
-  var dx=B.x-A.x, dy=B.y-A.y, l=Math.hypot(dx,dy)||1, nx=-dy/l*7, ny=dx/l*7, st=' stroke="'+D3_COL+'" fill="none" style="pointer-events:none"';
+function dim3LineSVG(A,B,col){
+  col=col||D3_COL;
+  var dx=B.x-A.x, dy=B.y-A.y, l=Math.hypot(dx,dy)||1, nx=-dy/l*7, ny=dx/l*7, st=' stroke="'+col+'" fill="none" style="pointer-events:none"';
   return '<g><path d="M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+'L'+B.x.toFixed(1)+' '+B.y.toFixed(1)+'"'+st+' stroke-width="1.6" stroke-dasharray="6 3"/>'+
     '<path d="M'+(A.x-nx).toFixed(1)+' '+(A.y-ny).toFixed(1)+'L'+(A.x+nx).toFixed(1)+' '+(A.y+ny).toFixed(1)+'M'+(B.x-nx).toFixed(1)+' '+(B.y-ny).toFixed(1)+'L'+(B.x+nx).toFixed(1)+' '+(B.y+ny).toFixed(1)+'"'+st+' stroke-width="2"/>'+
-    '<circle cx="'+A.x.toFixed(1)+'" cy="'+A.y.toFixed(1)+'" r="3.2" fill="'+D3_COL+'" style="pointer-events:none"/><circle cx="'+B.x.toFixed(1)+'" cy="'+B.y.toFixed(1)+'" r="3.2" fill="'+D3_COL+'" style="pointer-events:none"/></g>';
+    '<circle cx="'+A.x.toFixed(1)+'" cy="'+A.y.toFixed(1)+'" r="3.2" fill="'+col+'" style="pointer-events:none"/><circle cx="'+B.x.toFixed(1)+'" cy="'+B.y.toFixed(1)+'" r="3.2" fill="'+col+'" style="pointer-events:none"/></g>';
 }
 // points the tool snaps to: parts, their mating faces, branch points, and spots along every bundle
 function isoSnapPts(sc){
@@ -2378,43 +2383,69 @@ function isoPick(sx,sy,zPlane){
   var th=v.yaw*Math.PI/180, c=Math.cos(th), s=Math.sin(th), xr=(sx-v.tx)/v.k, yr=(((sy-v.ty)/v.k)+(zPlane||0)*cp)/sp;
   return {p:{x:xr*c+yr*s,y:-xr*s+yr*c,z:zPlane||0},snap:false,name:'floor'};
 }
-function isoTool(){ var v=S.iso; v.tool=v.tool?null:'dim'; v.dimStart=null; v.hover=null; closeLenPop(); closeDimPop(); renderView(); }
+function isoTool(){ var v=S.iso; v.tool=v.tool?null:'dim'; v.dimStart=null; v.hover=null; v.chain=null; closeLenPop(); closeDimPop(); renderView(); }
+// hold Shift: the line follows the X, Y or Z axis (whichever the cursor is nearest to on screen) from the start point
+function isoOrtho(sx,sy,st){
+  var v=S.iso, pj=isoProjector(v), S0=pj(st.p), best=null;
+  [['X',{x:1,y:0,z:0},'#dc2626'],['Y',{x:0,y:1,z:0},'#16a34a'],['Z',{x:0,y:0,z:1},'#2563eb']].forEach(function(a){
+    var q=pj(vadd(st.p,a[1])), dx=q.x-S0.x, dy=q.y-S0.y, dd=dx*dx+dy*dy; if(dd<1e-6) return;   // skip an axis pointing straight at the viewer
+    var wx=sx-S0.x, wy=sy-S0.y, t=(wx*dx+wy*dy)/dd, dist=Math.hypot(wx-dx*t,wy-dy*t);
+    if(!best || dist<best.dist) best={dist:dist,t:t,axis:a[0],u:a[1],col:a[2]};
+  });
+  if(!best) return null;
+  return {p:vadd(st.p,vmul(best.u,best.t)),snap:false,name:best.axis+' axis (straight)',straight:best.col};
+}
+function isoPickFor(sx,sy,shift){
+  var v=S.iso;
+  if(shift && v.dimStart){ var o=isoOrtho(sx,sy,v.dimStart); if(o) return o; }
+  return isoPick(sx,sy,v.dimStart?(v.dimStart.p.z||0):0);
+}
+// each click after the first adds a measurement from the last point and keeps going until Esc (Enter starts a new run)
 function isoDimClick(sx,sy,ev){
-  var v=S.iso, pk=isoPick(sx,sy,v.dimStart?(v.dimStart.p.z||0):0);
+  var v=S.iso, pk=isoPickFor(sx,sy,ev&&ev.shiftKey);
   if(!pk){ toast('Tilt the view down a little to place points on the floor, or click a part or bundle.'); return; }
-  if(!v.dimStart){ v.dimStart=pk; isoDraw(); return; }
+  if(!v.dimStart){ v.dimStart=pk; v.chain=uid('k'); isoDraw(); return; }
   var a=v.dimStart, A={x:a.p.x,y:a.p.y,z:a.p.z}, B={x:pk.p.x,y:pk.p.y,z:pk.p.z};
   if(a.ref){ A.ref=a.ref; A.k=a.k; } if(pk.ref){ B.ref=pk.ref; B.k=pk.k; }
   if(pdist(A,B)<1) return;
-  v.dimStart=null; v.hover=null; pushUndo();
-  var d={id:uid('m'),a:A,b:B,label:'',len:null,mode:'auto'}; dims3().push(d); commit();
-  isoDimPop(d.id,ev.clientX,ev.clientY);
+  pushUndo();
+  var d={id:uid('m'),a:A,b:B,label:'',len:null,mode:'auto',chain:v.chain}; if(v.dimColor) d.color=v.dimColor;
+  dims3().push(d);
+  v.dimStart={p:{x:B.x,y:B.y,z:B.z},ref:B.ref,k:B.k,snap:true,name:pk.name};   // the end becomes the next start
+  v.hover=null; commit();
 }
+function isoDimEndRun(){ var v=S.iso; v.dimStart=null; v.hover=null; v.chain=null; isoDraw(); }
 document.addEventListener('pointermove',function(ev){
   var v=S.iso; if(S.view!=='iso' || v.tool!=='dim' || S._id) return;
   var svg=ev.target.closest && ev.target.closest('#iso');
   if(!svg){ if(v.hover){ v.hover=null; isoSoon(); } return; }
-  var r=svg.getBoundingClientRect(); v.hover=isoPick(ev.clientX-r.left,ev.clientY-r.top,v.dimStart?(v.dimStart.p.z||0):0); isoSoon();
+  var r=svg.getBoundingClientRect(); v.hoverXY={x:ev.clientX-r.left,y:ev.clientY-r.top}; v.hover=isoPickFor(v.hoverXY.x,v.hoverXY.y,ev.shiftKey); isoSoon();
 });
+function isoReHover(shift){ var v=S.iso; if(S.view!=='iso' || v.tool!=='dim' || !v.hoverXY) return; v.hover=isoPickFor(v.hoverXY.x,v.hoverXY.y,shift); isoSoon(); }
+document.addEventListener('keydown',function(ev){ if(ev.key==='Shift') isoReHover(true); });
+document.addEventListener('keyup',function(ev){ if(ev.key==='Shift') isoReHover(false); });
 function closeDimPop(){ var d=$('dimPop'); if(d) d.remove(); }
 function isoDimPop(id,cx,cy){
   var d=dim3ById(id), view=$('view'); if(!d || !view) return; closeLenPop(); closeDimPop();
   var sc=isoScene(), r=view.getBoundingClientRect(), x=Math.max(8,Math.min(r.width-260,cx-r.left-118)), y=Math.max(8,Math.min(r.height-250,cy-r.top+14)), m=dim3Mode(d);
   var p=document.createElement('div'); p.className='lenpop'; p.id='dimPop'; p.style.left=x+'px'; p.style.top=y+'px';
   p.innerHTML='<div class="lp-t">Measurement</div>'+
-    '<div class="row2" style="margin-bottom:6px"><input class="inp" id="dpLabel" placeholder="Label, e.g. Firewall to ECU" value="'+esc(d.label||'')+'" onkeydown="if(event.key===\'Enter\')dimPopApply(\''+id+'\');else if(event.key===\'Escape\')closeDimPop()"></div>'+
+    '<div class="row2" style="margin-bottom:6px"><input class="inp" id="dpLabel" placeholder="Title, e.g. Firewall to ECU" value="'+esc(d.label||'')+'" onkeydown="if(event.key===\'Enter\')dimPopApply(\''+id+'\');else if(event.key===\'Escape\')closeDimPop()"></div>'+
     '<div class="row2"><input class="inp mono" id="dpLen" type="text" inputmode="decimal" value="'+lenShow(dim3Len(d,sc))+'" onkeydown="if(event.key===\'Enter\')dimPopApply(\''+id+'\');else if(event.key===\'Escape\')closeDimPop()"><span class="muted">'+lenUnitLabel()+'</span></div>'+
     '<div class="muted" style="font-size:var(--t-xs);margin:4px 0">Measured from the drawing: '+fmtLen(pdist(dimPt(d.a,sc),dimPt(d.b,sc)))+'. Type a real length to replace it.</div>'+
-    '<div class="usw" style="margin:6px 0 8px">'+['exact','approx','auto'].map(function(k){ return '<button class="btn btn-sm'+(m===k?' on':'')+'" data-m="'+k+'" onclick="dimPopMode(this)">'+{exact:'Exact',approx:'Approx',auto:'From drawing'}[k]+'</button>'; }).join('')+'</div>'+
+    '<div class="usw" style="margin:6px 0 4px">'+['exact','approx','auto'].map(function(k){ return '<button class="btn btn-sm'+(m===k?' on':'')+'" data-m="'+k+'" onclick="dimPopMode(this)">'+{exact:'Exact',approx:'Approx',auto:'From drawing'}[k]+'</button>'; }).join('')+'</div>'+
+    '<div class="d3c" id="dpColors" title="Color">'+['#6d28d9','#0f766e','#ea580c','#dc2626','#2563eb','#16a34a','#111827','#6b7280'].map(function(c){ return '<button class="d3sw'+((d.color||D3_COL)===c?' on':'')+'" data-c="'+c+'" style="background:'+c+'" onclick="dimPopColor(this)"></button>'; }).join('')+'</div>'+
     '<div class="acts"><button class="btn btn-sm btn-primary" onclick="dimPopApply(\''+id+'\')">Apply</button><button class="btn btn-sm btn-danger" onclick="dimPopDelete(\''+id+'\')">Delete</button><button class="btn btn-sm" onclick="closeDimPop()">Close</button></div>';
   view.appendChild(p); var i=$('dpLabel'); if(i){ i.focus(); }
 }
+function dimPopColor(btn){ document.querySelectorAll('#dimPop .d3sw').forEach(function(b){ b.classList.toggle('on',b===btn); }); }
 function dimPopMode(btn){ document.querySelectorAll('#dimPop [data-m]').forEach(function(b){ b.classList.toggle('on',b===btn); }); }
 function dimPopApply(id){
   var d=dim3ById(id); if(!d) return; var pop=$('dimPop'); if(!pop) return;
   var b=pop.querySelector('[data-m].on'), mode=b?b.getAttribute('data-m'):'auto', label=$('dpLabel').value.trim(), txt=$('dpLen').value, sc=isoScene(), mm=null;
   if(txt.trim()!==lenShow(dim3Len(d,sc))){ mm=parseLen(txt); if(mm==null){ badLen(); return; } }
   pushUndo(); d.label=label;
+  var cb=pop.querySelector('.d3sw.on'); if(cb){ var cc=cb.getAttribute('data-c'); if(cc===D3_COL) delete d.color; else d.color=cc; S.iso.dimColor=(cc===D3_COL)?null:cc; }
   if(mm!=null){ d.len=Math.max(0,Math.round(mm*10)/10); if(mode==='auto') mode='exact'; }
   if(mode==='auto') d.len=null;
   d.mode=mode; closeDimPop(); commit();
@@ -2654,17 +2685,21 @@ function isoBuild(v,W,H,exportMode){
   if(v.udim!==false) dims3().forEach(function(d){
     if(v.hidden[d.id]) return;
     var A=pj(dimPt(d.a,sc)), B=pj(dimPt(d.b,sc));
-    out+=dim3LineSVG(A,B);
-    labels.push({p:{x:(A.x+B.x)/2,y:(A.y+B.y)/2},txt:dim3Text(d,sc),mono:true,d3:true,dim3Id:d.id,dy:-12,est:false});
+    out+=dim3LineSVG(A,B,d.color);
+    labels.push({p:{x:(A.x+B.x)/2,y:(A.y+B.y)/2},txt:dim3Text(d,sc),mono:true,d3:true,col:d.color,dim3Id:d.id,dy:-12,est:false});
   });
   if(!exportMode && v.tool==='dim'){
     var hv=v.hover, ds=v.dimStart;
     if(ds){ var S0=pj(ds.p); out+='<circle cx="'+S0.x.toFixed(1)+'" cy="'+S0.y.toFixed(1)+'" r="5" fill="'+D3_COL+'" style="pointer-events:none"/>'; }
     if(hv){
       var H0=pj(hv.p);
-      if(ds){ var S1=pj(ds.p); out+='<path d="M'+S1.x.toFixed(1)+' '+S1.y.toFixed(1)+'L'+H0.x.toFixed(1)+' '+H0.y.toFixed(1)+'" stroke="'+D3_COL+'" stroke-width="1.4" stroke-dasharray="3 3" fill="none" style="pointer-events:none"/>'; labels.push({p:{x:(S1.x+H0.x)/2,y:(S1.y+H0.y)/2},txt:fmtLen(pdist(ds.p,hv.p)),mono:true,d3:true,dy:-12}); }
+      if(ds){
+        var S1=pj(ds.p), seg0=pdist(ds.p,hv.p), tot=0; dims3().forEach(function(dd){ if(v.chain && dd.chain===v.chain) tot+=dim3Len(dd,sc); });
+        out+='<path d="M'+S1.x.toFixed(1)+' '+S1.y.toFixed(1)+'L'+H0.x.toFixed(1)+' '+H0.y.toFixed(1)+'" stroke="'+(hv.straight||v.dimColor||D3_COL)+'" stroke-width="'+(hv.straight?2.2:1.4)+'" stroke-dasharray="'+(hv.straight?'':'3 3')+'" fill="none" style="pointer-events:none"/>';
+        labels.push({p:{x:(S1.x+H0.x)/2,y:(S1.y+H0.y)/2},txt:fmtLen(seg0)+(tot>0?'  (run '+fmtLen(tot+seg0)+')':''),mono:true,d3:true,col:v.dimColor,dy:-12});
+      }
       out+='<circle cx="'+H0.x.toFixed(1)+'" cy="'+H0.y.toFixed(1)+'" r="'+(hv.snap?8:5)+'" fill="none" stroke="'+(hv.snap?'#0d9488':'#6b7280')+'" stroke-width="2" style="pointer-events:none"/>';
-      if(hv.snap) labels.push({p:{x:H0.x,y:H0.y},txt:hv.name,d3:false,dy:20});
+      if(hv.snap || hv.straight) labels.push({p:{x:H0.x,y:H0.y},txt:hv.name,d3:false,dy:20});
     }
   }
   // labels last, nudged apart
@@ -2681,9 +2716,9 @@ function isoBuild(v,W,H,exportMode){
     function hit(){ return placed.some(function(r){ return !(x-w/2>r.x+r.w || x+w/2<r.x || y>r.y+r.h || y+h<r.y); }); }
     while(hit() && tries<8){ y+=(tries%2?-1:1)*Math.ceil((tries+1)/2)*17; tries++; }
     placed.push({x:x-w/2,y:y,w:w,h:h});
-    out+=(l.lenId?'<g data-ik="len" data-iid="'+l.lenId+'" style="cursor:pointer">':l.dim3Id?'<g data-ik="dim3" data-iid="'+l.dim3Id+'" style="cursor:pointer">':'<g style="pointer-events:none">')+'<rect x="'+(x-w/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h+'" rx="'+(l.dot?8:3)+'" fill="'+(l.sel?'#0d9488':'rgba(255,255,255,.94)')+'" stroke="'+(l.sel?'#0d9488':l.dim?DIM_COL:l.d3?D3_COL:l.est?'#ea580c':'#c7cdd4')+'" stroke-width="1"/>';
+    out+=(l.lenId?'<g data-ik="len" data-iid="'+l.lenId+'" style="cursor:pointer">':l.dim3Id?'<g data-ik="dim3" data-iid="'+l.dim3Id+'" style="cursor:pointer">':'<g style="pointer-events:none">')+'<rect x="'+(x-w/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h+'" rx="'+(l.dot?8:3)+'" fill="'+(l.sel?'#0d9488':'rgba(255,255,255,.94)')+'" stroke="'+(l.sel?'#0d9488':l.dim?DIM_COL:l.d3?(l.col||D3_COL):l.est?'#ea580c':'#c7cdd4')+'" stroke-width="1"/>';
     if(l.dot) out+='<circle cx="'+(x-w/2+9).toFixed(1)+'" cy="'+(y+8).toFixed(1)+'" r="4" fill="'+l.dot+'" stroke="'+shade(l.dot,-0.4)+'" stroke-width=".8"/>';
-    out+='<text x="'+(x+(l.dot?5:0)).toFixed(1)+'" y="'+(y+11.5).toFixed(1)+'" text-anchor="middle" font-size="'+(l.bold?11:10)+'" font-weight="'+(l.bold?700:500)+'"'+(l.mono?' font-family="monospace"':'')+(l.est?' font-style="italic"':'')+' fill="'+(l.sel?'#fff':l.dim?DIM_COL:l.d3?D3_COL:l.est?'#c2410c':'#1f2937')+'">'+esc(txt)+'</text></g>';
+    out+='<text x="'+(x+(l.dot?5:0)).toFixed(1)+'" y="'+(y+11.5).toFixed(1)+'" text-anchor="middle" font-size="'+(l.bold?11:10)+'" font-weight="'+(l.bold?700:500)+'"'+(l.mono?' font-family="monospace"':'')+(l.est?' font-style="italic"':'')+' fill="'+(l.sel?'#fff':l.dim?DIM_COL:l.d3?(l.col||D3_COL):l.est?'#c2410c':'#1f2937')+'">'+esc(txt)+'</text></g>';
   });
   // axis marker
   var gx2=W-62, gy2=H-58, giz='';
@@ -2719,7 +2754,7 @@ function isoHTML(){
     '<button class="btn btn-sm" onclick="exportIsoSVG()">Save SVG</button><div class="sepv"></div>'+unitSwitch()+'</div>';
   var empty=(p.comps.length||p.segs.length)?'':'<div class="cv-empty"><div class="panel"><h3>Nothing to show yet</h3><p>Build the schematic and lay out the bundles first. This view is made from the Layout.</p></div></div>';
   var hint=(!empty && sc.flat)?'<div class="hint">Everything is at height 0, so this is your flat layout seen in 3D. Use Set heights to lift parts. Drag to turn, scroll to zoom, shift-drag to move.</div>':(empty?'':'<div class="hint">Drag to turn. Scroll or pinch to zoom. Shift-drag or two fingers to move. Click a bundle or part to edit it.</div>');
-  return '<svg class="cv isoc'+(v.tool?' tool-dim':'')+'" id="iso"><g id="isoG"></g></svg>'+tb+(v.tool?'<div class="hint">Measure: click two points. They snap to parts and bundles, otherwise to the floor. Click a purple label to edit it. Esc to stop.</div>':hint)+empty+(v.cov?covLegendHTML('tr'):'')+isoPanelHTML();
+  return '<svg class="cv isoc'+(v.tool?' tool-dim':'')+'" id="iso"><g id="isoG"></g></svg>'+tb+(v.tool?'<div class="hint">Measure: click points one after another to keep linking measurements. They snap to parts and bundles, otherwise the floor. Hold Shift for a straight line along X, Y or Z. Enter starts a new run. Click a label to change its title, value or color. Esc to finish.</div>':hint)+empty+(v.cov?covLegendHTML('tr'):'')+isoPanelHTML();
 }
 // ---- orbit, pan, zoom (mouse, touch and pen)
 // the 3D point to turn the model around: the part or bundle under the cursor, else the board under the cursor
