@@ -2265,6 +2265,36 @@ function isoHTML(){
   return '<svg class="cv isoc" id="iso"><g id="isoG"></g></svg>'+tb+hint+empty+(v.cov?covLegendHTML('tr'):'');
 }
 // ---- orbit, pan, zoom (mouse, touch and pen)
+// the 3D point to turn the model around: the part or bundle under the cursor, else the board under the cursor
+function isoPivot(sx,sy,target){
+  var v=S.iso, sc=isoScene(), pj=isoProjector(v), el=(target&&target.closest)?target.closest('[data-ik]'):null;
+  if(el){
+    var kind=el.getAttribute('data-ik'), id=el.getAttribute('data-iid');
+    if(kind==='comp'){ var o=sc.comps.filter(function(x){ return x.c.id===id; })[0]; if(o) return vadd(o.O,vmul(o.u,13)); }
+    if(kind==='node'){ var key='n:'+id; for(var i=0;i<sc.segs.length;i++){ var g=sc.segs[i]; if(g.s.a===key) return g.p3[0]; if(g.s.b===key) return g.p3[g.p3.length-1]; } }
+    if(kind==='seg'){
+      var g2=sc.segs.filter(function(x){ return x.s.id===id; })[0];
+      if(g2){
+        var best=null, bd=1e18;
+        for(var j=1;j<g2.p3.length;j++){
+          var a=g2.p3[j-1], b=g2.p3[j], A=pj(a), B=pj(b), dx=B.x-A.x, dy=B.y-A.y, L2=dx*dx+dy*dy||1;
+          var t=Math.max(0,Math.min(1,((sx-A.x)*dx+(sy-A.y)*dy)/L2)), qx=A.x+dx*t-sx, qy=A.y+dy*t-sy, d=qx*qx+qy*qy;
+          if(d<bd){ bd=d; best=plerp(a,b,t); }
+        }
+        if(best) return best;
+      }
+    }
+  }
+  var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,z0=1e9,z1=-1e9;
+  function grow(q){ x0=Math.min(x0,q.x); y0=Math.min(y0,q.y); x1=Math.max(x1,q.x); y1=Math.max(y1,q.y); z0=Math.min(z0,q.z||0); z1=Math.max(z1,q.z||0); }
+  sc.segs.forEach(function(g){ g.p3.forEach(grow); }); sc.comps.forEach(function(o){ grow(o.O); });
+  if(!isFinite(x0)) return {x:0,y:0,z:0};
+  var ctr={x:(x0+x1)/2,y:(y0+y1)/2,z:(z0+z1)/2}, th=v.yaw*Math.PI/180, ph=v.pitch*Math.PI/180, sp=Math.sin(ph);
+  if(sp<0.2) return ctr;
+  var xr=(sx-v.tx)/v.k, yr=((sy-v.ty)/v.k)/sp, c=Math.cos(th), s=Math.sin(th);
+  var gx=xr*c+yr*s, gy=-xr*s+yr*c, padx=(x1-x0)*0.15+50, pady=(y1-y0)*0.15+50;
+  return {x:Math.max(x0-padx,Math.min(x1+padx,gx)),y:Math.max(y0-pady,Math.min(y1+pady,gy)),z:0};
+}
 S._ip={}; S._id=null;
 document.addEventListener('pointerdown',function(ev){
   var svg=ev.target.closest && ev.target.closest('#iso'); if(!svg) return;
@@ -2277,7 +2307,9 @@ document.addEventListener('pointerdown',function(ev){
     return;
   }
   var pan=(ev.button===2||ev.button===1||ev.shiftKey);
-  S._id={mode:pan?'pan':'rot',x:ev.clientX,y:ev.clientY,yaw:v.yaw,pitch:v.pitch,tx:v.tx,ty:v.ty,moved:false,target:ev.target};
+  var rc=svg.getBoundingClientRect(), piv=null, q0=null;
+  if(!pan){ piv=isoPivot(ev.clientX-rc.left,ev.clientY-rc.top,ev.target); q0=isoProjector(v)(piv); }
+  S._id={mode:pan?'pan':'rot',x:ev.clientX,y:ev.clientY,yaw:v.yaw,pitch:v.pitch,tx:v.tx,ty:v.ty,moved:false,target:ev.target,piv:piv,px:q0?q0.x:0,py:q0?q0.y:0};
   ev.preventDefault();
 });
 document.addEventListener('pointermove',function(ev){
@@ -2293,7 +2325,10 @@ document.addEventListener('pointermove',function(ev){
   var dx=ev.clientX-d.x, dy=ev.clientY-d.y;
   if(!d.moved && Math.abs(dx)+Math.abs(dy)<4) return;
   d.moved=true;
-  if(d.mode==='rot'){ v.yaw=d.yaw+dx*0.45; v.pitch=Math.max(0,Math.min(90,d.pitch+dy*0.4)); }
+  if(d.mode==='rot'){
+    v.yaw=d.yaw+dx*0.45; v.pitch=Math.max(0,Math.min(90,d.pitch+dy*0.4));
+    if(d.piv){ var q=isoProjector(v)(d.piv); v.tx+=d.px-q.x; v.ty+=d.py-q.y; }   // keep the pressed point where it is on screen
+  }
   else { v.tx=d.tx+dx; v.ty=d.ty+dy; }
   isoSoon();
 });
@@ -2760,6 +2795,39 @@ var TPL_BASE = [
   {id:'psens-3',cat:'Sensors',name:'Pressure sensor 0.5-4.5V, 3-pin',verify:true,
     note:'Common A/B/C pinout for 3-wire pressure senders (A ground, B signal, C +5V). Check your sender.',
     comps:[{type:'connector',name:'Pressure Sensor',partPn:'PSENS-3F',desig:'alpha',pins:[P_('SENS GND','black','20'),P_('PRESS SIG','lightblue','20'),P_('+5V REF','gray','20')]}]},
+  {id:'tps-3',cat:'Sensors',name:'Throttle / pedal position sensor, 3-pin',verify:true,
+    note:'Generic potentiometer position sensor. Pin order differs by manufacturer. Pedals often have two of these for redundancy.',
+    comps:[{type:'connector',name:'Position Sensor',partPn:'',desig:'num',pins:[P_('+5V REF','gray','20'),P_('POS SIG','lightblue','20'),P_('SENS GND','black','20')]}]},
+  {id:'map-3',cat:'Sensors',name:'MAP / boost sensor, 3-pin',verify:true,
+    note:'Generic 3-wire absolute pressure sensor. Confirm the pin order and the pressure range of yours.',
+    comps:[{type:'connector',name:'MAP Sensor',partPn:'',desig:'num',pins:[P_('SENS GND','black','20'),P_('MAP','lightblue','20'),P_('+5V REF','gray','20')]}]},
+  {id:'knock-2',cat:'Sensors',name:'Knock sensor, 2-pin',verify:true,
+    note:'Piezo knock sensor. Use shielded wire and ground the shield at the ECU end only.',
+    comps:[{type:'connector',name:'Knock Sensor',partPn:'',desig:'num',pins:[P_('KNOCK +','white','20'),P_('KNOCK -','black','20')]}]},
+  {id:'wheel-hall-3',cat:'Sensors',name:'Wheel speed sensor (Hall), 3-pin',verify:true,
+    note:'Active wheel speed sensor. Supply voltage varies: 5V or 12V.',
+    comps:[{type:'connector',name:'Wheel Speed Sensor',partPn:'',desig:'num',pins:[P_('+V SENS','red','20'),P_('SPEED SIG','lightblue','20'),P_('SENS GND','black','20')]}]},
+  {id:'nbo2-4',cat:'Sensors',name:'Narrowband O2 sensor, 4-wire',verify:true,
+    note:'Heated zirconia sensor. Wire colors vary by brand; check the sensor leads.',
+    comps:[{type:'connector',name:'O2 Sensor',partPn:'',desig:'num',pins:[P_('HTR +','red','18'),P_('HTR -','white','18'),P_('O2 SIG','gray','20'),P_('O2 GND','black','20')]}]},
+  {id:'maf-5',cat:'Sensors',name:'MAF sensor, 5-pin',verify:true,
+    note:'Generic hot-film MAF with intake temperature. Pin order differs by manufacturer.',
+    comps:[{type:'connector',name:'MAF Sensor',partPn:'',desig:'num',pins:[P_('+12V SW','red','20'),P_('SENS GND','black','20'),P_('+5V REF','gray','20'),P_('MAF SIG','lightblue','20'),P_('IAT','tan','20')]}]},
+  {id:'egt-2',cat:'Sensors',name:'Thermocouple (EGT, K-type), 2-pin',verify:false,
+    note:'Polarized. Use matching thermocouple wire and connectors all the way to the amplifier.',
+    comps:[{type:'connector',name:'EGT Sensor',partPn:'',desig:'num',pins:[P_('TC +','yellow','22'),P_('TC -','red','22')]}]},
+  {id:'flex-3',cat:'Sensors',name:'Flex fuel (ethanol) sensor, 3-pin',verify:true,
+    note:'Continental-style sensor: supply, ground and a frequency signal. Confirm against yours.',
+    comps:[{type:'connector',name:'Flex Fuel Sensor',partPn:'',desig:'num',pins:[P_('+12V SW','red','20'),P_('SENS GND','black','20'),P_('FLEX SIG','lightblue','20')]}]},
+  {id:'switch-1',cat:'Sensors',name:'Pressure switch / sender, 1-wire',verify:false,
+    note:'Grounds through the body of the sensor. Used for oil pressure warning switches and similar.',
+    comps:[{type:'connector',name:'Pressure Switch',partPn:'',desig:'num',pins:[P_('SWITCH SIG','lightblue','20')]}]},
+  {id:'sensor-g2',cat:'Sensors',name:'Generic sensor, 2-pin',verify:true,note:'Blank starting point. Name the pins from your sensor datasheet.',
+    comps:[{type:'connector',name:'Sensor',partPn:'',desig:'num',pins:[P_('SIG','lightblue','20'),P_('SENS GND','black','20')]}]},
+  {id:'sensor-g3',cat:'Sensors',name:'Generic sensor, 3-pin (5V, signal, ground)',verify:true,note:'Blank starting point. Name the pins from your sensor datasheet.',
+    comps:[{type:'connector',name:'Sensor',partPn:'',desig:'num',pins:[P_('+5V REF','gray','20'),P_('SIG','lightblue','20'),P_('SENS GND','black','20')]}]},
+  {id:'sensor-g4',cat:'Sensors',name:'Generic sensor, 4-pin',verify:true,note:'Blank starting point. Name the pins from your sensor datasheet.',
+    comps:[{type:'connector',name:'Sensor',partPn:'',desig:'num',pins:[P_('+5V REF','gray','20'),P_('SIG A','lightblue','20'),P_('SIG B','tan','20'),P_('SENS GND','black','20')]}]},
   {id:'iso-relay',cat:'Power',name:'ISO mini relay socket, 5-pin',verify:false,
     note:'Standard DIN 72552 terminal numbers. 30 is supply, 87 is switched output, 85/86 are the coil.',
     comps:[{type:'connector',name:'Relay',partPn:'RELAY-SOCKET-5',desig:'custom',pins:[P_('BAT +','red','14','30'),P_('RELAY CTRL','violet','20','85'),P_('+12V SW','red','20','86'),P_('RELAY OUT','red','14','87'),P_('','','','87a')]}]},
@@ -2835,11 +2903,39 @@ function addTemplate(id){
   toast('Added '+t.name+(t.verify?'. Check the pinout against your part before building.':''),t.verify?'':'ok');
 }
 
+
+// ---- add your own sensor to the shared library
+function openCustomSensor(){
+  function g(label,inner){ return '<div class="form-group"><label class="form-label">'+label+'</label>'+inner+'</div>'; }
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)openLibrary()"><div class="modal" style="width:560px;max-width:96vw">'+
+    '<div class="modal-title">Add a custom sensor</div>'+
+    '<div class="form-row cols-2">'+g('Sensor name','<input class="form-input" id="csName" placeholder="e.g. Oil pressure sender, VDO 0-10 bar">')+g('Group','<select class="form-input" id="csCat">'+TPL_CATS.map(function(x){ return opt(x,x,'Sensors'); }).join('')+'</select>')+'</div>'+
+    '<div class="form-row">'+g('Pin names, one per line','<textarea class="form-input mono" id="csPins" rows="5" placeholder="+5V REF&#10;SIG&#10;SENS GND"></textarea>')+'</div>'+
+    '<div class="form-row cols-2">'+g('Connector part number (optional)','<input class="form-input mono" id="csPn" placeholder="e.g. DT04-3P">')+g('Wire gauge','<select class="form-input" id="csGa">'+GAUGES.map(function(x){ return opt(x,x+' AWG',(x==='20'?'20':'')); }).join('')+'</select>')+'</div>'+
+    '<div class="form-row">'+g('Note (optional)','<input class="form-input" id="csNote" placeholder="e.g. viewed from the wire side">')+'</div>'+
+    '<div class="note">Pin colors are suggested from the pin names and can be changed on each wire. It is saved to the shared library for everyone.</div>'+
+    '<div class="modal-footer"><button class="btn" onclick="openLibrary()">Back</button><button class="btn btn-primary" onclick="saveCustomSensor()">Save sensor</button></div></div></div>';
+  setTimeout(function(){ var e=$('csName'); if(e) e.focus(); },30);
+}
+function saveCustomSensor(){
+  var name=$('csName').value.trim(); if(!name){ toast('Give the sensor a name.','err'); return; }
+  var names=$('csPins').value.split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+  if(!names.length){ toast('Enter at least one pin name.','err'); return; }
+  if(names.length>64){ toast('That is more than 64 pins.','err'); return; }
+  var ga=$('csGa').value, pn=$('csPn').value.trim();
+  var t={id:uid('t'),custom:true,cat:$('csCat').value,name:name,verify:false,note:$('csNote').value.trim(),created:Date.now(),
+    comps:[{type:'connector',name:name.replace(/\s*[,(].*$/,'')||'Sensor',partPn:pn,desig:'num',pins:names.map(function(n,i){ return P_(n,guessColor(n,i),ga); })}]};
+  dbSaveTemplate(t).then(function(){
+    S.tpl.push(t); S.libCat=t.cat; S.libQuery=''; S.libSel=t.id; openLibrary();
+    toast('Saved "'+name+'" to the shared component library.','ok');
+  }).catch(function(e){ logErr('Could not save the sensor',e); });
+}
+
 // ---- library modal
 S.libCat='all'; S.libQuery=''; S.libSel=null;
 function openLibrary(){
   $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal wide" style="width:960px">'+
-    '<div class="mh"><div class="modal-title">Component library</div><span class="muted">Pick a part to drop it in with its pins already named.</span><div class="spacer"></div><button class="btn btn-sm" onclick="openPastePinout(null)">Paste or read a pinout</button></div>'+
+    '<div class="mh"><div class="modal-title">Component library</div><span class="muted">Pick a part to drop it in with its pins already named.</span><div class="spacer"></div><button class="btn btn-sm" onclick="openCustomSensor()">Add custom sensor</button> <button class="btn btn-sm" onclick="openPastePinout(null)">Paste or read a pinout</button></div>'+
     '<div class="mb"><div class="search-wrap" style="max-width:none"><span class="search-icon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg></span><input id="libQ" placeholder="Search, e.g. coil, wideband, relay, MaxxECU" value="'+esc(S.libQuery)+'" oninput="S.libQuery=this.value;renderLibList()"></div>'+
     '<div class="tabs-row" id="libCats" style="margin:12px 0"></div>'+
     '<div class="lib-grid"><div class="tbl-wrap cat-scroll" id="libList"></div><div id="libPrev" class="lib-prev"></div></div></div>'+
