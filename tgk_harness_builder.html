@@ -315,6 +315,8 @@ tbody tr:hover td{background:rgba(13,148,136,.05)}
 .cr-h{display:flex;gap:6px;align-items:center;margin-bottom:8px}
 .cr-h .sel{flex:1;min-width:0}
 .usw{display:inline-flex;gap:2px}
+.lenpop{position:absolute;z-index:6;width:236px;background:#fff;border-radius:var(--r-md);box-shadow:0 4px 16px rgba(14,20,24,.18),0 0 0 1px var(--border);padding:10px 12px}
+.lp-t{font-size:var(--t-sm);font-weight:700;margin-bottom:8px;color:var(--text2)}
 .tbar.wrap.leg{max-width:calc(100% - 340px)}
 @media (max-width:900px){.tbar.wrap.leg{max-width:calc(100% - 28px)}.covleg.tr{top:auto;bottom:70px}}
 .isopanel{position:absolute;left:14px;bottom:14px;z-index:3;width:270px;max-height:62%;overflow:auto;background:rgba(255,255,255,.97);border-radius:var(--r-md);box-shadow:0 2px 8px rgba(14,20,24,.12),0 0 0 1px var(--border);padding:10px 12px}
@@ -1697,7 +1699,7 @@ function inspSeg(s){
   return '<div class="ih"><div class="k">Bundle</div><h2>'+esc(a)+' to '+esc(b)+'</h2></div><div class="is">'+
     '<div class="f"><label>Length</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(s.len,0))+'" onchange="setSegLen(\''+s.id+'\',this.value)">'+unitSelect()+'</div></div>'+
     '<div class="f"><label>Label</label><input class="inp" value="'+esc(s.label||'')+'" placeholder="e.g. To ECU, Firewall pass-through" onchange="setSegLabel(\''+s.id+'\',this.value)"></div>'+
-    (s.est?'<div class="est-note">Estimated from the drawing. Measure on the car and type the real length.</div>':'')+
+    lenModeHTML(s)+
     '<p class="muted" style="margin:0">'+through.length+' wire'+(through.length===1?'':'s')+' run through here. Estimated bundle diameter '+(through.length?fmtD(dia):'--')+'.</p></div>'+ covEditorHTML(s,through.length?dia:0)+
     '<div class="is"><div class="acts"><button class="btn btn-sm btn-teal" onclick="S.placeAt=null;addInlineAt(\''+s.id+'\')" title="Split this bundle with a mated connector pair and pass its wires through">Add inline connectors</button><button class="btn btn-sm" onclick="var s=seg(\''+s.id+'\'),a=nodePos(s.a),b=nodePos(s.b);splitSeg(s.id,{x:(a.x+b.x)/2,y:(a.y+b.y)/2})">Split in half</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete bundle</button></div></div>';
 }
@@ -2112,7 +2114,7 @@ function segCovN(s){ return S.showCov?covList(s).length:0; }
 // comp.lz for connectors, terminals and splices, node.z for branch points. Bundles slope between the heights of their ends.
 // Plain SVG with a painter's-order depth sort, no libraries.
 // =====================================================================
-S.iso={yaw:45,pitch:35.264,k:0,tx:0,ty:0,labels:true,cov:true,strands:true,lens:false,grid:true,dims:true,panel:false,q:''}; isoDefaults(S.iso);
+S.iso={yaw:45,pitch:35.264,k:0,tx:0,ty:0,labels:true,cov:true,strands:true,lens:true,grid:true,dims:true,panel:false,q:''}; isoDefaults(S.iso);
 var ISO_PRESETS={iso:[45,35.264],top:[0,90],front:[0,0],right:[90,0]};
 function vadd(a,b){ return {x:a.x+b.x,y:a.y+b.y,z:a.z+b.z}; }
 function vsub(a,b){ return {x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}; }
@@ -2209,6 +2211,74 @@ function isoIsolate(){
   isoSave(); render(); setTimeout(isoFit,30);
 }
 function isoShowAll(){ isoDefaults(S.iso); S.iso.q=''; isoSave(); renderView(); }
+
+// ---- how sure a bundle length is: Exact (typed), Approx (a typed guess, shown with ~) or From drawing (follows the layout)
+function lenMode(s){ return s.est?'auto':(s.approx?'approx':'exact'); }
+function lenApprox(s){ return !!(s.est || s.approx); }
+function lenModeHTML(s){
+  var m=lenMode(s), id=s.id;
+  function b(k,l,t){ return '<button class="btn btn-sm'+(m===k?' on':'')+'" title="'+t+'" onclick="setSegLenMode(\''+id+'\',\''+k+'\')">'+l+'</button>'; }
+  var h='<div class="f"><label>Length is</label><div class="usw">'+b('exact','Exact','A measured or fixed length')+b('approx','Approx','A typed guess, shown with ~')+b('auto','From drawing','Follows the drawing and updates when you move things')+'</div></div>';
+  if(m==='auto') h+='<div class="est-note">Estimated from the drawing. Measure on the car and type the real length.</div>';
+  else if(m==='approx') h+='<div class="est-note">Marked approximate. It shows with a ~ in the layout and the 3D view until you set it to Exact.</div>';
+  return h;
+}
+// mode: exact | approx | auto. text (optional) is a typed length; typing a length on an auto bundle makes it exact.
+function setSegLenMode(id,mode,text){
+  var s=seg(id); if(!s) return;
+  var mm=null;
+  if(text!=null && String(text).trim()!==''){ mm=parseLen(text); if(mm==null){ badLen(); return; } }
+  pushUndo();
+  if(mm!=null){ s.len=Math.max(0,Math.round(mm*10)/10); if(mode==='auto') mode='exact'; }
+  s.est=(mode==='auto'); s.approx=(mode==='approx');
+  if(mode==='auto') refreshEstimates();
+  commit();
+}
+// click a length in the 3D view to set it there
+function isoLenPop(id,cx,cy){
+  var s=seg(id), view=$('view'); if(!s || !view) return; closeLenPop();
+  var r=view.getBoundingClientRect(), x=Math.max(8,Math.min(r.width-250,cx-r.left-118)), y=Math.max(8,Math.min(r.height-200,cy-r.top+14)), m=lenMode(s);
+  var d=document.createElement('div'); d.className='lenpop'; d.id='lenPop'; d.style.left=x+'px'; d.style.top=y+'px';
+  d.innerHTML='<div class="lp-t">'+esc(segEndName(s,'a')+' to '+segEndName(s,'b'))+'</div>'+
+    '<div class="row2"><input class="inp mono" id="lpLen" type="text" inputmode="decimal" value="'+lenShow(num(s.len,0))+'" onkeydown="if(event.key===\'Enter\')lenPopApply(\''+id+'\')"><span class="muted">'+lenUnitLabel()+'</span></div>'+
+    '<div class="usw" style="margin:8px 0">'+['exact','approx','auto'].map(function(k){ return '<button class="btn btn-sm'+(m===k?' on':'')+'" data-m="'+k+'" onclick="lenPopMode(this)">'+{exact:'Exact',approx:'Approx',auto:'From drawing'}[k]+'</button>'; }).join('')+'</div>'+
+    '<div class="acts"><button class="btn btn-sm btn-primary" onclick="lenPopApply(\''+id+'\')">Apply</button><button class="btn btn-sm" onclick="closeLenPop()">Cancel</button></div>';
+  view.appendChild(d); var i=$('lpLen'); if(i){ i.focus(); i.select(); }
+}
+function lenPopMode(btn){ document.querySelectorAll('#lenPop [data-m]').forEach(function(b){ b.classList.toggle('on',b===btn); }); }
+function lenPopApply(id){
+  var d=$('lenPop'); if(!d) return; var s=seg(id), b=d.querySelector('[data-m].on'), mode=b?b.getAttribute('data-m'):'exact', txt=$('lpLen').value;
+  closeLenPop();
+  setSegLenMode(id,mode,(s && txt.trim()===lenShow(num(s.len,0)))?null:txt);
+}
+function closeLenPop(){ var d=$('lenPop'); if(d) d.remove(); }
+// every bundle length in one table
+function openLengths(){
+  var p=P(); if(!p.segs.length){ toast('Add bundles in the layout first.'); return; }
+  var rows=p.segs.map(function(s){
+    var m=lenMode(s);
+    return '<tr><td>'+esc(segEndName(s,'a')+' to '+segEndName(s,'b'))+'</td><td><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(s.len,0))+'" data-lk="'+s.id+'" style="width:92px"></td>'+
+      '<td><select class="sel" data-lm="'+s.id+'">'+opt('exact','Exact',m)+opt('approx','Approximate',m)+opt('auto','From drawing',m)+'</select></td></tr>';
+  }).join('');
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:620px;max-width:96vw">'+
+    '<div class="modal-title">Bundle lengths</div>'+
+    '<p style="color:var(--text2);font-size:var(--t-md);margin-bottom:12px">Lengths are in '+lenUnitLabel()+'. Mark each one Exact, Approximate (shown with a ~), or From drawing (follows the layout). You can type 18in or 45cm to use another unit.</p>'+
+    '<div class="tbl-wrap" style="max-height:52vh;overflow:auto"><table><thead><tr><th>Bundle</th><th>Length ('+lenUnitLabel()+')</th><th>This length is</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="applyLengths()">Apply</button></div></div></div>';
+}
+function applyLengths(){
+  var bad=false, changes=[];
+  document.querySelectorAll('#modalRoot [data-lk]').forEach(function(el){
+    var id=el.getAttribute('data-lk'), s=seg(id); if(!s) return;
+    var mode=document.querySelector('#modalRoot [data-lm="'+id+'"]').value, txt=el.value, mm=null;
+    if(txt.trim()!==lenShow(num(s.len,0))){ mm=parseLen(txt); if(mm==null){ bad=true; return; } if(mode==='auto') mode='exact'; }
+    changes.push({s:s,mm:mm,mode:mode});
+  });
+  if(bad){ badLen(); return; }
+  pushUndo();
+  changes.forEach(function(c){ if(c.mm!=null) c.s.len=Math.max(0,Math.round(c.mm*10)/10); c.s.est=(c.mode==='auto'); c.s.approx=(c.mode==='approx'); });
+  refreshEstimates(); closeModal(); commit();
+}
 
 function zOfKey(key){
   if(!key) return 0;
@@ -2351,7 +2421,7 @@ function isoSegItems(g,pj,v,items,sel,labels,exportMode){
       labels.push({dim:true,a:P2,o:o,mid:polyMid(o),txt:fmtDim(gp.mm)});
     });
   }
-  if(v.lens && num(s.len,0)){ var lp=subPoly(g.p3,0.499,0.501)[0]; if(lp) labels.push({p:pj(lp),txt:(s.est?'~':'')+fmtLen(num(s.len,0)),mono:true,dy:wB/2+10}); }
+  if(v.lens && num(s.len,0)){ var lp=subPoly(g.p3,0.499,0.501)[0]; if(lp) labels.push({p:pj(lp),txt:(lenApprox(s)?'~':'')+fmtLen(num(s.len,0)),mono:true,dy:wB/2+10,est:lenApprox(s),lenId:s.id}); }
 }
 
 var ISO_BOX_FACES=null;
@@ -2453,9 +2523,9 @@ function isoBuild(v,W,H,exportMode){
     function hit(){ return placed.some(function(r){ return !(x-w/2>r.x+r.w || x+w/2<r.x || y>r.y+r.h || y+h<r.y); }); }
     while(hit() && tries<8){ y+=(tries%2?-1:1)*Math.ceil((tries+1)/2)*17; tries++; }
     placed.push({x:x-w/2,y:y,w:w,h:h});
-    out+='<g style="pointer-events:none"><rect x="'+(x-w/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h+'" rx="'+(l.dot?8:3)+'" fill="'+(l.sel?'#0d9488':'rgba(255,255,255,.94)')+'" stroke="'+(l.sel?'#0d9488':l.dim?DIM_COL:'#c7cdd4')+'" stroke-width="1"/>';
+    out+=(l.lenId?'<g data-ik="len" data-iid="'+l.lenId+'" style="cursor:pointer">':'<g style="pointer-events:none">')+'<rect x="'+(x-w/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h+'" rx="'+(l.dot?8:3)+'" fill="'+(l.sel?'#0d9488':'rgba(255,255,255,.94)')+'" stroke="'+(l.sel?'#0d9488':l.dim?DIM_COL:l.est?'#ea580c':'#c7cdd4')+'" stroke-width="1"/>';
     if(l.dot) out+='<circle cx="'+(x-w/2+9).toFixed(1)+'" cy="'+(y+8).toFixed(1)+'" r="4" fill="'+l.dot+'" stroke="'+shade(l.dot,-0.4)+'" stroke-width=".8"/>';
-    out+='<text x="'+(x+(l.dot?5:0)).toFixed(1)+'" y="'+(y+11.5).toFixed(1)+'" text-anchor="middle" font-size="'+(l.bold?11:10)+'" font-weight="'+(l.bold?700:500)+'"'+(l.mono?' font-family="monospace"':'')+' fill="'+(l.sel?'#fff':l.dim?DIM_COL:'#1f2937')+'">'+esc(txt)+'</text></g>';
+    out+='<text x="'+(x+(l.dot?5:0)).toFixed(1)+'" y="'+(y+11.5).toFixed(1)+'" text-anchor="middle" font-size="'+(l.bold?11:10)+'" font-weight="'+(l.bold?700:500)+'"'+(l.mono?' font-family="monospace"':'')+(l.est?' font-style="italic"':'')+' fill="'+(l.sel?'#fff':l.dim?DIM_COL:l.est?'#c2410c':'#1f2937')+'">'+esc(txt)+'</text></g>';
   });
   // axis marker
   var gx2=W-62, gy2=H-58, giz='';
@@ -2487,7 +2557,7 @@ function isoHTML(){
     '<button class="btn btn-sm" onclick="isoPreset(\'top\')">Top</button><button class="btn btn-sm" onclick="isoPreset(\'front\')">Front</button><button class="btn btn-sm" onclick="isoPreset(\'right\')">Right</button>'+
     '<button class="btn btn-sm" onclick="isoFit()" title="Fit the harness in the window (F)">Fit</button><div class="sepv"></div>'+
     tg('labels','Labels','Part names and covering part numbers')+tg('cov','Coverings','Show heat shrink and sleeving')+tg('strands','Wires','Show the wire colors inside uncovered bundles')+tg('lens','Lengths','Bundle lengths')+tg('dims','Distances','Bare wire between each part and its heat shrink')+tg('grid','Grid','Floor grid')+
-    isoPanelBtn()+'<div class="sepv"></div><button class="btn btn-sm btn-teal" onclick="openHeights()" title="Lift connectors and branch points off the board">Set heights</button>'+
+    isoPanelBtn()+'<div class="sepv"></div><button class="btn btn-sm btn-teal" onclick="openHeights()" title="Lift connectors and branch points off the board">Set heights</button><button class="btn btn-sm btn-teal" onclick="openLengths()" title="Type bundle lengths and mark each one exact or approximate">Set lengths</button>'+
     '<button class="btn btn-sm" onclick="exportIsoSVG()">Save SVG</button><div class="sepv"></div>'+unitSwitch()+'</div>';
   var empty=(p.comps.length||p.segs.length)?'':'<div class="cv-empty"><div class="panel"><h3>Nothing to show yet</h3><p>Build the schematic and lay out the bundles first. This view is made from the Layout.</p></div></div>';
   var hint=(!empty && sc.flat)?'<div class="hint">Everything is at height 0, so this is your flat layout seen in 3D. Use Set heights to lift parts. Drag to turn, scroll to zoom, shift-drag to move.</div>':(empty?'':'<div class="hint">Drag to turn. Scroll or pinch to zoom. Shift-drag or two fingers to move. Click a bundle or part to edit it.</div>');
@@ -2568,7 +2638,11 @@ function isoUp(ev){
   S._id=null;
   if(d.mode==='pinch' || d.moved || ev.type==='pointercancel') return;
   var el=d.target && d.target.closest ? d.target.closest('[data-ik]') : null;
-  if(el){ S.sel={kind:el.getAttribute('data-ik'),id:el.getAttribute('data-iid')}; S.hiNet=null; render(); }
+  if(el){
+    var k0=el.getAttribute('data-ik'), id0=el.getAttribute('data-iid');
+    if(k0==='len'){ S.sel={kind:'seg',id:id0}; S.hiNet=null; render(); isoLenPop(id0,ev.clientX,ev.clientY); return; }
+    S.sel={kind:k0,id:id0}; S.hiNet=null; render();
+  }
   else if(S.sel){ S.sel=null; render(); }
 }
 document.addEventListener('pointerup',isoUp);
@@ -3434,6 +3508,8 @@ function runChecks(){
   });
   var est=p.segs.filter(function(s){ return s.est; });
   if(est.length && p.wires.length) out.push({sev:'warn',msg:est.length+' bundle length'+(est.length===1?' is an estimate':'s are estimates')+' from the drawing. Measure on the car and type the real length.',sel:{kind:'seg',id:est[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(est[0].id)+')'}});
+  var apx=p.segs.filter(function(s){ return !s.est && s.approx; });
+  if(apx.length && p.wires.length) out.push({sev:'info',msg:apx.length+' bundle length'+(apx.length===1?' is':'s are')+' marked approximate (~). Confirm '+(apx.length===1?'it':'them')+' on the car before cutting wire.',sel:{kind:'seg',id:apx[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(apx[0].id)+')'}});
   var connected={}; p.segs.forEach(function(s){ connected[s.a]=1; connected[s.b]=1; });
   p.nodes.forEach(function(n){ if(!connected['n:'+n.id]) out.push({sev:'info',msg:'A branch point is not attached to any bundle.',sel:{kind:'node',id:n.id},fix:{label:'Delete it',js:'fixDeleteNode('+q(n.id)+')',safe:true}}); });
   p.wires.forEach(function(w){
@@ -4581,7 +4657,7 @@ function splitSeg(id,pt){
   var n={id:uid('n'),x:snap10(pr.x),y:snap10(pr.y)}; var zz=Math.round(zOfKey(s.a)+(zOfKey(s.b)-zOfKey(s.a))*t); if(zz) n.z=zz; P().nodes.push(n);
   var l1=Math.round(num(s.len,0)*t/5)*5, oldB=s.b;
   var sc=splitCovers(s,l1);
-  var s2={id:uid('s'),a:'n:'+n.id,b:oldB,len:num(s.len,0)-l1,covers:sc.second,covering:'',est:s.est};
+  var s2={id:uid('s'),a:'n:'+n.id,b:oldB,len:num(s.len,0)-l1,covers:sc.second,covering:'',est:s.est,approx:s.approx};
   s.b='n:'+n.id; s.len=l1; s.covers=sc.first; s.covering=''; P().segs.push(s2);
   S.sel={kind:'node',id:n.id}; commit();
 }
@@ -4642,10 +4718,10 @@ function layWorld(){
     var covN=segCovN(s); if(!num(s.len,0) && !covN) return;
     var bi=1, bl=0; for(var i=1;i<pts.length;i++){ var l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); if(l>bl){ bl=l; bi=i; } }
     var a=pts[bi-1], b=pts[bi], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
-    var txt=(s.est?'~':'')+fmtLen(num(s.len,0)), tw=txt.length*6.4+8;
+    var txt=(lenApprox(s)?'~':'')+fmtLen(num(s.len,0)), tw=txt.length*6.4+8;
     if(num(s.len,0)||s.est){
-      if(vert) out+='<g transform="translate('+(mx-15)+','+my+') rotate(-90)"><rect class="slen-bg" x="'+(-tw/2)+'" y="-9" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="0" y="1" text-anchor="middle">'+txt+'</text></g>';
-      else out+='<rect class="slen-bg" x="'+(mx-tw/2)+'" y="'+(my-22)+'" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="'+mx+'" y="'+(my-12)+'" text-anchor="middle">'+txt+'</text>';
+      if(vert) out+='<g transform="translate('+(mx-15)+','+my+') rotate(-90)"><rect class="slen-bg" x="'+(-tw/2)+'" y="-9" width="'+tw+'" height="13"/><text class="slen'+(lenApprox(s)?' est':'')+'" x="0" y="1" text-anchor="middle">'+txt+'</text></g>';
+      else out+='<rect class="slen-bg" x="'+(mx-tw/2)+'" y="'+(my-22)+'" width="'+tw+'" height="13"/><text class="slen'+(lenApprox(s)?' est':'')+'" x="'+mx+'" y="'+(my-12)+'" text-anchor="middle">'+txt+'</text>';
     }
     if(covN) out+=covTagsSVG(s,vert,mx,my);
   });
@@ -5004,7 +5080,7 @@ function buildPlan(){
     covList(s).forEach(function(cv,i){
       var part=partByPn(cv.pn), col=covColorName(part,cv), r=covRange(s,cv), whole=covWhole(cv);
       var where=whole?'':(' - '+fmtLen(r[1]-r[0])+', leave '+fmtLen(r[0])+' bare at '+nm(s.a)+' and '+fmtLen(Math.max(0,num(s.len,0)-r[1]))+' bare at '+nm(s.b));
-      cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':'')});
+      cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':s.approx?' (approximate)':'')});
     });
   });
   if(cov.length) secs.push({id:'cov',name:'Coverings',items:cov,hint:'Slide sleeving and shrink tubing on before the second end is terminated.'});
@@ -5324,7 +5400,7 @@ function addInlineAt(sid){
   var L=num(s.len,0), l1=Math.round(L*t/5)*5, oldB=s.b;
   var sc=splitCovers(s,l1);
   s.b='c:'+ca.id; s.len=l1; s.covers=sc.first; s.covering='';
-  P().segs.push({id:uid('s'),a:'c:'+cb.id,b:oldB,len:L-l1,covers:sc.second,covering:'',est:s.est});
+  P().segs.push({id:uid('s'),a:'c:'+cb.id,b:oldB,len:L-l1,covers:sc.second,covering:'',est:s.est,approx:s.approx});
   // cut each wire at the pair: the s.a side ends at A, the s.b side starts at B, same cavity
   thru.forEach(function(it,i){
     var w=it.w, far=it.aSide?w.b:w.a;
