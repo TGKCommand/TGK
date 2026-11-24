@@ -1418,6 +1418,7 @@ document.addEventListener('dblclick',function(ev){
   var el=ev.target.closest('[data-k]'), k=el?el.getAttribute('data-k'):'bg';
   if(svg.getAttribute('data-v')==='lay' && k==='seg'){ splitSeg(el.getAttribute('data-id'),worldPt(ev)); return; }
   if(k==='note'){ S.sel={kind:'note',id:el.getAttribute('data-id')}; render(); focusNote(); return; }
+  if(k==='comp'){ openCompEditor(el.getAttribute('data-id')); return; }
 });
 document.addEventListener('contextmenu',function(ev){ if(ev.target.closest && ev.target.closest('#cv')){ ev.preventDefault(); S.drag=null; canvasMenu(ev); } });
 document.addEventListener('keydown',function(ev){
@@ -1601,6 +1602,7 @@ function renderInsp(){
   else if(!S.cur) h=inspBrowse();
   else h=inspProject();
   $('insp').innerHTML=h;
+  if(S.editComp){ var ec=comp(S.editComp); if(ec && $('ceBody')) $('ceBody').innerHTML=inspComp(ec); else if(!ec) closeCompEditor(); }
 }
 function inspProject(){
   var p=P(), s=settings(), tot=0, unrouted=0;
@@ -1632,6 +1634,26 @@ function inspProject(){
   
   '<div class="is"><div class="acts"><button class="btn btn-sm" onclick="duplicateProject()">Duplicate harness</button><button class="btn btn-sm" onclick="archiveHarness('+(p.status==='Archived'?'false':'true')+')">'+(p.status==='Archived'?'Restore from archive':'Archive')+'</button><button class="btn btn-sm btn-danger" onclick="deleteHarnessForever()">Delete harness</button></div></div>';
 }
+// ---- edit a component in a window: name, pins, pin names, mates, height, notes (the same fields as the side panel)
+function openCompEditor(id){
+  var c=comp(id); if(!c) return;
+  closeMenu(); S.sel={kind:'comp',id:id}; render();
+  S.editComp=id;
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeCompEditor()"><div class="modal" style="width:540px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;padding:0">'+
+    '<div class="ce-body" id="ceBody" style="overflow:auto;flex:1">'+inspComp(c)+'</div>'+
+    '<div class="modal-footer" style="margin:0;padding:12px 18px"><span class="muted" style="margin-right:auto;align-self:center">Changes save as you make them.</span><button class="btn btn-primary" onclick="closeCompEditor()">Done</button></div></div></div>';
+}
+function closeCompEditor(){ S.editComp=null; closeModal(); }
+// two quick presses on the same part open the editor (the view redraws after the first press, so the browser's own double-click is unreliable)
+document.addEventListener('pointerdown',function(ev){
+  if(ev.button!==0) return;
+  var svg=ev.target.closest && ev.target.closest('#cv'); if(!svg) return;
+  var el=ev.target.closest('[data-k]');
+  if(!el || el.getAttribute('data-k')!=='comp'){ S._cc=null; return; }
+  var id=el.getAttribute('data-id'), now=Date.now();
+  if(S._cc && S._cc.id===id && now-S._cc.t<400 && Math.hypot(ev.clientX-S._cc.x,ev.clientY-S._cc.y)<8){ S._cc=null; setTimeout(function(){ openCompEditor(id); },0); return; }
+  S._cc={id:id,t:now,x:ev.clientX,y:ev.clientY};
+},true);
 function inspComp(c){
   var part=partByPn(c.partPn), typeLabel={connector:'Connector',terminal:'Terminal',splice:'Splice'}[c.type];
   var h='<div class="ih"><div class="k">'+typeLabel+'</div><h2>'+esc(c.name)+'</h2></div><div class="is">'+
@@ -1776,7 +1798,7 @@ function computeBOM(){
     if(s.noBom) return;
     covList(s).forEach(function(cv){
       var part=partByPn(cv.pn), col=covColorName(part,cv), ln=covLenMm(s,cv); if(ln<=0) return;
-      add('Covering',cv.pn,(part?part.desc:'')+(col!=='black'?', '+col:''),ln*1.05,'len',col);
+      var apx=covApprox(s,cv); add('Covering',cv.pn,(part?part.desc:'')+(col!=='black'?', '+col:'')+(apx?', approximate length':''),ln*1.05,'len',col+(apx?'|approx':''));
     });
   });
   var out=Object.keys(rows).map(function(k){ return rows[k]; });
@@ -1841,6 +1863,8 @@ function covList(s){
   if(s.covering) return [{id:'legacy',pn:s.covering,anchor:'whole',off:0,len:0}];
   return [];
 }
+// a covering is approximate when you marked it so, or when it hangs off a bundle length that is approximate
+function covApprox(s,cv){ return !!(cv.approx || lenApprox(s)); }
 function covWhole(cv){ return cv.anchor!=='a' && cv.anchor!=='b' && cv.anchor!=='span'; }
 function covRange(s,cv){
   var L=Math.max(0,num(s.len,0));
@@ -1960,7 +1984,7 @@ function covRowHTML(s,cv,dia){
   if(cv.anchor==='span'){
     function sp(f,val){ return 'setCoverSpan(\''+sid+'\',\''+cid+'\',\''+f+'\',lenIn(this.value))'; }
     h+='<div class="cr-3"><div><label title="Bare wire next to '+nA+'">Bare at '+nA+'</label><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(r[0])+'" onchange="'+sp('gapA')+'"></div>'+
-       '<div><label title="Bundle length minus the bare wire at both ends">'+esc(COV_KINDS[kind].split(' ')[0])+' needed</label><input class="inp mono" readonly value="'+lenShow(ln)+'" style="background:var(--bg3);font-weight:700"></div>'+
+       '<div><label title="Bundle length minus the bare wire at both ends">'+esc(COV_KINDS[kind].split(' ')[0])+' needed</label><input class="inp mono" readonly value="'+(covApprox(s,cv)?'~':'')+lenShow(ln)+'" style="background:var(--bg3);font-weight:700"></div>'+
        '<div><label title="Bare wire next to '+nB+'">Bare at '+nB+'</label><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(Math.max(0,Lb-r[1]))+'" onchange="'+sp('gapB')+'"></div></div>'+
        '<div class="cr-g" style="margin-top:6px"><label>Both ends</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" placeholder="same" onchange="'+sp('both')+'"><span class="muted">'+lenUnitLabel()+' bare at each end</span></div></div>'+
        '<div class="cr-i" style="margin:-2px 0 6px">All in '+lenUnitLabel()+' along the bundle: '+lenShow(Lb)+' bundle - '+lenShow(r[0])+' - '+lenShow(Math.max(0,Lb-r[1]))+' bare = '+lenShow(ln)+' of covering.</div>';
@@ -1968,11 +1992,13 @@ function covRowHTML(s,cv,dia){
     h+='<div class="cr-g"><label>Starts</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(cv.off,0))+'" onchange="'+fn('off','lenIn(this.value)')+'"><span class="muted">'+lenUnitLabel()+' from end '+(cv.anchor==='b'?'B':'A')+'</span></div></div>'+
        '<div class="cr-g"><label>Length</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(cv.len,0))+'" onchange="'+fn('len','lenIn(this.value)')+'"><span class="muted">'+lenUnitLabel()+'</span></div></div>';
   }
+  if(!whole) h+='<div class="cr-g"><label>Length is</label><div class="usw"><button class="btn btn-sm'+(!cv.approx?' on':'')+'" title="Measured or fixed" onclick="'+fn('approx','false')+'">Exact</button><button class="btn btn-sm'+(cv.approx?' on':'')+'" title="A guess: shown with ~ everywhere" onclick="'+fn('approx','true')+'">Approx</button></div></div>';
   h+='<div class="cr-g"><label>Color</label><div class="row2"><span class="sw" style="background:'+hex+'"></span><select class="sel" onchange="'+fn('color','this.value')+'">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,covColorName(part,cv)); }).join('')+'</select></div></div>';
   h+='<div class="cr-g"><label>Note</label><input class="inp" value="'+esc(cv.note||'')+'" placeholder="e.g. strain relief at the connector" onchange="'+fn('note','this.value')+'"></div>';
-  var info=lenShow(ln)+' '+lenUnitLabel()+' of '+COV_KINDS[kind].toLowerCase();
+  var info=(covApprox(s,cv)?'~':'')+lenShow(ln)+' '+lenUnitLabel()+' of '+COV_KINDS[kind].toLowerCase();
   if(sz && dia>0) info+='. Size '+fmtD(sz)+', bundle about '+fmtD(dia)+'.';
   else if(sz) info+='. Size '+fmtD(sz)+'.';
+  if(!whole && !cv.approx && lenApprox(s)) info+='. Approximate because the bundle length is.';
   var tight=(sz && dia>0 && sz<dia);
   h+='<div class="cr-i'+(tight?' warn':'')+'">'+esc(info)+(tight?' This may be too small for the bundle.':'')+((part && !part.ckind && kind==='sleeve')?' Counted as Other sleeve. Click Edit and set Kind to Heat shrink if it is.':'')+'</div></div>';
   return h;
@@ -2060,7 +2086,7 @@ function dimLineSVG(sub,off,txt){
 function covDimsSVG(s,pts){
   if(!pts) return '';
   var out='';
-  covGaps(s).forEach(function(g){ out+=dimLineSVG(subPoly(pts,g.f0,g.f1),17,fmtDim(g.mm)); });
+  covGaps(s).forEach(function(g){ out+=dimLineSVG(subPoly(pts,g.f0,g.f1),17,(covApprox(s,g.cv)?'~':'')+fmtDim(g.mm)); });
   return out;
 }
 
@@ -2100,8 +2126,8 @@ function covTagsSVG(s,vert,mx,my){
   var out='';
   covList(s).forEach(function(cv,i){
     var part=partByPn(cv.pn), hex=covHex(part,cv), r=covRange(s,cv), whole=covWhole(cv);
-    var txt=cv.pn+(whole?'':'  '+lenShow(r[1]-r[0])+' '+lenUnitLabel()), cw=txt.length*6+24, cx=vert?mx+11:mx-cw/2, cy=(vert?my-7:my+10)+i*17;
-    out+='<g style="pointer-events:none"><rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="7.5"/><circle cx="'+(cx+9)+'" cy="'+(cy+7.5)+'" r="4" fill="'+hex+'" stroke="'+shade(hex,-0.4)+'" stroke-width=".8"/><text class="ltag" x="'+(cx+cw/2+6)+'" y="'+(cy+11)+'" text-anchor="middle">'+esc(txt)+'</text></g>';
+    var ap=covApprox(s,cv), txt=cv.pn+(whole?(ap?'  ~':''):'  '+(ap?'~':'')+lenShow(r[1]-r[0])+' '+lenUnitLabel()), cw=txt.length*6+24, cx=vert?mx+11:mx-cw/2, cy=(vert?my-7:my+10)+i*17;
+    out+='<g style="pointer-events:none"><rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="7.5"/><circle cx="'+(cx+9)+'" cy="'+(cy+7.5)+'" r="4" fill="'+hex+'" stroke="'+shade(hex,-0.4)+'" stroke-width=".8"/><text class="ltag" x="'+(cx+cw/2+6)+'" y="'+(cy+11)+'" text-anchor="middle"'+(ap?' style="fill:#c2410c;font-style:italic"':'')+'>'+esc(txt)+'</text></g>';
   });
   return out;
 }
@@ -2401,7 +2427,7 @@ function isoSegItems(g,pj,v,items,sel,labels,exportMode){
       if(!whole) out+=covEndMarks(P2,wC,dk);
       if(v.labels){
         var fm=((r.c.r[0]+r.c.r[1])/2)/L, mp=subPoly(g.p3,Math.max(0,fm-0.001),Math.min(1,fm+0.001))[0], whole2=covWhole(r.c.cv);
-        if(mp && r.c.first!==false){ r.c.first=false; labels.push({p:pj(mp),txt:r.c.cv.pn+(whole2?'':'  '+lenShow(r.c.len)+' '+lenUnitLabel()),dot:hex,dy:-wC/2-10}); }
+        if(mp && r.c.first!==false){ r.c.first=false; var ap2=covApprox(s,r.c.cv); labels.push({p:pj(mp),txt:r.c.cv.pn+(whole2?(ap2?'  ~':''):'  '+(ap2?'~':'')+lenShow(r.c.len)+' '+lenUnitLabel()),dot:hex,dy:-wC/2-10,est:ap2}); }
       }
     }
     items.push({d:dsum/P2.length,s:'<g data-ik="seg" data-iid="'+s.id+'" style="cursor:pointer">'+out+'</g>'});
@@ -2418,7 +2444,7 @@ function isoSegItems(g,pj,v,items,sel,labels,exportMode){
       if(v.show.ck[covKindOf(gp.part)]===false) return;
       var sub=subPoly(g.p3,gp.f0,gp.f1); if(sub.length<2) return;
       var P2=sub.map(pj), o=offsetPoly(P2,wB/2+10);
-      labels.push({dim:true,a:P2,o:o,mid:polyMid(o),txt:fmtDim(gp.mm)});
+      labels.push({dim:true,a:P2,o:o,mid:polyMid(o),txt:(covApprox(s,gp.cv)?'~':'')+fmtDim(gp.mm)});
     });
   }
   if(v.lens && num(s.len,0)){ var lp=subPoly(g.p3,0.499,0.501)[0]; if(lp) labels.push({p:pj(lp),txt:(lenApprox(s)?'~':'')+fmtLen(num(s.len,0)),mono:true,dy:wB/2+10,est:lenApprox(s),lenId:s.id}); }
@@ -2641,6 +2667,7 @@ function isoUp(ev){
   if(el){
     var k0=el.getAttribute('data-ik'), id0=el.getAttribute('data-iid');
     if(k0==='len'){ S.sel={kind:'seg',id:id0}; S.hiNet=null; render(); isoLenPop(id0,ev.clientX,ev.clientY); return; }
+    if(k0==='comp'){ var now=Date.now(); if(S._cc3 && S._cc3.id===id0 && now-S._cc3.t<450){ S._cc3=null; openCompEditor(id0); return; } S._cc3={id:id0,t:now}; }
     S.sel={kind:k0,id:id0}; S.hiNet=null; render();
   }
   else if(S.sel){ S.sel=null; render(); }
@@ -2653,7 +2680,11 @@ document.addEventListener('wheel',function(ev){
   var v=S.iso, r=svg.getBoundingClientRect(), f=Math.exp(-ev.deltaY*(ev.ctrlKey?0.01:0.0015)), nk=Math.max(0.02,Math.min(6,v.k*f)), mx=ev.clientX-r.left, my=ev.clientY-r.top;
   v.tx=mx-(mx-v.tx)*nk/v.k; v.ty=my-(my-v.ty)*nk/v.k; v.k=nk; isoSoon();
 },{passive:false});
-document.addEventListener('dblclick',function(ev){ if(ev.target.closest && ev.target.closest('#iso')) isoFit(); });
+document.addEventListener('dblclick',function(ev){
+  if(!(ev.target.closest && ev.target.closest('#iso'))) return;
+  var el=ev.target.closest('[data-ik="comp"]');
+  if(el){ closeLenPop(); openCompEditor(el.getAttribute('data-iid')); } else isoFit();
+});
 document.addEventListener('contextmenu',function(ev){ if(ev.target.closest && ev.target.closest('#iso')) ev.preventDefault(); });
 window.addEventListener('resize',function(){ if(S.view==='iso') isoSoon(); });
 
@@ -2759,7 +2790,7 @@ function saveAddWire(){
 }
 
 // ===== catalog =====
-function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; S.coverTarget=null; S.pf=null; }
+function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; S.coverTarget=null; S.pf=null; S.editComp=null; }
 // ===== part editor: add, edit (also built-in parts), reset; photo by link or upload =====
 var PF_TYPES={connector:'Connector',terminal:'Terminal',splice:'Splice',covering:'Covering (heat shrink, sleeving, tape)',cable:'Cable',wire:'Wire (type or family)'};
 S.pf=null;
@@ -3510,6 +3541,8 @@ function runChecks(){
   if(est.length && p.wires.length) out.push({sev:'warn',msg:est.length+' bundle length'+(est.length===1?' is an estimate':'s are estimates')+' from the drawing. Measure on the car and type the real length.',sel:{kind:'seg',id:est[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(est[0].id)+')'}});
   var apx=p.segs.filter(function(s){ return !s.est && s.approx; });
   if(apx.length && p.wires.length) out.push({sev:'info',msg:apx.length+' bundle length'+(apx.length===1?' is':'s are')+' marked approximate (~). Confirm '+(apx.length===1?'it':'them')+' on the car before cutting wire.',sel:{kind:'seg',id:apx[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(apx[0].id)+')'}});
+  var capx=[]; p.segs.forEach(function(s){ covList(s).forEach(function(cv){ if(cv.approx) capx.push(s); }); });
+  if(capx.length && p.wires.length) out.push({sev:'info',msg:capx.length+' covering length'+(capx.length===1?' is':'s are')+' marked approximate (~). Confirm '+(capx.length===1?'it':'them')+' on the car before cutting.',sel:{kind:'seg',id:capx[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(capx[0].id)+')'}});
   var connected={}; p.segs.forEach(function(s){ connected[s.a]=1; connected[s.b]=1; });
   p.nodes.forEach(function(n){ if(!connected['n:'+n.id]) out.push({sev:'info',msg:'A branch point is not attached to any bundle.',sel:{kind:'node',id:n.id},fix:{label:'Delete it',js:'fixDeleteNode('+q(n.id)+')',safe:true}}); });
   p.wires.forEach(function(w){
@@ -3752,6 +3785,7 @@ function addMenuItems(which){
 function compMenuItems(c,pin){
   var items=[], id=c.id;
   if(pin!=null){ items.push(ctxItem('Trace '+pinRef(c,pin)+' circuit',ICON2.trace,'S.hiNet=netOfPin(\''+id+'\','+pin+');S.sel={kind:\'comp\',id:\''+id+'\'};render()')); items.push('-'); }
+  items.push(ctxItem('Edit component...',ICON2.part,'openCompEditor(\''+id+'\')'));
   items.push(ctxItem(c.partPn?'Change part...':'Choose part...',ICON2.part,'fixChoosePart(\''+id+'\')'));
   if(c.type==='connector'){
     items.push(ctxItem('Paste or read pinout...',ICON2.paste,'openPastePinout(\''+id+'\')'));
@@ -5080,7 +5114,7 @@ function buildPlan(){
     covList(s).forEach(function(cv,i){
       var part=partByPn(cv.pn), col=covColorName(part,cv), r=covRange(s,cv), whole=covWhole(cv);
       var where=whole?'':(' - '+fmtLen(r[1]-r[0])+', leave '+fmtLen(r[0])+' bare at '+nm(s.a)+' and '+fmtLen(Math.max(0,num(s.len,0)-r[1]))+' bare at '+nm(s.b));
-      cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':s.approx?' (approximate)':'')});
+      cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':(s.approx||cv.approx)?' (approximate)':'')});
     });
   });
   if(cov.length) secs.push({id:'cov',name:'Coverings',items:cov,hint:'Slide sleeving and shrink tubing on before the second end is terminated.'});
