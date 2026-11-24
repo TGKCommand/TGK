@@ -2038,6 +2038,20 @@ function isoScene(){
     var w=vnorm(vcross(u,up)), v=vcross(w,u);
     sc.comps.push({c:c,part:partByPn(c.partPn),O:O,u:u,v:v,w:w});
   });
+  // mated connectors: turn the two to face each other and pull them together so the mating faces touch
+  var byId={}; sc.comps.forEach(function(o){ byId[o.c.id]=o; });
+  sc.comps.forEach(function(o){
+    var c=o.c; if(c.type!=='connector' || !c.mate || c.id>c.mate) return;
+    var m=byId[c.mate]; if(!m || m.c.type!=='connector') return;
+    var d=vsub(m.O,o.O), axis=(vdot(d,d)>1e-6)?vnorm(d):o.u, M=vmul(vadd(o.O,m.O),0.5);
+    [[o,axis],[m,vmul(axis,-1)]].forEach(function(x){
+      var q=x[0], u=x[1];
+      q.O=vsub(M,vmul(u,26)); q.u=u;
+      var up=(Math.abs(u.z)>0.9)?{x:1,y:0,z:0}:{x:0,y:0,z:1};
+      q.w=vnorm(vcross(u,up)); q.v=vcross(q.w,u);
+      sc.segs.forEach(function(g){ var n=g.p3.length; if(g.s.a==='c:'+q.c.id) g.p3[0]=Object.assign({},q.O); else if(g.s.b==='c:'+q.c.id) g.p3[n-1]=Object.assign({},q.O); });
+    });
+  });
   S._isoC=sc; return sc;
 }
 function isoProjector(v){
