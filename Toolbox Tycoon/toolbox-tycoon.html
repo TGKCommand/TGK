@@ -138,7 +138,10 @@ body.fp #objective{display:block}
 #objective b{color:var(--yellow);font-family:var(--disp);font-size:1.3rem;margin-left:.4rem}
 #objective .bar{margin-top:.3rem}
 body.fp #objective{top:3.7rem;bottom:auto}body.fp #toasts{top:7.6rem}.ctrl button{white-space:nowrap}
-#tickets{position:absolute;left:.8rem;top:4.2rem;display:none;flex-direction:column;gap:.3rem;font-size:.85rem;pointer-events:none;max-width:16rem}body.fp #tickets{display:flex}
+#rowsHud{position:absolute;left:.8rem;top:4.2rem;display:none;font-size:.9rem;line-height:1.5;pointer-events:none;text-shadow:0 1px 3px #000;min-width:15rem}body.fp #rowsHud{display:block}
+#rowsHud .lv{color:var(--dim);border-bottom:1px solid rgba(255,255,255,.25);padding-bottom:.15rem;margin-bottom:.2rem}#rowsHud b{font-family:var(--disp);font-size:1.15rem;letter-spacing:.04em}#rowsHud .it{color:#e8e8e8;font-size:.84rem;border-top:1px solid rgba(255,255,255,.18);margin-top:.25rem;padding-top:.2rem}
+#xhair{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.6);display:none;pointer-events:none}body.fp #xhair{display:block}
+#tickets{position:absolute;left:.8rem;top:11.6rem;display:none;flex-direction:column;gap:.3rem;font-size:.85rem;pointer-events:none;max-width:16rem}body.fp #tickets{display:flex}
 #tickets div{background:rgba(14,16,19,.82);border-left:3px solid var(--yellow);padding:.3rem .6rem}#tickets div.done{opacity:.6;border-color:#3ddc84}
 #banner{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%) scale(.6);font-family:var(--disp);font-size:clamp(2rem,6vw,4.4rem);font-weight:900;color:#fff;text-shadow:0 4px 0 #000,0 0 30px rgba(242,183,5,.8);opacity:0;pointer-events:none;white-space:nowrap;text-transform:uppercase}
 #banner.go{animation:bann 1.7s ease-out}@keyframes bann{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}25%{transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%) scale(1)}}
@@ -192,7 +195,7 @@ body.fp #stackHud{display:flex}
   <div id="remain"></div>
   <div id="xhair"></div>
   <div id="combo"><b></b><small>combo</small><span><i></i></span></div>
-  <div id="tickets"></div><div id="banner"></div><div id="objective"></div>
+  <div id="rowsHud"></div><div id="xhair"></div><div id="tickets"></div><div id="banner"></div><div id="objective"></div>
   <div id="stackHud"></div>
   <div id="joy"><i></i></div>
   <button id="fpAct" data-act="fpact" aria-label="Grab or put away">Grab / Place</button>
@@ -1051,7 +1054,7 @@ const UPG=[
   {id:'magnet',name:'Pickup magnet',max:3,price:l=>150+l*200,desc:l=>`Press F to grab every loose item within reach. Level ${l} of 3.`},
   {id:'speed',name:'Work boots',max:3,price:l=>140+l*180,desc:l=>`Walk and run ${l*12}% faster${l<3?` (next: ${(l+1)*12}%)`:''}.`},
   {id:'combo',name:'Rhythm',max:3,price:l=>160+l*220,desc:l=>`Combos last ${7+2*l} seconds between items.`}];
-const capCarry=()=>6+3*((SAVE.up&&SAVE.up.carry)||0),magnetR=()=>48+30*((SAVE.up&&SAVE.up.magnet)||0),comboWin=()=>7+2*((SAVE.up&&SAVE.up.combo)||0);
+const capCarry=()=>6+3*((SAVE.up&&SAVE.up.carry)||0)+Math.min(6,rowLevel()),magnetR=()=>48+30*((SAVE.up&&SAVE.up.magnet)||0),comboWin=()=>7+2*((SAVE.up&&SAVE.up.combo)||0);
 function breakCombo(){G.combo.n=0;G.combo.t=-99;}
 function floatText(txt,big){
   const el=document.createElement('div');el.className='ft'+(big?' big':'');el.textContent=txt;
@@ -1075,15 +1078,68 @@ function scoreAway(t){
   Snd.combo(c.n);burst(t.x,t.y+t.def.H*.5+1,t.z,c.n);
   floatText((coins?'+$'+coins:'✓')+(c.n>1?'  ×'+c.n:''),c.n>=5);
   if(c.n===10||c.n===25)checkAch();
-  if(G.fp){stationCheck(t);G.sessT=4.6;}
+  if(G.fp){stationCheck(t);rowCheck(t);G.sessT=4.6;}
 }
 function computeHomes(){const h={};G.tools.forEach(t=>{const k=homeOf(t);(h[k]=h[k]||{total:0,done:false}).total++;});return h;}
+/* ---- ordered slots: every loose item has one exact place in a row; rows are the unit of progress ---- */
+function capBox(def,phi){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;capsOf(def.parts,0,0,phi).forEach(p=>{[p.a,p.b].forEach(q=>{x0=Math.min(x0,q[0]-p.r);x1=Math.max(x1,q[0]+p.r);z0=Math.min(z0,q[1]-p.r);z1=Math.max(z1,q[1]+p.r);});});return{x0,x1,z0,z1,w:x1-x0,d:z1-z0};}
+function buildSlots(){
+  G.slots=[];G.rows={};const order=Object.keys(TOOLS),byHome={};
+  G.tools.forEach(t=>{t.needSlot=false;const zi=G.zones.findIndex(q=>q.accepts&&q.accepts(t.def));if(zi<0)return;const nm=G.zones[zi].name;(byHome[nm]=byHome[nm]||[]).push(t);});
+  Object.keys(byHome).forEach(nm=>{
+    const zs=G.zones.map((z,i)=>({z,i})).filter(a=>a.z.name===nm),ts=byHome[nm].slice().sort((a,b)=>order.indexOf(a.def.key)-order.indexOf(b.def.key));
+    const open=k=>{const a=zs[k];if(!a)return null;const alongZ=(a.z.z1-a.z.z0)>(a.z.x1-a.z.x0)*1.3;return{k,a,alongZ,u:0,v:0,lineD:0,line:0,U:alongZ?a.z.z1-a.z.z0:a.z.x1-a.z.x0,V:alongZ?a.z.x1-a.z.x0:a.z.z1-a.z.z0};};
+    let cur=open(0),rowN=0;
+    ts.forEach(t=>{
+      const save=cur?Object.assign({},cur):null;let placed=false,guard=0;
+      while(cur&&!placed&&guard++<40){
+        const opts=[0,Math.PI/2].map(ph=>{const b=capBox(t.def,ph);return{ph,b,uw:(cur.alongZ?b.d:b.w)+1.2,vd:(cur.alongZ?b.w:b.d)+1};}).filter(o=>o.vd<=cur.V-1&&o.uw<=cur.U-1).sort((p,q)=>p.uw-q.uw);
+        if(!opts.length){cur=open(cur.k+1);continue;}
+        const o=opts[0];
+        if(cur.u+o.uw>cur.U-1){cur.v+=cur.lineD+.6;cur.u=0;cur.lineD=0;cur.line++;}
+        if(cur.v+o.vd>cur.V-.5){cur=open(cur.k+1);continue;}
+        const uc=cur.u+o.uw/2,vc=cur.v+o.vd/2,z=cur.a.z,bx=(o.b.x0+o.b.x1)/2,bz=(o.b.z0+o.b.z1)/2;
+        const cx=cur.alongZ?z.x0+.5+vc:z.x0+.5+uc,cz=cur.alongZ?z.z0+.5+uc:z.z0+.5+vc,rid=nm+'|'+cur.a.i+'|'+cur.line;
+        G.slots.push({key:t.def.key,zn:cur.a.i,x:cx-bx,z:cz-bz,phi:o.ph,row:rid,filled:null,w:o.b.w,d:o.b.d,cx,cz});
+        if(!G.rows[rid]){rowN++;G.rows[rid]={name:nm+' row '+rowN,total:0,paid:false};}G.rows[rid].total++;
+        cur.u+=o.uw;cur.lineD=Math.max(cur.lineD,o.vd);placed=true;t.needSlot=true;
+      }
+      if(!placed)cur=save;
+    });
+  });
+  /* faint outlines of every slot, so a row with gaps reads as a row */
+  try{const U=THREE.BufferGeometryUtils;if(U&&G.slots.length){const gs=G.slots.map(sl=>{const g=new THREE.PlaneGeometry(Math.max(.6,sl.w-.5),Math.max(.6,sl.d-.5));g.rotateX(-Math.PI/2);g.translate(sl.cx,G.zones[sl.zn].y+.1,sl.cz);return g;});
+    const m=new THREE.Mesh(U.mergeBufferGeometries(gs),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.13,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-1}));m.renderOrder=2;R.scene.add(m);G.fx.push(m);gs.forEach(g=>g.dispose());}}catch(e){}
+}
+function slotFor(t,x,z){let best=null,bd=1e18;(G.slots||[]).forEach(sl=>{if(sl.filled||sl.key!==t.def.key)return;const q=x===undefined?G.slots.indexOf(sl):(sl.cx-x)*(sl.cx-x)+(sl.cz-z)*(sl.cz-z);if(q<bd){bd=q;best=sl;}});return best;}
+function slotPlace(t,sl){
+  sl.filled=t;G.held=null;t.fslot=null;t.ghost.visible=false;R.scene.add(t.root);t.root.scale.set(1,1,1);t.root.rotation.set(0,0,0);t.blob.visible=true;t.state='anim';
+  moveTool(t,{t:'bench',zn:sl.zn,x:sl.x,z:sl.z,phi:sl.phi,slot:sl},{dur:.22,arc:3,done:()=>{t.state='idle';t.phi=t.tphi=sl.phi;land(t,'bench');scoreAway(t);refreshHud();}});
+  fpCascade(sl.zn);
+  const n=G.stack.shift();if(n)fpActivate(n);else updateStackHud();
+}
+const rowsLife=()=>Math.max(SAVE.stats.rows||0,SAVE.stats.stations||0);
+function rowLevel(n){n=n===undefined?(SAVE.stats.rows||0):n;let L=0;while((L+1)*(L+4)/2<=n)L++;return L;}
+const rowsToNext=()=>{const n=SAVE.stats.rows||0,L=rowLevel(n);return (L+1)*(L+4)/2-n;};
+function rowCounts(){let done=0,total=0;const fill={};(G.slots||[]).forEach(sl=>{const f=fill[sl.row]=fill[sl.row]||[0,0];f[1]++;if(sl.filled)f[0]++;});Object.keys(fill).forEach(k=>{total++;if(fill[k][0]===fill[k][1])done++;});
+  Object.keys(G.homes||{}).forEach(k=>{if(/foam tray$/.test(k)){total++;if(G.homes[k].done)done++;}});return{done,total};}
+function awardRow(name){
+  const before=rowLevel(),was=rowsLife();SAVE.stats.rows=(SAVE.stats.rows||0)+1;SAVE.money+=5;SAVE.stats.earned+=5;G.bonus+=5;const after=rowLevel();
+  if(after>before){Snd.fanfare();bigBanner('Level '+after+' · carry '+capCarry());toast(`Shop level ${after}: you can now carry ${capCarry()} items.`,'good');}
+  else{Snd.bench(1.6);bigBanner('Row complete');}
+  ABIL.forEach(a=>{if(was<a.need&&rowsLife()>=a.need){Snd.fanfare();toast(`New ability earned: ${a.name}. Press ${a.key} to use it.`,'good');}});
+  updateAbilHud();updateStackHud();
+}
+function rowCheck(t){const sl=t.where&&t.where.slot;if(!sl)return;const r=G.rows[sl.row];if(!r||r.paid)return;if(G.slots.some(q=>q.row===sl.row&&!q.filled))return;r.paid=true;awardRow(r.name);}
+function renderRowsHud(){const el=$('#rowsHud');if(!el||!G.fp)return;const c=rowCounts(),left=rowsToNext(),items=(G.held?[G.held]:[]).concat(G.stack);
+  el.innerHTML=`<div class="lv">${left} row${left===1?'':'s'} left to level up · shop level ${rowLevel()}</div><div>▤ &nbsp;<b>${c.done} / ${c.total}</b> rows</div><div>▮ &nbsp;<b>${seatedCount()} / ${G.tools.length}</b> items</div>`+(items.length?'<div class="it">'+items.slice(0,5).map(t=>'› '+t.def.name).join('<br>')+(items.length>5?'<br>› +'+(items.length-5)+' more':'')+'</div>':'');}
+
 function stationCheck(t){
   const k=homeOf(t),h=G.homes[k];if(!h||h.done)return;
   if(G.tools.some(o=>homeOf(o)===k&&!isAway(o)))return;
   h.done=true;SAVE.money+=10;SAVE.stats.earned+=10;G.bonus+=10;SAVE.stats.stations=(SAVE.stats.stations||0)+1;
-  Snd.station();Snd.bench(1.6);bigBanner('Set complete');toast(`${k.charAt(0).toUpperCase()+k.slice(1)} complete! +$10`,'good');
-  ABIL.forEach(a=>{if(SAVE.stats.stations===a.need){Snd.fanfare();toast(`New ability earned: ${a.name}. Press ${a.key} to use it.`,'good');}});
+  Snd.station();toast(`${k.charAt(0).toUpperCase()+k.slice(1)} complete! +$10`,'good');
+  if(/foam tray$/.test(k))awardRow(k);
   updateAbilHud();
 }
 function wayTarget(){
@@ -1204,7 +1260,7 @@ function updateTickets(dt){
     if(pr>.15&&pr<.9){const c=G.tools.filter(t=>t.state==='idle'&&t.where.t==='bench'&&t.where.zn>0&&isAway(t));
       if(c.length){const t=c[(Math.random()*c.length)|0],rm=FPD.room;
         for(let q=0;q<40;q++){const ph=rnd(0,TAU),r=resolveBench(t,FX+rnd(rm.x0+40,rm.x1-40),rnd(rm.z1-170,rm.z1-20),ph,0);
-          if(r.ok){t.where={t:'bench',zn:0,x:r.x,z:r.z,phi:ph};snapToWhere(t);ms.left--;Snd.buzz();toast('A tech left the '+t.def.name+' out again.','bad');refreshHud();break;}}}}}
+          if(r.ok){if(t.where.slot)t.where.slot.filled=null;t.where={t:'bench',zn:0,x:r.x,z:r.z,phi:ph};snapToWhere(t);ms.left--;Snd.buzz();toast('A tech left the '+t.def.name+' out again.','bad');refreshHud();break;}}}}}
 }
 function snapShot(){
   try{const P=G.pl,s0=G.pose0;if(!P||!s0||!G.fp)return'';const keep=[P.x,P.z,P.yaw,P.pitch];
@@ -1238,12 +1294,12 @@ function fpCascade(zn){
   const same=G.zones.map((z,i)=>({z,i})).filter(a=>a.z.name===Z.name).sort((a,b)=>(a.i===zn?-1:0)-(b.i===zn?-1:0));
   const cp=R.cam.position;let k=0;
   G.stack.filter(t=>Z.accepts(t.def)).forEach(t=>{
-    let spot=null;
+    let spot=null;if(t.needSlot){const sl=slotFor(t,Z.x0,Z.z0);if(sl){sl.filled=t;spot={zn:sl.zn,x:sl.x,z:sl.z,phi:sl.phi,slot:sl};}else return;}
     for(const a of same){for(let i=0;i<60&&!spot;i++){const x=rnd(a.z.x0+3,a.z.x1-3),z=rnd(a.z.z0+3,a.z.z1-3),ph=rnd(0,TAU),r=resolveBench(t,x,z,ph,a.i);if(r.ok)spot={zn:a.i,x:r.x,z:r.z,phi:ph};}if(spot)break;}
     if(!spot)return;
     G.stack.splice(G.stack.indexOf(t),1);R.scene.add(t.root);t.root.scale.set(1,1,1);t.root.rotation.set(0,0,0);t.blob.visible=true;
     t.x=cp.x;t.y=cp.y-16;t.z=cp.z;t.phi=spot.phi;t.state='anim';
-    moveTool(t,{t:'bench',zn:spot.zn,x:spot.x,z:spot.z,phi:spot.phi},{dur:.4,arc:8,done:()=>{t.state='idle';land(t,'bench');scoreAway(t);refreshHud();}});
+    moveTool(t,{t:'bench',zn:spot.zn,x:spot.x,z:spot.z,phi:spot.phi,slot:spot.slot},{dur:.4,arc:8,done:()=>{t.state='idle';land(t,'bench');scoreAway(t);refreshHud();}});
     t.anim.t=-(++k)*.4;
   });
   if(k)layoutStack();
@@ -1251,11 +1307,12 @@ function fpCascade(zn){
 /* ---------- earned abilities, hidden keys, foreman evaluation ---------- */
 const ABIL=[{id:'insight',name:'Insight',key:'1',need:2,cd:12},{id:'assemble',name:'Assemble',key:'2',need:6,cd:18},{id:'auto',name:'Auto-shelve',key:'3',need:14,cd:30}];
 Object.assign(G,{abT:{},insight:null,secret:null,beams:null,progress:0,hudT:0});
-const abilUnlocked=a=>(SAVE.stats.stations||0)>=a.need;
+const abilUnlocked=a=>rowsLife()>=a.need;
 function nearestLoose(filter){const P=G.pl;let t=null,bd=1e18;G.tools.forEach(o=>{if(o.state!=='idle'||isAway(o)||(filter&&!filter(o)))return;const q=(o.x-P.x)*(o.x-P.x)+(o.z-P.z)*(o.z-P.z);if(q<bd){bd=q;t=o;}});return t;}
 function focusHome(){if(G.held)return homeOf(G.held);const t=nearestLoose();return t?homeOf(t):null;}
 function autoHome(t){
   for(const d of G.drawers){if(!d.used)continue;const c=d.cuts.find(q=>q.key===t.def.key&&!q.filled);if(c)return{t:'tray',d:d.i,lx:c.x,lz:c.z,phi:c.rot,seat:c};}
+  if(t.needSlot){const sl=slotFor(t);if(sl){sl.filled=t;return{t:'bench',zn:sl.zn,x:sl.x,z:sl.z,phi:sl.phi,slot:sl};}return null;}
   const zs=G.zones.map((z,i)=>({z,i})).filter(a=>a.z.accepts&&a.z.accepts(t.def));
   for(const a of zs){for(let i=0;i<60;i++){const x=rnd(a.z.x0+3,a.z.x1-3),z=rnd(a.z.z0+3,a.z.z1-3),ph=rnd(0,TAU),r=resolveBench(t,x,z,ph,a.i);if(r.ok)return{t:'bench',zn:a.i,x:r.x,z:r.z,phi:ph};}}
   return null;
@@ -1289,14 +1346,14 @@ function abAuto(){
 function useAbility(id){
   if(!G.fp||G.mode!=='play'||G.paused||G.ended)return;
   const a=ABIL.find(x=>x.id===id);
-  if(!abilUnlocked(a)){toast(`${a.name} unlocks after ${a.need} completed stations (you have ${SAVE.stats.stations||0}).`,'');return;}
+  if(!abilUnlocked(a)){toast(`${a.name} unlocks after ${a.need} completed rows (you have ${rowsLife()}).`,'');return;}
   const left=a.cd-(G.time-(G.abT[id]===undefined?-99:G.abT[id]));if(left>0){toast(`${a.name} is recharging: ${Math.ceil(left)}s`,'');return;}
   const ok=id==='insight'?abInsight():id==='assemble'?abAssemble():abAuto();
   if(ok){G.abT[id]=G.time;updateAbilHud();}
 }
 function updateAbilHud(){
   ABIL.forEach(a=>{const b=$('#ab_'+a.id);if(!b)return;const un=abilUnlocked(a),left=a.cd-(G.time-(G.abT[a.id]===undefined?-99:G.abT[a.id]));
-    b.textContent=!un?`${a.name} 🔒${a.need-(SAVE.stats.stations||0)}`:left>0?`${a.name} ${Math.ceil(left)}s`:`${a.name} (${a.key})`;
+    b.textContent=!un?`${a.name} 🔒${a.need-rowsLife()}`:left>0?`${a.name} ${Math.ceil(left)}s`:`${a.name} (${a.key})`;
     b.classList.toggle('locked',!un);b.classList.toggle('ready',un&&left<=0);});
 }
 function insightFx(){
@@ -1383,7 +1440,7 @@ function saveSession(){
     const P=G.pl,r2=v=>+(+v).toFixed(2);
     const tools=G.tools.map(t=>{const w=t.where;
       if(w.t==='tray')return[1,w.d,r2(w.lx),r2(w.lz),r2(w.phi),w.seat?G.drawers[w.d].cuts.indexOf(w.seat):-1,t.paid?1:0];
-      if(w.t==='bench')return[0,w.zn||0,r2(w.x),r2(w.z),r2(w.phi),0,t.paid?1:0];
+      if(w.t==='bench')return[0,w.zn||0,r2(w.x),r2(w.z),r2(w.phi),w.slot?G.slots.indexOf(w.slot)+1:0,t.paid?1:0];
       return[0,0,r2(P.x+rnd(-8,8)),r2(P.z+rnd(-8,8)),r2(t.phi||0),0,t.paid?1:0];});
     localStorage.setItem(SESS_KEY,JSON.stringify({v:1,at:Date.now(),id:G.level.id,day:G.level.key||'',mode:G.runMode,n:G.tools.length,elapsed:r2(G.elapsed),mistakes:G.mistakes,bonus:G.bonus,best:G.combo.best,
       p:[r2(P.x),r2(P.z),r2(P.yaw),r2(P.pitch)],lifts:(Room.lifts||[]).map(L=>L.target),homes:Object.keys(G.homes).filter(k=>G.homes[k].done),gone:(G.tickets||[]).map(k=>k.state==='wait'?0:1),mess:G.mess?G.mess.left:0,tools}));
@@ -1397,15 +1454,15 @@ function readSession(){
 }
 function resumeSession(d){
   startTidy(d.L,d.mode);
-  G.drawers.forEach(dr=>dr.cuts.forEach(c=>{c.filled=null;}));
+  G.drawers.forEach(dr=>dr.cuts.forEach(c=>{c.filled=null;}));(G.slots||[]).forEach(sl=>{sl.filled=null;});
   d.tools.forEach((a,i)=>{const t=G.tools[i];if(!t)return;
     if(a[0]===1&&G.drawers[a[1]]){const dr=G.drawers[a[1]],c=a[5]>=0?dr.cuts[a[5]]:null;t.where={t:'tray',d:a[1],lx:a[2],lz:a[3],phi:a[4]};if(c&&c.key===t.def.key&&!c.filled){t.where.seat=c;c.filled=t;}}
-    else t.where={t:'bench',zn:(a[1]<G.zones.length?a[1]:0),x:a[2],z:a[3],phi:a[4]};
+    else{t.where={t:'bench',zn:(a[1]<G.zones.length?a[1]:0),x:a[2],z:a[3],phi:a[4]};const sl=a[5]>0&&G.slots[a[5]-1];if(sl&&sl.key===t.def.key&&!sl.filled){t.where.slot=sl;sl.filled=t;}}
     t.paid=!!a[6];snapToWhere(t);});
   G.elapsed=d.elapsed||0;G.mistakes=d.mistakes||0;G.bonus=d.bonus||0;G.combo.best=d.best||0;
   const P=G.pl;P.x=d.p[0];P.z=d.p[1];P.yaw=d.p[2];P.pitch=d.p[3];
   (d.lifts||[]).forEach((tg,i)=>{const L=Room.lifts&&Room.lifts[i];if(L){L.target=L.h=tg;L.mv.position.y=tg;if(L.holder)L.holder.position.y=tg;}});
-  (d.homes||[]).forEach(k=>{if(G.homes[k])G.homes[k].done=true;});
+  (d.homes||[]).forEach(k=>{if(G.homes[k])G.homes[k].done=true;});Object.keys(G.rows||{}).forEach(id=>{if(!G.slots.some(q=>q.row===id&&!q.filled))G.rows[id].paid=true;});
   (d.gone||[]).forEach((v,i)=>{const k=G.tickets&&G.tickets[i];if(v&&k){k.state='gone';const L=k.L;if(L.holder){L.holder.visible=false;L.holder=null;}L.h=L.target=0;L.mv.position.y=0;}});if(G.mess&&d.mess!==undefined)G.mess.left=d.mess;
   refreshHud();toast('Picked up where you left off.','good');
 }
@@ -1491,7 +1548,7 @@ function loadLevel(L,opts={}){
   }
   G.drawers.forEach(d=>d.grp.position.z=d.gz);
 }
-function isAway(t){if(t.where.seat)return true;if(t.where.t==='bench'){const z=G.zones[t.where.zn||0];return !!(z&&z.accepts&&z.accepts(t.def));}return false;}
+function isAway(t){if(t.where.seat)return true;if(t.needSlot)return !!t.where.slot;if(t.where.t==='bench'){const z=G.zones[t.where.zn||0];return !!(z&&z.accepts&&z.accepts(t.def));}return false;}
 const seatedCount=()=>G.tools.filter(isAway).length;
 
 /* ============================================================
@@ -2004,7 +2061,7 @@ function scatterTidy(tools){
   const shelves=zs.map((z,i)=>({z,i})).filter(a=>a.z.accepts&&a.z.name.indexOf('bin')<0&&a.z.y>5);
   tools.forEach(t=>{
     let placed=false;
-    if(Math.random()<.08){const cand=shelves.filter(a=>!a.z.accepts(t.def));
+    if(false){const cand=shelves.filter(a=>!a.z.accepts(t.def));
       for(let i=0;i<30&&!placed&&cand.length;i++){const a=cand[(Math.random()*cand.length)|0],x=rnd(a.z.x0+4,a.z.x1-4),z=rnd(a.z.z0+4,a.z.z1-4),phi=rnd(0,TAU),r=resolveBench(t,x,z,phi,a.i);
         if(r.ok&&!r.moved){t.where={t:'bench',zn:a.i,x,z,phi};placed=true;}}}
     for(let i=0;i<300&&!placed;i++){
@@ -2044,7 +2101,7 @@ function loadTidy(L){
     m.position.set((z.x0+z.x1)/2,z.y+.25,(z.z0+z.z1)/2);m.visible=false;m.renderOrder=4;R.scene.add(m);z.hl=m;G.fx.push(m);});
   FPD.tables.forEach((t,i)=>G.drawers.push(makeTray(i,ROAM.drawers[i].name,pack(ROAM.drawers[i].keys.map(k=>TOOLS[k])),FX+t.x,t.z,FPD.ty)));
   const all=[];L.foam.forEach(k=>all.push(makeTool(TOOLS[k])));L.loose.forEach(k=>all.push(makeTool(TOOLS[k])));
-  G.tools=all;scatterTidy(all);G.homes=computeHomes();spawnSecrets();setupTickets();
+  G.tools=all;buildSlots();scatterTidy(all);G.homes=computeHomes();spawnSecrets();setupTickets();
 }
 function startTidy(L,mode){
   L=(L&&L.foam)?L:FREE_ROAM;mode=mode||(L.id===100?'free':'career');
@@ -2056,7 +2113,7 @@ function startTidy(L,mode){
   $('#hCountP').firstChild.nodeValue='Put away ';
   $('#dtabs').innerHTML='';refreshHud();updateStackHud();
   setTimeout(()=>{if(G.fp&&G.mode==='play'&&!G.ended&&!G.shotA)G.shotA=snapShot();},700);
-  const tip=$('#tip');tip.style.display='block';tip.textContent='WASD walk, Shift runs · drag to look (L mouse-look) · click to grab · F magnet · click a glowing station to stash what belongs there · complete stations to earn Insight, Assemble and Auto-shelve (1, 2, 3)';
+  const tip=$('#tip');tip.style.display='block';tip.textContent='WASD walk, Shift runs · drag to look (L mouse-look) · E or click to grab and place · every item has its own slot in a row · finish rows to level up, carry more and earn Insight, Assemble and Auto-shelve (1, 2, 3)';
   setTimeout(()=>{if(G.fp&&!G.held)tip.style.display='none';},14000);
   toast('Welcome to '+Room.theme.name+'.','good');
   toast(numbered?`Level ${L.id-100}: ${L.name}`:L.id===199?'Daily job: '+L.blurb:'Free roam: tidy the whole shop','');
@@ -2069,6 +2126,7 @@ function updateObjective(){
   $('#objective').innerHTML=`Put away scattered tools <b>${n}/${N}</b><div class="bar"><i style="width:${N?n/N*100:0}%"></i></div>`;
 }
 function updateStackHud(){
+  renderRowsHud();
   const el=$('#stackHud');if(!G.fp){el.innerHTML='';return;}
   const items=(G.held?[G.held]:[]).concat(G.stack);
   el.innerHTML=items.map((t,i)=>`<div class="${i===0?'on':''}">${t.def.short}</div>`).join('')+(items.length?`<small>${items.length}/${capCarry()} carried</small>`:'');
@@ -2089,7 +2147,7 @@ function fpActivate(t){
 function fpPick(t){
   if(liftBlocks(t)){if(G.time-(G.lbT||-9)>1.5){G.lbT=G.time;toast('That one is under a car. Raise the lift to reach it.','bad');Snd.buzz();}return;}
   Snd.pick();t.origin={where:Object.assign({},t.where),x:t.x,z:t.z,phi:t.phi};
-  if(t.where.seat)t.where.seat.filled=null;
+  if(t.where.seat)t.where.seat.filled=null;if(t.where.slot)t.where.slot.filled=null;
   t.where={t:'held'};t.anim=null;
   if(G.hint===t)G.hint=null;
   if(G.held)fpStow(t);else fpActivate(t);
@@ -2101,6 +2159,7 @@ function fpCycle(){
 }
 function fpPlace(){
   const t=G.held;if(!t)return;
+  if(t.fslot&&!t.fslot.filled){slotPlace(t,t.fslot);return;}
   if(t.ax!==undefined){t.x=t.ax;t.z=t.az;}
   const r=evalDrop(t);
   if(r.kind==='blocked'){toast(r.nohit?'Aim at a shelf, bin, tray or the floor.':'No room there. Try a clear spot.','bad');Snd.buzz();return;}
@@ -2163,7 +2222,7 @@ function fpZoneGlow(){
 }
 function fpUpdateHeld(dt){
   fpZoneGlow();
-  const t=G.held;if(!t)return;
+  const t=G.held;if(!t)return;t.fslot=null;
   const aim=(G.pl.locked||G.fpTouch)?new THREE.Vector2(0,0):R.ptr;
   R.ray.setFromCamera(aim,R.cam);const o=R.ray.ray.origin,d=R.ray.ray.direction;
   let best=null,bt=130;
@@ -2176,9 +2235,12 @@ function fpUpdateHeld(dt){
   t.ax=tx;t.az=tz;
   const k=1-Math.exp(-(Settings.reduce?40:18)*dt/(.8+.25*t.def.wt));
   t.x+=(tx-t.x)*k;t.z+=(tz-t.z)*k;t.y+=(ty-t.y)*k;
-  if(keys.q)t.tphi-=2.4*Settings.rot*dt;if(keys.e)t.tphi+=2.4*Settings.rot*dt;
+  if(keys.q)t.tphi-=2.4*Settings.rot*dt;if(keys.z)t.tphi+=2.4*Settings.rot*dt;
   t.phi+=angD(t.tphi-t.phi)*(1-Math.exp(-16*dt));t.tiltX=t.tiltZ=0;
   if(!best){t.ghost.visible=false;if(G.lastOver!=='Aim at a surface'){G.lastOver='Aim at a surface';const tp=$('#tip');tp.style.display='block';tp.textContent='Aim at a shelf, bin, tray or the floor';}return;}
+  if(best.zn!=null&&t.needSlot){const Z=G.zones[best.zn];if(Z.accepts&&Z.accepts(t.def)){const sl=slotFor(t,best.x,best.z);
+    if(sl){t.fslot=sl;t.ghost.userData.mat.color.copy(C(pal().good));t.ghost.userData.mat.opacity=.55;t.ghost.position.set(sl.x,G.zones[sl.zn].y+.14,sl.z);t.ghost.rotation.y=-sl.phi;t.ghost.visible=true;
+      const nm='E · place in the '+G.rows[sl.row].name+' ✓';if(nm!==G.lastOver){G.lastOver=nm;const tp=$('#tip');tp.style.display='block';tp.textContent=nm;}return;}}}
   const sx=t.x,sz=t.z;t.x=tx;t.z=tz;const r=evalDrop(t);t.x=sx;t.z=sz;
   const P=pal();let col=P.mid,gx=tx,gz=tz,gy=best.y,gphi=t.phi;
   if(r.kind==='seat'){col=P.good;gx=r.D.gx+r.c.x;gz=r.D.gz+r.c.z;gphi=periodOf(t.def)?r.c.rot:t.phi;gy=r.D.y+W.FT;}
@@ -2226,6 +2288,7 @@ function refreshHud(){
   G.drawers.forEach(d=>{if(!d.used)return;const b=$(`#dtabs [data-drawer="${d.i}"]`);if(!b)return;
     const left=d.cuts.filter(c=>!c.filled).length;b.querySelector('small').textContent=left?`${left} left`:'✓ done';b.classList.toggle('open',d.target>0);});
   if(G.showRemain)renderRemain();
+  renderRowsHud();
   checkRoamDone();
 }
 function updateTabPulse(){
@@ -2607,6 +2670,7 @@ function setupInput(){
       if(e.key==='l'||e.key==='L')fpLock();
       if(e.key==='f'||e.key==='F')fpMagnet();
       if(e.key==='g'||e.key==='G')fpUseLift();
+      if((e.key==='e'||e.key==='E')&&!e.repeat)fpAction();
       if(e.key==='1')useAbility('insight');if(e.key==='2')useAbility('assemble');if(e.key==='3')useAbility('auto');
     }
     if(G.mode==='play'&&!G.paused&&!G.ended){
