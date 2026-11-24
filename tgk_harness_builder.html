@@ -714,7 +714,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.9.0';
+var HB_VERSION = '2.10.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -1444,7 +1444,7 @@ function openTermMenu(btn){
   var r=btn.getBoundingClientRect();
   openMenu(r.right+6,r.top,Object.keys(TERM_KINDS).map(function(k){ return ['addCompUI(\'terminal\',\''+k+'\')',TERM_KINDS[k]]; }));
 }
-function addWire(a,b){
+function addWire(a,b,o){
   if(a.c===b.c && a.p===b.p) { renderCanvasOnly(); return; }
   var exists=P().wires.some(function(w){ return (w.a.c===a.c&&w.a.p===a.p&&w.b.c===b.c&&w.b.p===b.p)||(w.a.c===b.c&&w.a.p===b.p&&w.b.c===a.c&&w.b.p===a.p); });
   if(exists){ toast('Those two pins are already wired together.'); renderCanvasOnly(); return; }
@@ -1456,6 +1456,7 @@ function addWire(a,b){
   var hc=pa.wc||pb.wc, hg=pa.wg||pb.wg, ha=pa.wa||pb.wa;
   var w={id:uid('w'),a:a,b:b,signal:sig,color:hc||(existing?existing.color:guessColor(sig,P().wires.length)),gauge:hg||(existing?existing.gauge:settings().gauge),wtype:settings().wtype,lenOverride:'',notes:''};
   if(ha) w.amps=ha;
+  if(o){ if(o.color) w.color=o.color; if(o.gauge) w.gauge=o.gauge; if(o.wtype) w.wtype=o.wtype; if(o.signal) w.signal=o.signal; }
   P().wires.push(w);
   S.sel={kind:'wire',id:w.id}; S.hiNet=null; commit();
 }
@@ -1520,6 +1521,7 @@ function assignPart(pn){
   var sl=S.sel; if(!sl){ toast('Select a component or bundle first.'); return; }
   pushUndo();
   if(sl.kind==='group'){ var gp=groupById(sl.id); if(!gp||gp.kind!=='cable'||part.type!=='cable'){ toast('Pick a cable part for a cable.'); S.undo.pop(); return; } gp.partPn=pn; if(part.shield) gp.shield=true; }
+  else if(sl.kind==='wire'){ if(part.type!=='wire'){ toast('Pick a wire type for a wire.'); S.undo.pop(); return; } wire(sl.id).wtype=pn; }
   else if(sl.kind==='seg'){ if(part.type!=='covering'){ toast('Bundles take coverings only.'); S.undo.pop(); return; } var ss=seg(sl.id), cvs=ensureCovers(ss), tgt=S.coverTarget?cvs.filter(function(x){ return x.id===S.coverTarget; })[0]:null; if(tgt) tgt.pn=pn; else cvs.push({id:uid('v'),pn:pn,anchor:cvs.length?'a':'whole',off:0,len:Math.max(5,Math.min(40,num(ss.len,40))),color:'',note:''}); }
   else if(sl.kind==='comp'){
     var c=comp(sl.id);
@@ -1568,7 +1570,7 @@ function inspProject(){
   '<div class="is"><div class="is-t">Harness settings</div>'+
     '<div class="f"><label>Revision</label><input class="inp" value="'+esc(p.rev||'A')+'" onchange="pushUndo();P().rev=this.value;commit()"></div>'+
     '<div class="f"><label>Default gauge</label><select class="sel" onchange="setSetting(\'gauge\',this.value)">'+GAUGES.map(function(g){return opt(g,g+' AWG',s.gauge);}).join('')+'</select></div>'+
-    '<div class="f"><label>Wire type</label><select class="sel" onchange="setSetting(\'wtype\',this.value)">'+WIRE_TYPES.map(function(g){return opt(g,g,s.wtype);}).join('')+'</select></div>'+
+    '<div class="f"><label>Wire type</label><select class="sel" onchange="setSetting(\'wtype\',this.value)">'+wireTypeOptions(s.wtype)+'</select></div>'+
     '<div class="f"><label>Extra per end</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+s.extra+'" onchange="setSetting(\'extra\',num(this.value,0))"><span class="muted" style="align-self:center">mm</span></div></div>'+
     '<div class="f"><label>Wire waste</label><div class="row2"><input class="inp mono" type="number" min="0" step="1" value="'+s.waste+'" onchange="setSetting(\'waste\',num(this.value,0))"><span class="muted" style="align-self:center">% on BOM</span></div></div>'+
     '<div class="f"><label>Show lengths in</label><select class="sel" onchange="setSetting(\'units\',this.value)">'+opt('mm','Millimeters',s.units)+opt('cm','Centimeters',s.units)+opt('in','Inches',s.units)+'</select></div>'+
@@ -1623,7 +1625,7 @@ function inspWire(w){
     '<div class="f"><label>Signal</label><input class="inp" value="'+esc(w.signal)+'" onchange="setWireField(\''+w.id+'\',\'signal\',this.value)"></div>'+
     '<div class="f"><label>Color</label>'+colorSelect(w.color,'setWireField.bind(null,\''+w.id+'\',\'color\')')+'</div>'+
     '<div class="f"><label>Gauge</label><select class="sel" onchange="setWireField(\''+w.id+'\',\'gauge\',this.value)">'+GAUGES.map(function(g){return opt(g,g+' AWG ('+AWG_MM2[g]+' mm2)',w.gauge);}).join('')+'</select></div>'+
-    '<div class="f"><label>Type</label><select class="sel" onchange="setWireField(\''+w.id+'\',\'wtype\',this.value)">'+WIRE_TYPES.map(function(g){return opt(g,g,w.wtype);}).join('')+'</select></div>'+
+    '<div class="f"><label>Type</label><select class="sel" onchange="setWireField(\''+w.id+'\',\'wtype\',this.value)">'+wireTypeOptions(w.wtype)+'</select></div>'+
     '</div>'+elecSectionHTML(w)+
     '<div class="is"><div class="is-t">Length</div>'+
     '<div class="f"><label>Routed</label><span class="mono" style="font:600 13px var(--mono);color:'+(sp?'inherit':'var(--red)')+'">'+(sp?fmtLen(sp.dist+2*num(settings().extra,0)):'No route in Layout')+'</span></div>'+
@@ -1642,7 +1644,7 @@ function inspWire(w){
 function inspSeg(s){
   var a=s.a.indexOf('c:')===0?(comp(s.a.slice(2))||{}).name:'branch point', b=s.b.indexOf('c:')===0?(comp(s.b.slice(2))||{}).name:'branch point';
   var through=P().wires.filter(function(w){ var sp=wirePath(w); return sp && sp.segs.indexOf(s.id)>=0; });
-  var dia=Math.sqrt(through.reduce(function(t,w){ var d=Math.sqrt((AWG_MM2[w.gauge]||0.5)*4/Math.PI)+0.5; return t+d*d; },0)*1.3);
+  var dia=Math.sqrt(through.reduce(function(t,w){ var d=wireDia(w); return t+d*d; },0)*1.3);
   var covs=allParts().filter(function(p){return p.type==='covering';});
   return '<div class="ih"><div class="k">Bundle</div><h2>'+esc(a)+' to '+esc(b)+'</h2></div><div class="is">'+
     '<div class="f"><label>Length</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+num(s.len,0)+'" onchange="setSegField(\''+s.id+'\',\'len\',this.value)"><span class="muted" style="align-self:center">mm</span></div></div>'+
@@ -1671,18 +1673,18 @@ function sortWires(k){ if(S.wireSort.k===k) S.wireSort.d*=-1; else S.wireSort={k
 function wiresHTML(){
   var rows=wireRows(), sel=S.sel&&S.sel.kind==='wire'?S.sel.id:null;
   function th(k,l,cls){ var a=S.wireSort.k===k?(S.wireSort.d>0?' ^':' v'):''; return '<th data-sort="1" class="'+(cls||'')+'" onclick="sortWires(\''+k+'\')">'+l+a+'</th>'; }
-  var h='<div class="doc-in"><div class="doc-h"><h2>Wire list</h2><span class="muted">'+rows.length+' wires. Click a row to edit it on the right.</span><div class="spacer"></div><button class="btn btn-sm" onclick="exportWireCSV()">Download CSV</button></div>';
-  if(!rows.length) return h+'<p class="muted">No wires yet. Draw them in the Schematic tab.</p></div>';
+  var h='<div class="doc-in"><div class="doc-h"><h2>Wire list</h2><span class="muted">'+rows.length+' wires. Change color, gauge and type right in the table, or click a row for more.</span><div class="spacer"></div><button class="btn btn-sm" onclick="openCatalog(\'wire\')">Wire types</button><button class="btn btn-sm btn-teal" onclick="openAddWire()">Add wire</button><button class="btn btn-sm" onclick="exportWireCSV()">Download CSV</button></div>';
+  if(!rows.length) return h+'<p class="muted">No wires yet. Use Add wire, or draw them in the Schematic tab.</p></div>';
   h+='<div class="tbl-wrap"><table class="dt"><thead><tr>'+th('idx','#')+th('sig','Signal')+th('from','From')+th('to','To')+th('color','Color')+th('gauge','Gauge')+'<th>Type</th>'+th('len','Length','num')+'<th class="num" style="text-align:right">Amps</th><th class="num" style="text-align:right">Drop</th><th>Twist / cable</th><th>Contacts</th></tr></thead><tbody>';
   rows.forEach(function(r){
     var w=r.w, A=comp(w.a.c), B=comp(w.b.c), ca=chooseContact(A&&partByPn(A.partPn),w.gauge), cb=chooseContact(B&&partByPn(B.partPn),w.gauge);
     h+='<tr class="'+(sel===w.id?'sel':'')+'" onclick="if(event.target.tagName!==\'SELECT\'&&event.target.tagName!==\'INPUT\')selectWire(\''+w.id+'\')">'+
-      '<td class="mono">W'+r.idx+'</td>'+
+      '<td class="mono" style="white-space:nowrap"><button class="btn btn-sm btn-danger" style="padding:1px 7px;margin-right:6px" title="Delete this wire" onclick="event.stopPropagation();S.sel={kind:\'wire\',id:\''+w.id+'\'};deleteSel()">&times;</button>W'+r.idx+'</td>'+
       '<td><input class="inp" style="width:130px" value="'+esc(w.signal)+'" onchange="setWireField(\''+w.id+'\',\'signal\',this.value)"></td>'+
       '<td class="mono">'+esc(r.from)+'</td><td class="mono">'+esc(r.to)+'</td>'+
-      '<td><span class="chip"><span class="sw" style="width:10px;height:10px;background:'+hexOf(colBase(w.color))+'"></span>'+esc(w.color)+'</span></td>'+
+      '<td>'+colorSelect(w.color,'setWireField.bind(null,\''+w.id+'\',\'color\')')+'</td>'+
       '<td><select class="sel" onchange="setWireField(\''+w.id+'\',\'gauge\',this.value)">'+GAUGES.map(function(g){return opt(g,g,w.gauge);}).join('')+'</select></td>'+
-      '<td class="muted">'+esc(w.wtype||'')+'</td>'+
+      '<td><select class="sel" style="min-width:120px" onchange="setWireField(\''+w.id+'\',\'wtype\',this.value)">'+wireTypeOptions(w.wtype)+'</select></td>'+
       '<td class="num" style="color:'+(r.len==null?'var(--red)':'inherit')+'">'+fmtLen(r.len)+(w.lenOverride?' *':'')+'</td>'+
       (function(){ var I=wireAmps(w), d=voltDrop(w), over=I!=null&&I>wireRating(w), hi=d&&d.pct>num(eset().maxDrop,3);
         return '<td class="num" style="color:'+(over?'var(--red)':'inherit')+'" title="'+esc(ampsWhy(w))+'">'+(I==null?'<span class="muted">--</span>':(ampsWhy(w)==='set'?'':'~')+I)+'</td><td class="num" style="color:'+(hi?'var(--yellow)':'inherit')+'">'+(d?d.pct.toFixed(1)+'%':'<span class="muted">--</span>')+'</td>'; })()+
@@ -1719,7 +1721,7 @@ function computeBOM(){
     var cp=partByPn(g.partPn);
     add('Cable',g.partPn||('(unassigned) cable '+groupLabel(g)),(cp?cp.desc:'Cable')+' for '+groupLabel(g)+' (includes '+settings().waste+'% waste)',L*waste,'len');
   });
-  p.wires.forEach(function(w){ if(cableOf(w)) return; var L=wireLen(w); if(L==null) return; add('Wire',(w.wtype||'Wire')+' '+w.gauge+' AWG '+w.color,w.gauge+' AWG, '+w.color+' (includes '+settings().waste+'% waste)',L*waste,'len'); });
+  p.wires.forEach(function(w){ if(cableOf(w)) return; var L=wireLen(w); if(L==null) return; add('Wire',(w.wtype||'Wire')+' '+w.gauge+' AWG '+w.color,w.gauge+' AWG, '+w.color+((partByPn(w.wtype)||{}).desc?', '+partByPn(w.wtype).desc:'')+' (includes '+settings().waste+'% waste)',L*waste,'len'); });
   p.segs.forEach(function(s){
     if(s.noBom) return;
     covList(s).forEach(function(cv){
@@ -1824,7 +1826,7 @@ function splitCovers(s,l1){
 }
 function segEndName(s,side){ var k=s[side]; if(k&&k.indexOf('c:')===0){ var c=comp(k.slice(2)); return c?c.name:'?'; } return 'branch point'; }
 function segWiresOf(s){ return P().wires.filter(function(w){ var sp=wirePath(w); return sp && sp.segs.indexOf(s.id)>=0; }); }
-function wiresBundleDia(ws){ return Math.sqrt(ws.reduce(function(t,w){ var d=Math.sqrt((AWG_MM2[w.gauge]||0.5)*4/Math.PI)+0.5; return t+d*d; },0)*1.3); }
+function wiresBundleDia(ws){ return Math.sqrt(ws.reduce(function(t,w){ var d=wireDia(w); return t+d*d; },0)*1.3); }
 function suggestCoverPn(kind,dia){
   var list=allParts().filter(function(p){ return p.type==='covering' && covKindOf(p)===kind; });
   if(!list.length) return '';
@@ -1835,7 +1837,7 @@ function suggestCoverPn(kind,dia){
 function addCover(sid,kind){
   var s=seg(sid); if(!s) return;
   var ws=segWiresOf(s), dia=ws.length?wiresBundleDia(ws):0, pn=suggestCoverPn(kind,dia);
-  if(!pn){ toast('There is no '+COV_KINDS[kind].toLowerCase()+' in the catalog yet. Add one with Add custom part.','err'); return; }
+  if(!pn){ toast('No '+COV_KINDS[kind].toLowerCase()+' in the catalog yet. Add one with Add custom part, or open an existing part with Edit and set its Kind to '+COV_KINDS[kind]+'.','err'); return; }
   pushUndo();
   var cv=ensureCovers(s), first=!cv.length, L=num(s.len,0);
   var ln=Math.max(5,Math.min(40,L||40));
@@ -1899,6 +1901,7 @@ function covRowHTML(s,cv,dia){
   var whole=covWhole(cv), sz=partSizeMm(part), Lb=Math.max(0,num(s.len,0));
   function fn(f,val){ return 'setCover(\''+sid+'\',\''+cid+'\',\''+f+'\','+val+')'; }
   var h='<div class="covrow"><div class="cr-h">'+covSwatch(kind,hex,36,14)+'<select class="sel" onchange="'+fn('pn','this.value')+'">'+covPartOptions(cv.pn)+'</select>'+
+    '<button class="btn btn-sm" title="Edit this part: size, color, kind" onclick="openPartForm('+jq(cv.pn)+',\'\')">Edit</button>'+
     '<button class="btn btn-sm btn-danger" title="Remove this covering" onclick="removeCover(\''+sid+'\',\''+cid+'\')">&times;</button></div>';
   h+='<div class="cr-g"><label>Where</label><select class="sel" onchange="'+fn('anchor','this.value')+'">'+opt('whole','Whole bundle',whole?'whole':cv.anchor)+opt('span','Bare wire at each end',cv.anchor)+opt('a','Fixed length, from end A',cv.anchor)+opt('b','Fixed length, from end B',cv.anchor)+'</select></div>';
   var nA=esc(segEndName(s,'a')), nB=esc(segEndName(s,'b'));
@@ -1918,7 +1921,7 @@ function covRowHTML(s,cv,dia){
   if(sz && dia>0) info+='. Size '+sz.toFixed(1)+' mm, bundle about '+dia.toFixed(1)+' mm.';
   else if(sz) info+='. Size '+sz.toFixed(1)+' mm.';
   var tight=(sz && dia>0 && sz<dia);
-  h+='<div class="cr-i'+(tight?' warn':'')+'">'+esc(info)+(tight?' This may be too small for the bundle.':'')+'</div></div>';
+  h+='<div class="cr-i'+(tight?' warn':'')+'">'+esc(info)+(tight?' This may be too small for the bundle.':'')+((part && !part.ckind && kind==='sleeve')?' Counted as Other sleeve. Click Edit and set Kind to Heat shrink if it is.':'')+'</div></div>';
   return h;
 }
 function covEditorHTML(s,dia){
@@ -2435,10 +2438,60 @@ function isoSVGString(W,H){
 }
 function exportIsoSVG(){ download(fileBase()+'_3d.svg',isoSVGString(),'image/svg+xml'); }
 
+// =====================================================================
+// WIRE DATABASE: wire types (TXL, GXL, M22759...) live in the same shared table as parts (type 'wire'),
+// so the team can add and edit them. A wire type can carry a temperature rating and real outside diameters per gauge.
+// =====================================================================
+(function(){
+  function wr(pn,desc,temp){ var o={base:true,pn:pn,mfr:'Generic',type:'wire',desc:desc}; if(temp) o.temp=temp; LIB_BASE.push(o); }
+  wr('M22759/32 (Tefzel)','Mil-spec M22759/32 aircraft wire, ETFE (Tefzel) insulation',150);
+  wr('M22759/16','Mil-spec M22759/16 aircraft wire, ETFE insulation',150);
+  wr('TXL','TXL thin-wall cross-linked automotive wire',125);
+  wr('GXL','GXL general-purpose cross-linked automotive wire',125);
+  wr('SXL','SXL standard-wall cross-linked automotive wire',125);
+  wr('Shielded 2c','Shielded 2-core cable used as a wire type');
+})();
+function wireTypeNames(){ var out=[]; allParts().forEach(function(p){ if(p.type==='wire') out.push(p.pn); }); return out.length?out:WIRE_TYPES.slice(); }
+function wireTypeOptions(cur){
+  var names=wireTypeNames(), h=names.map(function(n){ return opt(n,n,cur); }).join('');
+  if(cur && names.indexOf(cur)<0) h='<option value="'+esc(cur)+'" selected>'+esc(cur)+' (not in the wire database)</option>'+h;
+  return h;
+}
+// finished outside diameter in mm from the wire database, if this type has one for the gauge
+function wireOD(w){ var p=partByPn(w.wtype); if(p && p.od && p.od[String(w.gauge)]) return +p.od[String(w.gauge)]; return null; }
+function wireDia(w){ var od=wireOD(w); return od!=null ? od : Math.sqrt((AWG_MM2[w.gauge]||0.5)*4/Math.PI)+0.5; }
+
+// ---- add a wire by choosing its two pins (instead of dragging in the schematic)
+function awCompOpts(cur){ return P().comps.map(function(c){ return opt(c.id,c.name+(c.partPn?'  ('+c.partPn+')':''),cur); }).join(''); }
+function awPinOpts(cid){ var c=comp(cid); if(!c) return ''; return c.pins.map(function(p,i){ return opt(i,(c.type==='connector'?desig(c,i)+'   ':'')+(pinSignal(c,i)||(c.type==='connector'?'unused':c.name)),''); }).join(''); }
+function awPins(side){ $('aw'+side+'p').innerHTML=awPinOpts($('aw'+side).value); }
+function openAddWire(){
+  var p=P(); if(p.comps.length<2){ toast('Add at least two parts first.'); return; }
+  function g(label,inner){ return '<div class="form-group"><label class="form-label">'+label+'</label>'+inner+'</div>'; }
+  var a=p.comps[0], b=p.comps[1], st=settings();
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:600px;max-width:96vw">'+
+    '<div class="modal-title">Add a wire</div>'+
+    '<div class="form-row cols-2">'+g('From part','<select class="form-input" id="awA" onchange="awPins(\'A\')">'+awCompOpts(a.id)+'</select>')+g('From pin','<select class="form-input" id="awAp">'+awPinOpts(a.id)+'</select>')+'</div>'+
+    '<div class="form-row cols-2">'+g('To part','<select class="form-input" id="awB" onchange="awPins(\'B\')">'+awCompOpts(b.id)+'</select>')+g('To pin','<select class="form-input" id="awBp">'+awPinOpts(b.id)+'</select>')+'</div>'+
+    '<div class="form-row">'+g('Signal name (optional)','<input class="form-input" id="awSig" placeholder="e.g. +12V SW">')+'</div>'+
+    '<div class="form-row cols-2">'+g('Color','<select class="form-input" id="awCol">'+WCOL_KEYS.map(function(k){ return opt(k,k,'red'); }).join('')+'</select>')+g('Stripe','<select class="form-input" id="awStr">'+opt('','no stripe','')+WCOL_KEYS.map(function(k){ return opt(k,'/ '+k,''); }).join('')+'</select>')+'</div>'+
+    '<div class="form-row cols-2">'+g('Gauge','<select class="form-input" id="awGa">'+GAUGES.map(function(x){ return opt(x,x+' AWG',st.gauge); }).join('')+'</select>')+g('Wire type','<select class="form-input" id="awTy">'+wireTypeOptions(st.wtype)+'</select>')+'</div>'+
+    '<div class="note">You can change anything on the wire later, in the wire list or on the right.</div>'+
+    '<div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveAddWire()">Add wire</button></div></div></div>';
+}
+function saveAddWire(){
+  var n0=P().wires.length, a={c:$('awA').value,p:+$('awAp').value}, b={c:$('awB').value,p:+$('awBp').value};
+  if(!comp(a.c)||!comp(b.c)){ toast('Pick both parts.','err'); return; }
+  if(a.c===b.c && a.p===b.p){ toast('Pick two different pins.','err'); return; }
+  var col=$('awCol').value+($('awStr').value?'/'+$('awStr').value:'');
+  addWire(a,b,{color:col,gauge:$('awGa').value,wtype:$('awTy').value,signal:$('awSig').value.trim()});
+  if(P().wires.length>n0){ closeModal(); toast('Added the wire.','ok'); }
+}
+
 // ===== catalog =====
 function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; S.coverTarget=null; S.pf=null; }
 // ===== part editor: add, edit (also built-in parts), reset; photo by link or upload =====
-var PF_TYPES={connector:'Connector',terminal:'Terminal',splice:'Splice',covering:'Covering (heat shrink, sleeving, tape)',cable:'Cable'};
+var PF_TYPES={connector:'Connector',terminal:'Terminal',splice:'Splice',covering:'Covering (heat shrink, sleeving, tape)',cable:'Cable',wire:'Wire (type or family)'};
 S.pf=null;
 function basePart(pn){ for(var i=0;i<LIB_BASE.length;i++) if(LIB_BASE[i].pn===pn) return LIB_BASE[i]; return null; }
 function jq(s){ return "decodeURIComponent('"+encodeURIComponent(String(s)).replace(/'/g,'%27')+"')"; }
@@ -2462,8 +2515,8 @@ function openPartForm(pn,back){
   var h='<div class="overlay" onclick="if(event.target===this)pfBack()"><div class="modal" style="width:660px;max-width:96vw">'+
     '<div class="modal-title">'+(edit?'Edit part':'Add custom part')+'</div>'+
     (edit&&S.pf.isBase?'<p class="note" style="margin:-8px 0 12px">This is a stock part. Your changes are saved for everyone on the team and replace the stock details. Use Reset to original in the catalog to undo them.</p>':'')+
-    '<div class="form-row cols-2">'+g('Part number',inp('pfPn',p.pn||'','','mono',edit?' readonly title="The part number cannot be changed. Add a new part if you need a different number."':''))+g('Manufacturer',inp('pfMfr',p.mfr||(edit?'':'Custom')))+'</div>'+
-    '<div class="form-row cols-2">'+g('Type',typeSel)+g('Description',inp('pfDesc',p.desc||''))+'</div>'+
+    '<div class="form-row cols-2">'+g('Part number',inp('pfPn',p.pn||'','','mono',edit?' readonly title="The part number cannot be changed. Add a new part if you need a different number."':' oninput="pfGuessKind()"'))+g('Manufacturer',inp('pfMfr',p.mfr||(edit?'':'Custom')))+'</div>'+
+    '<div class="form-row cols-2">'+g('Type',typeSel)+g('Description',inp('pfDesc',p.desc||'','','',' oninput="pfGuessKind()"'))+'</div>'+
     // connector
     '<div id="pfConn"><div class="form-row cols-2">'+g('Cavities',inp('pfCav',p.cav||2,'','mono',' type="number" min="1" max="64"'))+g('Pin names','<select class="form-input" id="pfDes">'+opt('num','1, 2, 3',p.desig||'num')+opt('alpha','A, B, C',p.desig||'num')+opt('custom','Custom labels',p.desig||'num')+'</select>')+'</div>'+
     '<div class="form-row cols-2">'+g('Series',inp('pfSeries',p.series||'','e.g. DT, DTM, Superseal'))+g('Gender','<select class="form-input" id="pfGender">'+opt('','Not set',p.gender||'')+opt('Receptacle (pins)','Receptacle (pins)',p.gender||'')+opt('Plug (sockets)','Plug (sockets)',p.gender||'')+'</select>')+'</div>'+
@@ -2473,12 +2526,14 @@ function openPartForm(pn,back){
     // terminal
     '<div id="pfTerm"><div class="form-row cols-2">'+g('Kind','<select class="form-input" id="pfKind">'+Object.keys(TERM_KINDS).filter(function(k){return k!=='loose';}).map(function(k){ return opt(k,TERM_KINDS[k],p.kind||'ring'); }).join('')+'</select>')+g('Wire gauge range',inp('pfTAwg',awgText(p.awg),'e.g. 22-16','mono'))+'</div></div>'+
     // covering
-    '<div id="pfCov"><div class="form-row cols-2">'+g('Kind','<select class="form-input" id="pfCKind">'+Object.keys(COV_KINDS).map(function(k){ return opt(k,COV_KINDS[k],covKindOf(p)); }).join('')+'</select>')+g('Color','<select class="form-input" id="pfCColor">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,(p.ccolor&&COV_COLORS[p.ccolor])?p.ccolor:'black'); }).join('')+'</select>')+'</div>'+
+    '<div id="pfCov"><div class="form-row cols-2">'+g('Kind','<select class="form-input" id="pfCKind" onchange="S.pf.kindTouched=true;pfRenderPrev()">'+Object.keys(COV_KINDS).map(function(k){ return opt(k,COV_KINDS[k],edit?covKindOf(p):'shrink'); }).join('')+'</select>')+g('Color','<select class="form-input" id="pfCColor">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,(p.ccolor&&COV_COLORS[p.ccolor])?p.ccolor:'black'); }).join('')+'</select>')+'</div>'+
     '<div class="form-row cols-2">'+g('Size, inside diameter (mm)',inp('pfDia',p.dia||(partSizeMm(p)?partSizeMm(p).toFixed(1):''),'e.g. 12.7','mono',' type="number" min="0" step="0.1"'))+g('Shrink ratio',inp('pfRatio',p.ratio||'','e.g. 3:1 (heat shrink only)'))+'</div></div>'+
     // cable
     '<div id="pfCab"><div class="form-row cols-2">'+g('Cores',inp('pfCores',p.cores||2,'','mono',' type="number" min="1" max="24"'))+g('Wire gauge',inp('pfCAwg',p.awg||'22','','mono'))+'</div>'+
     '<div class="form-row cols-2"><label class="checkbox-row" style="margin:0"><input type="checkbox" id="pfShield"'+(p.shield?' checked':'')+'> Shielded</label><label class="checkbox-row" style="margin:0"><input type="checkbox" id="pfTwisted"'+(p.twisted?' checked':'')+'> Twisted pair</label></div>'+
     '<div class="form-row">'+g('Core colors',inp('pfCoreCols',(p.coreColors||[]).join(', '),'e.g. white, blue'))+'</div></div>'+
+    '<div id="pfWire"><div class="form-row">'+g('Temperature rating (C)',inp('pfTemp',p.temp||'','e.g. 125','mono',' type="number" min="0" step="5"'))+'</div>'+
+    '<div class="form-row">'+g('Finished outside diameter per gauge (optional)','<textarea class="form-input mono" id="pfOd" rows="4" placeholder="18  1.7&#10;20  1.45">'+esc(Object.keys(p.od||{}).sort(function(a,b){return b-a;}).map(function(k){ return k+'  '+p.od[k]; }).join('\n'))+'</textarea>')+'<div class="note" style="margin-top:-4px">One gauge per line: the gauge, then the diameter in mm. Used for bundle size and twist length. Gauges left out use the standard estimate.</div></div></div>'+
     '<div class="form-row">'+g('Manufacturer link (optional)',inp('pfUrl',p.url||'','https://...'))+'</div>'+
     '<div class="form-row"><div class="form-group"><label class="form-label">Photo</label><div class="pf-photo"><div class="pf-prev" id="pfPrev" ondragover="event.preventDefault()" ondrop="pfDrop(event)"></div>'+
       '<div class="pf-ctl"><input class="form-input" id="pfImgUrl" placeholder="Paste an image link (https://...)" oninput="pfUrl(this.value)" value="'+esc(S.pf.img&&S.pf.img.indexOf('data:')!==0?S.pf.img:'')+'">'+
@@ -2489,10 +2544,18 @@ function openPartForm(pn,back){
   pfType(); pfRenderPrev();
   setTimeout(function(){ var e=$(edit?'pfMfr':'pfPn'); if(e) e.focus(); },30);
 }
+// a new covering starts as heat shrink and follows what you type, until you pick a Kind yourself
+function pfGuessKind(){
+  var f=S.pf; if(!f || f.edit || f.kindTouched) return;
+  var sel=$('pfCKind'); if(!sel) return;
+  var t=(($('pfPn').value||'')+' '+($('pfDesc').value||'')).toLowerCase(), k='shrink';
+  if(/shrink|^dr-|\bhs\b/.test(t)) k='shrink'; else if(/braid|sleev|\bpet\b/.test(t)) k='braid'; else if(/conv|loom|corrug|split/.test(t)) k='conv'; else if(/tape|tesa/.test(t)) k='tape';
+  sel.value=k; pfRenderPrev();
+}
 function pfBack(){ var b=S.pf&&S.pf.back; if(b==='catalog') openCatalog(); else closeModal(); }
 function pfType(){
   var t=$('pfType').value;
-  [['pfConn','connector'],['pfTerm','terminal'],['pfCov','covering'],['pfCab','cable']].forEach(function(x){ var e=$(x[0]); if(e) e.style.display=(x[1]===t)?'':'none'; });
+  [['pfConn','connector'],['pfTerm','terminal'],['pfCov','covering'],['pfCab','cable'],['pfWire','wire']].forEach(function(x){ var e=$(x[0]); if(e) e.style.display=(x[1]===t)?'':'none'; });
   pfRenderPrev();
 }
 function pfRenderPrev(){
@@ -2583,6 +2646,11 @@ function savePartForm(){
     p.shield=$('pfShield').checked; p.twisted=$('pfTwisted').checked;
     var cc=$('pfCoreCols').value.split(/[,;]+/).map(function(x){return x.trim().toLowerCase();}).filter(function(x){ return x && WCOL[colBase(x)]; });
     if(cc.length) p.coreColors=cc; else delete p.coreColors;
+    delete p.cav;
+  } else if(type==='wire'){
+    var tp=num($('pfTemp').value,0); if(tp>0) p.temp=tp; else delete p.temp;
+    var od={}; $('pfOd').value.split('\n').forEach(function(line){ var n=line.match(/\d+(\.\d+)?/g); if(n && n.length>=2 && GAUGES.indexOf(String(Math.round(+n[0])))>=0 && +n[1]>0) od[String(Math.round(+n[0]))]=+n[1]; });
+    if(Object.keys(od).length) p.od=od; else delete p.od;
     delete p.cav;
   } else { delete p.cav; }
   dbSavePart(p).then(function(){
@@ -4203,6 +4271,7 @@ function partImgSVG(p,size,kind){
     cc.forEach(function(c,i){ var a=(i/n)*Math.PI*2-Math.PI/2, rr=n===1?0:(n===2?8:9); o+='<circle cx="'+(72+Math.cos(a)*rr).toFixed(1)+'" cy="'+(50+Math.sin(a)*rr).toFixed(1)+'" r="'+(n<=2?7:6)+'" fill="'+hexOf(c)+'" stroke="#111" stroke-width="1"/>'; });
     return o+'</svg>';
   }
+  if(t==='wire') return o+'<path d="M8 50 H30" stroke="#c98a3a" stroke-width="5" stroke-linecap="round"/><rect x="26" y="38" width="62" height="24" rx="12" fill="#374151"/><rect x="30" y="41" width="54" height="5" rx="2.5" fill="#fff" opacity=".2"/><circle cx="88" cy="50" r="5" fill="#c98a3a"/></svg>';
   if(t==='covering'){
     var ck=covKindOf(p), hx=covHex(p,null), dk=shade(hx,-0.35), lt=shade(hx,0.3), g2='';
     o+='<defs><clipPath id="cvc"><rect x="12" y="34" width="70" height="32" rx="7"/></clipPath></defs>';
@@ -4434,6 +4503,7 @@ function openCatalog(type){
   if(type) S.catFilter=type;
   else if(S.sel && S.sel.kind==='comp' && comp(S.sel.id)) S.catFilter=comp(S.sel.id).type;
   else if(S.sel && S.sel.kind==='seg') S.catFilter='covering';
+  else if(S.sel && S.sel.kind==='wire') S.catFilter='wire';
   if(S.sel && S.sel.kind==='comp' && comp(S.sel.id) && comp(S.sel.id).partPn) S.catSel=comp(S.sel.id).partPn;
   $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal wide" style="width:1040px">'+
     '<div class="mh"><div class="modal-title">Parts catalog</div><span class="muted" id="catTarget"></span><div class="spacer"></div><button class="btn btn-sm" onclick="openCustomPart()">Add custom part</button></div>'+
@@ -4452,10 +4522,10 @@ function catMatches(){
 }
 function renderCatList(){
   var f=S.catFilter;
-  var tgt=''; if(S.sel&&S.sel.kind==='comp'&&comp(S.sel.id)) tgt='Assigning to '+comp(S.sel.id).name; else if(S.sel&&S.sel.kind==='seg') tgt='Assigning a covering to the selected bundle'; else if(S.sel&&S.sel.kind==='group'&&groupById(S.sel.id)) tgt='Choosing the cable for '+groupLabel(groupById(S.sel.id));
+  var tgt=''; if(S.sel&&S.sel.kind==='comp'&&comp(S.sel.id)) tgt='Assigning to '+comp(S.sel.id).name; else if(S.sel&&S.sel.kind==='seg') tgt='Assigning a covering to the selected bundle'; else if(S.sel&&S.sel.kind==='group'&&groupById(S.sel.id)) tgt='Choosing the cable for '+groupLabel(groupById(S.sel.id)); else if(S.sel&&S.sel.kind==='wire'&&wire(S.sel.id)) tgt='Choosing the wire type for the selected wire';
   $('catTarget').textContent=tgt;
-  $('catChips').innerHTML=[['all','All'],['connector','Connectors'],['terminal','Terminals'],['splice','Splices'],['cable','Cables'],['covering','Coverings']].map(function(c){ return '<div class="tab'+(f===c[0]?' active':'')+'" onclick="S.catFilter=\''+c[0]+'\';renderCatList()">'+c[1]+'</div>'; }).join('');
-  var list=catMatches(), canAssign=S.sel && (S.sel.kind==='comp'||S.sel.kind==='seg'||S.sel.kind==='group');
+  $('catChips').innerHTML=[['all','All'],['connector','Connectors'],['terminal','Terminals'],['splice','Splices'],['cable','Cables'],['covering','Coverings'],['wire','Wires']].map(function(c){ return '<div class="tab'+(f===c[0]?' active':'')+'" onclick="S.catFilter=\''+c[0]+'\';renderCatList()">'+c[1]+'</div>'; }).join('');
+  var list=catMatches(), canAssign=S.sel && (S.sel.kind==='comp'||S.sel.kind==='seg'||S.sel.kind==='group'||S.sel.kind==='wire');
   if(!list.length){ $('catList').innerHTML='<div class="empty">No parts match. Add it as a custom part.</div>'; $('catDetail').innerHTML=''; return; }
   if(!S.catSel || !list.some(function(p){return p.pn===S.catSel;})) S.catSel=list[0].pn;
   $('catList').innerHTML='<table><thead><tr><th style="width:52px"></th><th>Part number</th><th>Description</th><th>Cav</th><th></th></tr></thead><tbody>'+list.map(function(p){
@@ -4469,11 +4539,11 @@ function renderCatList(){
 function teUrl(p){ return /^TE/.test(p.mfr||'') && p.type==='connector' ? 'https://www.te.com/usa-en/product-'+encodeURIComponent(p.pn)+'.html' : ''; }
 function renderCatDetail(){
   var p=partByPn(S.catSel); if(!p){ $('catDetail').innerHTML=''; return; }
-  var canAssign=S.sel && (S.sel.kind==='comp'||S.sel.kind==='seg'||S.sel.kind==='group'), url=p.url||teUrl(p);
+  var canAssign=S.sel && (S.sel.kind==='comp'||S.sel.kind==='seg'||S.sel.kind==='group'||S.sel.kind==='wire'), url=p.url||teUrl(p);
   function row(k,v){ return v?'<tr><td class="dk">'+k+'</td><td>'+v+'</td></tr>':''; }
   var h='<div class="lib-prev-h"><div><div class="ppn" style="font-size:var(--t-lg)">'+esc(p.pn)+'</div><div class="muted">'+esc(p.mfr)+'</div></div>'+(canAssign?'<button class="btn btn-sm btn-primary" onclick="assignPart(\''+esc(p.pn).replace(/'/g,'')+'\')">Assign</button>':'')+'</div>'+
     '<div class="dtiles"><div class="ctile img big">'+partImgHTML(p,120)+'</div>'+(p.type==='connector'?'<div class="ctile face big" title="Mating face">'+partFaceSVG(p,104)+'</div>':'')+'</div>'+
-    '<table class="dtable">'+row('Description',esc(p.desc))+row('Type',esc(p.type))+row('Cavities',p.cav?String(p.cav):'')+row('Covering',p.type==='covering'?esc(COV_KINDS[covKindOf(p)])+', '+esc(covColorName(p,null)):'')+row('Size',p.type==='covering'&&partSizeMm(p)?partSizeMm(p).toFixed(1)+' mm inside diameter':'')+row('Shrink ratio',p.ratio?esc(p.ratio):'')+row('Cable',p.type==='cable'?(p.cores||'')+' core, '+esc(p.awg||'')+' AWG'+(p.shield?', shielded':'')+(p.twisted?', twisted':''):'')+row('Pin names',p.type==='connector'?(p.desig==='alpha'?'Letters A, B, C':p.desig==='custom'?'Custom labels':'Numbers 1, 2, 3'):'')+
+    '<table class="dtable">'+row('Description',esc(p.desc))+row('Type',esc(p.type))+row('Cavities',p.cav?String(p.cav):'')+row('Covering',p.type==='covering'?esc(COV_KINDS[covKindOf(p)])+', '+esc(covColorName(p,null)):'')+row('Size',p.type==='covering'&&partSizeMm(p)?partSizeMm(p).toFixed(1)+' mm inside diameter':'')+row('Shrink ratio',p.ratio?esc(p.ratio):'')+row('Rated',p.type==='wire'&&p.temp?p.temp+' C':'')+row('Outside diameter',p.type==='wire'&&p.od?Object.keys(p.od).sort(function(a,b){return b-a;}).map(function(g){return g+' AWG: '+p.od[g]+' mm';}).join('<br>'):'')+row('Cable',p.type==='cable'?(p.cores||'')+' core, '+esc(p.awg||'')+' AWG'+(p.shield?', shielded':'')+(p.twisted?', twisted':''):'')+row('Pin names',p.type==='connector'?(p.desig==='alpha'?'Letters A, B, C':p.desig==='custom'?'Custom labels':'Numbers 1, 2, 3'):'')+
     row('Gender',esc(p.gender||''))+row('Contacts',(p.contacts||[]).map(function(c){return '<span class="mono">'+esc(c.pn)+'</span>'+(c.awg?' <span class="muted">'+(c.awg[0]===c.awg[1]?c.awg[0]:c.awg[0]+'-'+c.awg[1])+' AWG</span>':'');}).join('<br>'))+
     row('Wedgelock',p.lock?'<span class="mono">'+esc(p.lock)+'</span>':'')+row('Seal plug',p.plug?'<span class="mono">'+esc(p.plug)+'</span>':'')+
     row('Body color',p.color&&p.type==='connector'?'<span class="sw" style="border-radius:3px;background:'+p.color+'"></span>':'')+
@@ -4514,7 +4584,7 @@ function cableOf(w){ return groupsOf(w).filter(function(g){return g.kind==='cabl
 // helical length factor: each wire follows a helix of pitch diameter ~ one wire OD
 function twistFactor(w){
   var g=twistOf(w); if(!g) return 1;
-  var lay=Math.max(5,num(g.lay,25)), od=AWG_OD[w.gauge]||1.5;
+  var lay=Math.max(5,num(g.lay,25)), od=wireOD(w)||AWG_OD[w.gauge]||1.5;
   return Math.sqrt(1+Math.pow(Math.PI*od/lay,2));
 }
 function groupLabel(g){ return g.name||(g.kind==='twist'?'Twisted pair':'Cable'); }
