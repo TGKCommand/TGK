@@ -2039,10 +2039,11 @@ function isoScene(){
     sc.comps.push({c:c,part:partByPn(c.partPn),O:O,u:u,v:v,w:w});
   });
   // mated connectors: turn the two to face each other and pull them together so the mating faces touch
-  var byId={}; sc.comps.forEach(function(o){ byId[o.c.id]=o; });
+  var byId={}, mdone={}; sc.comps.forEach(function(o){ byId[o.c.id]=o; });
   sc.comps.forEach(function(o){
-    var c=o.c; if(c.type!=='connector' || !c.mate || c.id>c.mate) return;
+    var c=o.c; if(c.type!=='connector' || !c.mate) return;
     var m=byId[c.mate]; if(!m || m.c.type!=='connector') return;
+    var pk=c.id<m.c.id?c.id+'|'+m.c.id:m.c.id+'|'+c.id; if(mdone[pk]) return; mdone[pk]=1;
     var d=vsub(m.O,o.O), axis=(vdot(d,d)>1e-6)?vnorm(d):o.u, M=vmul(vadd(o.O,m.O),0.5);
     [[o,axis],[m,vmul(axis,-1)]].forEach(function(x){
       var q=x[0], u=x[1];
