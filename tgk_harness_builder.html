@@ -315,6 +315,12 @@ tbody tr:hover td{background:rgba(13,148,136,.05)}
 .cr-h{display:flex;gap:6px;align-items:center;margin-bottom:8px}
 .cr-h .sel{flex:1;min-width:0}
 .usw{display:inline-flex;gap:2px}
+.apx3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0 2px}
+.apx-tog{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 2px;border:1px solid var(--border);border-radius:var(--r);background:#fff;cursor:pointer;font:inherit;line-height:1.2}
+.apx-tog span{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)}
+.apx-tog b{font-size:var(--t-sm);color:var(--text)}
+.apx-tog.on{border-color:rgba(234,88,12,.5);background:var(--orange-dim)}
+.apx-tog.on b{color:var(--orange);font-style:italic}
 .lenpop{position:absolute;z-index:6;width:236px;background:#fff;border-radius:var(--r-md);box-shadow:0 4px 16px rgba(14,20,24,.18),0 0 0 1px var(--border);padding:10px 12px}
 .lp-t{font-size:var(--t-sm);font-weight:700;margin-bottom:8px;color:var(--text2)}
 .tbar.wrap.leg{max-width:calc(100% - 340px)}
@@ -726,7 +732,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.11.0';
+var HB_VERSION = '2.12.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -1868,7 +1874,11 @@ function covList(s){
   return [];
 }
 // a covering is approximate when you marked it so, or when it hangs off a bundle length that is approximate
-function covApprox(s,cv){ return !!(cv.approx || lenApprox(s)); }
+// each number on a partial covering has its own flag: apxA (bare at end A), apxB (bare at end B), apxL (covering length).
+// Not set = follows the bundle (and, for the length, the two bare ends). The old single cv.approx flag means all three.
+function covApxField(s,cv,w){ var v=cv['apx'+w]; if(v!=null) return !!v; if(cv.approx) return true; return lenApprox(s); }
+function covApxLen(s,cv){ var v=cv.apxL; if(v!=null) return !!v; if(cv.approx) return true; return lenApprox(s) || covApxField(s,cv,'A') || covApxField(s,cv,'B'); }
+function covApprox(s,cv){ return covWhole(cv) ? !!(cv.approx || lenApprox(s)) : covApxLen(s,cv); }
 function covWhole(cv){ return cv.anchor!=='a' && cv.anchor!=='b' && cv.anchor!=='span'; }
 function covRange(s,cv){
   var L=Math.max(0,num(s.len,0));
@@ -1996,13 +2006,16 @@ function covRowHTML(s,cv,dia){
     h+='<div class="cr-g"><label>Starts</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(cv.off,0))+'" onchange="'+fn('off','lenIn(this.value)')+'"><span class="muted">'+lenUnitLabel()+' from end '+(cv.anchor==='b'?'B':'A')+'</span></div></div>'+
        '<div class="cr-g"><label>Length</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(cv.len,0))+'" onchange="'+fn('len','lenIn(this.value)')+'"><span class="muted">'+lenUnitLabel()+'</span></div></div>';
   }
-  if(!whole) h+='<div class="cr-g"><label>Length is</label><div class="usw"><button class="btn btn-sm'+(!cv.approx?' on':'')+'" title="Measured or fixed" onclick="'+fn('approx','false')+'">Exact</button><button class="btn btn-sm'+(cv.approx?' on':'')+'" title="A guess: shown with ~ everywhere" onclick="'+fn('approx','true')+'">Approx</button></div></div>';
+  if(!whole){
+    var tg=function(w,label){ var on=(w==='L')?covApxLen(s,cv):covApxField(s,cv,w); return '<button class="apx-tog'+(on?' on':'')+'" title="Click to switch between exact and approximate" onclick="'+fn('apx'+w,on?'false':'true')+'"><span>'+label+'</span><b>'+(on?'~ Approx':'Exact')+'</b></button>'; };
+    h+='<div class="apx3">'+tg('A','Bare A')+tg('L',COV_KINDS[kind].split(' ')[0])+tg('B','Bare B')+'</div><div class="cr-i" style="margin:3px 0 8px">Mark each one Exact or Approx. Approximate numbers show a ~ on the plan and in 3D.</div>';
+  }
   h+='<div class="cr-g"><label>Color</label><div class="row2"><span class="sw" style="background:'+hex+'"></span><select class="sel" onchange="'+fn('color','this.value')+'">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,covColorName(part,cv)); }).join('')+'</select></div></div>';
   h+='<div class="cr-g"><label>Note</label><input class="inp" value="'+esc(cv.note||'')+'" placeholder="e.g. strain relief at the connector" onchange="'+fn('note','this.value')+'"></div>';
   var info=(covApprox(s,cv)?'~':'')+lenShow(ln)+' '+lenUnitLabel()+' of '+COV_KINDS[kind].toLowerCase();
   if(sz && dia>0) info+='. Size '+fmtD(sz)+', bundle about '+fmtD(dia)+'.';
   else if(sz) info+='. Size '+fmtD(sz)+'.';
-  if(!whole && !cv.approx && lenApprox(s)) info+='. Approximate because the bundle length is.';
+  if(!whole && cv.apxL==null && !cv.approx && lenApprox(s)) info+='. Approximate because the bundle length is.';
   var tight=(sz && dia>0 && sz<dia);
   h+='<div class="cr-i'+(tight?' warn':'')+'">'+esc(info)+(tight?' This may be too small for the bundle.':'')+((part && !part.ckind && kind==='sleeve')?' Counted as Other sleeve. Click Edit and set Kind to Heat shrink if it is.':'')+'</div></div>';
   return h;
@@ -2068,32 +2081,41 @@ function covGaps(s){
     if(covWhole(cv)) return;
     var r=covRange(s,cv), part=partByPn(cv.pn);
     if(r[1]-r[0]<=0.5) return;
-    if(r[0]>0.5) out.push({f0:0,f1:r[0]/L,mm:r[0],cv:cv,part:part});
-    if(L-r[1]>0.5) out.push({f0:r[1]/L,f1:1,mm:L-r[1],cv:cv,part:part});
+    if(r[0]>0.5) out.push({f0:0,f1:r[0]/L,mm:r[0],cv:cv,part:part,side:'A'});
+    if(L-r[1]>0.5) out.push({f0:r[1]/L,f1:1,mm:L-r[1],cv:cv,part:part,side:'B'});
   });
   return out;
 }
 // one dimension line next to a stretch of bundle: extension lines, the line, end ticks and the number
-function dimLineSVG(sub,off,txt){
+function dimLineSVG(sub,off,txt,col){
   if(!sub || sub.length<2) return '';
+  var DC=col||DIM_COL;
   var m0=polyMid(sub); if(m0.vert) off=(off<0?-1:1)*Math.max(Math.abs(off),txt.length*5.6/2+22);   // sideways bundles: clear the part icon
-  var o=offsetPoly(sub,off), a=sub[0], b=sub[sub.length-1], oa=o[0], ob=o[o.length-1], st=' stroke="'+DIM_COL+'" fill="none" style="pointer-events:none"';
+  var o=offsetPoly(sub,off), a=sub[0], b=sub[sub.length-1], oa=o[0], ob=o[o.length-1], st=' stroke="'+DC+'" fill="none" style="pointer-events:none"';
   var d=o.map(function(q,i){ return (i?'L':'M')+q.x.toFixed(1)+' '+q.y.toFixed(1); }).join('');
   function tick(p,q){ var dx=q.x-p.x, dy=q.y-p.y, l=Math.hypot(dx,dy)||1, nx=-dy/l*4, ny=dx/l*4; return 'M'+(p.x-nx).toFixed(1)+' '+(p.y-ny).toFixed(1)+'L'+(p.x+nx).toFixed(1)+' '+(p.y+ny).toFixed(1); }
   var out='<path d="M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+'L'+oa.x.toFixed(1)+' '+oa.y.toFixed(1)+'M'+b.x.toFixed(1)+' '+b.y.toFixed(1)+'L'+ob.x.toFixed(1)+' '+ob.y.toFixed(1)+'"'+st+' stroke-width=".8" opacity=".7"/>';
   out+='<path d="'+d+'"'+st+' stroke-width="1.2"/>';
   out+='<path d="'+tick(oa,o[1])+tick(ob,o[o.length-2])+'"'+st+' stroke-width="1.4"/>';
   var m=polyMid(o), tw=txt.length*5.6+8;
-  out+='<g style="pointer-events:none"><rect x="'+(m.x-tw/2).toFixed(1)+'" y="'+(m.y-7).toFixed(1)+'" width="'+tw.toFixed(1)+'" height="13" rx="3" fill="#fff" stroke="'+DIM_COL+'" stroke-width=".8"/><text x="'+m.x.toFixed(1)+'" y="'+(m.y+3).toFixed(1)+'" text-anchor="middle" font-family="monospace" font-size="9.5" font-weight="600" fill="'+DIM_COL+'">'+esc(txt)+'</text></g>';
+  out+='<g style="pointer-events:none"><rect x="'+(m.x-tw/2).toFixed(1)+'" y="'+(m.y-7).toFixed(1)+'" width="'+tw.toFixed(1)+'" height="13" rx="3" fill="#fff" stroke="'+DC+'" stroke-width=".8"/><text x="'+m.x.toFixed(1)+'" y="'+(m.y+3).toFixed(1)+'" text-anchor="middle" font-family="monospace" font-size="9.5" font-weight="600" fill="'+DC+'">'+esc(txt)+'</text></g>';
   return out;
 }
+function dimSideSign(pts){ var a=pts[0], b=pts[pts.length-1], dx=b.x-a.x, dy=b.y-a.y, vert=Math.abs(dy)>Math.abs(dx); return {vert:vert,s:vert?(dy>0?1:-1):(dx>0?1:-1)}; }
+function covHasDims(s){ return !!(S.showCov && S.showDims && covGaps(s).length); }
 function covDimsSVG(s,pts){
-  if(!pts) return '';
-  var out='';
-  covGaps(s).forEach(function(g){ out+=dimLineSVG(subPoly(pts,g.f0,g.f1),17,(covApprox(s,g.cv)?'~':'')+fmtDim(g.mm)); });
+  if(!pts || pts.length<2) return '';
+  var gaps=covGaps(s); if(!gaps.length) return '';
+  var L=Math.max(0,num(s.len,0)), sd=dimSideSign(pts), out='', maxw=0, rows=[];
+  gaps.forEach(function(g){ rows.push({sub:subPoly(pts,g.f0,g.f1),t:(covApxField(s,g.cv,g.side)?'~':'')+fmtDim(g.mm)}); });
+  covList(s).forEach(function(cv){ if(covWhole(cv)) return; var r=covRange(s,cv); if(r[1]-r[0]<=0.5) return; rows.push({sub:subPoly(pts,r[0]/L,r[1]/L),t:(covApxLen(s,cv)?'~':'')+fmtDim(r[1]-r[0])}); });
+  rows.forEach(function(r){ maxw=Math.max(maxw,r.t.length*5.6+8); });
+  var chain=sd.vert?Math.max(17,maxw/2+22):17;
+  rows.forEach(function(r){ out+=dimLineSVG(r.sub,sd.s*chain,r.t); });
+  var ot=(lenApprox(s)?'~':'')+fmtDim(L), ow=ot.length*5.6+8, oo=sd.vert?(chain+ow+14):30;
+  out+=dimLineSVG(pts,(sd.vert?1:-1)*sd.s*oo,ot,'#334155');   // overall length, on the other side of the bundle
   return out;
 }
-
 function covStrokeW(kind){ return {shrink:12.5,braid:13,conv:15,tape:11,sleeve:12.5}[kind]||12; }
 function covEndMarks(sp,w,dk){
   if(!sp || sp.length<2) return '';
@@ -2130,7 +2152,7 @@ function covTagsSVG(s,vert,mx,my){
   var out='';
   covList(s).forEach(function(cv,i){
     var part=partByPn(cv.pn), hex=covHex(part,cv), r=covRange(s,cv), whole=covWhole(cv);
-    var ap=covApprox(s,cv), txt=cv.pn+(whole?(ap?'  ~':''):'  '+(ap?'~':'')+lenShow(r[1]-r[0])+' '+lenUnitLabel()), cw=txt.length*6+24, cx=vert?mx+11:mx-cw/2, cy=(vert?my-7:my+10)+i*17;
+    var ap=covApprox(s,cv), dOn=covHasDims(s) && !whole, txt=cv.pn+(whole?(ap?'  ~':''):(dOn?'':'  '+(ap?'~':'')+lenShow(r[1]-r[0])+' '+lenUnitLabel())), cw=txt.length*6+24, cx=vert?mx+11:mx-cw/2, cy=(vert?my-7:my+10+(covHasDims(s)?26:0))+i*17;
     out+='<g style="pointer-events:none"><rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="7.5"/><circle cx="'+(cx+9)+'" cy="'+(cy+7.5)+'" r="4" fill="'+hex+'" stroke="'+shade(hex,-0.4)+'" stroke-width=".8"/><text class="ltag" x="'+(cx+cw/2+6)+'" y="'+(cy+11)+'" text-anchor="middle"'+(ap?' style="fill:#c2410c;font-style:italic"':'')+'>'+esc(txt)+'</text></g>';
   });
   return out;
@@ -2538,7 +2560,7 @@ function isoSegItems(g,pj,v,items,sel,labels,exportMode){
       if(v.show.ck[covKindOf(gp.part)]===false) return;
       var sub=subPoly(g.p3,gp.f0,gp.f1); if(sub.length<2) return;
       var P2=sub.map(pj), o=offsetPoly(P2,wB/2+10);
-      labels.push({dim:true,a:P2,o:o,mid:polyMid(o),txt:(covApprox(s,gp.cv)?'~':'')+fmtDim(gp.mm)});
+      labels.push({dim:true,a:P2,o:o,mid:polyMid(o),txt:(covApxField(s,gp.cv,gp.side)?'~':'')+fmtDim(gp.mm)});
     });
   }
   if(v.lens && num(s.len,0)){ var lp=subPoly(g.p3,0.499,0.501)[0]; if(lp) labels.push({p:pj(lp),txt:(lenApprox(s)?'~':'')+fmtLen(num(s.len,0)),mono:true,dy:wB/2+10,est:lenApprox(s),lenId:s.id}); }
@@ -3689,7 +3711,7 @@ function runChecks(){
   if(est.length && p.wires.length) out.push({sev:'warn',msg:est.length+' bundle length'+(est.length===1?' is an estimate':'s are estimates')+' from the drawing. Measure on the car and type the real length.',sel:{kind:'seg',id:est[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(est[0].id)+')'}});
   var apx=p.segs.filter(function(s){ return !s.est && s.approx; });
   if(apx.length && p.wires.length) out.push({sev:'info',msg:apx.length+' bundle length'+(apx.length===1?' is':'s are')+' marked approximate (~). Confirm '+(apx.length===1?'it':'them')+' on the car before cutting wire.',sel:{kind:'seg',id:apx[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(apx[0].id)+')'}});
-  var capx=[]; p.segs.forEach(function(s){ covList(s).forEach(function(cv){ if(cv.approx) capx.push(s); }); });
+  var capx=[]; p.segs.forEach(function(s){ covList(s).forEach(function(cv){ if(cv.approx||cv.apxA||cv.apxB||cv.apxL) capx.push(s); }); });
   if(capx.length && p.wires.length) out.push({sev:'info',msg:capx.length+' covering length'+(capx.length===1?' is':'s are')+' marked approximate (~). Confirm '+(capx.length===1?'it':'them')+' on the car before cutting.',sel:{kind:'seg',id:capx[0].id},fix:{label:'Show next',js:'fixShowSeg('+q(capx[0].id)+')'}});
   var connected={}; p.segs.forEach(function(s){ connected[s.a]=1; connected[s.b]=1; });
   p.nodes.forEach(function(n){ if(!connected['n:'+n.id]) out.push({sev:'info',msg:'A branch point is not attached to any bundle.',sel:{kind:'node',id:n.id},fix:{label:'Delete it',js:'fixDeleteNode('+q(n.id)+')',safe:true}}); });
@@ -4877,14 +4899,14 @@ function layComp(c){
   return out+'</g>';
 }
 function layWorld(){
-  var p=P(), out='', an=activeNet();
+  var p=P(), out='', an=activeNet(), dimsOut='';
   var cache={}; p.segs.forEach(function(s){ cache[s.id]=segPts(s); });
   p.segs.forEach(function(s){
     var pts=cache[s.id]; if(!pts) return; var d=roundPath(pts,18);
     var sel=S.sel && S.sel.kind==='seg' && S.sel.id===s.id;
     out+='<g data-k="seg" data-id="'+s.id+'"><path class="seg-edge" d="'+d+'"/><path class="seg'+(sel?' sel':'')+'" d="'+d+'"/><path class="seg-hit" d="'+d+'"/></g>';
     if(S.showCov) out+=covOverlaySVG(s,pts,d,sel);
-    if(S.showCov && S.showDims) out+=covDimsSVG(s,pts);
+    if(S.showCov && S.showDims) dimsOut+=covDimsSVG(s,pts);   // drawn last so no label covers a callout
   });
   if(an && S.showNet){
     var ws=p.wires.filter(function(w){ return netOfWire(w)===an; });
@@ -4902,7 +4924,7 @@ function layWorld(){
     var bi=1, bl=0; for(var i=1;i<pts.length;i++){ var l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); if(l>bl){ bl=l; bi=i; } }
     var a=pts[bi-1], b=pts[bi], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
     var txt=(lenApprox(s)?'~':'')+fmtLen(num(s.len,0)), tw=txt.length*6.4+8;
-    if(num(s.len,0)||s.est){
+    if((num(s.len,0)||s.est) && !covHasDims(s)){
       if(vert) out+='<g transform="translate('+(mx-15)+','+my+') rotate(-90)"><rect class="slen-bg" x="'+(-tw/2)+'" y="-9" width="'+tw+'" height="13"/><text class="slen'+(lenApprox(s)?' est':'')+'" x="0" y="1" text-anchor="middle">'+txt+'</text></g>';
       else out+='<rect class="slen-bg" x="'+(mx-tw/2)+'" y="'+(my-22)+'" width="'+tw+'" height="13"/><text class="slen'+(lenApprox(s)?' est':'')+'" x="'+mx+'" y="'+(my-12)+'" text-anchor="middle">'+txt+'</text>';
     }
@@ -4919,6 +4941,7 @@ function layWorld(){
   });
   p.comps.forEach(function(c){ out+=layComp(c); });
   if(S.showTables) p.comps.forEach(function(c){ if(c.type==='connector') out+=cardFO(c,an); });
+  out+=dimsOut;
   out+=notesSVG('lay');
   if(S.drag && S.drag.type==='segdraft'){ var a2=nodePos(S.segStart); if(a2) out+='<line class="draft" x1="'+a2.x+'" y1="'+a2.y+'" x2="'+S.drag.x+'" y2="'+S.drag.y+'"/>'; }
   return out;
@@ -5263,7 +5286,7 @@ function buildPlan(){
     covList(s).forEach(function(cv,i){
       var part=partByPn(cv.pn), col=covColorName(part,cv), r=covRange(s,cv), whole=covWhole(cv);
       var where=whole?'':(' - '+fmtLen(r[1]-r[0])+', leave '+fmtLen(r[0])+' bare at '+nm(s.a)+' and '+fmtLen(Math.max(0,num(s.len,0)-r[1]))+' bare at '+nm(s.b));
-      cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':(s.approx||cv.approx)?' (approximate)':'')});
+      cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':covApprox(s,cv)?' (approximate)':'')});
     });
   });
   if(cov.length) secs.push({id:'cov',name:'Coverings',items:cov,hint:'Slide sleeving and shrink tubing on before the second end is terminated.'});
