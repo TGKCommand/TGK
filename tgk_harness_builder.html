@@ -726,7 +726,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.10.0';
+var HB_VERSION = '2.11.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -1662,6 +1662,7 @@ function inspComp(c){
   var h='<div class="ih"><div class="k">'+typeLabel+'</div><h2>'+esc(c.name)+'</h2></div><div class="is">'+
     '<div class="f"><label>Name</label><input class="inp" value="'+esc(c.name)+'" onchange="setCompField(\''+c.id+'\',\'name\',this.value)"></div>';
   h+=heightField('comp',c.id,c.lz);
+  if(c.type==='connector') h+='<div class="f"><label>Component</label><button class="btn btn-sm" onclick="startReplace(\''+c.id+'\')" title="Swap this for another component from the library. Its place and matching wires are kept.">Change to another...</button></div>';
   if(c.type==='terminal') h+='<div class="f"><label>Kind</label><select class="sel" onchange="setCompField(\''+c.id+'\',\'kind\',this.value)">'+Object.keys(TERM_KINDS).map(function(k){return opt(k,TERM_KINDS[k],c.kind);}).join('')+'</select></div>';
   if(c.type==='connector'){
     h+='<div class="f"><label>Cavities</label><input class="inp mono" type="number" min="1" max="64" value="'+c.pins.length+'" onchange="setCompField(\''+c.id+'\',\'pins\',this.value)"></div>'+
@@ -2901,7 +2902,7 @@ function saveAddWire(){
 }
 
 // ===== catalog =====
-function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; S.coverTarget=null; S.pf=null; S.editComp=null; }
+function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; S.coverTarget=null; S.pf=null; S.editComp=null; S.libReplace=null; }
 // ===== part editor: add, edit (also built-in parts), reset; photo by link or upload =====
 var PF_TYPES={connector:'Connector',terminal:'Terminal',splice:'Splice',covering:'Covering (heat shrink, sleeving, tape)',cable:'Cable',wire:'Wire (type or family)'};
 S.pf=null;
@@ -3395,6 +3396,42 @@ function tplPinLabel(spec,i){
   return String(i+1);
 }
 
+// ---- change a component into a different one from the library (for example one sensor for another), keeping its place and its wires
+function startReplace(id){
+  var c=comp(id); if(!c) return;
+  if(c.type!=='connector'){ toast('Only connectors can be changed to a library component. Delete it and add the one you want.'); return; }
+  closeMenu(); S.libReplace=id; S.libCat='Sensors'; openLibrary();
+}
+function libPick(id){ if(S.libReplace) replaceComp(S.libReplace,id); else addTemplate(id); }
+function replaceComp(cid,tid){
+  var c=comp(cid), t=tplById(tid); if(!c || !t) return;
+  var specs=t.comps.filter(function(x){ return x.type==='connector'; });
+  if(t.comps.length!==1 || !specs.length){ toast('That library entry adds several parts. Use Add to harness for it.','err'); return; }
+  var spec=specs[0], n=spec.pins.length;
+  var lost=P().wires.filter(function(w){ return (w.a.c===c.id && w.a.p>=n) || (w.b.c===c.id && w.b.p>=n); });
+  if(lost.length && !confirm(t.name+' has '+n+' pin'+(n===1?'':'s')+', so '+lost.length+' wire'+(lost.length===1?'':'s')+' on the extra pins will be deleted. Change it anyway?')) return;
+  pushUndo();
+  var oldSig=c.pins.map(function(p){ return p.signal; }), autoName=/\s\d+$/.test(c.name);
+  setPinCount(c,n);
+  c.desig=spec.desig||'num'; c.partPn=spec.partPn||'';
+  spec.pins.forEach(function(p,i){
+    var pin=c.pins[i]; if(!pin) return;
+    pin.signal=p.s||'';
+    ['wc','wg','wa'].forEach(function(k){ if(p[k]) pin[k]=p[k]; else delete pin[k]; });
+    if(p.l) pin.label=p.l; else delete pin.label;
+  });
+  c.notes=spec.notes||c.notes||'';
+  var keep={}; P().wires.forEach(function(w){ keep[w.id]=1; });
+  P().wires.forEach(function(w){   // a wire that carried the old pin's signal now carries the new one
+    [w.a,w.b].forEach(function(e){ if(e.c===c.id && w.signal && w.signal===oldSig[e.p] && c.pins[e.p]) w.signal=c.pins[e.p].signal||w.signal; });
+  });
+  groupsArr().forEach(function(g){ g.wires=g.wires.filter(function(id){ return keep[id]; }); });
+  P().groups=groupsArr().filter(function(g){ return g.wires.length>0; });
+  if(autoName) c.name=nextName(spec.name);
+  S.sel={kind:'comp',id:c.id}; S.libReplace=null; closeModal(); commit();
+  toast('Changed to '+t.name+(lost.length?'. Removed '+lost.length+' wire'+(lost.length===1?'':'s')+' on the extra pins.':'. Wires on matching pins were kept.')+(t.verify?' Check the pinout against your part.':''),'ok');
+}
+
 function addTemplate(id){
   var t=tplById(id); if(!t) return;
   pushUndo();
@@ -3446,7 +3483,7 @@ function saveCustomSensor(){
 S.libCat='all'; S.libQuery=''; S.libSel=null;
 function openLibrary(){
   $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal wide" style="width:960px">'+
-    '<div class="mh"><div class="modal-title">Component library</div><span class="muted">Pick a part to drop it in with its pins already named.</span><div class="spacer"></div><button class="btn btn-sm" onclick="openCustomSensor()">Add custom sensor</button> <button class="btn btn-sm" onclick="openPastePinout(null)">Paste or read a pinout</button></div>'+
+    '<div class="mh"><div class="modal-title">Component library</div><span class="muted">'+(S.libReplace&&comp(S.libReplace)?'Changing '+esc(comp(S.libReplace).name)+'. Pick what it should become. Its place and wires are kept.':'Pick a part to drop it in with its pins already named.')+'</span><div class="spacer"></div><button class="btn btn-sm" onclick="openCustomSensor()">Add custom sensor</button> <button class="btn btn-sm" onclick="openPastePinout(null)">Paste or read a pinout</button></div>'+
     '<div class="mb"><div class="search-wrap" style="max-width:none"><span class="search-icon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg></span><input id="libQ" placeholder="Search, e.g. coil, wideband, relay, MaxxECU" value="'+esc(S.libQuery)+'" oninput="S.libQuery=this.value;renderLibList()"></div>'+
     '<div class="tabs-row" id="libCats" style="margin:12px 0"></div>'+
     '<div class="lib-grid"><div class="tbl-wrap cat-scroll" id="libList"></div><div id="libPrev" class="lib-prev"></div></div></div>'+
@@ -3475,7 +3512,7 @@ function renderLibList(){
   }
   $('libList').innerHTML='<table><thead><tr><th>Component</th><th>Group</th><th>Pins</th></tr></thead><tbody>'+list.map(function(t){
     var pins=t.comps.reduce(function(a,c){return a+c.pins.length;},0);
-    return '<tr class="'+(S.libSel===t.id?'lib-on':'')+'" style="cursor:pointer" onclick="S.libSel=\''+t.id+'\';renderLibList()" ondblclick="addTemplate(\''+t.id+'\')"><td class="main-col">'+esc(t.name)+(t.custom?' <span class="pill pill-teal">yours</span>':'')+'</td><td>'+esc(t.cat)+'</td><td class="mono">'+pins+'</td></tr>';
+    return '<tr class="'+(S.libSel===t.id?'lib-on':'')+'" style="cursor:pointer" onclick="S.libSel=\''+t.id+'\';renderLibList()" ondblclick="libPick(\''+t.id+'\')"><td class="main-col">'+esc(t.name)+(t.custom?' <span class="pill pill-teal">yours</span>':'')+'</td><td>'+esc(t.cat)+'</td><td class="mono">'+pins+'</td></tr>';
   }).join('')+'</tbody></table>';
   renderLibPreview();
 }
@@ -3493,7 +3530,7 @@ function renderLibPreview(){
     h+='</tbody></table></div>';
     if(part && part.mfr==='Generic') h+='<div class="note" style="margin:-4px 0 8px">Uses a placeholder housing. Assign your real part number after adding.</div>';
   });
-  h+='<div class="acts" style="margin-top:10px"><button class="btn btn-primary" onclick="addTemplate(\''+t.id+'\')">Add to harness</button>'+(t.custom?'<button class="btn btn-danger" onclick="deleteTemplate(\''+t.id+'\')">Delete template</button>':'')+'</div>';
+  h+='<div class="acts" style="margin-top:10px"><button class="btn btn-primary" onclick="libPick(\''+t.id+'\')">'+(S.libReplace?'Change to this':'Add to harness')+'</button>'+(t.custom?'<button class="btn btn-danger" onclick="deleteTemplate(\''+t.id+'\')">Delete template</button>':'')+'</div>';
   $('libPrev').innerHTML=h;
 }
 function deleteTemplate(id){
@@ -3897,6 +3934,7 @@ function compMenuItems(c,pin){
   var items=[], id=c.id;
   if(pin!=null){ items.push(ctxItem('Trace '+pinRef(c,pin)+' circuit',ICON2.trace,'S.hiNet=netOfPin(\''+id+'\','+pin+');S.sel={kind:\'comp\',id:\''+id+'\'};render()')); items.push('-'); }
   items.push(ctxItem('Edit component...',ICON2.part,'openCompEditor(\''+id+'\')'));
+  if(c.type==='connector') items.push(ctxItem('Change to another component...',ICON2.paste,'startReplace(\''+id+'\')'));
   items.push(ctxItem(c.partPn?'Change part...':'Choose part...',ICON2.part,'fixChoosePart(\''+id+'\')'));
   if(c.type==='connector'){
     items.push(ctxItem('Paste or read pinout...',ICON2.paste,'openPastePinout(\''+id+'\')'));
