@@ -1840,7 +1840,8 @@ function addCover(sid,kind){
   if(!pn){ toast('No '+COV_KINDS[kind].toLowerCase()+' in the catalog yet. Add one with Add custom part, or open an existing part with Edit and set its Kind to '+COV_KINDS[kind]+'.','err'); return; }
   pushUndo();
   var cv=ensureCovers(s), first=!cv.length, L=num(s.len,0);
-  var ln=Math.max(5,Math.min(40,L||40));
+  var ln=Math.max(5,Math.min(40,L||40)), bothParts=(s.a.indexOf('c:')===0 && s.b.indexOf('c:')===0), g0=Math.min(25,Math.floor(L/4));
+  if(first && kind==='shrink' && bothParts && L>=60){ cv.push({id:uid('v'),pn:pn,anchor:'span',off:g0,endGap:g0,len:0,color:'',note:''}); commit(); toast('Added '+pn+' between the two parts with '+g0+' mm of bare wire at each end. Change the bare wire in the Coverings panel and the length follows.','ok'); return; }
   cv.push(first?{id:uid('v'),pn:pn,anchor:'whole',off:0,len:0,color:'',note:''}:{id:uid('v'),pn:pn,anchor:'span',off:0,endGap:Math.max(0,L-ln),len:ln,color:'',note:''});
   commit();
   toast('Added '+pn+(first?' over the whole bundle.':' at the first end. Change where it sits in the Coverings panel.'),'ok');
@@ -1867,6 +1868,7 @@ function setCoverSpan(sid,cid,f,v){
   if(f==='gapA'){ ga=Math.min(val,L); gb=Math.min(gb,Math.max(0,L-ga)); }
   else if(f==='gapB'){ gb=Math.min(val,L); ga=Math.min(ga,Math.max(0,L-gb)); }
   else if(f==='len'){ gb=Math.max(0,L-ga-val); }
+  else if(f==='both'){ ga=Math.min(val,L/2); gb=ga; }
   cv.anchor='span'; cv.off=Math.round(ga*10)/10; cv.endGap=Math.round(gb*10)/10;
   commit();
 }
@@ -1908,9 +1910,10 @@ function covRowHTML(s,cv,dia){
   if(cv.anchor==='span'){
     function sp(f,val){ return 'setCoverSpan(\''+sid+'\',\''+cid+'\',\''+f+'\',this.value)'; }
     h+='<div class="cr-3"><div><label title="Bare wire next to '+nA+'">Bare at '+nA+'</label><input class="inp mono" type="number" min="0" step="1" value="'+Math.round(r[0]*10)/10+'" onchange="'+sp('gapA')+'"></div>'+
-       '<div><label>'+esc(COV_KINDS[kind].split(' ')[0])+' length</label><input class="inp mono" type="number" min="0" step="1" value="'+Math.round(ln*10)/10+'" onchange="'+sp('len')+'"></div>'+
+       '<div><label title="Bundle length minus the bare wire at both ends">'+esc(COV_KINDS[kind].split(' ')[0])+' needed</label><input class="inp mono" readonly value="'+Math.round(ln*10)/10+'" style="background:var(--bg3);font-weight:700"></div>'+
        '<div><label title="Bare wire next to '+nB+'">Bare at '+nB+'</label><input class="inp mono" type="number" min="0" step="1" value="'+Math.round(Math.max(0,Lb-r[1])*10)/10+'" onchange="'+sp('gapB')+'"></div></div>'+
-       '<div class="cr-i" style="margin:-2px 0 6px">All in mm, measured along the bundle. The bundle is '+Math.round(Lb)+' mm.</div>';
+       '<div class="cr-g" style="margin-top:6px"><label>Both ends</label><div class="row2"><input class="inp mono" type="number" min="0" step="1" placeholder="same" onchange="'+sp('both')+'"><span class="muted">mm bare at each end</span></div></div>'+
+       '<div class="cr-i" style="margin:-2px 0 6px">All in mm along the bundle: '+Math.round(Lb)+' bundle - '+Math.round(r[0]*10)/10+' - '+Math.round(Math.max(0,Lb-r[1])*10)/10+' bare = '+Math.round(ln*10)/10+' of covering.</div>';
   } else if(!whole){
     h+='<div class="cr-g"><label>Starts</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+num(cv.off,0)+'" onchange="'+fn('off','this.value')+'"><span class="muted">mm from end '+(cv.anchor==='b'?'B':'A')+'</span></div></div>'+
        '<div class="cr-g"><label>Length</label><div class="row2"><input class="inp mono" type="number" min="1" step="5" value="'+num(cv.len,0)+'" onchange="'+fn('len','this.value')+'"><span class="muted">mm</span></div></div>';
