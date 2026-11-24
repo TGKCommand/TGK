@@ -299,6 +299,28 @@ tbody tr:hover td{background:rgba(13,148,136,.05)}
   .sidebar-footer .sync-pill{background:var(--bg3)!important;background-image:none!important;box-shadow:none!important}
 }
 
+.pf-photo{display:flex;gap:12px;align-items:flex-start}
+.pf-prev{width:110px;height:110px;flex:none;background:#fff;box-shadow:0 0 0 1px var(--border);border-radius:var(--r);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pf-ctl{flex:1;min-width:0}
+@media (max-width:560px){.pf-photo{flex-direction:column}.form-row.cols-2{grid-template-columns:1fr}}
+.covleg{position:absolute;left:14px;bottom:14px;z-index:2;background:rgba(255,255,255,.94);border-radius:var(--r-md);box-shadow:0 1px 2px rgba(14,20,24,.06),0 0 0 1px var(--border);padding:8px 10px;max-width:min(300px,60vw);pointer-events:none}
+.covleg .cl-t{font-size:var(--t-xs);font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+.form-input[readonly],select.form-input:disabled{background:var(--bg3);color:var(--text2);cursor:not-allowed}
+.covleg.tr{left:auto;right:14px;top:14px;bottom:auto}
+.cl-r{display:flex;align-items:center;gap:8px;padding:2px 0}
+.cl-n{display:flex;flex-direction:column;min-width:0;font-size:var(--t-sm);line-height:1.25}
+.cl-n .muted{font-size:var(--t-xs)}
+.cl-q{margin-left:auto;font-size:var(--t-sm);color:var(--text2);padding-left:8px;white-space:nowrap}
+.covrow{border:1px solid var(--border);border-radius:var(--r-md);padding:8px 9px;margin-bottom:8px;background:var(--bg2)}
+.cr-h{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.cr-h .sel{flex:1;min-width:0}
+.cr-g{display:grid;grid-template-columns:56px 1fr;gap:6px;align-items:center;margin-bottom:6px}
+.cr-g label{font-size:var(--t-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+.cr-i{font-size:var(--t-xs);color:var(--text3);line-height:1.45}
+.cr-i.warn{color:var(--orange)}
+.tbar.wrap{flex-wrap:wrap;max-width:calc(100% - 28px)}
+svg.cv.isoc{cursor:grab;touch-action:none}
+#print svg{max-width:100%;height:auto}
 </style>
 <style>
 /* ================================================================
@@ -688,7 +710,7 @@ svg.cv{display:block;width:100%;height:100%;user-select:none;-webkit-user-select
 <script>
 
 // ===== TGK Harness Builder =====
-var HB_VERSION = '2.8.0';
+var HB_VERSION = '2.9.0';
 
 // ---------- utils
 function uid(p){ return (p||'x') + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
@@ -780,8 +802,24 @@ function settings(){ var p=P(); if(!p.settings) p.settings={}; var s=p.settings;
   if(s.gauge==null) s.gauge='18'; if(!s.wtype) s.wtype=WIRE_TYPES[0]; if(s.extra==null) s.extra=0;
   if(!s.units) s.units='mm'; if(s.waste==null) s.waste=10; if(s.mmPerPx==null) s.mmPerPx=2; return s; }
 
-function allParts(){ return LIB_BASE.concat(S.lib); }
-function partByPn(pn){ if(!pn) return null; var a=allParts(); for(var i=0;i<a.length;i++) if(a[i].pn===pn) return a[i]; return null; }
+// stock parts (LIB_BASE) plus the team's parts from the database. A database part with a stock part number
+// replaces the stock details (an edited stock part); Reset to original deletes that row.
+var _apC=null,_apRef=null,_apLen=-1,_apBase=-1,_apStamp=0,_apSeen=-1,_apMap=null;
+function libTouch(){ _apStamp++; }
+function allParts(){
+  if(_apC && _apRef===S.lib && _apLen===S.lib.length && _apBase===LIB_BASE.length && _apSeen===_apStamp) return _apC;
+  var ov={}, seen={}, out=[];
+  S.lib.forEach(function(p){ ov[p.pn]=p; });
+  LIB_BASE.forEach(function(b){ seen[b.pn]=1; if(ov[b.pn]){ var m=Object.assign({},b,ov[b.pn]); m.base=true; m.edited=true; out.push(m); } else out.push(b); });
+  S.lib.forEach(function(p){ if(!seen[p.pn]) out.push(p); });
+  _apC=out; _apRef=S.lib; _apLen=S.lib.length; _apBase=LIB_BASE.length; _apSeen=_apStamp; _apMap=null;
+  return out;
+}
+function partByPn(pn){
+  if(!pn) return null; allParts();
+  if(!_apMap){ _apMap={}; _apC.forEach(function(p){ if(!_apMap[p.pn]) _apMap[p.pn]=p; }); }
+  return _apMap[pn]||null;
+}
 
 // ---------- model lookups
 function comp(id){ var c=P().comps; for(var i=0;i<c.length;i++) if(c[i].id===id) return c[i]; return null; }
@@ -887,6 +925,7 @@ function fmtLen(mm,forceUnit){
   if(mm==null || !isFinite(mm)) return '--';
   var u=forceUnit||settings().units;
   if(u==='in') return (mm/25.4).toFixed(1)+' in';
+  if(u==='cm') return (mm/10).toFixed(1)+' cm';
   return Math.round(mm)+' mm';
 }
 function fmtTotal(mm){ var u=settings().units; if(u==='in') return (mm/304.8).toFixed(1)+' ft'; return (mm/1000).toFixed(2)+' m'; }
@@ -931,7 +970,7 @@ var ICON = {
   splice:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8h4M11 8h4" stroke-linecap="round"/><circle cx="8" cy="8" r="2.5"/></svg>',
   bulk:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="5" height="10" rx="1.5"/><rect x="9" y="3" width="5" height="10" rx="1.5"/></svg>'
 };
-var TABS = [['schematic','Schematic'],['layout','Layout'],['wires','Wire list'],['bom','BOM'],['checks','Checks'],['build','Build']];
+var TABS = [['schematic','Schematic'],['layout','Layout'],['iso','3D view'],['wires','Wire list'],['bom','BOM'],['checks','Checks'],['build','Build']];
 
 function render(){
   if(!S.cur && S.view!=='browse') S.view='browse';
@@ -986,16 +1025,18 @@ function setView(v){ S.view=v; S.segStart=null; render(); }
 
 function renderView(){
   var el=$('view');
-  el.className='view'+((S.view==='schematic'||S.view==='layout')?'':' doc');
+  el.className='view'+((S.view==='schematic'||S.view==='layout'||S.view==='iso')?'':' doc');
   if(S.view==='browse'){ el.innerHTML=browseHTML(); return; }
   var bn=bannerHTML();
   if(S.view==='schematic') el.innerHTML=schematicHTML();
   else if(S.view==='layout') el.innerHTML=layoutHTML();
+  else if(S.view==='iso') el.innerHTML=isoHTML();
   else if(S.view==='wires') el.innerHTML=wiresHTML();
   else if(S.view==='bom') el.innerHTML=bomHTML();
   else if(S.view==='build') el.innerHTML=buildHTML();
   else el.innerHTML=checksHTML();
   if(bn){ var d=document.createElement('div'); d.className='banners'; d.innerHTML=bn; el.insertBefore(d,el.firstChild); }
+  if(S.view==='iso') isoDraw();
 }
 // re-render only the svg contents while dragging
 function renderCanvasOnly(){
@@ -1150,12 +1191,13 @@ function layoutHTML(){
     '<button class="btn btn-sm btn-teal" onclick="autoBundles()" title="Connect every wired part with bundles so each wire has a route">Draw bundles for me</button>'+
     '<div class="sepv"></div><button class="btn btn-sm" onclick="fitView()">Fit</button>'+
     '<button class="btn btn-sm'+(S.showTables?' on':'')+'" onclick="S.showTables=!S.showTables;renderView()">Pin tables</button>'+
-    '<button class="btn btn-sm'+(S.showNet?' on':'')+'" onclick="S.showNet=!S.showNet;renderView()" title="Click a row in a pin table to trace that circuit">Trace signal</button></div>';
+    '<button class="btn btn-sm'+(S.showNet?' on':'')+'" onclick="S.showNet=!S.showNet;renderView()" title="Click a row in a pin table to trace that circuit">Trace signal</button>'+
+    '<button class="btn btn-sm'+(S.showCov?' on':'')+'" onclick="S.showCov=!S.showCov;renderView()" title="Show heat shrink and sleeving on the bundles">Coverings</button></div>';
   var hint='';
   if(t==='segment') hint='<div class="hint">'+(S.segStart?'Click the next connector or branch point. Click empty space to drop a branch point. Esc to finish.':'Click a connector, terminal, or branch point to start a bundle')+'</div>';
   if(t==='branch') hint='<div class="hint">Click empty space to add a branch point, or click a bundle to split it</div>';
   var empty = p.comps.length ? '' : '<div class="cv-empty"><div class="panel"><h3>Nothing to lay out yet</h3><p>Build the schematic first. Every component shows up here so you can connect them with bundles and set lengths.</p></div></div>';
-  return svgShell('lay',layWorld(),'tool-'+t)+tb+hint+empty;
+  return svgShell('lay',layWorld(),'tool-'+t)+tb+hint+empty+(S.showCov?covLegendHTML():'');
 }
 function setLayTool(t){ S.layTool=t; S.segStart=null; renderView(); }
 
@@ -1336,6 +1378,7 @@ document.addEventListener('keydown',function(ev){
   if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='d' && S.sel && S.sel.kind==='comp'){ ev.preventDefault(); duplicateComp(S.sel.id); return; }
   if(S.view==='layout'){ var m={v:'select',s:'segment',b:'branch'}[ev.key.toLowerCase()]; if(m) setLayTool(m); }
   if(ev.key==='f' && (S.view==='layout'||S.view==='schematic')) fitView();
+  if(ev.key==='f' && S.view==='iso') isoFit();
 });
 
 // ===== model operations =====
@@ -1473,7 +1516,7 @@ function assignPart(pn){
   var sl=S.sel; if(!sl){ toast('Select a component or bundle first.'); return; }
   pushUndo();
   if(sl.kind==='group'){ var gp=groupById(sl.id); if(!gp||gp.kind!=='cable'||part.type!=='cable'){ toast('Pick a cable part for a cable.'); S.undo.pop(); return; } gp.partPn=pn; if(part.shield) gp.shield=true; }
-  else if(sl.kind==='seg'){ if(part.type!=='covering'){ toast('Bundles take coverings only.'); S.undo.pop(); return; } seg(sl.id).covering=pn; }
+  else if(sl.kind==='seg'){ if(part.type!=='covering'){ toast('Bundles take coverings only.'); S.undo.pop(); return; } var ss=seg(sl.id), cvs=ensureCovers(ss), tgt=S.coverTarget?cvs.filter(function(x){ return x.id===S.coverTarget; })[0]:null; if(tgt) tgt.pn=pn; else cvs.push({id:uid('v'),pn:pn,anchor:cvs.length?'a':'whole',off:0,len:Math.max(5,Math.min(40,num(ss.len,40))),color:'',note:''}); }
   else if(sl.kind==='comp'){
     var c=comp(sl.id);
     if(part.type!==c.type){ toast('That part is a '+part.type+'; the selected item is a '+c.type+'.','err'); S.undo.pop(); return; }
@@ -1524,7 +1567,7 @@ function inspProject(){
     '<div class="f"><label>Wire type</label><select class="sel" onchange="setSetting(\'wtype\',this.value)">'+WIRE_TYPES.map(function(g){return opt(g,g,s.wtype);}).join('')+'</select></div>'+
     '<div class="f"><label>Extra per end</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+s.extra+'" onchange="setSetting(\'extra\',num(this.value,0))"><span class="muted" style="align-self:center">mm</span></div></div>'+
     '<div class="f"><label>Wire waste</label><div class="row2"><input class="inp mono" type="number" min="0" step="1" value="'+s.waste+'" onchange="setSetting(\'waste\',num(this.value,0))"><span class="muted" style="align-self:center">% on BOM</span></div></div>'+
-    '<div class="f"><label>Show lengths in</label><select class="sel" onchange="setSetting(\'units\',this.value)">'+opt('mm','Millimeters',s.units)+opt('in','Inches',s.units)+'</select></div>'+
+    '<div class="f"><label>Show lengths in</label><select class="sel" onchange="setSetting(\'units\',this.value)">'+opt('mm','Millimeters',s.units)+opt('cm','Centimeters',s.units)+opt('in','Inches',s.units)+'</select></div>'+
     '<div class="f"><label>Drawing scale</label><div class="row2"><input class="inp mono" type="number" min="0.1" step="0.5" value="'+s.mmPerPx+'" onchange="setSetting(\'mmPerPx\',num(this.value,2))"><span class="muted" style="align-self:center">mm per px</span></div></div>'+
     '<div class="f"><label>System voltage</label><div class="row2"><input class="inp mono" type="number" min="1" step="0.1" value="'+eset().sysV+'" onchange="setSetting(\'sysV\',num(this.value,12))"><span class="muted">V</span></div></div>'+
     '<div class="f"><label>Max drop</label><div class="row2"><input class="inp mono" type="number" min="0.5" step="0.5" value="'+eset().maxDrop+'" onchange="setSetting(\'maxDrop\',num(this.value,3))"><span class="muted">% per wire</span></div></div>'+
@@ -1537,6 +1580,7 @@ function inspComp(c){
   var part=partByPn(c.partPn), typeLabel={connector:'Connector',terminal:'Terminal',splice:'Splice'}[c.type];
   var h='<div class="ih"><div class="k">'+typeLabel+'</div><h2>'+esc(c.name)+'</h2></div><div class="is">'+
     '<div class="f"><label>Name</label><input class="inp" value="'+esc(c.name)+'" onchange="setCompField(\''+c.id+'\',\'name\',this.value)"></div>';
+  h+=heightField('comp',c.id,c.lz);
   if(c.type==='terminal') h+='<div class="f"><label>Kind</label><select class="sel" onchange="setCompField(\''+c.id+'\',\'kind\',this.value)">'+Object.keys(TERM_KINDS).map(function(k){return opt(k,TERM_KINDS[k],c.kind);}).join('')+'</select></div>';
   if(c.type==='connector'){
     h+='<div class="f"><label>Cavities</label><input class="inp mono" type="number" min="1" max="64" value="'+c.pins.length+'" onchange="setCompField(\''+c.id+'\',\'pins\',this.value)"></div>'+
@@ -1546,7 +1590,7 @@ function inspComp(c){
       '<div class="f"><label>Mates with</label><select class="sel" onchange="setCompField(\''+c.id+'\',\'mate\',this.value)">'+opt('','Nothing (end connector)',c.mate||'')+
       P().comps.filter(function(x){return x.type==='connector'&&x.id!==c.id;}).map(function(x){return opt(x.id,x.name,c.mate||'');}).join('')+'</select></div>';
   }
-  h+='</div><div class="is"><div class="is-t"><span>Part</span><button class="btn btn-sm btn-teal" onclick="openCatalog(\''+c.type+'\')">'+(c.partPn?'Change':'Choose part')+'</button></div>';
+  h+='</div><div class="is"><div class="is-t"><span>Part</span><span class="acts">'+(part?'<button class="btn btn-sm" onclick="openPartForm('+jq(part.pn)+',\'\')">Edit part</button>':'')+'<button class="btn btn-sm btn-teal" onclick="openCatalog(\''+c.type+'\')">'+(c.partPn?'Change':'Choose part')+'</button></span></div>';
   if(part) h+='<div class="dtiles" style="margin-bottom:8px"><div class="ctile img">'+partImgHTML(part,70)+'</div>'+(c.type==='connector'?'<div class="ctile face">'+compFaceSVG(c,activeNet(),68)+'</div>':'')+'</div>';
   if(part) h+='<div class="partcard"><div class="ppn">'+esc(part.pn)+'</div><div class="d">'+esc(part.mfr)+'. '+esc(part.desc)+'</div>'+(part.lock?'<div class="d" style="margin-top:4px">Lock '+esc(part.lock)+(part.plug?', seal plug '+esc(part.plug):'')+'</div>':'')+'</div>';
   else if(c.partPn) h+='<div class="partcard"><div class="ppn">'+esc(c.partPn)+'</div><div class="d">Not in the catalog</div></div>';
@@ -1598,16 +1642,14 @@ function inspSeg(s){
   var covs=allParts().filter(function(p){return p.type==='covering';});
   return '<div class="ih"><div class="k">Bundle</div><h2>'+esc(a)+' to '+esc(b)+'</h2></div><div class="is">'+
     '<div class="f"><label>Length</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+num(s.len,0)+'" onchange="setSegField(\''+s.id+'\',\'len\',this.value)"><span class="muted" style="align-self:center">mm</span></div></div>'+
-    '<div class="f"><label>Covering</label><select class="sel" onchange="setSegField(\''+s.id+'\',\'covering\',this.value)">'+opt('','None',s.covering)+covs.map(function(p){return opt(p.pn,p.pn,s.covering);}).join('')+'</select></div>'+
     '<div class="f"><label>Label</label><input class="inp" value="'+esc(s.label||'')+'" placeholder="e.g. To ECU, Firewall pass-through" onchange="setSegLabel(\''+s.id+'\',this.value)"></div>'+
-    (s.covering?'<div class="f"><label>BOM</label><label class="checkbox-row" style="margin:0;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" '+(s.noBom?'':'checked')+' onchange="toggleNoBom(\'seg\',\''+s.id+'\')"> Buy this covering</label></div>':'')+
     (s.est?'<div class="est-note">Estimated from the drawing. Measure on the car and type the real length.</div>':'')+
-    '<p class="muted" style="margin:0">'+through.length+' wire'+(through.length===1?'':'s')+' run through here. Estimated bundle diameter '+(through.length?dia.toFixed(1)+' mm':'--')+'.</p></div>'+
+    '<p class="muted" style="margin:0">'+through.length+' wire'+(through.length===1?'':'s')+' run through here. Estimated bundle diameter '+(through.length?dia.toFixed(1)+' mm':'--')+'.</p></div>'+ covEditorHTML(s,through.length?dia:0)+
     '<div class="is"><div class="acts"><button class="btn btn-sm btn-teal" onclick="S.placeAt=null;addInlineAt(\''+s.id+'\')" title="Split this bundle with a mated connector pair and pass its wires through">Add inline connectors</button><button class="btn btn-sm" onclick="var s=seg(\''+s.id+'\'),a=nodePos(s.a),b=nodePos(s.b);splitSeg(s.id,{x:(a.x+b.x)/2,y:(a.y+b.y)/2})">Split in half</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete bundle</button></div></div>';
 }
 function inspNode(n){
   var k='n:'+n.id, c=P().segs.filter(function(s){return s.a===k||s.b===k;}).length;
-  return '<div class="ih"><div class="k">Branch point</div><h2>Breakout</h2></div><div class="is"><p class="muted" style="margin:0 0 10px">'+c+' bundle'+(c===1?'':'s')+' meet here. Deleting it also deletes those bundles.</p>'+
+  return '<div class="ih"><div class="k">Branch point</div><h2>Breakout</h2></div><div class="is">'+heightField('node',n.id,n.z)+'<p class="muted" style="margin:0 0 10px">'+c+' bundle'+(c===1?'':'s')+' meet here. Deleting it also deletes those bundles.</p>'+
     '<div class="acts"><button class="btn btn-sm" onclick="S.layTool=\'segment\';S.segStart=\'n:'+n.id+'\';render()">Draw a bundle from here</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete branch point</button></div></div>';
 }
 
@@ -1649,7 +1691,7 @@ function wiresHTML(){
 // ===== BOM =====
 function computeBOM(){
   var p=P(), rows={}, order=['Connectors','Contacts','Hardware','Terminals','Splices','Wire','Cable','Covering'];
-  function add(cat,pn,desc,qty,unit){ var k=cat+'|'+pn; if(!rows[k]) rows[k]={cat:cat,pn:pn,desc:desc,qty:0,unit:unit}; rows[k].qty+=qty; }
+  function add(cat,pn,desc,qty,unit,vr){ var k=cat+'|'+pn+(vr?'|'+vr:''); if(!rows[k]) rows[k]={cat:cat,pn:pn,desc:desc,qty:0,unit:unit}; rows[k].qty+=qty; }
   p.comps.forEach(function(c){
     var part=partByPn(c.partPn), cat={connector:'Connectors',terminal:'Terminals',splice:'Splices'}[c.type];
     if(c.noBom) return;
@@ -1674,7 +1716,13 @@ function computeBOM(){
     add('Cable',g.partPn||('(unassigned) cable '+groupLabel(g)),(cp?cp.desc:'Cable')+' for '+groupLabel(g)+' (includes '+settings().waste+'% waste)',L*waste,'len');
   });
   p.wires.forEach(function(w){ if(cableOf(w)) return; var L=wireLen(w); if(L==null) return; add('Wire',(w.wtype||'Wire')+' '+w.gauge+' AWG '+w.color,w.gauge+' AWG, '+w.color+' (includes '+settings().waste+'% waste)',L*waste,'len'); });
-  p.segs.forEach(function(s){ if(!s.covering || s.noBom) return; var part=partByPn(s.covering); add('Covering',s.covering,part?part.desc:'',num(s.len,0)*1.05,'len'); });
+  p.segs.forEach(function(s){
+    if(s.noBom) return;
+    covList(s).forEach(function(cv){
+      var part=partByPn(cv.pn), col=covColorName(part,cv), ln=covLenMm(s,cv); if(ln<=0) return;
+      add('Covering',cv.pn,(part?part.desc:'')+(col!=='black'?', '+col:''),ln*1.05,'len',col);
+    });
+  });
   var out=Object.keys(rows).map(function(k){ return rows[k]; });
   out.sort(function(a,b){ return order.indexOf(a.cat)-order.indexOf(b.cat) || (a.pn>b.pn?1:-1); });
   return out;
@@ -1690,7 +1738,7 @@ function bomHTML(){
     var bp=partByPn(r.pn);
     h+='<tr style="cursor:default"><td style="padding:3px 6px">'+(bp&&bp.type!=='contact'?'<div class="thumb">'+partImgHTML(bp,38)+'</div>':'')+'</td><td class="mono" style="color:'+(r.pn.indexOf('(unassigned)')===0?'var(--yellow)':'inherit')+'">'+esc(r.pn)+'</td><td>'+esc(r.desc)+'</td><td class="num">'+bomQty(r)+'</td></tr>';
   });
-  var ex=P().comps.filter(function(c){return c.noBom;}).map(function(c){return c.name;}).concat(P().segs.filter(function(x){return x.noBom&&x.covering;}).map(function(x){return 'a '+x.covering+' covering';}));
+  var ex=P().comps.filter(function(c){return c.noBom;}).map(function(c){return c.name;}).concat(P().segs.filter(function(x){return x.noBom&&covList(x).length;}).map(function(x){return 'the '+covList(x).map(function(c){return c.pn;}).join(' + ')+' on one bundle';}));
   return h+'</tbody></table></div>'+(ex.length?'<p class="note"><b>Left out on purpose:</b> '+esc(ex.join(', '))+'.</p>':'')+'<p class="note">Contacts are picked from each connector part by wire gauge. Unused cavities get a sealing plug. Verify part numbers against the manufacturer datasheet before ordering.</p></div>';
 }
 
@@ -1701,36 +1749,777 @@ function goCheck(i){
   render();
 }
 
-// ===== catalog =====
-function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; }
-function openCustomPart(){
-  function g(label,inner){ return '<div class="form-group"><label class="form-label">'+label+'</label>'+inner+'</div>'; }
-  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:600px">'+
-    '<div class="modal-title">Add custom part</div>'+
-    '<div class="form-row cols-2">'+g('Part number','<input class="form-input mono" id="cpPn">')+g('Manufacturer','<input class="form-input" id="cpMfr">')+'</div>'+
-    '<div class="form-row cols-2">'+g('Type','<select class="form-input" id="cpType">'+opt('connector','Connector','')+opt('terminal','Terminal','')+opt('splice','Splice','')+opt('covering','Covering','')+'</select>')+g('Cavities','<input class="form-input mono" id="cpCav" type="number" min="1" value="2">')+'</div>'+
-    '<div class="form-row cols-2">'+g('Contact part number','<input class="form-input mono" id="cpCt" placeholder="optional">')+g('Contact AWG range','<input class="form-input mono" id="cpAwg" placeholder="e.g. 16-20">')+'</div>'+
-    '<div class="form-row cols-2">'+g('Lock / TPA','<input class="form-input mono" id="cpLock" placeholder="optional">')+g('Seal plug','<input class="form-input mono" id="cpPlug" placeholder="optional">')+'</div>'+
-    '<div class="form-row cols-2">'+g('Pin names','<select class="form-input" id="cpDes">'+opt('num','1, 2, 3','num')+opt('alpha','A, B, C','')+'</select>')+g('Body color','<input class="form-input" id="cpCol" type="color" value="#9ca3af" style="padding:3px;height:39px">')+'</div>'+
-    '<div class="form-row">'+g('Description','<input class="form-input" id="cpDesc">')+'</div>'+
-    '<div class="form-row">'+g('Photo URL (optional)','<input class="form-input" id="cpImg" placeholder="https://... picture of the part, shown on the layout and in the catalog">')+'</div>'+
-    '<div class="modal-footer"><button class="btn" onclick="openCatalog()">Back</button><button class="btn btn-primary" onclick="saveCustomPart()">Add part</button></div></div></div>';
-  setTimeout(function(){ var e=$('cpPn'); if(e) e.focus(); },30);
+// =====================================================================
+// BUNDLE COVERINGS: heat shrink, braided sleeve, loom, tape
+// A bundle (segment) can carry several coverings. Each one is
+//   {id, pn, anchor, off, len, color, note}
+//   anchor 'whole' = the full length of the bundle
+//   anchor 'a'     = starts off mm from the first end, runs len mm
+//   anchor 'b'     = starts off mm from the second end, runs len mm
+// Older harnesses stored one part number in seg.covering; migrateCovers turns that into a whole-bundle covering.
+// =====================================================================
+var COV_KINDS={shrink:'Heat shrink',braid:'Braided sleeve',conv:'Convoluted tubing',tape:'Harness tape',sleeve:'Other sleeve'};
+var COV_COLORS={black:'#1f2937',gray:'#6b7280',white:'#e5e7eb',clear:'#cbd5e1',red:'#dc2626',orange:'#ea580c',yellow:'#eab308',green:'#16a34a',blue:'#2563eb'};
+S.showCov=true; S.coverTarget=null;
+function covKindOf(part){
+  if(!part) return 'sleeve';
+  if(part.ckind && COV_KINDS[part.ckind]) return part.ckind;
+  var t=((part.pn||'')+' '+(part.desc||'')).toLowerCase();
+  if(/shrink|^dr-/.test(t)) return 'shrink';
+  if(/braid/.test(t)) return 'braid';
+  if(/conv|loom|corrug|split/.test(t)) return 'conv';
+  if(/tape|tesa/.test(t)) return 'tape';
+  return 'sleeve';
+}
+function covColorName(part,cv){ var n=(cv&&cv.color)||(part&&part.ccolor)||'black'; return COV_COLORS[n]?n:'black'; }
+function covHex(part,cv){ return COV_COLORS[covColorName(part,cv)]; }
+// inside diameter in mm: set on the part, or read from stock part numbers that end in an inch size
+function partSizeMm(p){
+  if(!p) return 0; if(p.dia) return +p.dia;
+  var m=/^(DR-25|PET-BRAID|CONV)-(\d+\/\d+|\d+)$/.exec(p.pn||''); if(!m) return 0;
+  var v=m[2].split('/'), inch=v.length>1?(+v[0])/(+v[1]):(+v[0]);
+  return inch*25.4;
+}
+function covList(s){
+  if(s.covers && s.covers.length) return s.covers;
+  if(s.covering) return [{id:'legacy',pn:s.covering,anchor:'whole',off:0,len:0}];
+  return [];
+}
+function covRange(s,cv){
+  var L=Math.max(0,num(s.len,0));
+  if(cv.anchor==='a' || cv.anchor==='b'){
+    var ln=Math.max(0,Math.min(num(cv.len,0),L)), off=Math.max(0,num(cv.off,0));
+    if(cv.anchor==='a'){ var a0=Math.min(off,L); return [a0,Math.min(L,a0+ln)]; }
+    var b1=Math.max(0,L-off); return [Math.max(0,b1-ln),b1];
+  }
+  return [0,L];
+}
+function covLenMm(s,cv){ var r=covRange(s,cv); return Math.max(0,r[1]-r[0]); }
+function migrateCovers(p){
+  (p.segs||[]).forEach(function(s){
+    if(s.covering){ if(!s.covers||!s.covers.length) s.covers=[{id:uid('v'),pn:s.covering,anchor:'whole',off:0,len:0,color:'',note:''}]; s.covering=''; }
+  });
+  return p;
+}
+function ensureCovers(s){ if(s.covering || !s.covers) migrateCovers({segs:[s]}); if(!s.covers) s.covers=[]; return s.covers; }
+// cut a bundle's coverings at l1 mm from its first end; s.len is still the length before the cut
+function splitCovers(s,l1){
+  var A=[], B=[], L=Math.max(0,num(s.len,0));
+  function mk(cv,anchor,off,len){ return Object.assign({},cv,{id:uid('v'),anchor:anchor,off:Math.round(off*10)/10,len:Math.round(len*10)/10}); }
+  covList(s).forEach(function(cv){
+    if(cv.anchor!=='a' && cv.anchor!=='b'){ A.push(mk(cv,'whole',0,0)); B.push(mk(cv,'whole',0,0)); return; }
+    var r=covRange(s,cv), r0=r[0], r1=r[1];
+    if(r1-r0<0.5) return;
+    if(r1<=l1){ A.push(mk(cv,'a',r0,r1-r0)); return; }
+    if(r0>=l1){ B.push(cv.anchor==='b' ? mk(cv,'b',Math.max(0,L-r1),r1-r0) : mk(cv,'a',r0-l1,r1-r0)); return; }
+    A.push(mk(cv,'a',r0,l1-r0)); B.push(mk(cv,'a',0,r1-l1));
+  });
+  return {first:A,second:B};
+}
+function segEndName(s,side){ var k=s[side]; if(k&&k.indexOf('c:')===0){ var c=comp(k.slice(2)); return c?c.name:'?'; } return 'branch point'; }
+function segWiresOf(s){ return P().wires.filter(function(w){ var sp=wirePath(w); return sp && sp.segs.indexOf(s.id)>=0; }); }
+function wiresBundleDia(ws){ return Math.sqrt(ws.reduce(function(t,w){ var d=Math.sqrt((AWG_MM2[w.gauge]||0.5)*4/Math.PI)+0.5; return t+d*d; },0)*1.3); }
+function suggestCoverPn(kind,dia){
+  var list=allParts().filter(function(p){ return p.type==='covering' && covKindOf(p)===kind; });
+  if(!list.length) return '';
+  var sized=list.filter(function(p){ return partSizeMm(p)>0; }).sort(function(a,b){ return partSizeMm(a)-partSizeMm(b); });
+  if(dia>0 && sized.length){ for(var i=0;i<sized.length;i++) if(partSizeMm(sized[i])>=dia*1.15) return sized[i].pn; return sized[sized.length-1].pn; }
+  return list[0].pn;
+}
+function addCover(sid,kind){
+  var s=seg(sid); if(!s) return;
+  var ws=segWiresOf(s), dia=ws.length?wiresBundleDia(ws):0, pn=suggestCoverPn(kind,dia);
+  if(!pn){ toast('There is no '+COV_KINDS[kind].toLowerCase()+' in the catalog yet. Add one with Add custom part.','err'); return; }
+  pushUndo();
+  var cv=ensureCovers(s), first=!cv.length, L=num(s.len,0);
+  cv.push({id:uid('v'),pn:pn,anchor:first?'whole':'a',off:0,len:Math.max(5,Math.min(40,L||40)),color:'',note:''});
+  commit();
+  toast('Added '+pn+(first?' over the whole bundle.':' at the first end. Change where it sits in the Coverings panel.'),'ok');
+}
+function setCover(sid,cid,f,v){
+  var s=seg(sid); if(!s) return;
+  var cv=ensureCovers(s).filter(function(x){ return x.id===cid; })[0]; if(!cv) return;
+  pushUndo();
+  if(f==='off'||f==='len') cv[f]=Math.max(0,num(v,0)); else cv[f]=v;
+  if(f==='anchor' && v!=='whole' && !num(cv.len,0)) cv.len=Math.max(5,Math.min(40,num(s.len,40)));
+  commit();
+}
+function removeCover(sid,cid){
+  var s=seg(sid); if(!s) return; var list=ensureCovers(s); pushUndo();
+  s.covers=list.filter(function(x){ return x.id!==cid; });
+  commit();
+}
+function covPartOptions(cur){
+  var by={}, h='';
+  allParts().filter(function(p){ return p.type==='covering'; }).forEach(function(p){ var k=covKindOf(p); (by[k]=by[k]||[]).push(p); });
+  Object.keys(COV_KINDS).forEach(function(k){
+    if(!by[k]) return;
+    h+='<optgroup label="'+esc(COV_KINDS[k])+'">'+by[k].map(function(p){ return opt(p.pn,p.pn+(partSizeMm(p)?'  ('+partSizeMm(p).toFixed(1)+' mm)':''),cur); }).join('')+'</optgroup>';
+  });
+  if(cur && !partByPn(cur)) h='<option value="'+esc(cur)+'" selected>'+esc(cur)+' (not in catalog)</option>'+h;
+  return h;
+}
+// small picture of one covering: kind and color
+function covSwatch(kind,hex,w,h){
+  w=w||34; h=h||12;
+  var dk=shade(hex,-0.4), lt=shade(hex,0.35), o='<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" style="vertical-align:middle;flex:none">';
+  o+='<rect x="0.5" y="0.5" width="'+(w-1)+'" height="'+(h-1)+'" rx="'+(kind==='shrink'?h*0.38:2)+'" fill="'+hex+'" stroke="'+dk+'"/>';
+  if(kind==='shrink') o+='<rect x="2.5" y="2" width="'+(w-5)+'" height="2" rx="1" fill="'+lt+'" opacity=".6"/>';
+  else if(kind==='braid'){ for(var x=-h;x<w;x+=4) o+='<path d="M'+x+' '+h+' L'+(x+h)+' 0" stroke="'+lt+'" stroke-width="1" opacity=".65"/>'; }
+  else if(kind==='conv'){ for(var y=3;y<w-1;y+=4) o+='<rect x="'+y+'" y="0.5" width="1.6" height="'+(h-1)+'" fill="'+dk+'" opacity=".6"/>'; }
+  else if(kind==='tape'){ for(var z=-h;z<w;z+=8) o+='<path d="M'+z+' '+h+' L'+(z+h)+' 0" stroke="'+lt+'" stroke-width="3" opacity=".45"/>'; }
+  return o+'</svg>';
+}
+function covRowHTML(s,cv,dia){
+  var part=partByPn(cv.pn), kind=covKindOf(part), hex=covHex(part,cv), r=covRange(s,cv), ln=r[1]-r[0], sid=s.id, cid=cv.id;
+  var whole=cv.anchor!=='a' && cv.anchor!=='b', sz=partSizeMm(part);
+  function fn(f,val){ return 'setCover(\''+sid+'\',\''+cid+'\',\''+f+'\','+val+')'; }
+  var h='<div class="covrow"><div class="cr-h">'+covSwatch(kind,hex,36,14)+'<select class="sel" onchange="'+fn('pn','this.value')+'">'+covPartOptions(cv.pn)+'</select>'+
+    '<button class="btn btn-sm btn-danger" title="Remove this covering" onclick="removeCover(\''+sid+'\',\''+cid+'\')">&times;</button></div>';
+  h+='<div class="cr-g"><label>Where</label><select class="sel" onchange="'+fn('anchor','this.value')+'">'+opt('whole','Whole bundle',whole?'whole':cv.anchor)+opt('a','From end A ('+segEndName(s,'a')+')',cv.anchor)+opt('b','From end B ('+segEndName(s,'b')+')',cv.anchor)+'</select></div>';
+  if(!whole){
+    h+='<div class="cr-g"><label>Starts</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+num(cv.off,0)+'" onchange="'+fn('off','this.value')+'"><span class="muted">mm</span></div></div>'+
+       '<div class="cr-g"><label>Length</label><div class="row2"><input class="inp mono" type="number" min="1" step="5" value="'+num(cv.len,0)+'" onchange="'+fn('len','this.value')+'"><span class="muted">mm</span></div></div>';
+  }
+  h+='<div class="cr-g"><label>Color</label><div class="row2"><span class="sw" style="background:'+hex+'"></span><select class="sel" onchange="'+fn('color','this.value')+'">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,covColorName(part,cv)); }).join('')+'</select></div></div>';
+  h+='<div class="cr-g"><label>Note</label><input class="inp" value="'+esc(cv.note||'')+'" placeholder="e.g. strain relief at the connector" onchange="'+fn('note','this.value')+'"></div>';
+  var info=Math.round(ln)+' mm of '+COV_KINDS[kind].toLowerCase();
+  if(sz && dia>0) info+='. Size '+sz.toFixed(1)+' mm, bundle about '+dia.toFixed(1)+' mm.';
+  else if(sz) info+='. Size '+sz.toFixed(1)+' mm.';
+  var tight=(sz && dia>0 && sz<dia);
+  h+='<div class="cr-i'+(tight?' warn':'')+'">'+esc(info)+(tight?' This may be too small for the bundle.':'')+'</div></div>';
+  return h;
+}
+function covEditorHTML(s,dia){
+  var list=covList(s), id=s.id;
+  var h='<div class="is"><div class="is-t"><span>Coverings</span><span class="acts"><button class="btn btn-sm btn-teal" onclick="addCover(\''+id+'\',\'shrink\')">+ Heat shrink</button><button class="btn btn-sm btn-teal" onclick="addCover(\''+id+'\',\'braid\')">+ Sleeving</button></span></div>';
+  if(!list.length){
+    h+='<p class="muted" style="margin:0 0 8px">Bare wires. Add heat shrink, braided sleeve, loom or tape. You can stack several on one bundle, for example braid over the whole run with heat shrink at each end.</p>'+
+       '<div class="acts"><button class="btn btn-sm" onclick="addCover(\''+id+'\',\'conv\')">+ Loom</button><button class="btn btn-sm" onclick="addCover(\''+id+'\',\'tape\')">+ Tape</button></div>';
+  } else {
+    list.forEach(function(cv){ h+=covRowHTML(s,cv,dia); });
+    h+='<div class="acts" style="margin-bottom:6px"><button class="btn btn-sm" onclick="addCover(\''+id+'\',\'conv\')">+ Loom</button><button class="btn btn-sm" onclick="addCover(\''+id+'\',\'tape\')">+ Tape</button><button class="btn btn-sm" onclick="S.coverTarget=null;openCatalog(\'covering\')">Browse catalog</button></div>';
+    h+='<label class="checkbox-row" style="margin:6px 0 0;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" '+(s.noBom?'':'checked')+' onchange="toggleNoBom(\'seg\',\''+id+'\')"> Buy these coverings (include in the BOM)</label>';
+  }
+  return h+'</div>';
+}
+// what is used where, for the legend and the drawings
+function covUsage(){
+  var m={}, order=[];
+  P().segs.forEach(function(s){
+    covList(s).forEach(function(cv){
+      var part=partByPn(cv.pn), col=covColorName(part,cv), k=cv.pn+'|'+col;
+      if(!m[k]){ m[k]={pn:cv.pn,part:part,color:col,kind:covKindOf(part),mm:0,n:0}; order.push(k); }
+      m[k].mm+=covLenMm(s,cv); m[k].n++;
+    });
+  });
+  return order.map(function(k){ return m[k]; });
+}
+function covLegendHTML(extraCls){
+  var u=covUsage(); if(!u.length) return '';
+  return '<div class="covleg'+(extraCls?' '+extraCls:'')+'"><div class="cl-t">Coverings used</div>'+u.map(function(x){
+    var q=x.mm>=1000?fmtTotal(x.mm):fmtLen(x.mm);
+    return '<div class="cl-r">'+covSwatch(x.kind,COV_COLORS[x.color],34,12)+'<div class="cl-n"><span class="mono">'+esc(x.pn)+'</span><span class="muted">'+esc(COV_KINDS[x.kind])+(x.color!=='black'?', '+x.color:'')+', '+x.n+' place'+(x.n===1?'':'s')+'</span></div><span class="mono cl-q">'+q+'</span></div>';
+  }).join('')+'</div>';
+}
+// part of a polyline between two fractions of its length (points may carry z)
+function pdist(a,b){ var dz=(a.z||0)-(b.z||0); return Math.sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+dz*dz); }
+function plerp(a,b,t){ var o={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t}; if(a.z!=null||b.z!=null) o.z=(a.z||0)+((b.z||0)-(a.z||0))*t; return o; }
+function plen(pts){ var L=0; for(var i=1;i<pts.length;i++) L+=pdist(pts[i-1],pts[i]); return L; }
+function subPoly(pts,f0,f1){
+  var tot=plen(pts); if(!tot||pts.length<2) return pts.slice();
+  f0=Math.max(0,Math.min(1,f0)); f1=Math.max(f0,Math.min(1,f1));
+  var d0=f0*tot, d1=f1*tot, out=[], acc=0, started=false;
+  for(var i=1;i<pts.length;i++){
+    var l=pdist(pts[i-1],pts[i]), a0=acc, a1=acc+l;
+    if(!started && d0<=a1){ out.push(plerp(pts[i-1],pts[i],l?(d0-a0)/l:0)); started=true; }
+    if(started){
+      if(d1<=a1){ out.push(plerp(pts[i-1],pts[i],l?(d1-a0)/l:0)); break; }
+      out.push(pts[i]);
+    }
+    acc=a1;
+  }
+  return out;
+}
+function covStrokeW(kind){ return {shrink:12.5,braid:13,conv:15,tape:11,sleeve:12.5}[kind]||12; }
+function covEndMarks(sp,w,dk){
+  if(!sp || sp.length<2) return '';
+  function mark(p,q){
+    var dx=q.x-p.x, dy=q.y-p.y, l=Math.hypot(dx,dy)||1, nx=-dy/l*w*0.58, ny=dx/l*w*0.58;
+    return '<line x1="'+(p.x-nx).toFixed(1)+'" y1="'+(p.y-ny).toFixed(1)+'" x2="'+(p.x+nx).toFixed(1)+'" y2="'+(p.y+ny).toFixed(1)+'" stroke="'+dk+'" stroke-width="2" stroke-linecap="round" style="pointer-events:none"/>';
+  }
+  return mark(sp[0],sp[1])+mark(sp[sp.length-1],sp[sp.length-2]);
+}
+// the coverings drawn on top of a bundle in the 2D layout (inline attributes so the SVG export keeps them)
+function covOverlaySVG(s,pts,d,sel){
+  var L=num(s.len,0), list=covList(s); if(!L || !list.length || !pts) return '';
+  var items=[];
+  list.forEach(function(cv){ var r=covRange(s,cv); if(r[1]-r[0]>0.5) items.push({cv:cv,r:r,part:partByPn(cv.pn)}); });
+  items.sort(function(a,b){ return (b.r[1]-b.r[0])-(a.r[1]-a.r[0]); });
+  var out='', ns=' fill="none" stroke-linejoin="round" style="pointer-events:none"';
+  items.forEach(function(it){
+    var whole=it.r[0]<=0.5 && it.r[1]>=L-0.5, sp=whole?pts:subPoly(pts,it.r[0]/L,it.r[1]/L), dd=whole?d:roundPath(sp,18);
+    if(!dd) return;
+    var kind=covKindOf(it.part), hex=covHex(it.part,it.cv), w=covStrokeW(kind), dk=shade(hex,-0.4), lt=shade(hex,0.35);
+    if(sel) out+='<path d="'+dd+'"'+ns+' stroke="#0d9488" stroke-width="'+(w+5)+'" opacity=".85"/>';
+    out+='<path d="'+dd+'"'+ns+' stroke="'+dk+'" stroke-width="'+(w+1.8)+'"/>';
+    out+='<path d="'+dd+'"'+ns+' stroke="'+hex+'" stroke-width="'+w+'"/>';
+    if(kind==='shrink' || kind==='sleeve') out+='<path d="'+dd+'"'+ns+' stroke="'+lt+'" stroke-width="2.4" opacity=".5" transform="translate(-1.6,-1.8)"/>';
+    else if(kind==='braid') out+='<path d="'+dd+'"'+ns+' stroke="'+lt+'" stroke-width="'+(w-1)+'" stroke-dasharray="1.3 2.7" opacity=".6"/>';
+    else if(kind==='conv') out+='<path d="'+dd+'"'+ns+' stroke="'+dk+'" stroke-width="'+(w-1)+'" stroke-dasharray="1.8 3.2" opacity=".7"/>';
+    else if(kind==='tape') out+='<path d="'+dd+'"'+ns+' stroke="'+lt+'" stroke-width="'+(w-1)+'" stroke-dasharray="4 5" opacity=".45"/>';
+    if(!whole) out+=covEndMarks(sp,w,dk);
+  });
+  return out;
+}
+// one tag per covering next to the bundle length: colored dot, part number, and the length when it is only part of the bundle
+function covTagsSVG(s,vert,mx,my){
+  var out='';
+  covList(s).forEach(function(cv,i){
+    var part=partByPn(cv.pn), hex=covHex(part,cv), r=covRange(s,cv), whole=cv.anchor!=='a' && cv.anchor!=='b';
+    var txt=cv.pn+(whole?'':'  '+Math.round(r[1]-r[0])+' mm'), cw=txt.length*6+24, cx=vert?mx+11:mx-cw/2, cy=(vert?my-7:my+10)+i*17;
+    out+='<g style="pointer-events:none"><rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="7.5"/><circle cx="'+(cx+9)+'" cy="'+(cy+7.5)+'" r="4" fill="'+hex+'" stroke="'+shade(hex,-0.4)+'" stroke-width=".8"/><text class="ltag" x="'+(cx+cw/2+6)+'" y="'+(cy+11)+'" text-anchor="middle">'+esc(txt)+'</text></g>';
+  });
+  return out;
 }
 
-function saveCustomPart(){
-  var pn=$('cpPn').value.trim(); if(!pn){ toast('Enter a part number.','err'); return; }
-  if(partByPn(pn)){ toast(pn+' is already in the catalog.','err'); return; }
-  var awg=$('cpAwg').value.split(/[^0-9]+/).filter(Boolean).map(Number).sort(function(a,b){return a-b;});
-  var p={pn:pn,mfr:$('cpMfr').value.trim()||'Custom',type:$('cpType').value,cav:num($('cpCav').value,1),desc:$('cpDesc').value.trim(),
-    color:$('cpCol').value,lock:$('cpLock').value.trim(),plug:$('cpPlug').value.trim(),desig:$('cpDes').value,series:'Custom',gender:'',img:($('cpImg')&&$('cpImg').value.trim())||''};
-  if($('cpCt').value.trim()) p.contacts=[{pn:$('cpCt').value.trim(),awg:awg.length?[awg[0],awg[awg.length-1]]:null}];
-  if(p.type!=='connector'){ delete p.cav; }
-  dbSavePart(p).then(function(){ S.lib.push(p); S.catQuery=pn; openCatalog(p.type); toast('Added '+pn+' to the shared catalog.','ok'); }).catch(function(e){ logErr('Could not save the part',e); });
+function segCovN(s){ return S.showCov?covList(s).length:0; }
+
+// =====================================================================
+// 3D VIEW: isometric and orbit
+// Built from the Layout. X and Y come from where things sit in Layout (times the drawing scale), Z is a height in mm:
+// comp.lz for connectors, terminals and splices, node.z for branch points. Bundles slope between the heights of their ends.
+// Plain SVG with a painter's-order depth sort, no libraries.
+// =====================================================================
+S.iso={yaw:45,pitch:35.264,k:0,tx:0,ty:0,labels:true,cov:true,strands:true,lens:false,grid:true};
+var ISO_PRESETS={iso:[45,35.264],top:[0,90],front:[0,0],right:[90,0]};
+function vadd(a,b){ return {x:a.x+b.x,y:a.y+b.y,z:a.z+b.z}; }
+function vsub(a,b){ return {x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}; }
+function vmul(a,k){ return {x:a.x*k,y:a.y*k,z:a.z*k}; }
+function vdot(a,b){ return a.x*b.x+a.y*b.y+a.z*b.z; }
+function vcross(a,b){ return {x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x}; }
+function vnorm(a){ var l=Math.sqrt(vdot(a,a))||1; return {x:a.x/l,y:a.y/l,z:a.z/l}; }
+var ISO_LIGHT=vnorm({x:-0.35,y:0.45,z:0.8});
+
+function zOfKey(key){
+  if(!key) return 0;
+  if(key.indexOf('c:')===0){ var c=comp(key.slice(2)); return c?num(c.lz,0):0; }
+  var n=lnode(key.slice(2)); return n?num(n.z,0):0;
+}
+// everything that does not change while orbiting: bundle paths in mm, bundle sizes, the wire colors inside, part orientations
+function isoScene(){
+  var p=P(), mpp=settings().mmPerPx, key=p.id+'|'+_stamp+'|'+mpp+'|'+_apStamp;
+  if(S._isoC && S._isoC.key===key) return S._isoC;
+  var sc={key:key,segs:[],comps:[],flat:true}, thru={};
+  p.wires.forEach(function(w){ var sp=wirePath(w); if(sp) sp.segs.forEach(function(id){ (thru[id]=thru[id]||[]).push(w); }); });
+  p.segs.forEach(function(s){
+    var pts=segPts(s); if(!pts) return;
+    var za=zOfKey(s.a), zb=zOfKey(s.b), tot=polyLen(pts)||1, acc=0, p3=[];
+    for(var i=0;i<pts.length;i++){
+      if(i>0) acc+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+      p3.push({x:pts[i].x*mpp,y:pts[i].y*mpp,z:za+(zb-za)*(acc/tot)});
+    }
+    var ws=thru[s.id]||[], dia=ws.length?Math.max(3,Math.min(40,wiresBundleDia(ws))):5, cols=[], seen={};
+    ws.forEach(function(w){ var c=colBase(w.color); if(!seen[c]){ seen[c]=1; cols.push(c); } });
+    sc.segs.push({s:s,p3:p3,dia:dia,cols:cols.slice(0,6)});
+    if(za||zb) sc.flat=false;
+  });
+  p.comps.forEach(function(c){
+    var O={x:c.lx*mpp,y:c.ly*mpp,z:num(c.lz,0)}, k='c:'+c.id, toward={x:0,y:0,z:0}, nb=0;
+    if(O.z) sc.flat=false;
+    sc.segs.forEach(function(g){
+      var n=g.p3.length; if(n<2) return;
+      if(g.s.a===k){ toward=vadd(toward,vnorm(vsub(g.p3[1],g.p3[0]))); nb++; }
+      else if(g.s.b===k){ toward=vadd(toward,vnorm(vsub(g.p3[n-2],g.p3[n-1]))); nb++; }
+    });
+    var u=(vdot(toward,toward)>0.01)?vnorm(vmul(toward,-1)):{x:1,y:0,z:0};   // out of the end of the bundle
+    if(c.type==='splice' && vdot(toward,toward)>0.01) u=vnorm(toward);
+    var up=(Math.abs(u.z)>0.9)?{x:1,y:0,z:0}:{x:0,y:0,z:1};
+    var w=vnorm(vcross(u,up)), v=vcross(w,u);
+    sc.comps.push({c:c,part:partByPn(c.partPn),O:O,u:u,v:v,w:w});
+  });
+  S._isoC=sc; return sc;
+}
+function isoProjector(v){
+  var th=v.yaw*Math.PI/180, ph=v.pitch*Math.PI/180, c=Math.cos(th), s=Math.sin(th), sp=Math.sin(ph), cp=Math.cos(ph);
+  var pj=function(q){ var xr=q.x*c-q.y*s, yr=q.x*s+q.y*c; return {x:xr*v.k+v.tx, y:(yr*sp-q.z*cp)*v.k+v.ty, d:yr*cp+q.z*sp}; };
+  pj.nv={x:s*cp,y:c*cp,z:sp};   // toward the viewer
+  pj.axis=function(a){ var xr=a.x*c-a.y*s, yr=a.x*s+a.y*c; return {x:xr,y:yr*sp-a.z*cp}; };
+  return pj;
+}
+function isoFitView(vv,W,H){
+  var sc=isoScene(), pts=[];
+  sc.segs.forEach(function(g){ g.p3.forEach(function(q){ pts.push(q); }); });
+  sc.comps.forEach(function(o){ pts.push(o.O); pts.push(vadd(o.O,vmul(o.u,36))); });
+  if(!pts.length){ vv.k=0.5; vv.tx=W/2; vv.ty=H/2; return; }
+  var one=Object.assign({},vv,{k:1,tx:0,ty:0}), pj=isoProjector(one), x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  pts.forEach(function(q){ var r=pj(q); x0=Math.min(x0,r.x); y0=Math.min(y0,r.y); x1=Math.max(x1,r.x); y1=Math.max(y1,r.y); });
+  var padX=90, padT=110, padB=90, bw=Math.max(1,x1-x0), bh=Math.max(1,y1-y0);
+  var k=Math.min((W-padX*2)/bw,(H-padT-padB)/bh); k=Math.max(0.02,Math.min(3,k));
+  vv.k=k; vv.tx=(W-bw*k)/2-x0*k; vv.ty=padT+(H-padT-padB-bh*k)/2-y0*k;
+}
+function isoD(arr){ var d=''; for(var i=0;i<arr.length;i++) d+=(i?'L':'M')+arr[i].x.toFixed(1)+' '+arr[i].y.toFixed(1); return d; }
+function isoStroke(d,col,w,extra){ return '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="'+w.toFixed(2)+'" stroke-linejoin="round"'+(extra||'')+'/>'; }
+
+// one run of a bundle: bare wires, or under one covering
+function isoSegItems(g,pj,v,items,sel,labels,exportMode){
+  var s=g.s, L=Math.max(1,num(s.len,0)), k=v.k, isSel=!!(sel&&sel.kind==='seg'&&sel.id===s.id);
+  var covs=[];
+  if(v.cov) covList(s).forEach(function(cv){ var r=covRange(s,cv); if(r[1]-r[0]>0.5) covs.push({cv:cv,r:r,part:partByPn(cv.pn),len:r[1]-r[0]}); });
+  var cuts=[0,L]; covs.forEach(function(x){ cuts.push(x.r[0],x.r[1]); });
+  cuts=cuts.filter(function(q){ return q>=-1e-6 && q<=L+1e-6; }).sort(function(a,b){ return a-b; });
+  var cu=[]; cuts.forEach(function(q){ if(!cu.length || q-cu[cu.length-1]>0.01) cu.push(q); });
+  var runs=[];
+  for(var i=1;i<cu.length;i++){
+    var m0=cu[i-1], m1=cu[i], mid=(m0+m1)/2, best=null;
+    covs.forEach(function(x){ if(mid>=x.r[0] && mid<=x.r[1] && (!best || x.len<best.len)) best=x; });
+    var id=best?best.cv.id:'';
+    if(runs.length && runs[runs.length-1].id===id) runs[runs.length-1].m1=m1; else runs.push({id:id,m0:m0,m1:m1,c:best});
+  }
+  var wB=Math.max(2.4,g.dia*k);
+  runs.forEach(function(r){
+    var pts3=subPoly(g.p3,r.m0/L,r.m1/L); if(pts3.length<2) return;
+    var P2=pts3.map(pj), dsum=0; P2.forEach(function(q){ dsum+=q.d; });
+    var d=isoD(P2), out='';
+    if(!r.c){
+      if(isSel) out+=isoStroke(d,'#0d9488',wB+5,' opacity=".85"');
+      out+=isoStroke(d,'#7b848d',wB+1.8);
+      out+=isoStroke(d,'#cdd2d8',wB);
+      var n=g.cols.length;
+      if(v.strands && n && wB>=5){
+        var range=wB*0.56, sw=Math.max(1.3,wB*0.9/(n+2));
+        g.cols.forEach(function(cn,ci){ var off=n>1?(ci-(n-1)/2)*(range/(n-1)):0; out+=isoStroke(isoD(offsetPoly(P2,off)),hexOf(cn),sw,' stroke-linecap="round"'); });
+      }
+      out+=isoStroke(d,'#ffffff',Math.max(1,wB*0.16),' opacity=".35" transform="translate('+(-wB*0.2).toFixed(1)+','+(-wB*0.22).toFixed(1)+')"');
+    } else {
+      var part=r.c.part, kind=covKindOf(part), hex=covHex(part,r.c.cv), sz=partSizeMm(part), od;
+      if(kind==='shrink') od=g.dia+1.4; else if(kind==='braid') od=g.dia+2.2; else if(kind==='conv') od=Math.max(g.dia+4,sz?sz+2:0); else if(kind==='tape') od=g.dia+0.9; else od=Math.max(g.dia+1.5,sz?sz+1:0);
+      var wC=Math.max(wB+1.5,od*k), dk=shade(hex,-0.4), lt=shade(hex,0.35);
+      if(isSel) out+=isoStroke(d,'#0d9488',wC+5,' opacity=".85"');
+      out+=isoStroke(d,dk,wC+1.8);
+      out+=isoStroke(d,hex,wC);
+      if(kind==='braid') out+=isoStroke(d,lt,wC-1,' stroke-dasharray="1.3 2.7" opacity=".6"');
+      else if(kind==='conv') out+=isoStroke(d,dk,wC-1,' stroke-dasharray="1.8 3.2" opacity=".7"');
+      else if(kind==='tape') out+=isoStroke(d,lt,wC-1,' stroke-dasharray="4 5" opacity=".45"');
+      else out+=isoStroke(d,lt,Math.max(1.2,wC*0.2),' opacity=".5" transform="translate('+(-wC*0.18).toFixed(1)+','+(-wC*0.2).toFixed(1)+')"');
+      var whole=r.m0<=0.5 && r.m1>=L-0.5;
+      if(!whole) out+=covEndMarks(P2,wC,dk);
+      if(v.labels){
+        var fm=((r.c.r[0]+r.c.r[1])/2)/L, mp=subPoly(g.p3,Math.max(0,fm-0.001),Math.min(1,fm+0.001))[0], whole2=r.c.cv.anchor!=='a'&&r.c.cv.anchor!=='b';
+        if(mp && r.c.first!==false){ r.c.first=false; labels.push({p:pj(mp),txt:r.c.cv.pn+(whole2?'':'  '+Math.round(r.c.len)+' mm'),dot:hex,dy:-wC/2-10}); }
+      }
+    }
+    items.push({d:dsum/P2.length,s:'<g data-ik="seg" data-iid="'+s.id+'" style="cursor:pointer">'+out+'</g>'});
+  });
+  // round joints where bundles meet at a branch point (these can be clicked to set the height)
+  [s.a,s.b].forEach(function(key,i){
+    if(!key || key.indexOf('n:')!==0) return;
+    var q=pj(g.p3[i?g.p3.length-1:0]), nid=key.slice(2), nsel=!!(sel&&sel.kind==='node'&&sel.id===nid);
+    items.push({d:q.d-0.5,s:'<circle data-ik="node" data-iid="'+nid+'" cx="'+q.x.toFixed(1)+'" cy="'+q.y.toFixed(1)+'" r="'+Math.max(wB/2,3.5).toFixed(1)+'" fill="'+(nsel?'#0d9488':'#cdd2d8')+'" stroke="'+(nsel?'#0d9488':'#7b848d')+'" stroke-width="1.2" style="cursor:pointer"/>'});
+  });
+  if(v.lens && num(s.len,0)){ var lp=subPoly(g.p3,0.499,0.501)[0]; if(lp) labels.push({p:pj(lp),txt:(s.est?'~':'')+fmtLen(num(s.len,0)),mono:true,dy:wB/2+10}); }
+}
+
+var ISO_BOX_FACES=null;
+function isoBox(b,pj,nv,items){
+  var hw=b.wd/2, hh=b.ht/2;
+  function pt(a,s,t){ return pj(vadd(b.O,vadd(vmul(b.u,a),vadd(vmul(b.w,s),vmul(b.v,t))))); }
+  var F=[
+    {n:b.u,front:true,c:[[b.u1,-hw,-hh],[b.u1,hw,-hh],[b.u1,hw,hh],[b.u1,-hw,hh]]},
+    {n:vmul(b.u,-1),c:[[b.u0,-hw,-hh],[b.u0,-hw,hh],[b.u0,hw,hh],[b.u0,hw,-hh]]},
+    {n:b.w,c:[[b.u0,hw,-hh],[b.u1,hw,-hh],[b.u1,hw,hh],[b.u0,hw,hh]]},
+    {n:vmul(b.w,-1),c:[[b.u0,-hw,-hh],[b.u0,-hw,hh],[b.u1,-hw,hh],[b.u1,-hw,-hh]]},
+    {n:b.v,c:[[b.u0,-hw,hh],[b.u1,-hw,hh],[b.u1,hw,hh],[b.u0,hw,hh]]},
+    {n:vmul(b.v,-1),c:[[b.u0,-hw,-hh],[b.u0,hw,-hh],[b.u1,hw,-hh],[b.u1,-hw,-hh]]}
+  ];
+  var out='', edge=b.sel?'#0d9488':shade(b.col,-0.5), sw=b.sel?2.2:0.8;
+  F.forEach(function(f){
+    if(vdot(f.n,nv)<=0.001) return;
+    var ps=f.c.map(function(q){ return pt(q[0],q[1],q[2]); });
+    var lum=0.55+0.45*Math.max(0,vdot(f.n,ISO_LIGHT)), col=shade(b.col,(lum-0.82)*1.1);
+    out+='<polygon points="'+ps.map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ')+'" fill="'+col+'" stroke="'+edge+'" stroke-width="'+sw+'" stroke-linejoin="round"/>';
+    if(f.front && b.face) out+=isoFace(b,pt,hw,hh);
+  });
+  var cen=pj(vadd(b.O,vmul(b.u,(b.u0+b.u1)/2)));
+  items.push({d:cen.d,s:'<g data-ik="comp" data-iid="'+b.id+'" style="cursor:pointer">'+out+'</g>'});
+}
+// the mating face of a connector: dark recess and the cavities (gold pins for a receptacle, empty sockets for a plug)
+function isoFace(b,pt,hw,hh){
+  var f=b.face, L=f.L, ins=1.6, u=b.u1+0.05, out='';
+  var q=[pt(u,-(hw-ins),-(hh-ins)),pt(u,(hw-ins),-(hh-ins)),pt(u,(hw-ins),(hh-ins)),pt(u,-(hw-ins),(hh-ins))];
+  out+='<polygon points="'+q.map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ')+'" fill="'+shade(b.col,-0.62)+'"/>';
+  var aw=hw-ins-1.2, ah=hh-ins-1.2, cw=(2*aw)/Math.max(L.cols,1), chh=(2*ah)/Math.max(L.rows,1), rr=Math.max(0.8,Math.min(cw,chh)*0.33);
+  L.pts.forEach(function(c){
+    var bb=-aw+cw*(c.x+0.5), cc=ah-chh*(c.y+0.5), poly=[];
+    for(var a=0;a<10;a++){ var an=a/10*Math.PI*2, p=pt(u+0.05,bb+Math.cos(an)*rr,cc+Math.sin(an)*rr); poly.push(p.x.toFixed(1)+','+p.y.toFixed(1)); }
+    out+='<polygon points="'+poly.join(' ')+'" fill="'+(f.rec?'#d4a24c':'#0b0f14')+'" stroke="'+(f.rec?'#8a6a22':'#374151')+'" stroke-width=".5"/>';
+  });
+  return out;
+}
+function isoCompItems(o,pj,nv,v,items,sel,labels){
+  var c=o.c, part=o.part, isSel=!!(sel&&sel.kind==='comp'&&sel.id===c.id), boxes=[], top=0, hgt=8;
+  if(c.type==='connector'){
+    var n=c.pins.length, rec=isRecept(part,c), L=faceLayout(n,c.desig||(part&&part.desig)||'num',rec);
+    var wd=8+L.cols*6.5, ht=Math.max(10,8+L.rows*6.5), D=26, col=(part&&part.color)||'#9ca3af';
+    boxes.push({u0:-10,u1:0,wd:wd*0.78,ht:ht*0.78,col:'#374151'});
+    boxes.push({u0:0,u1:D,wd:wd,ht:ht,col:col,face:{L:L,rec:rec}});
+    top=D/2; hgt=ht;
+  } else if(c.type==='terminal'){
+    var kd=c.kind||'ring', pn=c.partPn||'', ins=/RED|22-16/.test(pn)?'#dc2626':/BLU|16-14/.test(pn)?'#2563eb':/YEL|12-10/.test(pn)?'#eab308':'#9ca3af';
+    if(kd==='loose' && !c.partPn) boxes.push({u0:0,u1:4,wd:2.5,ht:2.5,col:'#b8862f'});
+    else if(kd==='ferrule') boxes.push({u0:0,u1:12,wd:4.5,ht:4.5,col:'#cfd4da'});
+    else { boxes.push({u0:0,u1:14,wd:5.5,ht:5.5,col:ins}); boxes.push({u0:14,u1:(kd==='ring'?28:24),wd:(kd==='ring'?10:(kd==='spade'?9:5)),ht:1.2,col:'#d4a24c'}); }
+    top=10; hgt=6;
+  } else {
+    boxes.push({u0:-11,u1:11,wd:6.5,ht:6.5,col:'#cbd5e1'},{u0:-11,u1:-8,wd:6.9,ht:6.9,col:'#2563eb'},{u0:8,u1:11,wd:6.9,ht:6.9,col:'#2563eb'});
+    top=0; hgt=7;
+  }
+  boxes.forEach(function(b){ isoBox({O:o.O,u:o.u,v:o.v,w:o.w,u0:b.u0,u1:b.u1,wd:b.wd,ht:b.ht,col:b.col,face:b.face,id:c.id,sel:isSel},pj,nv,items); });
+  if(v.labels){ var a=pj(vadd(o.O,vadd(vmul(o.u,top),vmul(o.v,hgt/2)))); labels.push({p:a,txt:c.name,bold:true,sel:isSel,dy:-14}); }
+}
+// draw everything for one view; returns SVG markup in screen pixels
+function isoBuild(v,W,H,exportMode){
+  var sc=isoScene(), pj=isoProjector(v), nv=pj.nv, items=[], labels=[], under='', k=v.k, sel=exportMode?null:S.sel;
+  if(v.grid){
+    var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    var grow=function(q){ x0=Math.min(x0,q.x); y0=Math.min(y0,q.y); x1=Math.max(x1,q.x); y1=Math.max(y1,q.y); };
+    sc.segs.forEach(function(g){ g.p3.forEach(grow); }); sc.comps.forEach(function(o){ grow(o.O); });
+    if(isFinite(x0)){
+      var span=Math.max(x1-x0,y1-y0,100), step=[50,100,200,250,500,1000,2000,5000].filter(function(st){ return span/st<=14; })[0]||5000;
+      var gx0=Math.floor((x0-step)/step)*step, gx1=Math.ceil((x1+step)/step)*step, gy0=Math.floor((y0-step)/step)*step, gy1=Math.ceil((y1+step)/step)*step, gl='', gx, gy;
+      var c1=pj({x:gx0,y:gy0,z:0}), c2=pj({x:gx1,y:gy0,z:0}), c3=pj({x:gx1,y:gy1,z:0}), c4=pj({x:gx0,y:gy1,z:0});
+      under+='<polygon points="'+[c1,c2,c3,c4].map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ')+'" fill="rgba(255,255,255,.6)" stroke="#bfc6cd" stroke-width="1"/>';
+      for(gx=gx0;gx<=gx1+0.1;gx+=step){ var a=pj({x:gx,y:gy0,z:0}), b=pj({x:gx,y:gy1,z:0}); gl+='M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+'L'+b.x.toFixed(1)+' '+b.y.toFixed(1); }
+      for(gy=gy0;gy<=gy1+0.1;gy+=step){ var a2=pj({x:gx0,y:gy,z:0}), b2=pj({x:gx1,y:gy,z:0}); gl+='M'+a2.x.toFixed(1)+' '+a2.y.toFixed(1)+'L'+b2.x.toFixed(1)+' '+b2.y.toFixed(1); }
+      under+='<path d="'+gl+'" stroke="#d5dae0" stroke-width="1" fill="none"/>';
+      isoBuild.step=step;
+    }
+  }
+  if(!sc.flat) sc.segs.forEach(function(g){
+    var flat=g.p3.map(function(q){ return pj({x:q.x,y:q.y,z:0}); });
+    under+=isoStroke(isoD(flat),'rgba(15,23,42,.10)',Math.max(2.4,g.dia*k*1.1),' stroke-linecap="round"');
+  });
+  sc.segs.forEach(function(g){ isoSegItems(g,pj,v,items,sel,labels,exportMode); });
+  sc.comps.forEach(function(o){ isoCompItems(o,pj,nv,v,items,sel,labels); });
+  items.sort(function(a,b){ return a.d-b.d; });
+  var out=under+items.map(function(i){ return i.s; }).join('');
+  // labels last, nudged apart
+  var placed=[];
+  labels.forEach(function(l){
+    var txt=String(l.txt), w=txt.length*(l.mono?6.2:6.4)+14+(l.dot?12:0), h=16, x=l.p.x, y=l.p.y+(l.dy||-14)-h/2, tries=0;
+    function hit(){ return placed.some(function(r){ return !(x-w/2>r.x+r.w || x+w/2<r.x || y>r.y+r.h || y+h<r.y); }); }
+    while(hit() && tries<8){ y+=(tries%2?-1:1)*Math.ceil((tries+1)/2)*17; tries++; }
+    placed.push({x:x-w/2,y:y,w:w,h:h});
+    out+='<g style="pointer-events:none"><rect x="'+(x-w/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h+'" rx="'+(l.dot?8:3)+'" fill="'+(l.sel?'#0d9488':'rgba(255,255,255,.94)')+'" stroke="'+(l.sel?'#0d9488':'#c7cdd4')+'" stroke-width="1"/>';
+    if(l.dot) out+='<circle cx="'+(x-w/2+9).toFixed(1)+'" cy="'+(y+8).toFixed(1)+'" r="4" fill="'+l.dot+'" stroke="'+shade(l.dot,-0.4)+'" stroke-width=".8"/>';
+    out+='<text x="'+(x+(l.dot?5:0)).toFixed(1)+'" y="'+(y+11.5).toFixed(1)+'" text-anchor="middle" font-size="'+(l.bold?11:10)+'" font-weight="'+(l.bold?700:500)+'"'+(l.mono?' font-family="monospace"':'')+' fill="'+(l.sel?'#fff':'#1f2937')+'">'+esc(txt)+'</text></g>';
+  });
+  // axis marker
+  var gx2=W-62, gy2=H-58, giz='';
+  [['X',{x:1,y:0,z:0},'#dc2626'],['Y',{x:0,y:1,z:0},'#16a34a'],['Z',{x:0,y:0,z:1},'#2563eb']].forEach(function(a){
+    var d=pj.axis(a[1]);
+    giz+='<line x1="'+gx2+'" y1="'+gy2+'" x2="'+(gx2+d.x*32).toFixed(1)+'" y2="'+(gy2+d.y*32).toFixed(1)+'" stroke="'+a[2]+'" stroke-width="2.2" stroke-linecap="round"/><text x="'+(gx2+d.x*43).toFixed(1)+'" y="'+(gy2+d.y*43+4).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="'+a[2]+'">'+a[0]+'</text>';
+  });
+  if(v.grid && isoBuild.step) giz+='<text x="'+gx2+'" y="'+(gy2+34)+'" text-anchor="middle" font-size="9.5" fill="#6b7280">grid '+(settings().units==='in'?(isoBuild.step/25.4).toFixed(1)+' in':settings().units==='cm'?(isoBuild.step/10)+' cm':isoBuild.step+' mm')+'</text>';
+  return out+'<g style="pointer-events:none">'+giz+'</g>';
+}
+function isoDraw(){
+  var svg=$('iso'), g=$('isoG'); if(!svg||!g||!S.cur) return;
+  var r=svg.getBoundingClientRect(), v=S.iso;
+  if(S._isoFor!==S.cur.id){ S._isoFor=S.cur.id; v.k=0; }
+  if(!r.width||!r.height){ setTimeout(isoDraw,60); return; }
+  if(!v.k) isoFitView(v,r.width,r.height);
+  g.innerHTML=isoBuild(v,r.width,r.height,false);
+}
+function isoSoon(){ if(S._isoRaf) return; S._isoRaf=requestAnimationFrame(function(){ S._isoRaf=0; isoDraw(); }); }
+function isoFit(){ var svg=$('iso'); if(!svg) return; var r=svg.getBoundingClientRect(); isoFitView(S.iso,r.width||800,r.height||500); isoDraw(); }
+function isoPreset(n){ var a=ISO_PRESETS[n]; if(!a) return; S.iso.yaw=a[0]; S.iso.pitch=a[1]; isoFit(); }
+function isoToggle(key){ S.iso[key]=!S.iso[key]; renderView(); }
+function isoHTML(){
+  var p=P(), v=S.iso, sc=isoScene();
+  function tg(key,label,title){ return '<button class="btn btn-sm'+(v[key]?' on':'')+'" onclick="isoToggle(\''+key+'\')" title="'+title+'">'+label+'</button>'; }
+  var tb='<div class="tbar wrap">'+
+    '<button class="btn btn-sm" onclick="isoPreset(\'iso\')" title="True isometric: 45 degrees around, 35 degrees down">Isometric</button>'+
+    '<button class="btn btn-sm" onclick="isoPreset(\'top\')">Top</button><button class="btn btn-sm" onclick="isoPreset(\'front\')">Front</button><button class="btn btn-sm" onclick="isoPreset(\'right\')">Right</button>'+
+    '<button class="btn btn-sm" onclick="isoFit()" title="Fit the harness in the window (F)">Fit</button><div class="sepv"></div>'+
+    tg('labels','Labels','Part names and covering part numbers')+tg('cov','Coverings','Show heat shrink and sleeving')+tg('strands','Wires','Show the wire colors inside uncovered bundles')+tg('lens','Lengths','Bundle lengths')+tg('grid','Grid','Floor grid')+
+    '<div class="sepv"></div><button class="btn btn-sm btn-teal" onclick="openHeights()" title="Lift connectors and branch points off the board">Set heights</button>'+
+    '<button class="btn btn-sm" onclick="exportIsoSVG()">Save SVG</button></div>';
+  var empty=(p.comps.length||p.segs.length)?'':'<div class="cv-empty"><div class="panel"><h3>Nothing to show yet</h3><p>Build the schematic and lay out the bundles first. This view is made from the Layout.</p></div></div>';
+  var hint=(!empty && sc.flat)?'<div class="hint">Everything is at height 0, so this is your flat layout seen in 3D. Use Set heights to lift parts. Drag to turn, scroll to zoom, shift-drag to move.</div>':(empty?'':'<div class="hint">Drag to turn. Scroll or pinch to zoom. Shift-drag or two fingers to move. Click a bundle or part to edit it.</div>');
+  return '<svg class="cv isoc" id="iso"><g id="isoG"></g></svg>'+tb+hint+empty+(v.cov?covLegendHTML('tr'):'');
+}
+// ---- orbit, pan, zoom (mouse, touch and pen)
+S._ip={}; S._id=null;
+document.addEventListener('pointerdown',function(ev){
+  var svg=ev.target.closest && ev.target.closest('#iso'); if(!svg) return;
+  S._ip[ev.pointerId]={x:ev.clientX,y:ev.clientY};
+  try{ svg.setPointerCapture(ev.pointerId); }catch(e){}
+  var ids=Object.keys(S._ip), v=S.iso;
+  if(ids.length>=2){
+    var a=S._ip[ids[0]], b=S._ip[ids[1]];
+    S._id={mode:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,k0:v.k,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,tx0:v.tx,ty0:v.ty,moved:true};
+    return;
+  }
+  var pan=(ev.button===2||ev.button===1||ev.shiftKey);
+  S._id={mode:pan?'pan':'rot',x:ev.clientX,y:ev.clientY,yaw:v.yaw,pitch:v.pitch,tx:v.tx,ty:v.ty,moved:false,target:ev.target};
+  ev.preventDefault();
+});
+document.addEventListener('pointermove',function(ev){
+  var d=S._id; if(!d || !S._ip[ev.pointerId]) return;
+  S._ip[ev.pointerId]={x:ev.clientX,y:ev.clientY};
+  var v=S.iso, svg=$('iso'); if(!svg) return;
+  if(d.mode==='pinch'){
+    var ids=Object.keys(S._ip); if(ids.length<2) return;
+    var a=S._ip[ids[0]], b=S._ip[ids[1]], dist=Math.hypot(a.x-b.x,a.y-b.y)||1, cx=(a.x+b.x)/2, cy=(a.y+b.y)/2, r=svg.getBoundingClientRect();
+    var nk=Math.max(0.02,Math.min(6,d.k0*dist/d.d0)), mx=d.cx-r.left, my=d.cy-r.top;
+    v.tx=(cx-r.left)-(mx-d.tx0)*nk/d.k0; v.ty=(cy-r.top)-(my-d.ty0)*nk/d.k0; v.k=nk; isoSoon(); return;
+  }
+  var dx=ev.clientX-d.x, dy=ev.clientY-d.y;
+  if(!d.moved && Math.abs(dx)+Math.abs(dy)<4) return;
+  d.moved=true;
+  if(d.mode==='rot'){ v.yaw=d.yaw+dx*0.45; v.pitch=Math.max(0,Math.min(90,d.pitch+dy*0.4)); }
+  else { v.tx=d.tx+dx; v.ty=d.ty+dy; }
+  isoSoon();
+});
+function isoUp(ev){
+  if(!S._ip[ev.pointerId]) return;
+  delete S._ip[ev.pointerId];
+  var d=S._id; if(!d) return;
+  S._id=null;
+  if(d.mode==='pinch' || d.moved || ev.type==='pointercancel') return;
+  var el=d.target && d.target.closest ? d.target.closest('[data-ik]') : null;
+  if(el){ S.sel={kind:el.getAttribute('data-ik'),id:el.getAttribute('data-iid')}; S.hiNet=null; render(); }
+  else if(S.sel){ S.sel=null; render(); }
+}
+document.addEventListener('pointerup',isoUp);
+document.addEventListener('pointercancel',isoUp);
+document.addEventListener('wheel',function(ev){
+  var svg=ev.target.closest && ev.target.closest('#iso'); if(!svg) return;
+  ev.preventDefault();
+  var v=S.iso, r=svg.getBoundingClientRect(), f=Math.exp(-ev.deltaY*(ev.ctrlKey?0.01:0.0015)), nk=Math.max(0.02,Math.min(6,v.k*f)), mx=ev.clientX-r.left, my=ev.clientY-r.top;
+  v.tx=mx-(mx-v.tx)*nk/v.k; v.ty=my-(my-v.ty)*nk/v.k; v.k=nk; isoSoon();
+},{passive:false});
+document.addEventListener('dblclick',function(ev){ if(ev.target.closest && ev.target.closest('#iso')) isoFit(); });
+document.addEventListener('contextmenu',function(ev){ if(ev.target.closest && ev.target.closest('#iso')) ev.preventDefault(); });
+window.addEventListener('resize',function(){ if(S.view==='iso') isoSoon(); });
+
+// ---- heights
+function setZ(kind,id,v){
+  var o=kind==='comp'?comp(id):lnode(id); if(!o) return; pushUndo();
+  var z=num(v,0);
+  if(kind==='comp'){ if(z) o.lz=z; else delete o.lz; } else { if(z) o.z=z; else delete o.z; }
+  commit();
+}
+function heightField(kind,id,val){
+  return '<div class="f"><label>Height</label><div class="row2"><input class="inp mono" type="number" step="5" value="'+num(val,0)+'" onchange="setZ(\''+kind+'\',\''+id+'\',this.value)"><span class="muted" style="align-self:center">mm up, for the 3D view</span></div></div>';
+}
+function openHeights(){
+  var p=P(), rows='', label={connector:'Connector',terminal:'Terminal',splice:'Splice'};
+  p.comps.forEach(function(c){ rows+='<tr><td>'+esc(c.name)+'</td><td class="muted">'+label[c.type]+'</td><td><input class="inp mono" type="number" step="5" value="'+num(c.lz,0)+'" data-hk="c" data-hid="'+c.id+'" style="width:100px"></td></tr>'; });
+  p.nodes.forEach(function(n,i){ rows+='<tr><td>Branch point '+(i+1)+'</td><td class="muted">Breakout</td><td><input class="inp mono" type="number" step="5" value="'+num(n.z,0)+'" data-hk="n" data-hid="'+n.id+'" style="width:100px"></td></tr>'; });
+  if(!rows){ toast('Add parts in the schematic first.'); return; }
+  $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:560px;max-width:96vw">'+
+    '<div class="modal-title">Heights for the 3D view</div>'+
+    '<p style="color:var(--text2);font-size:var(--t-md);margin-bottom:12px">How far each part sits above the board, in mm. Layout gives the position across the page, so this only adds the up and down. Bundles slope between their ends.</p>'+
+    '<div class="acts" style="margin-bottom:10px"><input class="inp mono" id="hkAll" type="number" step="5" value="0" style="width:90px"><button class="btn btn-sm" onclick="heightsFill()">Set every height to this</button></div>'+
+    '<div class="tbl-wrap" style="max-height:48vh;overflow:auto"><table><thead><tr><th>Name</th><th>Kind</th><th>Height (mm)</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="applyHeights()">Apply</button></div></div></div>';
+}
+function heightsFill(){ var v=$('hkAll').value; document.querySelectorAll('#modalRoot [data-hk]').forEach(function(el){ el.value=num(v,0); }); }
+function applyHeights(){
+  pushUndo();
+  document.querySelectorAll('#modalRoot [data-hk]').forEach(function(el){
+    var kind=el.getAttribute('data-hk'), id=el.getAttribute('data-hid'), z=num(el.value,0), o=kind==='c'?comp(id):lnode(id); if(!o) return;
+    if(kind==='c'){ if(z) o.lz=z; else delete o.lz; } else { if(z) o.z=z; else delete o.z; }
+  });
+  closeModal(); commit();
+}
+// ---- export and print
+function isoSVGString(W,H){
+  W=W||1400; H=H||900;
+  var vv=Object.assign({},S.iso); isoFitView(vv,W,H);
+  var body=isoBuild(vv,W,H,true), leg='';
+  var u=S.iso.cov?covUsage():[];
+  if(u.length){
+    var y0=H-24-u.length*22;
+    leg+='<g><text x="18" y="'+(y0-8)+'" font-size="10" font-weight="700" letter-spacing="1" fill="#374151">COVERINGS USED</text>';
+    u.forEach(function(x,i){
+      var y=y0+i*22, q=x.mm>=1000?fmtTotal(x.mm):fmtLen(x.mm);
+      leg+='<g transform="translate(18,'+y+')">'+covSwatch(x.kind,COV_COLORS[x.color],34,12)+'<text x="44" y="10" font-size="11" font-family="monospace" fill="#111827">'+esc(x.pn)+'</text><text x="'+(44+x.pn.length*6.6+10)+'" y="10" font-size="10.5" fill="#6b7280">'+esc(COV_KINDS[x.kind])+(x.color!=='black'?', '+x.color:'')+', '+q+'</text></g>';
+    });
+    leg+='</g>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="max-width:100%;height:auto"><style>text{font-family:DM Sans,Arial,sans-serif}</style><rect width="'+W+'" height="'+H+'" fill="#fff"/>'+body+leg+'</svg>';
+}
+function exportIsoSVG(){ download(fileBase()+'_3d.svg',isoSVGString(),'image/svg+xml'); }
+
+// ===== catalog =====
+function closeModal(){ $('modalRoot').innerHTML=''; S.placeAt=null; S.coverTarget=null; S.pf=null; }
+// ===== part editor: add, edit (also built-in parts), reset; photo by link or upload =====
+var PF_TYPES={connector:'Connector',terminal:'Terminal',splice:'Splice',covering:'Covering (heat shrink, sleeving, tape)',cable:'Cable'};
+S.pf=null;
+function basePart(pn){ for(var i=0;i<LIB_BASE.length;i++) if(LIB_BASE[i].pn===pn) return LIB_BASE[i]; return null; }
+function jq(s){ return "decodeURIComponent('"+encodeURIComponent(String(s)).replace(/'/g,'%27')+"')"; }
+function safeImg(u){
+  u=String(u||'').trim();
+  if(/^https?:\/\//i.test(u)) return u;
+  if(/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+\/=]+$/i.test(u)) return u;
+  return '';
+}
+function awgText(a){ return a ? (a[0]===a[1] ? String(a[0]) : a[0]+'-'+a[1]) : ''; }
+function openCustomPart(){ openPartForm('','catalog'); }
+function openPartForm(pn,back){
+  var old=pn?partByPn(pn):null, edit=!!old;
+  var ft=(S.catFilter&&PF_TYPES[S.catFilter])?S.catFilter:'connector';
+  var p=edit?clone(old):{type:ft,color:'#9ca3af',desig:'num',cav:2,series:'Custom'};
+  S.pf={edit:edit,pn:pn||'',back:back||'',img:safeImg(p.img),isBase:!!(edit&&basePart(pn))};
+  function g(label,inner){ return '<div class="form-group"><label class="form-label">'+label+'</label>'+inner+'</div>'; }
+  function inp(id,val,ph,cls,extra){ return '<input class="form-input'+(cls?' '+cls:'')+'" id="'+id+'" value="'+esc(val==null?'':val)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+(extra||'')+'>'; }
+  var contacts=(p.contacts||[]).map(function(c){ return c.pn+(c.awg?'  '+awgText(c.awg):''); }).join('\n');
+  var typeSel='<select class="form-input" id="pfType" onchange="pfType()"'+(edit?' disabled':'')+'>'+Object.keys(PF_TYPES).map(function(k){ return opt(k,PF_TYPES[k],p.type); }).join('')+'</select>';
+  var h='<div class="overlay" onclick="if(event.target===this)pfBack()"><div class="modal" style="width:660px;max-width:96vw">'+
+    '<div class="modal-title">'+(edit?'Edit part':'Add custom part')+'</div>'+
+    (edit&&S.pf.isBase?'<p class="note" style="margin:-8px 0 12px">This is a stock part. Your changes are saved for everyone on the team and replace the stock details. Use Reset to original in the catalog to undo them.</p>':'')+
+    '<div class="form-row cols-2">'+g('Part number',inp('pfPn',p.pn||'','','mono',edit?' readonly title="The part number cannot be changed. Add a new part if you need a different number."':''))+g('Manufacturer',inp('pfMfr',p.mfr||(edit?'':'Custom')))+'</div>'+
+    '<div class="form-row cols-2">'+g('Type',typeSel)+g('Description',inp('pfDesc',p.desc||''))+'</div>'+
+    // connector
+    '<div id="pfConn"><div class="form-row cols-2">'+g('Cavities',inp('pfCav',p.cav||2,'','mono',' type="number" min="1" max="64"'))+g('Pin names','<select class="form-input" id="pfDes">'+opt('num','1, 2, 3',p.desig||'num')+opt('alpha','A, B, C',p.desig||'num')+opt('custom','Custom labels',p.desig||'num')+'</select>')+'</div>'+
+    '<div class="form-row cols-2">'+g('Series',inp('pfSeries',p.series||'','e.g. DT, DTM, Superseal'))+g('Gender','<select class="form-input" id="pfGender">'+opt('','Not set',p.gender||'')+opt('Receptacle (pins)','Receptacle (pins)',p.gender||'')+opt('Plug (sockets)','Plug (sockets)',p.gender||'')+'</select>')+'</div>'+
+    '<div class="form-row cols-2">'+g('Wedgelock / TPA',inp('pfLock',p.lock||'','optional','mono'))+g('Seal plug',inp('pfPlug',p.plug||'','optional','mono'))+'</div>'+
+    '<div class="form-row cols-2">'+g('Body color','<input class="form-input" id="pfCol" type="color" value="'+esc(p.color||'#9ca3af')+'" style="padding:3px;height:39px">')+'<div></div></div>'+
+    '<div class="form-row">'+g('Contacts','<textarea class="form-input mono" id="pfCt" rows="3" placeholder="0462-201-16141  16-20">'+esc(contacts)+'</textarea>')+'<div class="note" style="margin-top:-4px">One per line: the contact part number, then the wire gauge range it takes. The BOM picks the contact by wire gauge.</div></div></div>'+
+    // terminal
+    '<div id="pfTerm"><div class="form-row cols-2">'+g('Kind','<select class="form-input" id="pfKind">'+Object.keys(TERM_KINDS).filter(function(k){return k!=='loose';}).map(function(k){ return opt(k,TERM_KINDS[k],p.kind||'ring'); }).join('')+'</select>')+g('Wire gauge range',inp('pfTAwg',awgText(p.awg),'e.g. 22-16','mono'))+'</div></div>'+
+    // covering
+    '<div id="pfCov"><div class="form-row cols-2">'+g('Kind','<select class="form-input" id="pfCKind">'+Object.keys(COV_KINDS).map(function(k){ return opt(k,COV_KINDS[k],covKindOf(p)); }).join('')+'</select>')+g('Color','<select class="form-input" id="pfCColor">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,(p.ccolor&&COV_COLORS[p.ccolor])?p.ccolor:'black'); }).join('')+'</select>')+'</div>'+
+    '<div class="form-row cols-2">'+g('Size, inside diameter (mm)',inp('pfDia',p.dia||(partSizeMm(p)?partSizeMm(p).toFixed(1):''),'e.g. 12.7','mono',' type="number" min="0" step="0.1"'))+g('Shrink ratio',inp('pfRatio',p.ratio||'','e.g. 3:1 (heat shrink only)'))+'</div></div>'+
+    // cable
+    '<div id="pfCab"><div class="form-row cols-2">'+g('Cores',inp('pfCores',p.cores||2,'','mono',' type="number" min="1" max="24"'))+g('Wire gauge',inp('pfCAwg',p.awg||'22','','mono'))+'</div>'+
+    '<div class="form-row cols-2"><label class="checkbox-row" style="margin:0"><input type="checkbox" id="pfShield"'+(p.shield?' checked':'')+'> Shielded</label><label class="checkbox-row" style="margin:0"><input type="checkbox" id="pfTwisted"'+(p.twisted?' checked':'')+'> Twisted pair</label></div>'+
+    '<div class="form-row">'+g('Core colors',inp('pfCoreCols',(p.coreColors||[]).join(', '),'e.g. white, blue'))+'</div></div>'+
+    '<div class="form-row">'+g('Manufacturer link (optional)',inp('pfUrl',p.url||'','https://...'))+'</div>'+
+    '<div class="form-row"><div class="form-group"><label class="form-label">Photo</label><div class="pf-photo"><div class="pf-prev" id="pfPrev" ondragover="event.preventDefault()" ondrop="pfDrop(event)"></div>'+
+      '<div class="pf-ctl"><input class="form-input" id="pfImgUrl" placeholder="Paste an image link (https://...)" oninput="pfUrl(this.value)" value="'+esc(S.pf.img&&S.pf.img.indexOf('data:')!==0?S.pf.img:'')+'">'+
+      '<div class="acts" style="margin-top:8px"><button type="button" class="btn btn-sm btn-teal" onclick="$(\'pfFile\').click()">Upload a photo</button><button type="button" class="btn btn-sm" onclick="pfSetImg(\'\')">Remove photo</button><input type="file" id="pfFile" accept="image/*" style="display:none" onchange="pfPick(this)"></div>'+
+      '<div class="note" id="pfImgNote"></div></div></div></div></div>'+
+    '<div class="modal-footer"><button class="btn" onclick="pfBack()">'+(back==='catalog'?'Back':'Cancel')+'</button><button class="btn btn-primary" onclick="savePartForm()">'+(edit?'Save changes':'Add part')+'</button></div></div></div>';
+  $('modalRoot').innerHTML=h;
+  pfType(); pfRenderPrev();
+  setTimeout(function(){ var e=$(edit?'pfMfr':'pfPn'); if(e) e.focus(); },30);
+}
+function pfBack(){ var b=S.pf&&S.pf.back; if(b==='catalog') openCatalog(); else closeModal(); }
+function pfType(){
+  var t=$('pfType').value;
+  [['pfConn','connector'],['pfTerm','terminal'],['pfCov','covering'],['pfCab','cable']].forEach(function(x){ var e=$(x[0]); if(e) e.style.display=(x[1]===t)?'':'none'; });
+  pfRenderPrev();
+}
+function pfRenderPrev(){
+  var e=$('pfPrev'); if(!e||!S.pf) return;
+  if(S.pf.img){
+    e.innerHTML='<img src="'+esc(S.pf.img)+'" alt="" referrerpolicy="no-referrer" style="max-width:100%;max-height:100%;object-fit:contain" onerror="pfBad()">';
+    $('pfImgNote').textContent= S.pf.img.indexOf('data:')===0 ? 'Uploaded photo, about '+Math.max(1,Math.round(S.pf.img.length*0.75/1024))+' KB. It is saved with the part.' : 'Photo from a link. If the other site removes it, the drawn picture is used instead.';
+  } else {
+    var t=$('pfType')?$('pfType').value:'connector';
+    e.innerHTML=partImgSVG({type:t,color:($('pfCol')&&$('pfCol').value)||'#9ca3af',cav:num($('pfCav')&&$('pfCav').value,2),kind:$('pfKind')&&$('pfKind').value,ckind:$('pfCKind')&&$('pfCKind').value,ccolor:$('pfCColor')&&$('pfCColor').value,pn:($('pfPn')&&$('pfPn').value)||''},96);
+    $('pfImgNote').textContent='No photo, so the drawn picture is used. Paste a link, upload a file, or paste an image from the clipboard.';
+  }
+}
+function pfBad(){ if(!S.pf) return; var e=$('pfPrev'); if(e) e.innerHTML='<span class="muted" style="padding:6px;text-align:center;font-size:var(--t-xs)">Could not load that image</span>'; }
+function pfSetImg(v){ if(!S.pf) return; S.pf.img=safeImg(v); var u=$('pfImgUrl'); if(u) u.value=(S.pf.img&&S.pf.img.indexOf('data:')!==0)?S.pf.img:''; pfRenderPrev(); }
+function pfUrl(v){
+  if(!S.pf) return; v=String(v||'').trim();
+  if(!v){ S.pf.img=''; pfRenderPrev(); return; }
+  var ok=safeImg(v);
+  if(!ok){ var n=$('pfImgNote'); if(n) n.textContent='The link has to start with https://'; return; }
+  S.pf.img=ok; pfRenderPrev();
+}
+function pfPick(input){ var f=input.files&&input.files[0]; if(f) pfLoadImage(f); input.value=''; }
+function pfDrop(ev){ ev.preventDefault(); var f=ev.dataTransfer&&ev.dataTransfer.files&&ev.dataTransfer.files[0]; if(f) pfLoadImage(f); }
+// shrink the picture so a part record stays small (max 560 px, webp when the browser can)
+function pfLoadImage(file){
+  if(!/^image\//.test(file.type)){ toast('That file is not an image.','err'); return; }
+  if(file.size>15*1024*1024){ toast('That image is over 15 MB. Pick a smaller one.','err'); return; }
+  var url=URL.createObjectURL(file), im=new Image();
+  im.onload=function(){
+    try{
+      var w=im.naturalWidth||im.width||300, h=im.naturalHeight||im.height||300, k=Math.min(1,560/Math.max(w,h));
+      var cw=Math.max(1,Math.round(w*k)), ch=Math.max(1,Math.round(h*k));
+      var cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
+      cv.getContext('2d').drawImage(im,0,0,cw,ch);
+      var out=cv.toDataURL('image/webp',0.85);
+      if(out.indexOf('data:image/webp')!==0) out=cv.toDataURL('image/png');
+      if(out.length>320000){
+        var c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; var x2=c2.getContext('2d');
+        x2.fillStyle='#fff'; x2.fillRect(0,0,cw,ch); x2.drawImage(im,0,0,cw,ch); out=c2.toDataURL('image/jpeg',0.82);
+      }
+      URL.revokeObjectURL(url);
+      if(!S.pf){ return; }
+      pfSetImg(out); toast('Photo added.','ok');
+    }catch(e){ logErr('Could not read that image',e); }
+  };
+  im.onerror=function(){ URL.revokeObjectURL(url); toast('Could not read that image file.','err'); };
+  im.src=url;
+}
+document.addEventListener('paste',function(ev){
+  if(!S.pf || !$('pfPrev')) return;
+  var items=(ev.clipboardData&&ev.clipboardData.items)||[];
+  for(var i=0;i<items.length;i++){ if(items[i].kind==='file' && /^image\//.test(items[i].type)){ var f=items[i].getAsFile(); if(f){ ev.preventDefault(); pfLoadImage(f); return; } } }
+});
+function savePartForm(){
+  var f=S.pf; if(!f) return;
+  var pn=$('pfPn').value.trim(); if(!pn){ toast('Enter a part number.','err'); return; }
+  if(!f.edit && partByPn(pn)){ toast(pn+' is already in the catalog. Open it and use Edit part.','err'); return; }
+  var type=$('pfType').value, old=f.edit?partByPn(pn):null;
+  var p=old?clone(old):{};
+  delete p.base; delete p.edited;
+  p.pn=pn; p.type=type; p.mfr=$('pfMfr').value.trim()||'Custom'; p.desc=$('pfDesc').value.trim();
+  var url=$('pfUrl').value.trim(); if(url && !/^https?:\/\//i.test(url)){ toast('The manufacturer link has to start with https://','err'); return; }
+  if(url) p.url=url; else delete p.url;
+  if(f.img) p.img=f.img; else delete p.img;
+  if(basePart(pn)) p.ovr=true;
+  if(type==='connector'){
+    p.cav=Math.max(1,Math.min(64,Math.round(num($('pfCav').value,2)))); p.desig=$('pfDes').value; p.series=$('pfSeries').value.trim()||'Custom';
+    p.gender=$('pfGender').value; p.lock=$('pfLock').value.trim(); p.plug=$('pfPlug').value.trim(); p.color=$('pfCol').value;
+    var cts=[]; $('pfCt').value.split('\n').forEach(function(line){
+      var tk=line.trim().split(/[\s,;]+/).filter(Boolean); if(!tk.length) return;
+      var nums=(tk.slice(1).join(' ').match(/\d+/g)||[]).map(Number).sort(function(a,b){return a-b;});
+      cts.push({pn:tk[0],awg:nums.length?[nums[0],nums[nums.length-1]]:null});
+    });
+    if(cts.length) p.contacts=cts; else delete p.contacts;
+  } else if(type==='terminal'){
+    p.kind=$('pfKind').value;
+    var ta=($('pfTAwg').value.match(/\d+/g)||[]).map(Number).sort(function(a,b){return a-b;});
+    if(ta.length) p.awg=[ta[0],ta[ta.length-1]]; else delete p.awg;
+    delete p.cav;
+  } else if(type==='covering'){
+    p.ckind=$('pfCKind').value; p.ccolor=$('pfCColor').value;
+    var dia=num($('pfDia').value,0); if(dia>0) p.dia=dia; else delete p.dia;
+    var rt=$('pfRatio').value.trim(); if(rt) p.ratio=rt; else delete p.ratio;
+    delete p.cav;
+  } else if(type==='cable'){
+    p.cores=Math.max(1,Math.round(num($('pfCores').value,2))); p.awg=String($('pfCAwg').value||'22').replace(/[^0-9]/g,'')||'22';
+    p.shield=$('pfShield').checked; p.twisted=$('pfTwisted').checked;
+    var cc=$('pfCoreCols').value.split(/[,;]+/).map(function(x){return x.trim().toLowerCase();}).filter(function(x){ return x && WCOL[colBase(x)]; });
+    if(cc.length) p.coreColors=cc; else delete p.coreColors;
+    delete p.cav;
+  } else { delete p.cav; }
+  dbSavePart(p).then(function(){
+    var i=-1; S.lib.forEach(function(x,k){ if(x.pn===pn) i=k; });
+    if(i>=0) S.lib[i]=p; else S.lib.push(p);
+    libTouch();
+    toast((f.edit?'Saved changes to ':'Added ')+pn+(f.edit?'.':' to the shared catalog.'),'ok');
+    if(f.back==='catalog'){ S.catQuery=pn; S.catSel=pn; openCatalog(type); } else closeModal();
+    render();
+  }).catch(function(e){ logErr('Could not save the part',e); });
 }
 function deleteCustomPart(pn){
   if(!confirm('Delete custom part '+pn+' from the catalog? Components using it keep the part number but lose its details.')) return;
-  dbDeletePart(pn).then(function(){ S.lib=S.lib.filter(function(p){ return p.pn!==pn; }); renderCatList(); render(); }).catch(function(e){ logErr('Could not delete the part',e); });
+  dbDeletePart(pn).then(function(){ S.lib=S.lib.filter(function(p){ return p.pn!==pn; }); libTouch(); renderCatList(); render(); }).catch(function(e){ logErr('Could not delete the part',e); });
+}
+function resetPart(pn){
+  if(!confirm('Put '+pn+' back to the stock version? Your changes to it are removed for everyone.')) return;
+  dbDeletePart(pn).then(function(){ S.lib=S.lib.filter(function(p){ return p.pn!==pn; }); libTouch(); renderCatList(); render(); toast('Back to the stock '+pn+'.','ok'); }).catch(function(e){ logErr('Could not reset the part',e); });
 }
 
 // ===== menus =====
@@ -1792,6 +2581,7 @@ function exportSVG(){ download(fileBase()+'_layout.svg',exportSVGString(),'image
 function printDrawing(){
   var p=P(), rows=wireRows().sort(function(a,b){return a.idx-b.idx;}), bom=computeBOM();
   var h='<div class="tb"><div><h1>'+esc(p.name)+'</h1><div>TGK Motorsport harness drawing</div></div><div style="text-align:right">Rev '+esc(p.rev||'A')+'<br>'+new Date().toLocaleDateString()+'<br>'+p.wires.length+' wires, '+p.comps.length+' components</div></div>'+exportSVGString();
+  if(p.segs.length) h+='<div class="pb"></div><h2>Isometric view</h2>'+isoSVGString(1200,800);
   h+='<div class="pb"></div><h2>Wire list</h2><table><tr><th>Wire</th><th>Signal</th><th>From</th><th>To</th><th>Color</th><th>AWG</th><th>Type</th><th>Length</th></tr>';
   rows.forEach(function(r){ h+='<tr><td>W'+r.idx+'</td><td>'+esc(r.sig)+'</td><td>'+esc(r.from)+'</td><td>'+esc(r.to)+'</td><td>'+esc(r.color)+'</td><td>'+esc(r.w.gauge)+'</td><td>'+esc(r.w.wtype)+'</td><td>'+fmtLen(r.len,'mm')+' / '+fmtLen(r.len,'in')+'</td></tr>'; });
   h+='</table><h2>Bill of materials</h2><table><tr><th>Category</th><th>Part number</th><th>Description</th><th>Qty</th></tr>';
@@ -2512,11 +3302,13 @@ function segMenuItems(s){
   var id=s.id;
   return [
     ctxItem('Split here',ICON2.split,'splitSeg(\''+id+'\',{x:S.placeAt.x,y:S.placeAt.y})'),
-    ctxItem(s.covering?'Change covering...':'Add covering...',ICON2.cover,'S.sel={kind:\'seg\',id:\''+id+'\'};render();openCatalog(\'covering\')'),
+    ctxItem('Add heat shrink',ICON2.cover,'S.sel={kind:\'seg\',id:\''+id+'\'};addCover(\''+id+'\',\'shrink\')'),
+    ctxItem('Add sleeving',ICON2.cover,'S.sel={kind:\'seg\',id:\''+id+'\'};addCover(\''+id+'\',\'braid\')'),
+    ctxItem('Browse coverings...',ICON2.cover,'S.sel={kind:\'seg\',id:\''+id+'\'};S.coverTarget=null;render();openCatalog(\'covering\')'),
     ctxItem('Type length...',ICON2.part,'fixShowSeg(\''+id+'\')'),
     ctxItem(s.label?'Change label...':'Label...',ICON2.note,'promptSegLabel(\''+id+'\')'),
     ctxItem('Add inline connectors here',ICON.bulk,'addInlineAt(\''+id+'\')'),
-    s.covering?ctxItem(s.noBom?'Include covering in BOM':'Exclude covering from BOM',ICON2.part,'toggleNoBom(\'seg\',\''+id+'\')'):null,
+    covList(s).length?ctxItem(s.noBom?'Include coverings in BOM':'Exclude coverings from BOM',ICON2.part,'toggleNoBom(\'seg\',\''+id+'\')'):null,
     '-',ctxItem('Delete bundle',ICON2.trash,'S.sel={kind:\'seg\',id:\''+id+'\'};deleteSel()',{danger:true,k:'Del'})
   ];
 }
@@ -2755,6 +3547,7 @@ async function openHarness(id){
 function normalizeProject(p,id){
   p.id=p.id||id; p.groups=p.groups||[]; p.comps=p.comps||[]; p.wires=p.wires||[]; p.nodes=p.nodes||[]; p.segs=p.segs||[]; p.notes=p.notes||[];
   if(!p.kind) p.kind='Engine'; if(!p.status) p.status='Draft'; if(p.platform==null) p.platform=''; if(p.customer==null) p.customer=''; if(!p.tags) p.tags=[];
+  migrateCovers(p);
   return p;
 }
 async function createHarness(p){
@@ -3239,8 +4032,13 @@ function shade(hex,amt){
   return '#'+[f(r),f(g),f(b)].map(function(v){return ('0'+v.toString(16)).slice(-2);}).join('');
 }
 function partImgHTML(p,size,kind){
-  if(p && p.img) return '<img src="'+esc(p.img)+'" alt="" referrerpolicy="no-referrer" style="width:'+size+'px;height:'+size+'px;object-fit:contain">';
+  var u=(p && p.img) ? safeImg(p.img) : '';
+  if(u) return '<img src="'+esc(u)+'" alt="" referrerpolicy="no-referrer" data-pn="'+esc(p.pn)+'" data-sz="'+size+'" onerror="imgFail(this)" style="width:'+size+'px;height:'+size+'px;object-fit:contain">';
   return partImgSVG(p,size,kind);
+}
+function imgFail(el){
+  var p=partByPn(el.getAttribute('data-pn')), sz=+el.getAttribute('data-sz')||70, q2=p?Object.assign({},p):{};
+  delete q2.img; el.outerHTML=partImgSVG(q2,sz,null);
 }
 function partImgSVG(p,size,kind){
   var t=(p&&p.type)||kind||'connector', col=(p&&p.color)||'#9ca3af';
@@ -3263,7 +4061,18 @@ function partImgSVG(p,size,kind){
     cc.forEach(function(c,i){ var a=(i/n)*Math.PI*2-Math.PI/2, rr=n===1?0:(n===2?8:9); o+='<circle cx="'+(72+Math.cos(a)*rr).toFixed(1)+'" cy="'+(50+Math.sin(a)*rr).toFixed(1)+'" r="'+(n<=2?7:6)+'" fill="'+hexOf(c)+'" stroke="#111" stroke-width="1"/>'; });
     return o+'</svg>';
   }
-  if(t==='covering') return o+'<path d="M12 40 H80 A10 10 0 0 1 80 60 H12 Z" fill="#1f2937"/><ellipse cx="80" cy="50" rx="6" ry="10" fill="#374151"/><path d="M20 40 V60 M32 40 V60 M44 40 V60 M56 40 V60 M68 40 V60" stroke="#4b5563" stroke-width="2"/></svg>';
+  if(t==='covering'){
+    var ck=covKindOf(p), hx=covHex(p,null), dk=shade(hx,-0.35), lt=shade(hx,0.3), g2='';
+    o+='<defs><clipPath id="cvc"><rect x="12" y="34" width="70" height="32" rx="7"/></clipPath></defs>';
+    o+='<rect x="12" y="34" width="70" height="32" rx="'+(ck==='shrink'?8:5)+'" fill="'+hx+'" stroke="'+dk+'" stroke-width="2"/>';
+    if(ck==='shrink') g2+='<rect x="16" y="38" width="62" height="5" rx="2.5" fill="'+lt+'" opacity=".6"/>';
+    else if(ck==='braid'){ for(var bx=-20;bx<82;bx+=8) g2+='<path d="M'+bx+' 66 L'+(bx+32)+' 34" stroke="'+lt+'" stroke-width="2" opacity=".55"/><path d="M'+(bx+32)+' 66 L'+bx+' 34" stroke="'+dk+'" stroke-width="1.5" opacity=".5"/>'; }
+    else if(ck==='conv'){ for(var rx2=18;rx2<80;rx2+=9) g2+='<rect x="'+rx2+'" y="34" width="4" height="32" fill="'+dk+'" opacity=".5"/>'; }
+    else if(ck==='tape'){ for(var tx2=-10;tx2<86;tx2+=14) g2+='<path d="M'+tx2+' 70 L'+(tx2+26)+' 30" stroke="'+lt+'" stroke-width="5" opacity=".4"/>'; }
+    o+='<g clip-path="url(#cvc)">'+g2+'</g>';
+    o+='<ellipse cx="82" cy="50" rx="7" ry="16" fill="'+shade(hx,-0.15)+'" stroke="'+dk+'" stroke-width="2"/><ellipse cx="82" cy="50" rx="3.5" ry="10" fill="#0f172a" opacity=".85"/>';
+    return o+'</svg>';
+  }
   var pn=(p&&p.pn)||'';
   if(/^DIODE/.test(pn)) return o+'<path d="M6 50 H32 M68 50 H94" stroke="#9ca3af" stroke-width="3"/><rect x="30" y="38" width="40" height="24" rx="5" fill="#1f2937"/><rect x="58" y="38" width="6" height="24" fill="#e5e7eb"/></svg>';
   if(/^RES/.test(pn)) return o+'<path d="M6 50 H28 M72 50 H94" stroke="#9ca3af" stroke-width="3"/><rect x="26" y="38" width="48" height="24" rx="10" fill="#d6b48a"/><rect x="36" y="38" width="4" height="24" fill="#8a4b16"/><rect x="46" y="38" width="4" height="24" fill="#111"/><rect x="56" y="38" width="4" height="24" fill="#dc2626"/><rect x="66" y="38" width="3" height="24" fill="#d4a24c"/></svg>';
@@ -3362,10 +4171,11 @@ function splitSeg(id,pt){
   var s=seg(id); if(!s) return; var pts=segPts(s); if(!pts) return;
   var pr=projectOnPoly(pts,pt), t=Math.max(0.05,Math.min(0.95,pr.frac));
   pushUndo();
-  var n={id:uid('n'),x:snap10(pr.x),y:snap10(pr.y)}; P().nodes.push(n);
+  var n={id:uid('n'),x:snap10(pr.x),y:snap10(pr.y)}; var zz=Math.round(zOfKey(s.a)+(zOfKey(s.b)-zOfKey(s.a))*t); if(zz) n.z=zz; P().nodes.push(n);
   var l1=Math.round(num(s.len,0)*t/5)*5, oldB=s.b;
-  var s2={id:uid('s'),a:'n:'+n.id,b:oldB,len:num(s.len,0)-l1,covering:s.covering,est:s.est};
-  s.b='n:'+n.id; s.len=l1; P().segs.push(s2);
+  var sc=splitCovers(s,l1);
+  var s2={id:uid('s'),a:'n:'+n.id,b:oldB,len:num(s.len,0)-l1,covers:sc.second,covering:'',est:s.est};
+  s.b='n:'+n.id; s.len=l1; s.covers=sc.first; s.covering=''; P().segs.push(s2);
   S.sel={kind:'node',id:n.id}; commit();
 }
 function routePts(sp){
@@ -3407,6 +4217,7 @@ function layWorld(){
     var pts=cache[s.id]; if(!pts) return; var d=roundPath(pts,18);
     var sel=S.sel && S.sel.kind==='seg' && S.sel.id===s.id;
     out+='<g data-k="seg" data-id="'+s.id+'"><path class="seg-edge" d="'+d+'"/><path class="seg'+(sel?' sel':'')+'" d="'+d+'"/><path class="seg-hit" d="'+d+'"/></g>';
+    if(S.showCov) out+=covOverlaySVG(s,pts,d,sel);
   });
   if(an && S.showNet){
     var ws=p.wires.filter(function(w){ return netOfWire(w)===an; });
@@ -3420,7 +4231,7 @@ function layWorld(){
   p.segs.forEach(function(s){
     var pts=cache[s.id]; if(!pts) return;
     out+=segLabelSVG(s,pts);
-    if(!num(s.len,0) && !s.covering) return;
+    var covN=segCovN(s); if(!num(s.len,0) && !covN) return;
     var bi=1, bl=0; for(var i=1;i<pts.length;i++){ var l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); if(l>bl){ bl=l; bi=i; } }
     var a=pts[bi-1], b=pts[bi], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
     var txt=(s.est?'~':'')+fmtLen(num(s.len,0)), tw=txt.length*6.4+8;
@@ -3428,10 +4239,7 @@ function layWorld(){
       if(vert) out+='<g transform="translate('+(mx-15)+','+my+') rotate(-90)"><rect class="slen-bg" x="'+(-tw/2)+'" y="-9" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="0" y="1" text-anchor="middle">'+txt+'</text></g>';
       else out+='<rect class="slen-bg" x="'+(mx-tw/2)+'" y="'+(my-22)+'" width="'+tw+'" height="13"/><text class="slen'+(s.est?' est':'')+'" x="'+mx+'" y="'+(my-12)+'" text-anchor="middle">'+txt+'</text>';
     }
-    if(s.covering){
-      var cw=s.covering.length*6+24, cx=vert?mx+11:mx-cw/2, cy=vert?my-7:my+10;
-      out+='<g style="pointer-events:none"><rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="7.5"/><path d="M'+(cx+6)+' '+(cy+5)+' h7 l3 -2 v9 l-3 -2 h-7 z" fill="#6b7280"/><text class="ltag" x="'+(cx+cw/2+6)+'" y="'+(cy+11)+'" text-anchor="middle">'+esc(s.covering)+'</text></g>';
-    }
+    if(covN) out+=covTagsSVG(s,vert,mx,my);
   });
   p.comps.forEach(function(c){
     if(c.type==='connector' && c.mate && c.id<c.mate){ var m=comp(c.mate); if(!m) return;
@@ -3510,7 +4318,7 @@ function renderCatList(){
   if(!S.catSel || !list.some(function(p){return p.pn===S.catSel;})) S.catSel=list[0].pn;
   $('catList').innerHTML='<table><thead><tr><th style="width:52px"></th><th>Part number</th><th>Description</th><th>Cav</th><th></th></tr></thead><tbody>'+list.map(function(p){
     return '<tr class="'+(S.catSel===p.pn?'lib-on':'')+'" style="cursor:pointer" onclick="if(event.target.tagName!==\'BUTTON\'){S.catSel=\''+esc(p.pn).replace(/'/g,'')+'\';renderCatList()}"><td style="padding:3px 6px"><div class="thumb">'+partImgHTML(p,38)+'</div></td>'+
-      '<td class="main-col"><span class="mono" style="font-size:var(--t-sm);font-weight:700">'+esc(p.pn)+'</span>'+(p.base?'':' <span class="pill pill-teal">custom</span>')+'</td>'+
+      '<td class="main-col"><span class="mono" style="font-size:var(--t-sm);font-weight:700">'+esc(p.pn)+'</span>'+(p.base?'':' <span class="pill pill-teal">custom</span>')+(p.edited?' <span class="pill pill-orange">edited</span>':'')+'</td>'+
       '<td>'+esc(p.mfr)+'. '+esc(p.desc)+'</td><td class="mono">'+(p.cav||'')+'</td>'+
       '<td style="text-align:right;white-space:nowrap">'+(canAssign?'<button class="btn btn-sm btn-teal" onclick="assignPart(\''+esc(p.pn).replace(/'/g,'')+'\')">Assign</button>':'')+'</td></tr>';
   }).join('')+'</tbody></table>';
@@ -3523,13 +4331,13 @@ function renderCatDetail(){
   function row(k,v){ return v?'<tr><td class="dk">'+k+'</td><td>'+v+'</td></tr>':''; }
   var h='<div class="lib-prev-h"><div><div class="ppn" style="font-size:var(--t-lg)">'+esc(p.pn)+'</div><div class="muted">'+esc(p.mfr)+'</div></div>'+(canAssign?'<button class="btn btn-sm btn-primary" onclick="assignPart(\''+esc(p.pn).replace(/'/g,'')+'\')">Assign</button>':'')+'</div>'+
     '<div class="dtiles"><div class="ctile img big">'+partImgHTML(p,120)+'</div>'+(p.type==='connector'?'<div class="ctile face big" title="Mating face">'+partFaceSVG(p,104)+'</div>':'')+'</div>'+
-    '<table class="dtable">'+row('Description',esc(p.desc))+row('Type',esc(p.type))+row('Cavities',p.cav?String(p.cav):'')+row('Pin names',p.type==='connector'?(p.desig==='alpha'?'Letters A, B, C':p.desig==='custom'?'Custom labels':'Numbers 1, 2, 3'):'')+
+    '<table class="dtable">'+row('Description',esc(p.desc))+row('Type',esc(p.type))+row('Cavities',p.cav?String(p.cav):'')+row('Covering',p.type==='covering'?esc(COV_KINDS[covKindOf(p)])+', '+esc(covColorName(p,null)):'')+row('Size',p.type==='covering'&&partSizeMm(p)?partSizeMm(p).toFixed(1)+' mm inside diameter':'')+row('Shrink ratio',p.ratio?esc(p.ratio):'')+row('Cable',p.type==='cable'?(p.cores||'')+' core, '+esc(p.awg||'')+' AWG'+(p.shield?', shielded':'')+(p.twisted?', twisted':''):'')+row('Pin names',p.type==='connector'?(p.desig==='alpha'?'Letters A, B, C':p.desig==='custom'?'Custom labels':'Numbers 1, 2, 3'):'')+
     row('Gender',esc(p.gender||''))+row('Contacts',(p.contacts||[]).map(function(c){return '<span class="mono">'+esc(c.pn)+'</span>'+(c.awg?' <span class="muted">'+(c.awg[0]===c.awg[1]?c.awg[0]:c.awg[0]+'-'+c.awg[1])+' AWG</span>':'');}).join('<br>'))+
     row('Wedgelock',p.lock?'<span class="mono">'+esc(p.lock)+'</span>':'')+row('Seal plug',p.plug?'<span class="mono">'+esc(p.plug)+'</span>':'')+
     row('Body color',p.color&&p.type==='connector'?'<span class="sw" style="border-radius:3px;background:'+p.color+'"></span>':'')+
     row('Link',url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">Manufacturer page</a>':'')+'</table>'+
-    (p.type==='connector'?'<div class="note">Face view is from the mating side. The picture is drawn from the part data'+(p.img?'; this part uses your photo.':'. Add a photo URL to a custom part to show the real one.')+'</div>':'')+
-    (p.base?'':'<div class="acts" style="margin-top:10px"><button class="btn btn-sm btn-danger" onclick="deleteCustomPart(\''+esc(p.pn)+'\')">Delete custom part</button></div>');
+    (p.type==='connector'?'<div class="note">Face view is from the mating side. The picture is drawn from the part data'+(p.img?'; this part uses your photo.':'. Use Edit part to add a photo link or upload one.')+'</div>':'')+
+    '<div class="acts" style="margin-top:10px"><button class="btn btn-sm btn-teal" onclick="openPartForm('+jq(p.pn)+',\'catalog\')">Edit part</button>'+(p.edited?'<button class="btn btn-sm" onclick="resetPart('+jq(p.pn)+')">Reset to original</button>':'')+(p.base?'':'<button class="btn btn-sm btn-danger" onclick="deleteCustomPart('+jq(p.pn)+')">Delete custom part</button>')+'</div>';
   $('catDetail').innerHTML=h;
 }
 
@@ -3781,11 +4589,16 @@ function buildPlan(){
   });
   secs.push({id:'pop',name:'Populate connectors',items:pop,hint:'Insert each contact until it clicks, then tug it gently to make sure it is locked.'});
   // 6 coverings
-  var cov=p.segs.filter(function(s){return s.covering;}).map(function(s){
-    function nm(k){ if(k.indexOf('c:')===0){ var c=comp(k.slice(2)); return c?c.name:'?'; } return 'branch'; }
-    return {key:'cov:'+s.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:s.covering,meta:fmtLen(num(s.len,0),'mm')+(s.est?' (estimated)':'')};
+  var cov=[];
+  function nm(k){ if(k.indexOf('c:')===0){ var c=comp(k.slice(2)); return c?c.name:'?'; } return 'branch'; }
+  p.segs.forEach(function(s){
+    covList(s).forEach(function(cv,i){
+      var part=partByPn(cv.pn), col=covColorName(part,cv), r=covRange(s,cv), whole=cv.anchor!=='a' && cv.anchor!=='b';
+      var where=whole?'':(' - '+Math.round(r[1]-r[0])+' mm, '+(cv.anchor==='b'?num(cv.off,0)+' mm in from '+nm(s.b):num(cv.off,0)+' mm in from '+nm(s.a)));
+      cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':'')});
+    });
   });
-  if(cov.length) secs.push({id:'cov',name:'Coverings',items:cov,hint:'Shrink tubing goes on before the second end is terminated.'});
+  if(cov.length) secs.push({id:'cov',name:'Coverings',items:cov,hint:'Slide sleeving and shrink tubing on before the second end is terminated.'});
   // 7 test
   var test=p.wires.map(function(w){ var A=comp(w.a.c), B=comp(w.b.c); return {key:'test:'+w.id,title:'Continuity '+wireNo(w)+(w.signal?'  '+w.signal:''),sub:pinRef(A,w.a.p)+' to '+pinRef(B,w.b.p),meta:'',color:w.color}; });
   secs.push({id:'test',name:'Test',items:test,hint:'Beep each circuit end to end, then check nothing is shorted to its neighbours.'});
@@ -4095,12 +4908,14 @@ function addInlineAt(sid){
   var a=pts[0], b=pts[pts.length-1], dx=b.x-a.x, dy=b.y-a.y, l=Math.hypot(dx,dy)||1;
   ca.lx=snap10(pr.x-dx/l*14); ca.ly=snap10(pr.y-dy/l*14); cb.lx=snap10(pr.x+dx/l*14); cb.ly=snap10(pr.y+dy/l*14);
   if(ca.lx===cb.lx&&ca.ly===cb.ly){ cb.lx+=20; }
+  var zza=zOfKey(s.a), zzm=Math.round(zza+(zOfKey(s.b)-zza)*t); if(zzm){ ca.lz=zzm; cb.lz=zzm; }
   // schematic: next to each other near the middle of the parts they join
   S.placeAt=null; placeNew(ca); cb.sx=ca.sx; cb.sy=ca.sy+VH+50;
   P().comps.push(ca,cb);
   var L=num(s.len,0), l1=Math.round(L*t/5)*5, oldB=s.b;
-  s.b='c:'+ca.id; s.len=l1;
-  P().segs.push({id:uid('s'),a:'c:'+cb.id,b:oldB,len:L-l1,covering:s.covering,est:s.est});
+  var sc=splitCovers(s,l1);
+  s.b='c:'+ca.id; s.len=l1; s.covers=sc.first; s.covering='';
+  P().segs.push({id:uid('s'),a:'c:'+cb.id,b:oldB,len:L-l1,covers:sc.second,covering:'',est:s.est});
   // cut each wire at the pair: the s.a side ends at A, the s.b side starts at B, same cavity
   thru.forEach(function(it,i){
     var w=it.w, far=it.aSide?w.b:w.a;
@@ -4125,7 +4940,7 @@ function segLabelSVG(s,pts){
   var a=pts[bi-1], b=pts[bi], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, vert=Math.abs(b.y-a.y)>Math.abs(b.x-a.x);
   var tw=s.label.length*6.2+14;
   if(vert) return '<g transform="translate('+(mx+15)+','+my+') rotate(-90)" style="pointer-events:none"><rect class="blab-bg" x="'+(-tw/2)+'" y="-1" width="'+tw+'" height="15" rx="3"/><text class="blab" x="0" y="10" text-anchor="middle">'+esc(s.label)+'</text></g>';
-  return '<g style="pointer-events:none"><rect class="blab-bg" x="'+(mx-tw/2)+'" y="'+(my+(s.covering?27:9))+'" width="'+tw+'" height="15" rx="3"/><text class="blab" x="'+mx+'" y="'+(my+(s.covering?38:20))+'" text-anchor="middle">'+esc(s.label)+'</text></g>';
+  return '<g style="pointer-events:none"><rect class="blab-bg" x="'+(mx-tw/2)+'" y="'+(my+(segCovN(s)?10+segCovN(s)*17:9))+'" width="'+tw+'" height="15" rx="3"/><text class="blab" x="'+mx+'" y="'+(my+(segCovN(s)?21+segCovN(s)*17:20))+'" text-anchor="middle">'+esc(s.label)+'</text></g>';
 }
 function promptSegLabel(id){ var s=seg(id); if(!s) return; var v=prompt('Label for this bundle (for example: To ECU, Firewall pass-through). Leave empty to remove.',s.label||''); if(v===null) return; setSegLabel(id,v); }
 
@@ -4164,7 +4979,7 @@ async function doEmbed(){
       p.comps.push(n);
     });
     src.comps.forEach(function(c){ if(c.mate){ var n=comp(map[c.id]); if(n) n.mate=map[c.mate]||null; } });
-    src.nodes.forEach(function(nd){ var n={id:uid('n'),x:nd.x+dlx,y:nd.y+dly}; map['n:'+nd.id]='n:'+n.id; p.nodes.push(n); });
+    src.nodes.forEach(function(nd){ var n={id:uid('n'),x:nd.x+dlx,y:nd.y+dly}; if(nd.z) n.z=nd.z; map['n:'+nd.id]='n:'+n.id; p.nodes.push(n); });
     src.segs.forEach(function(s){ var n=clone(s); n.id=uid('s'); n.a=map[s.a]; n.b=map[s.b]; if(n.a&&n.b) p.segs.push(n); });
     var wmap={};
     src.wires.forEach(function(w){ var n=clone(w); n.id=uid('w'); wmap[w.id]=n.id; n.a={c:map[w.a.c],p:w.a.p}; n.b={c:map[w.b.c],p:w.b.p}; if(n.a.c&&n.b.c) p.wires.push(n); });
