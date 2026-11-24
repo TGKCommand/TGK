@@ -314,6 +314,15 @@ tbody tr:hover td{background:rgba(13,148,136,.05)}
 .covrow{border:1px solid var(--border);border-radius:var(--r-md);padding:8px 9px;margin-bottom:8px;background:var(--bg2)}
 .cr-h{display:flex;gap:6px;align-items:center;margin-bottom:8px}
 .cr-h .sel{flex:1;min-width:0}
+.usw{display:inline-flex;gap:2px}
+.tbar.wrap.leg{max-width:calc(100% - 340px)}
+@media (max-width:900px){.tbar.wrap.leg{max-width:calc(100% - 28px)}.covleg.tr{top:auto;bottom:70px}}
+.isopanel{position:absolute;left:14px;bottom:14px;z-index:3;width:270px;max-height:62%;overflow:auto;background:rgba(255,255,255,.97);border-radius:var(--r-md);box-shadow:0 2px 8px rgba(14,20,24,.12),0 0 0 1px var(--border);padding:10px 12px}
+.ip-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ip-t{font-size:var(--t-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin:10px 0 4px;padding-top:6px;border-top:1px solid var(--border)}
+.ip-types{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+.isorow{display:flex;align-items:center;gap:7px;font-size:var(--t-sm);padding:2px 0;cursor:pointer;line-height:1.3}
+.isorow input{flex:none}
 .cr-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px}
 .cr-3>div{min-width:0}
 .cr-3 input{width:100%;min-width:0;box-sizing:border-box}
@@ -934,6 +943,44 @@ function fmtLen(mm,forceUnit){
 }
 function fmtTotal(mm){ var u=settings().units; if(u==='in') return (mm/304.8).toFixed(1)+' ft'; return (mm/1000).toFixed(2)+' m'; }
 
+// ---- length units: every length box follows "Show lengths in" (mm, cm or inches) and also accepts a unit typed in: 12, 1.5cm, 3/4in, 1 1/2in
+function lenUnit(){ var u=settings().units; return (u==='in'||u==='cm')?u:'mm'; }
+function lenUnitLabel(){ return lenUnit(); }
+function mmToU(mm){ var u=lenUnit(); return u==='in'?mm/25.4:u==='cm'?mm/10:mm; }
+function lenShow(mm){
+  if(mm==null || mm==='' || !isFinite(+mm)) return '';
+  var u=lenUnit(), d=u==='in'?3:u==='cm'?2:1;
+  return String(parseFloat(mmToU(+mm).toFixed(d)));
+}
+// text to millimetres, or null when it cannot be read
+function parseLen(str,dflt){
+  var t=String(str==null?'':str).trim().toLowerCase().replace(/"/g,' in').replace(/'/g,' ft').replace(/\s+/g,' ');
+  if(!t) return null;
+  var m=/^(-?\d*\.?\d+)?(?: ?(\d+)\/(\d+))? ?(mm|cm|m|in|ft)?$/.exec(t);
+  if(!m || (m[1]==null && m[2]==null)) return null;
+  var v=(m[1]!=null?parseFloat(m[1]):0)+(m[2]!=null?(+m[2])/(+m[3]||1):0), u=m[4]||dflt||lenUnit();
+  return v*({mm:1,cm:10,m:1000,in:25.4,ft:304.8}[u]||1);
+}
+function lenIn(v,dflt){ var mm=parseLen(v,dflt); return mm==null?0:Math.max(0,Math.round(mm*10)/10); }
+// diameters: finer in inches
+function fmtD(mm){ var u=lenUnit(); return u==='in'?(mm/25.4).toFixed(3)+' in':u==='cm'?(mm/10).toFixed(2)+' cm':mm.toFixed(1)+' mm'; }
+function unitSwitch(){
+  var u=lenUnit();
+  return '<div class="usw" title="Length units">'+['mm','cm','in'].map(function(k){ return '<button class="btn btn-sm'+(u===k?' on':'')+'" onclick="setSetting(\'units\',\''+k+'\')">'+k+'</button>'; }).join('')+'</div>';
+}
+function unitSelect(){
+  var u=lenUnit();
+  return '<select class="sel" style="width:64px;flex:none" title="Length units" onchange="setSetting(\'units\',this.value)">'+opt('mm','mm',u)+opt('cm','cm',u)+opt('in','in',u)+'</select>';
+}
+function badLen(){ toast('Could not read that length. Try 450, 45cm or 18in.','err'); renderInsp(); }
+function setSegLen(id,text){ var mm=parseLen(text); if(mm==null){ badLen(); return; } setSegField(id,'len',Math.max(0,Math.round(mm*10)/10)); }
+function setWireLen(id,text){
+  if(!String(text).trim()){ setWireField(id,'lenOverride',''); return; }
+  var mm=parseLen(text); if(mm==null){ badLen(); return; }
+  setWireField(id,'lenOverride',String(Math.max(0,Math.round(mm*10)/10)));
+}
+function setScale(text){ var mm=parseLen(text); if(mm==null||mm<=0){ badLen(); return; } setSetting('mmPerPx',mm); }
+
 function chooseContact(part,gauge){
   if(!part || !part.contacts || !part.contacts.length) return null;
   var g=+gauge;
@@ -1196,7 +1243,7 @@ function layoutHTML(){
     '<div class="sepv"></div><button class="btn btn-sm" onclick="fitView()">Fit</button>'+
     '<button class="btn btn-sm'+(S.showTables?' on':'')+'" onclick="S.showTables=!S.showTables;renderView()">Pin tables</button>'+
     '<button class="btn btn-sm'+(S.showNet?' on':'')+'" onclick="S.showNet=!S.showNet;renderView()" title="Click a row in a pin table to trace that circuit">Trace signal</button>'+
-    '<button class="btn btn-sm'+(S.showCov?' on':'')+'" onclick="S.showCov=!S.showCov;renderView()" title="Show heat shrink and sleeving on the bundles">Coverings</button></div>';
+    '<button class="btn btn-sm'+(S.showCov?' on':'')+'" onclick="S.showCov=!S.showCov;renderView()" title="Show heat shrink and sleeving on the bundles">Coverings</button><div class="sepv"></div>'+unitSwitch()+'</div>';
   var hint='';
   if(t==='segment') hint='<div class="hint">'+(S.segStart?'Click the next connector or branch point. Click empty space to drop a branch point. Esc to finish.':'Click a connector, terminal, or branch point to start a bundle')+'</div>';
   if(t==='branch') hint='<div class="hint">Click empty space to add a branch point, or click a bundle to split it</div>';
@@ -1383,6 +1430,7 @@ document.addEventListener('keydown',function(ev){
   if(S.view==='layout'){ var m={v:'select',s:'segment',b:'branch'}[ev.key.toLowerCase()]; if(m) setLayTool(m); }
   if(ev.key==='f' && (S.view==='layout'||S.view==='schematic')) fitView();
   if(ev.key==='f' && S.view==='iso') isoFit();
+  if(ev.key==='h' && S.view==='iso') isoHideSel();
 });
 
 // ===== model operations =====
@@ -1571,10 +1619,10 @@ function inspProject(){
     '<div class="f"><label>Revision</label><input class="inp" value="'+esc(p.rev||'A')+'" onchange="pushUndo();P().rev=this.value;commit()"></div>'+
     '<div class="f"><label>Default gauge</label><select class="sel" onchange="setSetting(\'gauge\',this.value)">'+GAUGES.map(function(g){return opt(g,g+' AWG',s.gauge);}).join('')+'</select></div>'+
     '<div class="f"><label>Wire type</label><select class="sel" onchange="setSetting(\'wtype\',this.value)">'+wireTypeOptions(s.wtype)+'</select></div>'+
-    '<div class="f"><label>Extra per end</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+s.extra+'" onchange="setSetting(\'extra\',num(this.value,0))"><span class="muted" style="align-self:center">mm</span></div></div>'+
+    '<div class="f"><label>Extra per end</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(s.extra)+'" onchange="setSetting(\'extra\',lenIn(this.value))"><span class="muted" style="align-self:center">'+lenUnitLabel()+'</span></div></div>'+
     '<div class="f"><label>Wire waste</label><div class="row2"><input class="inp mono" type="number" min="0" step="1" value="'+s.waste+'" onchange="setSetting(\'waste\',num(this.value,0))"><span class="muted" style="align-self:center">% on BOM</span></div></div>'+
     '<div class="f"><label>Show lengths in</label><select class="sel" onchange="setSetting(\'units\',this.value)">'+opt('mm','Millimeters',s.units)+opt('cm','Centimeters',s.units)+opt('in','Inches',s.units)+'</select></div>'+
-    '<div class="f"><label>Drawing scale</label><div class="row2"><input class="inp mono" type="number" min="0.1" step="0.5" value="'+s.mmPerPx+'" onchange="setSetting(\'mmPerPx\',num(this.value,2))"><span class="muted" style="align-self:center">mm per px</span></div></div>'+
+    '<div class="f"><label>Drawing scale</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(s.mmPerPx)+'" onchange="setScale(this.value)"><span class="muted" style="align-self:center">'+lenUnitLabel()+' per px</span></div></div>'+
     '<div class="f"><label>System voltage</label><div class="row2"><input class="inp mono" type="number" min="1" step="0.1" value="'+eset().sysV+'" onchange="setSetting(\'sysV\',num(this.value,12))"><span class="muted">V</span></div></div>'+
     '<div class="f"><label>Max drop</label><div class="row2"><input class="inp mono" type="number" min="0.5" step="0.5" value="'+eset().maxDrop+'" onchange="setSetting(\'maxDrop\',num(this.value,3))"><span class="muted">% per wire</span></div></div>'+
     '<div class="f"><label>Wire temp</label><select class="sel" onchange="setSetting(\'tempC\',num(this.value,60))">'+TEMP_OPTS.map(function(t){return opt(t[0],t[1],eset().tempC);}).join('')+'</select></div>'+
@@ -1629,7 +1677,7 @@ function inspWire(w){
     '</div>'+elecSectionHTML(w)+
     '<div class="is"><div class="is-t">Length</div>'+
     '<div class="f"><label>Routed</label><span class="mono" style="font:600 13px var(--mono);color:'+(sp?'inherit':'var(--red)')+'">'+(sp?fmtLen(sp.dist+2*num(settings().extra,0)):'No route in Layout')+'</span></div>'+
-    '<div class="f"><label>Override</label><div class="row2"><input class="inp mono" type="number" min="0" placeholder="auto" value="'+esc(w.lenOverride||'')+'" onchange="setWireField(\''+w.id+'\',\'lenOverride\',this.value)"><span class="muted" style="align-self:center">mm</span></div></div>'+
+    '<div class="f"><label>Override</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" placeholder="auto" value="'+(w.lenOverride?lenShow(w.lenOverride):'')+'" onchange="setWireLen(\''+w.id+'\',this.value)"><span class="muted" style="align-self:center">'+lenUnitLabel()+'</span></div></div>'+
     (sp?'<p class="muted" style="margin:0">Route passes through '+sp.segs.length+' bundle'+(sp.segs.length===1?'':'s')+'.</p>':'<p class="muted" style="margin:0">Connect '+esc(A?A.name:'')+' and '+esc(B?B.name:'')+' with bundles in Layout to get a length.</p>')+'</div>'+
     '<div class="is"><div class="is-t">Contacts</div>'+
     '<div class="f"><label>'+esc(pinRef(A,w.a.p))+'</label><span class="mono" style="font:12px var(--mono);color:'+(ca&&!ca.ok?'var(--yellow)':'inherit')+'">'+(ca?esc(ca.pn)+(ca.ok?'':' (gauge out of range)'):'<span class="muted">none</span>')+'</span></div>'+
@@ -1647,10 +1695,10 @@ function inspSeg(s){
   var dia=Math.sqrt(through.reduce(function(t,w){ var d=wireDia(w); return t+d*d; },0)*1.3);
   var covs=allParts().filter(function(p){return p.type==='covering';});
   return '<div class="ih"><div class="k">Bundle</div><h2>'+esc(a)+' to '+esc(b)+'</h2></div><div class="is">'+
-    '<div class="f"><label>Length</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+num(s.len,0)+'" onchange="setSegField(\''+s.id+'\',\'len\',this.value)"><span class="muted" style="align-self:center">mm</span></div></div>'+
+    '<div class="f"><label>Length</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(s.len,0))+'" onchange="setSegLen(\''+s.id+'\',this.value)">'+unitSelect()+'</div></div>'+
     '<div class="f"><label>Label</label><input class="inp" value="'+esc(s.label||'')+'" placeholder="e.g. To ECU, Firewall pass-through" onchange="setSegLabel(\''+s.id+'\',this.value)"></div>'+
     (s.est?'<div class="est-note">Estimated from the drawing. Measure on the car and type the real length.</div>':'')+
-    '<p class="muted" style="margin:0">'+through.length+' wire'+(through.length===1?'':'s')+' run through here. Estimated bundle diameter '+(through.length?dia.toFixed(1)+' mm':'--')+'.</p></div>'+ covEditorHTML(s,through.length?dia:0)+
+    '<p class="muted" style="margin:0">'+through.length+' wire'+(through.length===1?'':'s')+' run through here. Estimated bundle diameter '+(through.length?fmtD(dia):'--')+'.</p></div>'+ covEditorHTML(s,through.length?dia:0)+
     '<div class="is"><div class="acts"><button class="btn btn-sm btn-teal" onclick="S.placeAt=null;addInlineAt(\''+s.id+'\')" title="Split this bundle with a mated connector pair and pass its wires through">Add inline connectors</button><button class="btn btn-sm" onclick="var s=seg(\''+s.id+'\'),a=nodePos(s.a),b=nodePos(s.b);splitSeg(s.id,{x:(a.x+b.x)/2,y:(a.y+b.y)/2})">Split in half</button><button class="btn btn-sm btn-danger" onclick="deleteSel()">Delete bundle</button></div></div>';
 }
 function inspNode(n){
@@ -1673,7 +1721,7 @@ function sortWires(k){ if(S.wireSort.k===k) S.wireSort.d*=-1; else S.wireSort={k
 function wiresHTML(){
   var rows=wireRows(), sel=S.sel&&S.sel.kind==='wire'?S.sel.id:null;
   function th(k,l,cls){ var a=S.wireSort.k===k?(S.wireSort.d>0?' ^':' v'):''; return '<th data-sort="1" class="'+(cls||'')+'" onclick="sortWires(\''+k+'\')">'+l+a+'</th>'; }
-  var h='<div class="doc-in"><div class="doc-h"><h2>Wire list</h2><span class="muted">'+rows.length+' wires. Change color, gauge and type right in the table, or click a row for more.</span><div class="spacer"></div><button class="btn btn-sm" onclick="openCatalog(\'wire\')">Wire types</button><button class="btn btn-sm btn-teal" onclick="openAddWire()">Add wire</button><button class="btn btn-sm" onclick="exportWireCSV()">Download CSV</button></div>';
+  var h='<div class="doc-in"><div class="doc-h"><h2>Wire list</h2><span class="muted">'+rows.length+' wires. Change color, gauge and type right in the table, or click a row for more.</span><div class="spacer"></div>'+unitSwitch()+'<button class="btn btn-sm" onclick="openCatalog(\'wire\')">Wire types</button><button class="btn btn-sm btn-teal" onclick="openAddWire()">Add wire</button><button class="btn btn-sm" onclick="exportWireCSV()">Download CSV</button></div>';
   if(!rows.length) return h+'<p class="muted">No wires yet. Use Add wire, or draw them in the Schematic tab.</p></div>';
   h+='<div class="tbl-wrap"><table class="dt"><thead><tr>'+th('idx','#')+th('sig','Signal')+th('from','From')+th('to','To')+th('color','Color')+th('gauge','Gauge')+'<th>Type</th>'+th('len','Length','num')+'<th class="num" style="text-align:right">Amps</th><th class="num" style="text-align:right">Drop</th><th>Twist / cable</th><th>Contacts</th></tr></thead><tbody>';
   rows.forEach(function(r){
@@ -1841,7 +1889,7 @@ function addCover(sid,kind){
   pushUndo();
   var cv=ensureCovers(s), first=!cv.length, L=num(s.len,0);
   var ln=Math.max(5,Math.min(40,L||40)), bothParts=(s.a.indexOf('c:')===0 && s.b.indexOf('c:')===0), g0=Math.min(25,Math.floor(L/4));
-  if(first && kind==='shrink' && bothParts && L>=60){ cv.push({id:uid('v'),pn:pn,anchor:'span',off:g0,endGap:g0,len:0,color:'',note:''}); commit(); toast('Added '+pn+' between the two parts with '+g0+' mm of bare wire at each end. Change the bare wire in the Coverings panel and the length follows.','ok'); return; }
+  if(first && kind==='shrink' && bothParts && L>=60){ cv.push({id:uid('v'),pn:pn,anchor:'span',off:g0,endGap:g0,len:0,color:'',note:''}); commit(); toast('Added '+pn+' between the two parts with '+lenShow(g0)+' '+lenUnitLabel()+' of bare wire at each end. Change the bare wire in the Coverings panel and the length follows.','ok'); return; }
   cv.push(first?{id:uid('v'),pn:pn,anchor:'whole',off:0,len:0,color:'',note:''}:{id:uid('v'),pn:pn,anchor:'span',off:0,endGap:Math.max(0,L-ln),len:ln,color:'',note:''});
   commit();
   toast('Added '+pn+(first?' over the whole bundle.':' at the first end. Change where it sits in the Coverings panel.'),'ok');
@@ -1882,7 +1930,7 @@ function covPartOptions(cur){
   allParts().filter(function(p){ return p.type==='covering'; }).forEach(function(p){ var k=covKindOf(p); (by[k]=by[k]||[]).push(p); });
   Object.keys(COV_KINDS).forEach(function(k){
     if(!by[k]) return;
-    h+='<optgroup label="'+esc(COV_KINDS[k])+'">'+by[k].map(function(p){ return opt(p.pn,p.pn+(partSizeMm(p)?'  ('+partSizeMm(p).toFixed(1)+' mm)':''),cur); }).join('')+'</optgroup>';
+    h+='<optgroup label="'+esc(COV_KINDS[k])+'">'+by[k].map(function(p){ return opt(p.pn,p.pn+(partSizeMm(p)?'  ('+fmtD(partSizeMm(p))+')':''),cur); }).join('')+'</optgroup>';
   });
   if(cur && !partByPn(cur)) h='<option value="'+esc(cur)+'" selected>'+esc(cur)+' (not in catalog)</option>'+h;
   return h;
@@ -1908,21 +1956,21 @@ function covRowHTML(s,cv,dia){
   h+='<div class="cr-g"><label>Where</label><select class="sel" onchange="'+fn('anchor','this.value')+'">'+opt('whole','Whole bundle',whole?'whole':cv.anchor)+opt('span','Bare wire at each end',cv.anchor)+opt('a','Fixed length, from end A',cv.anchor)+opt('b','Fixed length, from end B',cv.anchor)+'</select></div>';
   var nA=esc(segEndName(s,'a')), nB=esc(segEndName(s,'b'));
   if(cv.anchor==='span'){
-    function sp(f,val){ return 'setCoverSpan(\''+sid+'\',\''+cid+'\',\''+f+'\',this.value)'; }
-    h+='<div class="cr-3"><div><label title="Bare wire next to '+nA+'">Bare at '+nA+'</label><input class="inp mono" type="number" min="0" step="1" value="'+Math.round(r[0]*10)/10+'" onchange="'+sp('gapA')+'"></div>'+
-       '<div><label title="Bundle length minus the bare wire at both ends">'+esc(COV_KINDS[kind].split(' ')[0])+' needed</label><input class="inp mono" readonly value="'+Math.round(ln*10)/10+'" style="background:var(--bg3);font-weight:700"></div>'+
-       '<div><label title="Bare wire next to '+nB+'">Bare at '+nB+'</label><input class="inp mono" type="number" min="0" step="1" value="'+Math.round(Math.max(0,Lb-r[1])*10)/10+'" onchange="'+sp('gapB')+'"></div></div>'+
-       '<div class="cr-g" style="margin-top:6px"><label>Both ends</label><div class="row2"><input class="inp mono" type="number" min="0" step="1" placeholder="same" onchange="'+sp('both')+'"><span class="muted">mm bare at each end</span></div></div>'+
-       '<div class="cr-i" style="margin:-2px 0 6px">All in mm along the bundle: '+Math.round(Lb)+' bundle - '+Math.round(r[0]*10)/10+' - '+Math.round(Math.max(0,Lb-r[1])*10)/10+' bare = '+Math.round(ln*10)/10+' of covering.</div>';
+    function sp(f,val){ return 'setCoverSpan(\''+sid+'\',\''+cid+'\',\''+f+'\',lenIn(this.value))'; }
+    h+='<div class="cr-3"><div><label title="Bare wire next to '+nA+'">Bare at '+nA+'</label><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(r[0])+'" onchange="'+sp('gapA')+'"></div>'+
+       '<div><label title="Bundle length minus the bare wire at both ends">'+esc(COV_KINDS[kind].split(' ')[0])+' needed</label><input class="inp mono" readonly value="'+lenShow(ln)+'" style="background:var(--bg3);font-weight:700"></div>'+
+       '<div><label title="Bare wire next to '+nB+'">Bare at '+nB+'</label><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(Math.max(0,Lb-r[1]))+'" onchange="'+sp('gapB')+'"></div></div>'+
+       '<div class="cr-g" style="margin-top:6px"><label>Both ends</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" placeholder="same" onchange="'+sp('both')+'"><span class="muted">'+lenUnitLabel()+' bare at each end</span></div></div>'+
+       '<div class="cr-i" style="margin:-2px 0 6px">All in '+lenUnitLabel()+' along the bundle: '+lenShow(Lb)+' bundle - '+lenShow(r[0])+' - '+lenShow(Math.max(0,Lb-r[1]))+' bare = '+lenShow(ln)+' of covering.</div>';
   } else if(!whole){
-    h+='<div class="cr-g"><label>Starts</label><div class="row2"><input class="inp mono" type="number" min="0" step="5" value="'+num(cv.off,0)+'" onchange="'+fn('off','this.value')+'"><span class="muted">mm from end '+(cv.anchor==='b'?'B':'A')+'</span></div></div>'+
-       '<div class="cr-g"><label>Length</label><div class="row2"><input class="inp mono" type="number" min="1" step="5" value="'+num(cv.len,0)+'" onchange="'+fn('len','this.value')+'"><span class="muted">mm</span></div></div>';
+    h+='<div class="cr-g"><label>Starts</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(cv.off,0))+'" onchange="'+fn('off','lenIn(this.value)')+'"><span class="muted">'+lenUnitLabel()+' from end '+(cv.anchor==='b'?'B':'A')+'</span></div></div>'+
+       '<div class="cr-g"><label>Length</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(cv.len,0))+'" onchange="'+fn('len','lenIn(this.value)')+'"><span class="muted">'+lenUnitLabel()+'</span></div></div>';
   }
   h+='<div class="cr-g"><label>Color</label><div class="row2"><span class="sw" style="background:'+hex+'"></span><select class="sel" onchange="'+fn('color','this.value')+'">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,covColorName(part,cv)); }).join('')+'</select></div></div>';
   h+='<div class="cr-g"><label>Note</label><input class="inp" value="'+esc(cv.note||'')+'" placeholder="e.g. strain relief at the connector" onchange="'+fn('note','this.value')+'"></div>';
-  var info=Math.round(ln)+' mm of '+COV_KINDS[kind].toLowerCase();
-  if(sz && dia>0) info+='. Size '+sz.toFixed(1)+' mm, bundle about '+dia.toFixed(1)+' mm.';
-  else if(sz) info+='. Size '+sz.toFixed(1)+' mm.';
+  var info=lenShow(ln)+' '+lenUnitLabel()+' of '+COV_KINDS[kind].toLowerCase();
+  if(sz && dia>0) info+='. Size '+fmtD(sz)+', bundle about '+fmtD(dia)+'.';
+  else if(sz) info+='. Size '+fmtD(sz)+'.';
   var tight=(sz && dia>0 && sz<dia);
   h+='<div class="cr-i'+(tight?' warn':'')+'">'+esc(info)+(tight?' This may be too small for the bundle.':'')+((part && !part.ckind && kind==='sleeve')?' Counted as Other sleeve. Click Edit and set Kind to Heat shrink if it is.':'')+'</div></div>';
   return h;
@@ -2014,7 +2062,7 @@ function covTagsSVG(s,vert,mx,my){
   var out='';
   covList(s).forEach(function(cv,i){
     var part=partByPn(cv.pn), hex=covHex(part,cv), r=covRange(s,cv), whole=covWhole(cv);
-    var txt=cv.pn+(whole?'':'  '+Math.round(r[1]-r[0])+' mm'), cw=txt.length*6+24, cx=vert?mx+11:mx-cw/2, cy=(vert?my-7:my+10)+i*17;
+    var txt=cv.pn+(whole?'':'  '+lenShow(r[1]-r[0])+' '+lenUnitLabel()), cw=txt.length*6+24, cx=vert?mx+11:mx-cw/2, cy=(vert?my-7:my+10)+i*17;
     out+='<g style="pointer-events:none"><rect class="ltag-bg" x="'+cx+'" y="'+cy+'" width="'+cw+'" height="15" rx="7.5"/><circle cx="'+(cx+9)+'" cy="'+(cy+7.5)+'" r="4" fill="'+hex+'" stroke="'+shade(hex,-0.4)+'" stroke-width=".8"/><text class="ltag" x="'+(cx+cw/2+6)+'" y="'+(cy+11)+'" text-anchor="middle">'+esc(txt)+'</text></g>';
   });
   return out;
@@ -2028,7 +2076,7 @@ function segCovN(s){ return S.showCov?covList(s).length:0; }
 // comp.lz for connectors, terminals and splices, node.z for branch points. Bundles slope between the heights of their ends.
 // Plain SVG with a painter's-order depth sort, no libraries.
 // =====================================================================
-S.iso={yaw:45,pitch:35.264,k:0,tx:0,ty:0,labels:true,cov:true,strands:true,lens:false,grid:true};
+S.iso={yaw:45,pitch:35.264,k:0,tx:0,ty:0,labels:true,cov:true,strands:true,lens:false,grid:true,panel:false,q:''}; isoDefaults(S.iso);
 var ISO_PRESETS={iso:[45,35.264],top:[0,90],front:[0,0],right:[90,0]};
 function vadd(a,b){ return {x:a.x+b.x,y:a.y+b.y,z:a.z+b.z}; }
 function vsub(a,b){ return {x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}; }
@@ -2037,6 +2085,94 @@ function vdot(a,b){ return a.x*b.x+a.y*b.y+a.z*b.z; }
 function vcross(a,b){ return {x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x}; }
 function vnorm(a){ var l=Math.sqrt(vdot(a,a))||1; return {x:a.x/l,y:a.y/l,z:a.z/l}; }
 var ISO_LIGHT=vnorm({x:-0.35,y:0.45,z:0.8});
+
+// ---- show / hide in the 3D view: types of things, covering kinds, extras, and any single part, bundle or branch point
+function isoDefaults(v){
+  v.show={conn:true,term:true,spl:true,seg:true,node:true,shadow:true,axis:true,ck:{shrink:true,braid:true,conv:true,tape:true,sleeve:true}};
+  v.hidden={};
+}
+function isoAllShown(){ var o={}; isoDefaults(o); return o.show; }
+function isoCompVisible(v,c){ var k={connector:'conn',terminal:'term',splice:'spl'}[c.type]; return v.show[k]!==false && !v.hidden[c.id]; }
+function isoSegVisible(v,s){ return v.show.seg!==false && !v.hidden[s.id]; }
+function isoHiddenCount(){
+  var v=S.iso, n=Object.keys(v.hidden).filter(function(k){ return v.hidden[k]; }).length;
+  ['conn','term','spl','seg','node','shadow','axis'].forEach(function(k){ if(v.show[k]===false) n++; });
+  Object.keys(v.show.ck).forEach(function(k){ if(v.show.ck[k]===false) n++; });
+  return n;
+}
+function isoSave(){
+  try{ var v=S.iso; localStorage.setItem('tgk_hb_iso_'+P().id,JSON.stringify({show:v.show,hidden:v.hidden,labels:v.labels,cov:v.cov,strands:v.strands,lens:v.lens,grid:v.grid})); }catch(e){}
+}
+// what was shown and hidden is remembered for each harness on this computer
+function isoSync(){
+  var v=S.iso; if(!S.cur || S._isoFor===S.cur.id) return;
+  S._isoFor=S.cur.id; v.k=0; isoDefaults(v);
+  try{
+    var d=JSON.parse(localStorage.getItem('tgk_hb_iso_'+S.cur.id)||'null');
+    if(d){
+      if(d.show) Object.keys(d.show).forEach(function(k){ if(k==='ck') Object.assign(v.show.ck,d.show.ck); else v.show[k]=d.show[k]; });
+      v.hidden=d.hidden||{};
+      ['labels','cov','strands','lens','grid'].forEach(function(k){ if(typeof d[k]==='boolean') v[k]=d[k]; });
+    }
+  }catch(e){}
+}
+function isoPanelBtn(){
+  var n=isoHiddenCount();
+  return '<button class="btn btn-sm'+(S.iso.panel?' on':'')+'" id="isoPanelBtn" onclick="isoPanelToggle()" title="Show or hide any part, bundle or type of thing">Show / hide'+(n?' ('+n+' hidden)':'')+'</button>';
+}
+function isoUpdateBtn(){ var b=$('isoPanelBtn'); if(b){ var n=isoHiddenCount(); b.textContent='Show / hide'+(n?' ('+n+' hidden)':''); } }
+function isoPanelToggle(){ S.iso.panel=!S.iso.panel; renderView(); }
+function isoChk(label,on,js){ return '<label class="isorow"><input type="checkbox" '+(on?'checked ':'')+'onchange="'+js+'"> '+label+'</label>'; }
+function isoListsHTML(){
+  var q=(S.iso.q||'').toLowerCase(), p=P(), v=S.iso;
+  function row(id,label){ return label.toLowerCase().indexOf(q)<0?'':isoChk(esc(label),!v.hidden[id],'isoHide(\''+id+'\',!this.checked)'); }
+  function sec(t,rows){ rows=rows.filter(Boolean); return rows.length?'<div class="ip-t">'+t+' <span class="muted">'+rows.length+'</span></div>'+rows.join(''):''; }
+  return sec('Parts',p.comps.map(function(c){ return row(c.id,c.name+(c.partPn?'  '+c.partPn:'')); }))+
+    sec('Bundles',p.segs.map(function(s){ return row(s.id,segEndName(s,'a')+' to '+segEndName(s,'b')+'  '+fmtLen(num(s.len,0))+(covList(s).length?'  ['+covList(s).map(function(c){ return c.pn; }).join(', ')+']':'')); }))+
+    sec('Branch points',p.nodes.map(function(n,i){ return row(n.id,'Branch point '+(i+1)); }));
+}
+function isoPanelHTML(){
+  if(!S.iso.panel) return '';
+  var v=S.iso;
+  var types=[['show','conn','Connectors'],['show','term','Terminals'],['show','spl','Splices'],['show','seg','Bundles'],['show','node','Branch points'],
+    ['flag','cov','Coverings'],['ck','shrink','Heat shrink'],['ck','braid','Braided sleeve'],['ck','conv','Loom'],['ck','tape','Tape'],['ck','sleeve','Other sleeve'],
+    ['flag','strands','Wire colors in bundles'],['flag','labels','Labels'],['flag','lens','Lengths'],['flag','grid','Floor grid'],['show','shadow','Shadows'],['show','axis','Axis marker']];
+  var h='<div class="isopanel" id="isoPanel"><div class="ip-h"><b>Show / hide</b><button class="btn btn-sm" onclick="isoPanelToggle()">Close</button></div>'+
+    '<div class="acts" style="margin-bottom:8px"><button class="btn btn-sm" onclick="isoHideSel()" title="Hide the part or bundle you clicked (H)">Hide selected</button><button class="btn btn-sm" onclick="isoIsolate()" title="Show only what you clicked and what touches it">Isolate selected</button><button class="btn btn-sm btn-teal" onclick="isoShowAll()">Show all</button></div>'+
+    '<div class="ip-t">Types</div><div class="ip-types">'+types.map(function(t){
+      var on=t[0]==='show'?v.show[t[1]]!==false:t[0]==='ck'?v.show.ck[t[1]]!==false:!!v[t[1]];
+      return isoChk(t[2],on,'isoSetOpt(\''+t[0]+'\',\''+t[1]+'\',this.checked)');
+    }).join('')+'</div>'+
+    '<input class="inp" style="margin:10px 0 2px" placeholder="Find a part or bundle" value="'+esc(v.q||'')+'" oninput="S.iso.q=this.value;$(\'isoLists\').innerHTML=isoListsHTML()">'+
+    '<div id="isoLists">'+isoListsHTML()+'</div></div>';
+  return h;
+}
+function isoSetOpt(group,key,val){
+  var v=S.iso;
+  if(group==='show') v.show[key]=val; else if(group==='ck') v.show.ck[key]=val; else v[key]=val;
+  isoSave();
+  if(key==='cov'){ renderView(); return; }
+  document.querySelectorAll('[data-iso="'+key+'"]').forEach(function(b){ b.classList.toggle('on',!!val); });
+  isoDraw(); isoUpdateBtn();
+}
+function isoHide(id,hide){ var v=S.iso; if(hide) v.hidden[id]=true; else delete v.hidden[id]; isoSave(); isoDraw(); isoUpdateBtn(); }
+function isoHideSel(){
+  var sl=S.sel; if(!sl || (sl.kind!=='comp' && sl.kind!=='seg' && sl.kind!=='node')){ toast('Click a part or bundle in the view first.'); return; }
+  S.iso.hidden[sl.id]=true; S.sel=null; isoSave(); render();
+}
+function isoIsolate(){
+  var sl=S.sel; if(!sl || (sl.kind!=='comp' && sl.kind!=='seg' && sl.kind!=='node')){ toast('Click a part or bundle in the view first.'); return; }
+  var p=P(), keep={}, key=(sl.kind==='comp'?'c:':sl.kind==='node'?'n:':'')+sl.id;
+  keep[sl.id]=true;
+  function endId(k){ return k.slice(2); }
+  if(sl.kind==='seg'){ var s=seg(sl.id); if(s){ keep[endId(s.a)]=true; keep[endId(s.b)]=true; } }
+  else p.segs.forEach(function(s){ if(s.a===key||s.b===key) keep[s.id]=true; });
+  p.comps.forEach(function(c){ if(!keep[c.id]) S.iso.hidden[c.id]=true; });
+  p.segs.forEach(function(s){ if(!keep[s.id]) S.iso.hidden[s.id]=true; });
+  p.nodes.forEach(function(n){ if(!keep[n.id]) S.iso.hidden[n.id]=true; });
+  isoSave(); render(); setTimeout(isoFit,30);
+}
+function isoShowAll(){ isoDefaults(S.iso); S.iso.q=''; isoSave(); renderView(); }
 
 function zOfKey(key){
   if(!key) return 0;
@@ -2101,8 +2237,8 @@ function isoProjector(v){
 }
 function isoFitView(vv,W,H){
   var sc=isoScene(), pts=[];
-  sc.segs.forEach(function(g){ g.p3.forEach(function(q){ pts.push(q); }); });
-  sc.comps.forEach(function(o){ pts.push(o.O); pts.push(vadd(o.O,vmul(o.u,36))); });
+  sc.segs.forEach(function(g){ if(!isoSegVisible(vv,g.s)) return; g.p3.forEach(function(q){ pts.push(q); }); });
+  sc.comps.forEach(function(o){ if(!isoCompVisible(vv,o.c)) return; pts.push(o.O); pts.push(vadd(o.O,vmul(o.u,36))); });
   if(!pts.length){ vv.k=0.5; vv.tx=W/2; vv.ty=H/2; return; }
   var one=Object.assign({},vv,{k:1,tx:0,ty:0}), pj=isoProjector(one), x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   pts.forEach(function(q){ var r=pj(q); x0=Math.min(x0,r.x); y0=Math.min(y0,r.y); x1=Math.max(x1,r.x); y1=Math.max(y1,r.y); });
@@ -2116,8 +2252,9 @@ function isoStroke(d,col,w,extra){ return '<path d="'+d+'" fill="none" stroke="'
 // one run of a bundle: bare wires, or under one covering
 function isoSegItems(g,pj,v,items,sel,labels,exportMode){
   var s=g.s, L=Math.max(1,num(s.len,0)), k=v.k, isSel=!!(sel&&sel.kind==='seg'&&sel.id===s.id);
+  if(!isoSegVisible(v,s)) return;
   var covs=[];
-  if(v.cov) covList(s).forEach(function(cv){ var r=covRange(s,cv); if(r[1]-r[0]>0.5) covs.push({cv:cv,r:r,part:partByPn(cv.pn),len:r[1]-r[0]}); });
+  if(v.cov) covList(s).forEach(function(cv){ var r=covRange(s,cv); if(v.show.ck[covKindOf(partByPn(cv.pn))]===false) return; if(r[1]-r[0]>0.5) covs.push({cv:cv,r:r,part:partByPn(cv.pn),len:r[1]-r[0]}); });
   var cuts=[0,L]; covs.forEach(function(x){ cuts.push(x.r[0],x.r[1]); });
   cuts=cuts.filter(function(q){ return q>=-1e-6 && q<=L+1e-6; }).sort(function(a,b){ return a-b; });
   var cu=[]; cuts.forEach(function(q){ if(!cu.length || q-cu[cu.length-1]>0.01) cu.push(q); });
@@ -2158,7 +2295,7 @@ function isoSegItems(g,pj,v,items,sel,labels,exportMode){
       if(!whole) out+=covEndMarks(P2,wC,dk);
       if(v.labels){
         var fm=((r.c.r[0]+r.c.r[1])/2)/L, mp=subPoly(g.p3,Math.max(0,fm-0.001),Math.min(1,fm+0.001))[0], whole2=covWhole(r.c.cv);
-        if(mp && r.c.first!==false){ r.c.first=false; labels.push({p:pj(mp),txt:r.c.cv.pn+(whole2?'':'  '+Math.round(r.c.len)+' mm'),dot:hex,dy:-wC/2-10}); }
+        if(mp && r.c.first!==false){ r.c.first=false; labels.push({p:pj(mp),txt:r.c.cv.pn+(whole2?'':'  '+lenShow(r.c.len)+' '+lenUnitLabel()),dot:hex,dy:-wC/2-10}); }
       }
     }
     items.push({d:dsum/P2.length,s:'<g data-ik="seg" data-iid="'+s.id+'" style="cursor:pointer">'+out+'</g>'});
@@ -2166,6 +2303,7 @@ function isoSegItems(g,pj,v,items,sel,labels,exportMode){
   // round joints where bundles meet at a branch point (these can be clicked to set the height)
   [s.a,s.b].forEach(function(key,i){
     if(!key || key.indexOf('n:')!==0) return;
+    if(v.show.node===false || v.hidden[key.slice(2)]) return;
     var q=pj(g.p3[i?g.p3.length-1:0]), nid=key.slice(2), nsel=!!(sel&&sel.kind==='node'&&sel.id===nid);
     items.push({d:q.d-0.5,s:'<circle data-ik="node" data-iid="'+nid+'" cx="'+q.x.toFixed(1)+'" cy="'+q.y.toFixed(1)+'" r="'+Math.max(wB/2,3.5).toFixed(1)+'" fill="'+(nsel?'#0d9488':'#cdd2d8')+'" stroke="'+(nsel?'#0d9488':'#7b848d')+'" stroke-width="1.2" style="cursor:pointer"/>'});
   });
@@ -2209,6 +2347,7 @@ function isoFace(b,pt,hw,hh){
   return out;
 }
 function isoCompItems(o,pj,nv,v,items,sel,labels){
+  if(!isoCompVisible(v,o.c)) return;
   var c=o.c, part=o.part, isSel=!!(sel&&sel.kind==='comp'&&sel.id===c.id), boxes=[], top=0, hgt=8;
   if(c.type==='connector'){
     var n=c.pins.length, rec=isRecept(part,c), L=faceLayout(n,c.desig||(part&&part.desig)||'num',rec);
@@ -2247,7 +2386,8 @@ function isoBuild(v,W,H,exportMode){
       isoBuild.step=step;
     }
   }
-  if(!sc.flat) sc.segs.forEach(function(g){
+  if(!sc.flat && v.show.shadow!==false) sc.segs.forEach(function(g){
+    if(!isoSegVisible(v,g.s)) return;
     var flat=g.p3.map(function(q){ return pj({x:q.x,y:q.y,z:0}); });
     under+=isoStroke(isoD(flat),'rgba(15,23,42,.10)',Math.max(2.4,g.dia*k*1.1),' stroke-linecap="round"');
   });
@@ -2273,12 +2413,12 @@ function isoBuild(v,W,H,exportMode){
     giz+='<line x1="'+gx2+'" y1="'+gy2+'" x2="'+(gx2+d.x*32).toFixed(1)+'" y2="'+(gy2+d.y*32).toFixed(1)+'" stroke="'+a[2]+'" stroke-width="2.2" stroke-linecap="round"/><text x="'+(gx2+d.x*43).toFixed(1)+'" y="'+(gy2+d.y*43+4).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="'+a[2]+'">'+a[0]+'</text>';
   });
   if(v.grid && isoBuild.step) giz+='<text x="'+gx2+'" y="'+(gy2+34)+'" text-anchor="middle" font-size="9.5" fill="#6b7280">grid '+(settings().units==='in'?(isoBuild.step/25.4).toFixed(1)+' in':settings().units==='cm'?(isoBuild.step/10)+' cm':isoBuild.step+' mm')+'</text>';
-  return out+'<g style="pointer-events:none">'+giz+'</g>';
+  return out+(v.show.axis===false?'':'<g style="pointer-events:none">'+giz+'</g>');
 }
 function isoDraw(){
   var svg=$('iso'), g=$('isoG'); if(!svg||!g||!S.cur) return;
   var r=svg.getBoundingClientRect(), v=S.iso;
-  if(S._isoFor!==S.cur.id){ S._isoFor=S.cur.id; v.k=0; }
+  isoSync();
   if(!r.width||!r.height){ setTimeout(isoDraw,60); return; }
   if(!v.k) isoFitView(v,r.width,r.height);
   g.innerHTML=isoBuild(v,r.width,r.height,false);
@@ -2286,20 +2426,21 @@ function isoDraw(){
 function isoSoon(){ if(S._isoRaf) return; S._isoRaf=requestAnimationFrame(function(){ S._isoRaf=0; isoDraw(); }); }
 function isoFit(){ var svg=$('iso'); if(!svg) return; var r=svg.getBoundingClientRect(); isoFitView(S.iso,r.width||800,r.height||500); isoDraw(); }
 function isoPreset(n){ var a=ISO_PRESETS[n]; if(!a) return; S.iso.yaw=a[0]; S.iso.pitch=a[1]; isoFit(); }
-function isoToggle(key){ S.iso[key]=!S.iso[key]; renderView(); }
+function isoToggle(key){ S.iso[key]=!S.iso[key]; isoSave(); renderView(); }
 function isoHTML(){
+  isoSync();
   var p=P(), v=S.iso, sc=isoScene();
-  function tg(key,label,title){ return '<button class="btn btn-sm'+(v[key]?' on':'')+'" onclick="isoToggle(\''+key+'\')" title="'+title+'">'+label+'</button>'; }
-  var tb='<div class="tbar wrap">'+
+  function tg(key,label,title){ return '<button class="btn btn-sm'+(v[key]?' on':'')+'" data-iso="'+key+'" onclick="isoToggle(\''+key+'\')" title="'+title+'">'+label+'</button>'; }
+  var tb='<div class="tbar wrap'+((v.cov && covUsage().length)?' leg':'')+'">'+
     '<button class="btn btn-sm" onclick="isoPreset(\'iso\')" title="True isometric: 45 degrees around, 35 degrees down">Isometric</button>'+
     '<button class="btn btn-sm" onclick="isoPreset(\'top\')">Top</button><button class="btn btn-sm" onclick="isoPreset(\'front\')">Front</button><button class="btn btn-sm" onclick="isoPreset(\'right\')">Right</button>'+
     '<button class="btn btn-sm" onclick="isoFit()" title="Fit the harness in the window (F)">Fit</button><div class="sepv"></div>'+
     tg('labels','Labels','Part names and covering part numbers')+tg('cov','Coverings','Show heat shrink and sleeving')+tg('strands','Wires','Show the wire colors inside uncovered bundles')+tg('lens','Lengths','Bundle lengths')+tg('grid','Grid','Floor grid')+
-    '<div class="sepv"></div><button class="btn btn-sm btn-teal" onclick="openHeights()" title="Lift connectors and branch points off the board">Set heights</button>'+
-    '<button class="btn btn-sm" onclick="exportIsoSVG()">Save SVG</button></div>';
+    isoPanelBtn()+'<div class="sepv"></div><button class="btn btn-sm btn-teal" onclick="openHeights()" title="Lift connectors and branch points off the board">Set heights</button>'+
+    '<button class="btn btn-sm" onclick="exportIsoSVG()">Save SVG</button><div class="sepv"></div>'+unitSwitch()+'</div>';
   var empty=(p.comps.length||p.segs.length)?'':'<div class="cv-empty"><div class="panel"><h3>Nothing to show yet</h3><p>Build the schematic and lay out the bundles first. This view is made from the Layout.</p></div></div>';
   var hint=(!empty && sc.flat)?'<div class="hint">Everything is at height 0, so this is your flat layout seen in 3D. Use Set heights to lift parts. Drag to turn, scroll to zoom, shift-drag to move.</div>':(empty?'':'<div class="hint">Drag to turn. Scroll or pinch to zoom. Shift-drag or two fingers to move. Click a bundle or part to edit it.</div>');
-  return '<svg class="cv isoc" id="iso"><g id="isoG"></g></svg>'+tb+hint+empty+(v.cov?covLegendHTML('tr'):'');
+  return '<svg class="cv isoc" id="iso"><g id="isoG"></g></svg>'+tb+hint+empty+(v.cov?covLegendHTML('tr'):'')+isoPanelHTML();
 }
 // ---- orbit, pan, zoom (mouse, touch and pen)
 // the 3D point to turn the model around: the part or bundle under the cursor, else the board under the cursor
@@ -2399,33 +2540,34 @@ function setZ(kind,id,v){
   commit();
 }
 function heightField(kind,id,val){
-  return '<div class="f"><label>Height</label><div class="row2"><input class="inp mono" type="number" step="5" value="'+num(val,0)+'" onchange="setZ(\''+kind+'\',\''+id+'\',this.value)"><span class="muted" style="align-self:center">mm up, for the 3D view</span></div></div>';
+  return '<div class="f"><label>Height</label><div class="row2"><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(val,0))+'" onchange="setZ(\''+kind+'\',\''+id+'\',parseLen(this.value)||0)"><span class="muted" style="align-self:center">'+lenUnitLabel()+' up, for the 3D view</span></div></div>';
 }
 function openHeights(){
   var p=P(), rows='', label={connector:'Connector',terminal:'Terminal',splice:'Splice'};
-  p.comps.forEach(function(c){ rows+='<tr><td>'+esc(c.name)+'</td><td class="muted">'+label[c.type]+'</td><td><input class="inp mono" type="number" step="5" value="'+num(c.lz,0)+'" data-hk="c" data-hid="'+c.id+'" style="width:100px"></td></tr>'; });
-  p.nodes.forEach(function(n,i){ rows+='<tr><td>Branch point '+(i+1)+'</td><td class="muted">Breakout</td><td><input class="inp mono" type="number" step="5" value="'+num(n.z,0)+'" data-hk="n" data-hid="'+n.id+'" style="width:100px"></td></tr>'; });
+  p.comps.forEach(function(c){ rows+='<tr><td>'+esc(c.name)+'</td><td class="muted">'+label[c.type]+'</td><td><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(c.lz,0))+'" data-hk="c" data-hid="'+c.id+'" style="width:100px"></td></tr>'; });
+  p.nodes.forEach(function(n,i){ rows+='<tr><td>Branch point '+(i+1)+'</td><td class="muted">Breakout</td><td><input class="inp mono" type="text" inputmode="decimal" value="'+lenShow(num(n.z,0))+'" data-hk="n" data-hid="'+n.id+'" style="width:100px"></td></tr>'; });
   if(!rows){ toast('Add parts in the schematic first.'); return; }
   $('modalRoot').innerHTML='<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="width:560px;max-width:96vw">'+
     '<div class="modal-title">Heights for the 3D view</div>'+
     '<p style="color:var(--text2);font-size:var(--t-md);margin-bottom:12px">How far each part sits above the board, in mm. Layout gives the position across the page, so this only adds the up and down. Bundles slope between their ends.</p>'+
-    '<div class="acts" style="margin-bottom:10px"><input class="inp mono" id="hkAll" type="number" step="5" value="0" style="width:90px"><button class="btn btn-sm" onclick="heightsFill()">Set every height to this</button></div>'+
-    '<div class="tbl-wrap" style="max-height:48vh;overflow:auto"><table><thead><tr><th>Name</th><th>Kind</th><th>Height (mm)</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="acts" style="margin-bottom:10px"><input class="inp mono" id="hkAll" type="text" inputmode="decimal" value="0" style="width:90px"><button class="btn btn-sm" onclick="heightsFill()">Set every height to this</button></div>'+
+    '<div class="tbl-wrap" style="max-height:48vh;overflow:auto"><table><thead><tr><th>Name</th><th>Kind</th><th>Height ('+lenUnitLabel()+')</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="applyHeights()">Apply</button></div></div></div>';
 }
-function heightsFill(){ var v=$('hkAll').value; document.querySelectorAll('#modalRoot [data-hk]').forEach(function(el){ el.value=num(v,0); }); }
+function heightsFill(){ var v=$('hkAll').value; document.querySelectorAll('#modalRoot [data-hk]').forEach(function(el){ el.value=v; }); }
 function applyHeights(){
   pushUndo();
   document.querySelectorAll('#modalRoot [data-hk]').forEach(function(el){
-    var kind=el.getAttribute('data-hk'), id=el.getAttribute('data-hid'), z=num(el.value,0), o=kind==='c'?comp(id):lnode(id); if(!o) return;
+    var kind=el.getAttribute('data-hk'), id=el.getAttribute('data-hid'), z=Math.round((parseLen(el.value)||0)*10)/10, o=kind==='c'?comp(id):lnode(id); if(!o) return;
     if(kind==='c'){ if(z) o.lz=z; else delete o.lz; } else { if(z) o.z=z; else delete o.z; }
   });
   closeModal(); commit();
 }
 // ---- export and print
-function isoSVGString(W,H){
+function isoSVGString(W,H,all){
   W=W||1400; H=H||900;
-  var vv=Object.assign({},S.iso); isoFitView(vv,W,H);
+  var vv=Object.assign({},S.iso); if(all){ vv.hidden={}; vv.show=isoAllShown(); }
+  isoFitView(vv,W,H);
   var body=isoBuild(vv,W,H,true), leg='';
   var u=S.iso.cov?covUsage():[];
   if(u.length){
@@ -2530,7 +2672,7 @@ function openPartForm(pn,back){
     '<div id="pfTerm"><div class="form-row cols-2">'+g('Kind','<select class="form-input" id="pfKind">'+Object.keys(TERM_KINDS).filter(function(k){return k!=='loose';}).map(function(k){ return opt(k,TERM_KINDS[k],p.kind||'ring'); }).join('')+'</select>')+g('Wire gauge range',inp('pfTAwg',awgText(p.awg),'e.g. 22-16','mono'))+'</div></div>'+
     // covering
     '<div id="pfCov"><div class="form-row cols-2">'+g('Kind','<select class="form-input" id="pfCKind" onchange="S.pf.kindTouched=true;pfRenderPrev()">'+Object.keys(COV_KINDS).map(function(k){ return opt(k,COV_KINDS[k],edit?covKindOf(p):'shrink'); }).join('')+'</select>')+g('Color','<select class="form-input" id="pfCColor">'+Object.keys(COV_COLORS).map(function(k){ return opt(k,k,(p.ccolor&&COV_COLORS[p.ccolor])?p.ccolor:'black'); }).join('')+'</select>')+'</div>'+
-    '<div class="form-row cols-2">'+g('Size, inside diameter (mm)',inp('pfDia',p.dia||(partSizeMm(p)?partSizeMm(p).toFixed(1):''),'e.g. 12.7','mono',' type="number" min="0" step="0.1"'))+g('Shrink ratio',inp('pfRatio',p.ratio||'','e.g. 3:1 (heat shrink only)'))+'</div></div>'+
+    '<div class="form-row cols-2">'+g('Size, inside diameter (mm, or type 1/2in)',inp('pfDia',p.dia||(partSizeMm(p)?partSizeMm(p).toFixed(1):''),'e.g. 12.7 or 1/2in','mono',' inputmode="decimal"'))+g('Shrink ratio',inp('pfRatio',p.ratio||'','e.g. 3:1 (heat shrink only)'))+'</div></div>'+
     // cable
     '<div id="pfCab"><div class="form-row cols-2">'+g('Cores',inp('pfCores',p.cores||2,'','mono',' type="number" min="1" max="24"'))+g('Wire gauge',inp('pfCAwg',p.awg||'22','','mono'))+'</div>'+
     '<div class="form-row cols-2"><label class="checkbox-row" style="margin:0"><input type="checkbox" id="pfShield"'+(p.shield?' checked':'')+'> Shielded</label><label class="checkbox-row" style="margin:0"><input type="checkbox" id="pfTwisted"'+(p.twisted?' checked':'')+'> Twisted pair</label></div>'+
@@ -2641,7 +2783,7 @@ function savePartForm(){
     delete p.cav;
   } else if(type==='covering'){
     p.ckind=$('pfCKind').value; p.ccolor=$('pfCColor').value;
-    var dia=num($('pfDia').value,0); if(dia>0) p.dia=dia; else delete p.dia;
+    var dia=Math.round((parseLen($('pfDia').value,'mm')||0)*100)/100; if(dia>0) p.dia=dia; else delete p.dia;
     var rt=$('pfRatio').value.trim(); if(rt) p.ratio=rt; else delete p.ratio;
     delete p.cav;
   } else if(type==='cable'){
@@ -2733,7 +2875,7 @@ function exportSVG(){ download(fileBase()+'_layout.svg',exportSVGString(),'image
 function printDrawing(){
   var p=P(), rows=wireRows().sort(function(a,b){return a.idx-b.idx;}), bom=computeBOM();
   var h='<div class="tb"><div><h1>'+esc(p.name)+'</h1><div>TGK Motorsport harness drawing</div></div><div style="text-align:right">Rev '+esc(p.rev||'A')+'<br>'+new Date().toLocaleDateString()+'<br>'+p.wires.length+' wires, '+p.comps.length+' components</div></div>'+exportSVGString();
-  if(p.segs.length) h+='<div class="pb"></div><h2>Isometric view</h2>'+isoSVGString(1200,800);
+  if(p.segs.length) h+='<div class="pb"></div><h2>Isometric view</h2>'+isoSVGString(1200,800,true);
   h+='<div class="pb"></div><h2>Wire list</h2><table><tr><th>Wire</th><th>Signal</th><th>From</th><th>To</th><th>Color</th><th>AWG</th><th>Type</th><th>Length</th></tr>';
   rows.forEach(function(r){ h+='<tr><td>W'+r.idx+'</td><td>'+esc(r.sig)+'</td><td>'+esc(r.from)+'</td><td>'+esc(r.to)+'</td><td>'+esc(r.color)+'</td><td>'+esc(r.w.gauge)+'</td><td>'+esc(r.w.wtype)+'</td><td>'+fmtLen(r.len,'mm')+' / '+fmtLen(r.len,'in')+'</td></tr>'; });
   h+='</table><h2>Bill of materials</h2><table><tr><th>Category</th><th>Part number</th><th>Description</th><th>Qty</th></tr>';
@@ -4809,7 +4951,7 @@ function buildPlan(){
   p.segs.forEach(function(s){
     covList(s).forEach(function(cv,i){
       var part=partByPn(cv.pn), col=covColorName(part,cv), r=covRange(s,cv), whole=covWhole(cv);
-      var where=whole?'':(' - '+Math.round(r[1]-r[0])+' mm, leave '+Math.round(r[0])+' mm bare at '+nm(s.a)+' and '+Math.round(Math.max(0,num(s.len,0)-r[1]))+' mm bare at '+nm(s.b));
+      var where=whole?'':(' - '+fmtLen(r[1]-r[0])+', leave '+fmtLen(r[0])+' bare at '+nm(s.a)+' and '+fmtLen(Math.max(0,num(s.len,0)-r[1]))+' bare at '+nm(s.b));
       cov.push({key:i===0?'cov:'+s.id:'cov:'+s.id+':'+cv.id,title:'Cover '+nm(s.a)+' to '+nm(s.b),sub:cv.pn+(col!=='black'?' ('+col+')':'')+where+(cv.note?' - '+cv.note:''),meta:fmtLen(covLenMm(s,cv),'mm')+(s.est?' (estimated)':'')});
     });
   });
