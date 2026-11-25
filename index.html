@@ -13039,6 +13039,7 @@ html[data-theme="dark"] #view-fbgroups .fbg-hl-sech{color:#9AA3AF}
   <div class="fbg-tabs fbg-main-tabs" id="fbg-main-tabs" role="tablist">
     <button class="fbg-tab active" data-pane="find"><span class="ic ic-search"></span>Find</button>
     <button class="fbg-tab" data-pane="groups"><span class="ic ic-users"></span>My Groups<span class="fbg-tabcount" id="fbg-cnt-groups"></span></button>
+    <button class="fbg-tab" data-pane="catalog"><span class="ic ic-car"></span>Catalog</button>
     <button class="fbg-tab" data-pane="plan"><span class="ic ic-rocket"></span>Launch Plan</button>
     <button class="fbg-tab" data-pane="health"><span class="ic ic-shield"></span>Health<span class="fbg-tabcount" id="fbg-cnt-health"></span></button>
   </div>
@@ -13080,6 +13081,7 @@ html[data-theme="dark"] #view-fbgroups .fbg-hl-sech{color:#9AA3AF}
   </div>
 
   <div class="fbg-pane" id="fbg-pane-groups"></div>
+  <div class="fbg-pane" id="fbg-pane-catalog"></div>
   <div class="fbg-pane" id="fbg-pane-plan"></div>
   <div class="fbg-pane" id="fbg-pane-health"></div>
 </div>
@@ -14817,6 +14819,264 @@ function openAddSelectedToTemplate(rows){
   });
 }
 
+/* ======== Catalog: pick cars from the vehicle catalog, add groups to their chassis + model-year templates, search cars <-> groups (v7.40) ======== */
+var cx = {q:'',selRows:{},selGroups:{},open:{},limL:150,limR:150,loading:false,veh:null,err:'',built:false};
+function cxNorm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function cxCodeParts(s){ return String(s||'').split(/[\/,]+/).map(cxNorm).filter(Boolean); }   // "B9 / 8W" -> b9, 8w
+function cxCss(){
+  if(document.getElementById('fbg-cx-css')) return;
+  var st = document.createElement('style'); st.id = 'fbg-cx-css';
+  st.textContent = '.cx{display:flex;flex-direction:column;gap:12px;min-height:0}'
+    +'.cx-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}'
+    +'.cx-cols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:start}'
+    +'@media (max-width:1150px){.cx-cols{grid-template-columns:minmax(0,1fr)}}'
+    +'.cx-pn{background:#111315;border:1px solid #1e2022;border-radius:var(--r-md);padding:0 12px 8px;max-height:60vh;overflow:auto}'
+    +'.cx-h{font-size:var(--t-sm);color:#aaa;display:flex;justify-content:space-between;gap:8px;position:sticky;top:0;background:#111315;padding:10px 0 8px;z-index:2;border-bottom:1px solid #1e2022}'
+    +'.cx-mh{display:flex;align-items:center;gap:8px;padding:8px 2px;border-top:1px solid #1e2022;cursor:pointer;font-weight:700;color:#e8eaed;font-size:var(--t-md)}'
+    +'.cx-mh:first-of-type{border-top:none}'
+    +'.cx-row{display:flex;align-items:flex-start;gap:9px;padding:7px 4px 7px 24px;border-top:1px solid #16191b;font-size:var(--t-sm);color:#ccc;cursor:pointer;line-height:1.45}'
+    +'.cx-row.g{padding-left:4px}'
+    +'.cx-row:hover{background:#15181a}'
+    +'.cx-row .sp{flex:1;min-width:0}'
+    +'.cx-dim{color:#777}'
+    +'.cx-tag{font-size:11px;padding:1px 8px;border-radius:4px;background:#1a1d20;color:#aaa;white-space:nowrap;border:1px solid #2a2d30}'
+    +'.cx-tag.rel{color:#E0A030;border-color:rgba(224,160,48,.4)}'
+    +'.cx-tag.ok{color:#2ABFAA;border-color:rgba(42,191,170,.4)}'
+    +'.cx-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border:1px solid #2ABFAA;background:#111315;border-radius:var(--r-md);font-size:var(--t-sm);color:#e8eaed}'
+    +'.cx-mrow{border-top:1px solid #1e2022;padding:9px 0;font-size:var(--t-sm);color:#ccc}'
+    +'.cx-mrow:first-child{border-top:none}'
+    +'.cx-years{display:flex;flex-wrap:wrap;gap:6px 10px;margin:6px 0 0 24px;align-items:center}'
+    +'.cx-years label{display:flex;align-items:center;gap:5px;cursor:pointer;color:#bbb}'
+    +'.cx-scroll{max-height:52vh;overflow:auto;margin:6px 0 10px;padding-right:4px}'
+    +'.cx-sum{font-size:var(--t-sm);color:#e8eaed;padding:8px 10px;background:#111315;border:1px solid rgba(42,191,170,.5);border-radius:var(--r-md);margin-bottom:10px}';
+  document.head.appendChild(st);
+}
+/* one row per make + model + chassis, with every model year the catalog lists for it */
+function cxRows(){
+  var by = {}, out = [], noCode = 0;
+  (cx.veh||[]).forEach(function(v){
+    var code = String(v.chassis||'').trim();
+    if(!v.make || !v.model){ return; }
+    if(!code){ noCode++; return; }
+    var k = [v.make,v.model,code].join('|').toLowerCase(), r = by[k];
+    if(!r){ r = by[k] = {id:k,make:v.make,model:v.model,chassis:code,years:{},engines:{},codes:{},platform:''}; out.push(r); }
+    var f = parseInt(v.year_from,10), t = parseInt(v.year_to,10);
+    if(f>1900 && t>=f) for(var y=f;y<=t;y++) r.years[y] = 1;
+    if(v.engine) r.engines[v.engine] = 1; if(v.engine_code) r.codes[v.engine_code] = 1; if(v.platform && !r.platform) r.platform = v.platform;
+  });
+  out.forEach(function(r){
+    r.ys = Object.keys(r.years).map(Number).sort(function(a,b){ return a-b; });
+    r.span = r.ys.length ? (r.ys[0]===r.ys[r.ys.length-1] ? String(r.ys[0]) : r.ys[0]+'-'+r.ys[r.ys.length-1]) : '';
+  });
+  out.sort(function(a,b){ return (a.make+'|'+a.model).localeCompare(b.make+'|'+b.model,undefined,{numeric:true}) || ((a.ys[0]||0)-(b.ys[0]||0)) || a.chassis.localeCompare(b.chassis); });
+  out.noCode = noCode; return out;
+}
+function cxRowLabel(r){ return r.make+' '+r.model+' '+r.chassis; }
+/* does a template relate to a catalog row? (loose, for searching and cross-reference) */
+function cxTplRelates(t,r,chassisIds){
+  var k = tplKind(t); if(k==='product') return false;
+  if(String(t.make||'').toLowerCase()!==r.make.toLowerCase()) return false;
+  if(k==='chassis') return cxCodeParts(t.model).indexOf(cxNorm(r.chassis))>=0 || cxNorm(t.model)===cxNorm(r.chassis);
+  var y = parseInt(t.year,10), inY = !y || !!r.years[y];
+  if(!inY) return false;
+  return modelMatch(r.model,t.model) || !!(t.chassisId && chassisIds[t.chassisId]);
+}
+/* strict finders (used when ADDING, so a car is never put on a look-alike template) */
+function cxFindChassis(l,r){
+  var key = fbgCarKey('',r.make,r.chassis,'chassis'), ex = tplByKey(l,key); if(ex) return ex;
+  return l.filter(function(t){ return tplKind(t)==='chassis' && String(t.make||'').toLowerCase()===r.make.toLowerCase() && (cxNorm(t.model)===cxNorm(r.chassis) || cxCodeParts(t.model).indexOf(cxNorm(r.chassis))>=0); })[0] || null;
+}
+function cxFindCar(l,year,r){
+  var ex = tplByKey(l,fbgCarKey(String(year),r.make,r.model,'car')); if(ex) return ex;
+  return l.filter(function(t){ return tplKind(t)==='car' && String(t.year)===String(year) && String(t.make||'').toLowerCase()===r.make.toLowerCase() && cxNorm(t.model)===cxNorm(r.model); })[0] || null;
+}
+function cxIndex(){
+  var l = fbgLibLoad(), rows = cxRows(), groups = allGroups(), byTpl = {}, gRows = {}, byId = {};
+  groups.forEach(function(g){ g.tpls.forEach(function(t){ (byTpl[t.id] = byTpl[t.id]||[]).push(g.ident); }); });
+  rows.forEach(function(r){
+    byId[r.id] = r; var cm = {};
+    l.forEach(function(t){ if(tplKind(t)==='chassis' && cxTplRelates(t,r,{})) cm[t.id] = 1; });
+    r.gset = {};
+    l.forEach(function(t){ if(!cxTplRelates(t,r,cm)) return; (byTpl[t.id]||[]).forEach(function(id){ r.gset[id] = 1; (gRows[id] = gRows[id]||{})[r.id] = 1; }); });
+    r.gn = Object.keys(r.gset).length;
+  });
+  return {l:l,rows:rows,groups:groups,gRows:gRows,byId:byId};
+}
+function cxRowMatch(r,q){
+  var hay = [r.make,r.model,r.chassis,r.platform,Object.keys(r.engines).join(' '),Object.keys(r.codes).join(' ')].join(' ').toLowerCase(), compact = hay.replace(/[^a-z0-9]/g,'');
+  return q.split(/[\s,]+/).filter(Boolean).every(function(t){
+    if(/^\d{4}$/.test(t) && r.years[+t]) return true;
+    if(hay.indexOf(t)>=0) return true;
+    var c = t.replace(/[^a-z0-9]/g,''); return c.length>0 && compact.indexOf(c)>=0;
+  });
+}
+function cxGroupMatch(g,q){
+  var x = g.rec, hay = (x.name+' '+(x.url||'')+' '+(x.owner||'')+' '+(x.tags||[]).join(' ')).toLowerCase();
+  return q.split(/[\s,]+/).filter(Boolean).every(function(t){ return hay.indexOf(t)>=0; });
+}
+function cxView(ix){
+  var q = cx.q.trim().toLowerCase(), showRows = {}, showGroups = {}, carHit = {}, grpHit = {};
+  if(!q){ ix.rows.forEach(function(r){ showRows[r.id] = 'all'; }); ix.groups.forEach(function(g){ showGroups[g.ident] = 'all'; }); return {rows:showRows,groups:showGroups,q:q}; }
+  ix.rows.forEach(function(r){ if(cxRowMatch(r,q)){ carHit[r.id] = 1; showRows[r.id] = 'match'; } });
+  ix.groups.forEach(function(g){ if(cxGroupMatch(g,q)){ grpHit[g.ident] = 1; showGroups[g.ident] = 'match'; } });
+  ix.rows.forEach(function(r){ if(carHit[r.id]) Object.keys(r.gset).forEach(function(id){ if(!showGroups[id]) showGroups[id] = 'related'; }); });
+  Object.keys(grpHit).forEach(function(id){ Object.keys(ix.gRows[id]||{}).forEach(function(rid){ if(!showRows[rid]) showRows[rid] = 'related'; }); });
+  return {rows:showRows,groups:showGroups,q:q};
+}
+function cxSkeleton(){
+  return '<div class="cx">'
+    +'<div class="fbg-sub">Tick cars from your vehicle catalog and the groups you want them in, then add. Each car goes onto its <b>chassis template</b> and a <b>template for every model year</b> you keep ticked. Search a car to see its groups, or a group to see its cars.</div>'
+    +'<div class="cx-top"><input class="fbg-input" id="fbg-cx-q" placeholder="Search a car, chassis, engine code, year or a group name..." autocomplete="off" style="max-width:560px"/><button type="button" class="fbg-gbtn" data-act="cx-reload">Reload catalog</button><span class="cx-dim" id="fbg-cx-note"></span></div>'
+    +'<div class="cx-cols"><div class="cx-pn" id="fbg-cx-left"></div><div class="cx-pn" id="fbg-cx-right"></div></div>'
+    +'<div class="cx-bar" id="fbg-cx-bar"></div></div>';
+}
+function renderCatalogPane(){
+  var host = $('fbg-pane-catalog'); if(!host) return;
+  cxCss();
+  if(!cx.built){ host.innerHTML = cxSkeleton(); cx.built = true; bindCatalogPane(host); $('fbg-cx-q').value = cx.q; }
+  if(!cx.veh && !cx.loading){
+    cx.loading = true; cx.err = ''; paintCatalog();
+    fitmentVehicles().then(function(v){ cx.loading = false; if(v) cx.veh = v; else cx.err = 'Could not load the vehicle catalog. Check you are signed in, then press Reload catalog.'; paintCatalog(); });
+    return;
+  }
+  paintCatalog();
+}
+function paintCatalog(){
+  var left = $('fbg-cx-left'), right = $('fbg-cx-right'); if(!left || !right) return;
+  if(cx.loading){ left.innerHTML = '<div class="cx-dim" style="padding:14px 0">Loading the vehicle catalog...</div>'; right.innerHTML = ''; paintBar(); return; }
+  if(cx.err){ left.innerHTML = '<div style="padding:14px 0;color:#f87171">'+esc(cx.err)+'</div>'; right.innerHTML = ''; paintBar(); return; }
+  var sl = left.scrollTop, sr = right.scrollTop;
+  var ix = cxIndex(), v = cxView(ix);
+  // drop selections that no longer exist
+  Object.keys(cx.selRows).forEach(function(k){ if(!ix.byId[k]) delete cx.selRows[k]; });
+  var liveG = {}; ix.groups.forEach(function(g){ liveG[g.ident] = 1; }); Object.keys(cx.selGroups).forEach(function(k){ if(!liveG[k]) delete cx.selGroups[k]; });
+  /* left: cars grouped by make + model */
+  var rows = ix.rows.filter(function(r){ return v.rows[r.id]; });
+  rows.sort(function(a,b){ var ma = v.rows[a.id]==='match'?0:1, mb = v.rows[b.id]==='match'?0:1; return ma-mb; });
+  var shownL = rows.slice(0,cx.limL), grp = {}, order = [];
+  shownL.forEach(function(r){ var k = r.make+' '+r.model; if(!grp[k]){ grp[k] = []; order.push(k); } grp[k].push(r); });
+  var autoOpen = !!v.q || order.length<=6, lh = '<div class="cx-h"><span>Vehicle catalog</span><span>'+plural(rows.length,'chassis row')+(rows.noCode?'':'')+'</span></div>';
+  order.forEach(function(k){
+    var g = grp[k], open = autoOpen || cx.open[k], allOn = g.every(function(r){ return cx.selRows[r.id]; }), some = g.some(function(r){ return cx.selRows[r.id]; });
+    lh += '<div class="cx-mh" data-act="cx-toggle" data-k="'+esc(k)+'"><input type="checkbox" data-grpsel="'+esc(k)+'"'+(allOn?' checked':'')+chkAttr()+'/><span>'+(open?'&#9662;':'&#9656;')+' '+esc(k)+'</span><span class="cx-dim" style="font-weight:400;font-size:var(--t-sm)">'+g.length+' chassis'+(some&&!allOn?' &middot; some ticked':'')+'</span></div>';
+    if(open) g.forEach(function(r){
+      lh += '<label class="cx-row"><input type="checkbox" data-row="'+esc(r.id)+'"'+(cx.selRows[r.id]?' checked':'')+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(r.chassis)+'</b> <span class="cx-dim">'+esc(r.span)+' &middot; '+esc(Object.keys(r.engines).slice(0,4).join(', '))+(Object.keys(r.codes).length?' &middot; '+esc(Object.keys(r.codes).slice(0,3).join(', ')):'')+'</span></span>'
+        +(v.rows[r.id]==='related'?'<span class="cx-tag rel">related</span>':'')+'<span class="cx-tag'+(r.gn?' ok':'')+'">'+plural(r.gn,'group')+'</span></label>';
+    });
+  });
+  if(rows.length>shownL.length) lh += '<div style="padding:10px 0"><button type="button" class="fbg-gbtn" data-act="cx-morel">Show 150 more ('+(rows.length-shownL.length)+' left)</button></div>';
+  if(!rows.length) lh += '<div class="cx-dim" style="padding:14px 0">'+(ix.rows.length?'No cars match.':'The catalog has no vehicles with a chassis code yet.')+'</div>';
+  left.innerHTML = lh;
+  /* right: groups */
+  var gl = ix.groups.filter(function(g){ return v.groups[g.ident]; });
+  gl.sort(function(a,b){ var ma = v.groups[a.ident]==='match'?0:1, mb = v.groups[b.ident]==='match'?0:1; return ma-mb || String(a.rec.name).localeCompare(String(b.rec.name)); });
+  var shownR = gl.slice(0,cx.limR), rh = '<div class="cx-h"><span>Groups</span><span>'+plural(gl.length,'group')+'</span></div>';
+  shownR.forEach(function(g){
+    var cars = Object.keys(ix.gRows[g.ident]||{}).map(function(id){ return cxRowLabel(ix.byId[id]); }), x = g.rec;
+    rh += '<label class="cx-row g"><input type="checkbox" data-grp="'+esc(g.ident)+'"'+(cx.selGroups[g.ident]?' checked':'')+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(x.name)+'</b> <span class="cx-dim">'+(x.members>0?fbgFmt(x.members)+' members':'')+(x.status?' &middot; '+esc(labelOf(STATUS,x.status)):'')+'</span>'
+      +'<div class="cx-dim">'+(cars.length?'Cars: '+esc(cars.slice(0,3).join(' | '))+(cars.length>3?' | +'+(cars.length-3)+' more':''):'Not on any catalog car yet')+' &middot; '+plural(g.tpls.length,'template')+'</div></span>'
+      +(v.groups[g.ident]==='related'?'<span class="cx-tag rel">related</span>':'')+'<span class="cx-tag'+(cars.length?' ok':'')+'">'+plural(cars.length,'car')+'</span></label>';
+  });
+  if(gl.length>shownR.length) rh += '<div style="padding:10px 0"><button type="button" class="fbg-gbtn" data-act="cx-morer">Show 150 more ('+(gl.length-shownR.length)+' left)</button></div>';
+  if(!gl.length) rh += '<div class="cx-dim" style="padding:14px 0">'+(ix.groups.length?'No groups match.':'No groups saved yet. Add one from the bar below, or search in the Find tab.')+'</div>';
+  right.innerHTML = rh;
+  left.scrollTop = sl; right.scrollTop = sr;
+  var note = $('fbg-cx-note'); if(note) note.textContent = (cx.veh?plural(cx.veh.length,'catalog vehicle'):'')+(rows.noCode?' ('+rows.noCode+' have no chassis code and are skipped)':'');
+  paintBar();
+}
+function paintBar(){
+  var bar = $('fbg-cx-bar'); if(!bar) return;
+  var nr = Object.keys(cx.selRows).length, ng = Object.keys(cx.selGroups).length;
+  bar.innerHTML = '<span><b>'+plural(nr,'car')+'</b> and <b>'+plural(ng,'group')+'</b> ticked</span><span class="fbg-gv-sp" style="flex:1"></span>'
+    +'<button type="button" class="fbg-gbtn paste" data-act="cx-add"'+(nr?'':' disabled style="opacity:.5"')+'>Add groups to these cars...</button>'
+    +'<button type="button" class="fbg-gbtn" data-act="cx-clear">Clear ticks</button>';
+}
+function bindCatalogPane(host){
+  host.addEventListener('input',function(e){ if(e.target.id==='fbg-cx-q'){ cx.q = e.target.value; cx.limL = 150; cx.limR = 150; clearTimeout(cx._t); cx._t = setTimeout(paintCatalog,180); } });
+  host.addEventListener('change',function(e){
+    var t = e.target, d = t.dataset||{};
+    if(d.row!==undefined){ if(t.checked) cx.selRows[d.row] = 1; else delete cx.selRows[d.row]; paintCatalog(); }
+    else if(d.grp!==undefined){ if(t.checked) cx.selGroups[d.grp] = 1; else delete cx.selGroups[d.grp]; paintBar(); }
+    else if(d.grpsel!==undefined){
+      var ix = cxIndex(), v = cxView(ix);
+      ix.rows.forEach(function(r){ if(v.rows[r.id] && (r.make+' '+r.model)===d.grpsel){ if(t.checked) cx.selRows[r.id] = 1; else delete cx.selRows[r.id]; } });
+      paintCatalog();
+    }
+  });
+  host.addEventListener('click',function(e){
+    var b = e.target.closest('[data-act]'); if(!b) return;
+    if(e.target.tagName==='INPUT') return;                       // ticking the group header box must not also collapse it
+    var a = b.dataset.act;
+    if(a==='cx-toggle'){ var k = b.dataset.k; cx.open[k] = !cx.open[k]; paintCatalog(); }
+    else if(a==='cx-morel'){ cx.limL += 150; paintCatalog(); }
+    else if(a==='cx-morer'){ cx.limR += 150; paintCatalog(); }
+    else if(a==='cx-clear'){ cx.selRows = {}; cx.selGroups = {}; paintCatalog(); }
+    else if(a==='cx-reload'){ _fitVehCache = null; cx.veh = null; cx.err = ''; renderCatalogPane(); }
+    else if(a==='cx-add'){ openCatalogAdd(); }
+  });
+}
+/* the confirmation window: every template and every year can be ticked or unticked before anything is saved */
+function openCatalogAdd(){
+  var ix = cxIndex(), l = ix.l, rows = Object.keys(cx.selRows).map(function(k){ return ix.byId[k]; }).filter(Boolean);
+  if(!rows.length){ fbgToast('Tick at least one car first.'); return; }
+  var gsel = ix.groups.filter(function(g){ return cx.selGroups[g.ident]; });
+  var h = '<div class="fbg-modal-title">Add groups to '+plural(rows.length,'car')+'</div>'
+    +'<div class="fbg-modal-sub">Nothing is saved until you press Add. Untick any chassis template or model year you do not want. Templates that already exist are reused, never duplicated.</div>'
+    +'<div class="fbg-sect">Groups</div><div class="cx-scroll" style="max-height:20vh" id="fbg-cxm-groups">'
+    +(gsel.length ? gsel.map(function(g){ return '<label class="cx-row g" style="cursor:pointer"><input type="checkbox" checked data-mg="'+esc(g.ident)+'"'+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(g.rec.name)+'</b> <span class="cx-dim">'+(g.rec.members>0?fbgFmt(g.rec.members)+' members':'')+'</span></span></label>'; }).join('') : '<div class="cx-dim">No saved group ticked.</div>')
+    +'</div><div class="fbg-modal-row2"><input class="fbg-modal-input" id="fbg-cxm-newname" placeholder="Or a new group: name"/><input class="fbg-modal-input" id="fbg-cxm-newurl" placeholder="Group link (optional)"/></div>'
+    +'<div class="fbg-sect" style="margin-top:12px">Templates</div><div class="cx-scroll" id="fbg-cxm-tpls">'
+    +rows.map(function(r,i){
+      var chEx = !!cxFindChassis(l,r);
+      return '<div class="cx-mrow"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" checked data-mch="'+i+'"'+chkAttr()+'/><b style="color:#e8eaed">'+esc(r.make+' '+r.chassis)+'</b> <span class="cx-dim">chassis template</span><span class="cx-tag'+(chEx?'':' ok')+'">'+(chEx?'exists':'will be created')+'</span><span class="cx-dim">&middot; '+esc(r.model)+'</span></label>'
+        +'<div class="cx-years"><span class="cx-dim">Model years</span><button type="button" class="fbg-gbtn" data-yall="'+i+'">All</button><button type="button" class="fbg-gbtn" data-ynone="'+i+'">None</button>'
+        +r.ys.map(function(y){ var ex = !!cxFindCar(l,y,r); return '<label><input type="checkbox" checked data-my="'+i+'|'+y+'"'+chkAttr()+'/>'+y+'<span class="cx-dim" style="font-size:11px">'+(ex?'exists':'new')+'</span></label>'; }).join('')+(r.ys.length?'':'<span class="cx-dim">no model years in the catalog</span>')+'</div></div>';
+    }).join('')+'</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:var(--t-sm);color:#ccc;cursor:pointer;margin-bottom:8px"><input type="checkbox" checked id="fbg-cxm-link"'+chkAttr()+'/>Link each model-year template to its chassis template</label>'
+    +'<div class="cx-sum" id="fbg-cxm-sum"></div>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save" id="fbg-cxm-go">Add</button></div>';
+  var ov = showModal(h,null,true);
+  function state(){
+    var s = {groups:[],chassis:{},years:{}};
+    ov.querySelectorAll('[data-mg]').forEach(function(c){ if(c.checked){ var g = ix.groups.filter(function(x){ return x.ident===c.dataset.mg; })[0]; if(g) s.groups.push(g.rec); } });
+    var nm = val('fbg-cxm-newname'); if(nm) s.groups.push({name:nm,url:val('fbg-cxm-newurl'),members:0,isNew:true});
+    ov.querySelectorAll('[data-mch]').forEach(function(c){ if(c.checked) s.chassis[c.dataset.mch] = 1; });
+    ov.querySelectorAll('[data-my]').forEach(function(c){ if(c.checked){ var p = c.dataset.my.split('|'); (s.years[p[0]] = s.years[p[0]]||[]).push(+p[1]); } });
+    return s;
+  }
+  function summarize(){
+    var s = state(), l2 = fbgLibLoad(), newT = 0, oldT = 0, pairs = 0, have = 0;
+    function count(t){ if(!t){ newT++; pairs += s.groups.length; return; } oldT++; s.groups.forEach(function(g){ var id = gIdent(g.url?g:{name:g.name,url:''}); var dup = (t.groups||[]).some(function(x){ return gIdent(x)===id || String(x.name||'').toLowerCase()===String(g.name||'').toLowerCase(); }); if(dup) have++; else pairs++; }); }
+    rows.forEach(function(r,i){ if(s.chassis[i]) count(cxFindChassis(l2,r)); (s.years[i]||[]).forEach(function(y){ count(cxFindCar(l2,y,r)); }); });
+    var el = $('fbg-cxm-sum'), go = $('fbg-cxm-go'); if(!el) return;
+    el.innerHTML = '<b>'+plural(newT,'new template')+'</b> will be created, <b>'+plural(oldT,'existing template')+'</b> reused. <b>'+plural(pairs,'group placement')+'</b> will be added'+(have?' ('+have+' already there, skipped)':'')+'.'+(s.groups.length?'':' <span style="color:#E0A030">No group chosen, so only the templates are created.</span>');
+    go.textContent = newT+oldT===0 ? 'Nothing ticked' : s.groups.length ? 'Add ('+pairs+')' : 'Create '+plural(newT,'template');
+    go.disabled = (newT+oldT===0) || (pairs===0 && newT===0); go.style.opacity = go.disabled ? .5 : 1;
+  }
+  ov.addEventListener('change',summarize); ov.addEventListener('input',summarize); summarize();
+  ov.addEventListener('click',function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.yall!==undefined || b.dataset.ynone!==undefined){ var i = b.dataset.yall!==undefined ? b.dataset.yall : b.dataset.ynone, on = b.dataset.yall!==undefined; ov.querySelectorAll('[data-my^="'+i+'|"]').forEach(function(c){ c.checked = on; }); summarize(); return; }
+    if(b.dataset.act==='cancel'){ closeModal(); return; }
+    if(b.dataset.act!=='save' || b.disabled) return;
+    var s = state(), l3 = fbgLibLoad(), made = 0, placed = 0, linked = 0, touched = 0, link = $('fbg-cxm-link').checked;
+    rows.forEach(function(r,i){
+      var chTpl = cxFindChassis(l3,r);
+      if(s.chassis[i]){ if(!chTpl){ chTpl = createTemplate(l3,'chassis',{make:r.make,model:r.chassis}).tpl; made++; } placed += insertGroups(chTpl,s.groups); touched++; }
+      (s.years[i]||[]).forEach(function(y){
+        var car = cxFindCar(l3,y,r);
+        if(!car){ car = createTemplate(l3,'car',{year:String(y),make:r.make,model:r.model}).tpl; made++; }
+        if(link && chTpl && !car.chassisId){ car.chassisId = chTpl.id; linked++; }
+        placed += insertGroups(car,s.groups); touched++;
+      });
+    });
+    if(made || placed || linked) fbgLibSave(l3,{label:'add groups from catalog'});
+    closeModal(true); cx.selRows = {}; cx.selGroups = {};
+    fbgRenderLibrary(); fbgPopulateCarDropdowns(); paintCatalog();
+    fbgToast('Added '+plural(placed,'group placement')+' across '+plural(touched,'template')+(made?' ('+plural(made,'new template')+' created)':'')+(linked?', '+plural(linked,'link')+' to chassis':'')+'.');
+  });
+}
+
 /* tabs */
 function showPane(name){
   activePane = name;
@@ -14826,6 +15086,7 @@ function showPane(name){
 }
 function refreshActivePane(){
   if(activePane==='groups') renderGroupsPane();
+  else if(activePane==='catalog') renderCatalogPane();
   else if(activePane==='plan' && typeof renderPlanPane==='function') renderPlanPane();
   else if(activePane==='health' && typeof renderHealthPane==='function') renderHealthPane();
   updateTabCounts();
@@ -15030,7 +15291,7 @@ async function fitmentVehicles(){
   try{
     var s = (typeof _ccFreshSession==='function') ? await _ccFreshSession() : null, tok = (s && s.access_token) || TGK_SB_KEY, out = [], from = 0;
     for(var g=0; g<60; g++){
-      var r = await fetch(TGK_SB_URL+'/rest/v1/fit_vehicles?select=make,model,year_from,year_to,engine,chassis,platform,active&order=id', {headers:{apikey:TGK_SB_KEY, Authorization:'Bearer '+tok, 'Range-Unit':'items', Range:from+'-'+(from+999)}});
+      var r = await fetch(TGK_SB_URL+'/rest/v1/fit_vehicles?select=make,model,year_from,year_to,engine,chassis,platform,engine_code,active&order=id', {headers:{apikey:TGK_SB_KEY, Authorization:'Bearer '+tok, 'Range-Unit':'items', Range:from+'-'+(from+999)}});
       if(!r.ok) break;
       var b = await r.json(); if(!b || !b.length) break;
       out = out.concat(b); from += b.length; if(b.length < 1000) break;
@@ -20901,7 +21162,7 @@ window.ccSkuChanged = function(info){
 </script>
 <script>
 /* Command Center version marker (introduced with the Machined redesign). */
-var TGK_CC_VERSION='v7.39'; /* v7.39: Fitment is its own file (TGK_Fitment.html), opened inside the Command Center like the other tools */
+var TGK_CC_VERSION='v7.40'; /* v7.40: FB Group Finder gets a Catalog tab (vehicle catalog and groups, both ways). v7.39: Fitment is its own file (TGK_Fitment.html), opened inside the Command Center like the other tools */
 (function(){
   function arm(){
     var tb=document.getElementById('cc-topbar');
