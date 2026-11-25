@@ -14612,7 +14612,7 @@ function cellHtml(c,r,sel){
   if(c==='verified') return '<span class="fbg-gsel'+(g.verified?' checked':'')+'" data-act="gt-ver" data-ident="'+id+'" title="'+(g.verified?'Verified':'Not verified yet')+'"></span>';
   if(c==='tags') return '<input class="fbg-tin" data-f="tags"'+ctlAttr('x','')+' data-ident="'+id+'" value="'+esc((g.tags||[]).join(', '))+'" placeholder="—"/>';
   if(c==='tpls'){ var ch = r.tpls.slice(0,2).map(function(t){ return '<button type="button" class="fbg-tchip" data-act="gt-tpl" data-key="'+esc(t.key)+'" title="'+esc(t.label)+'">'+esc(t.label)+'</button>'; }).join('');
-    return ch+(r.tpls.length>2?'<span class="fbg-dim" title="'+esc(r.tpls.slice(2).map(function(t){ return t.label; }).join(', '))+'">+'+(r.tpls.length-2)+'</span>':''); }
+    return ch+(r.tpls.length>2?'<span class="fbg-dim" title="'+esc(r.tpls.slice(2).map(function(t){ return t.label; }).join(', '))+'">+'+(r.tpls.length-2)+'</span>':'')+'<button type="button" class="fbg-gbtn paste" data-act="gt-cars" data-ident="'+id+'" title="Attach this group to cars from the vehicle catalog">+ Car</button>'; }
   if(c==='from') return '<span class="fbg-why">'+esc((r.why||[]).join(' · '))+'</span>';
   if(c==='act') return '<button type="button" class="fbg-gbtn" data-act="gt-edit" data-ident="'+id+'" title="Edit this group">✎</button>';
   return '';
@@ -14669,6 +14669,7 @@ function bindGroupTable(root,ctx){
     else if(a==='gt-ver'){ var on = toggleVerified(id); b.classList.toggle('checked',!!on); ctx.afterInline && ctx.afterInline(); }
     else if(a==='gt-edit') openEditByIdent(id);
     else if(a==='gt-tpl') focusTpl(b.dataset.key);
+    else if(a==='gt-cars') openAttachPicker({groups:[id]});
     else if(a==='gt-sort'){ var k = b.dataset.key; if(gv.sortKey===k) gv.sortDir = -gv.sortDir; else { gv.sortKey = k; gv.sortDir = 1; } ctx.rerender(); }
   });
   root.addEventListener('change',function(e){
@@ -14746,7 +14747,7 @@ function gvRenderBulk(){
     +'<input class="fbg-tin" id="fbg-bk-owner" list="fbg-owners-dl"'+ctlAttr('x','')+' placeholder="Set owner…"/><button type="button" class="fbg-gbtn" data-act="bk-owner">Set</button>'
     +'<input class="fbg-tin" id="fbg-bk-tag"'+ctlAttr('x','')+' placeholder="Add tag…"/><button type="button" class="fbg-gbtn" data-act="bk-tag">Add</button>'
     +'<span class="fbg-gv-sp"></span><button type="button" class="fbg-gbtn" data-act="bk-posted">Posted today</button><button type="button" class="fbg-gbtn" data-act="bk-verify">Mark verified</button>'
-    +'<button type="button" class="fbg-gbtn" data-act="bk-copy">Copy list</button><button type="button" class="fbg-gbtn" data-act="bk-tpl">Add to template…</button>'
+    +'<button type="button" class="fbg-gbtn" data-act="bk-copy">Copy list</button><button type="button" class="fbg-gbtn paste" data-act="bk-cars">Attach to cars...</button><button type="button" class="fbg-gbtn" data-act="bk-tpl">Add to template…</button>'
     +'<button type="button" class="fbg-gbtn danger" data-act="bk-del">Delete everywhere</button><button type="button" class="fbg-gbtn" data-act="bk-clear">Clear</button>';
 }
 function selectedRows(){ var ids = gv.sel; return allGroups().filter(function(r){ return ids[r.ident]; }); }
@@ -14791,6 +14792,7 @@ function bindGroupsPane(){
     else if(a==='bk-verify'){ var n4 = bulkPatch({verified:true,verifiedAt:Date.now()},'bulk verify'); fbgToast('Verified '+plural(n4,'group')+'.'); renderGroupsPane(); }
     else if(a==='bk-copy'){ var rows = selectedRows(); copyText(rows.map(function(r){ return groupLine(r.rec); }).join('\n'),'Copied '+plural(rows.length,'group')); }
     else if(a==='bk-tpl') openAddSelectedToTemplate(selectedRows());
+    else if(a==='bk-cars') openAttachPicker({groups:Object.keys(gv.sel)});
     else if(a==='bk-del'){
       var rs = selectedRows(); if(!rs.length) return;
       var ok = await confirmBox('Delete '+plural(rs.length,'group')+' everywhere?','They will be removed from every template they are saved in. You can bring them back from the Health tab (Recently deleted).','Delete');
@@ -14975,7 +14977,7 @@ function paintCatalog(){
     var cars = Object.keys(ix.gRows[g.ident]||{}).map(function(id){ return cxRowLabel(ix.byId[id]); }), x = g.rec;
     rh += '<label class="cx-row g"><input type="checkbox" data-grp="'+esc(g.ident)+'"'+(cx.selGroups[g.ident]?' checked':'')+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(x.name)+'</b> <span class="cx-dim">'+(x.members>0?fbgFmt(x.members)+' members':'')+(x.status?' &middot; '+esc(labelOf(STATUS,x.status)):'')+'</span>'
       +'<div class="cx-dim">'+(cars.length?'Cars: '+esc(cars.slice(0,3).join(' | '))+(cars.length>3?' | +'+(cars.length-3)+' more':''):'Not on any catalog car yet')+' &middot; '+plural(g.tpls.length,'template')+'</div></span>'
-      +(v.groups[g.ident]==='related'?'<span class="cx-tag rel">related</span>':'')+'<span class="cx-tag'+(cars.length?' ok':'')+'">'+plural(cars.length,'car')+'</span></label>';
+      +(v.groups[g.ident]==='related'?'<span class="cx-tag rel">related</span>':'')+'<span class="cx-tag'+(cars.length?' ok':'')+'">'+plural(cars.length,'car')+'</span><button type="button" class="fbg-gbtn paste" data-act="cx-gcars" data-ident="'+esc(g.ident)+'">+ Cars</button></label>';
   });
   if(gl.length>shownR.length) rh += '<div style="padding:10px 0"><button type="button" class="fbg-gbtn" data-act="cx-morer">Show 150 more ('+(gl.length-shownR.length)+' left)</button></div>';
   if(!gl.length) rh += '<div class="cx-dim" style="padding:14px 0">'+(ix.groups.length?'No groups match.':'No groups saved yet. Add one from the bar below, or search in the Find tab.')+'</div>';
@@ -14988,7 +14990,7 @@ function paintBar(){
   var bar = $('fbg-cx-bar'); if(!bar) return;
   var nr = Object.keys(cx.selRows).length, ng = Object.keys(cx.selGroups).length;
   bar.innerHTML = '<span><b>'+plural(nr,'car')+'</b> and <b>'+plural(ng,'group')+'</b> ticked</span><span class="fbg-gv-sp" style="flex:1"></span>'
-    +'<button type="button" class="fbg-gbtn paste" data-act="cx-add"'+(nr?'':' disabled style="opacity:.5"')+'>Add groups to these cars...</button>'
+    +'<button type="button" class="fbg-gbtn paste" data-act="cx-add">'+(nr||ng?'Attach to cars...':'Attach a group to cars...')+'</button>'
     +'<button type="button" class="fbg-gbtn" data-act="cx-clear">Clear ticks</button>';
 }
 function bindCatalogPane(host){
@@ -15013,69 +15015,145 @@ function bindCatalogPane(host){
     else if(a==='cx-clear'){ cx.selRows = {}; cx.selGroups = {}; paintCatalog(); }
     else if(a==='cx-reload'){ _fitVehCache = null; cx.veh = null; cx.err = ''; renderCatalogPane(); }
     else if(a==='cx-add'){ openCatalogAdd(); }
+    else if(a==='cx-gcars'){ e.preventDefault(); openAttachPicker({groups:[b.dataset.ident]}); }
   });
 }
-/* the confirmation window: every template and every year can be ticked or unticked before anything is saved */
-function openCatalogAdd(){
-  var ix = cxIndex(), l = ix.l, rows = Object.keys(cx.selRows).map(function(k){ return ix.byId[k]; }).filter(Boolean);
-  if(!rows.length){ fbgToast('Tick at least one car first.'); return; }
-  var gsel = ix.groups.filter(function(g){ return cx.selGroups[g.ident]; });
-  var h = '<div class="fbg-modal-title">Add groups to '+plural(rows.length,'car')+'</div>'
-    +'<div class="fbg-modal-sub">Nothing is saved until you press Add. Untick any chassis template or model year you do not want. Templates that already exist are reused, never duplicated.</div>'
-    +'<div class="fbg-sect">Groups</div><div class="cx-scroll" style="max-height:20vh" id="fbg-cxm-groups">'
-    +(gsel.length ? gsel.map(function(g){ return '<label class="cx-row g" style="cursor:pointer"><input type="checkbox" checked data-mg="'+esc(g.ident)+'"'+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(g.rec.name)+'</b> <span class="cx-dim">'+(g.rec.members>0?fbgFmt(g.rec.members)+' members':'')+'</span></span></label>'; }).join('') : '<div class="cx-dim">No saved group ticked.</div>')
-    +'</div><div class="fbg-modal-row2"><input class="fbg-modal-input" id="fbg-cxm-newname" placeholder="Or a new group: name"/><input class="fbg-modal-input" id="fbg-cxm-newurl" placeholder="Group link (optional)"/></div>'
-    +'<div class="fbg-sect" style="margin-top:12px">Templates</div><div class="cx-scroll" id="fbg-cxm-tpls">'
-    +rows.map(function(r,i){
-      var chEx = !!cxFindChassis(l,r);
-      return '<div class="cx-mrow"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" checked data-mch="'+i+'"'+chkAttr()+'/><b style="color:#e8eaed">'+esc(r.make+' '+r.chassis)+'</b> <span class="cx-dim">chassis template</span><span class="cx-tag'+(chEx?'':' ok')+'">'+(chEx?'exists':'will be created')+'</span><span class="cx-dim">&middot; '+esc(r.model)+'</span></label>'
-        +'<div class="cx-years"><span class="cx-dim">Model years</span><button type="button" class="fbg-gbtn" data-yall="'+i+'">All</button><button type="button" class="fbg-gbtn" data-ynone="'+i+'">None</button>'
-        +r.ys.map(function(y){ var ex = !!cxFindCar(l,y,r); return '<label><input type="checkbox" checked data-my="'+i+'|'+y+'"'+chkAttr()+'/>'+y+'<span class="cx-dim" style="font-size:11px">'+(ex?'exists':'new')+'</span></label>'; }).join('')+(r.ys.length?'':'<span class="cx-dim">no model years in the catalog</span>')+'</div></div>';
-    }).join('')+'</div>'
-    +'<label style="display:flex;align-items:center;gap:8px;font-size:var(--t-sm);color:#ccc;cursor:pointer;margin-bottom:8px"><input type="checkbox" checked id="fbg-cxm-link"'+chkAttr()+'/>Link each model-year template to its chassis template</label>'
-    +'<div class="cx-sum" id="fbg-cxm-sum"></div>'
-    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-act="cancel">Cancel</button><button class="fbg-modal-save" data-act="save" id="fbg-cxm-go">Add</button></div>';
+/* ONE window to attach groups to cars: group(s) already chosen, search the catalog, tick cars, Attach. Used from My Groups, Launch Plan and the Catalog tab. */
+function cxSuggest(ix,groupRecs){
+  var words = {}; groupRecs.forEach(function(g){ String(g.name||'').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).forEach(function(w){ words[w] = 1; }); });
+  var out = [];
+  ix.rows.forEach(function(r){
+    var mk = r.make.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    if(!mk.some(function(w){ return words[w]; })) return;
+    var md = cxNorm(r.model), ch = cxCodeParts(r.chassis), hit = false;
+    Object.keys(words).forEach(function(w){ if(w===md || ch.indexOf(w)>=0) hit = true; });
+    if(hit) out.push(r.id);
+  });
+  return out;
+}
+function openAttachPicker(opts){
+  opts = opts||{}; cxCss();
+  if(!cx.veh){
+    fbgToast('Loading the vehicle catalog...');
+    fitmentVehicles().then(function(v){ if(!v){ fbgToast('Could not load the vehicle catalog. Check you are signed in, then try again.'); return; } cx.veh = v; openAttachPicker(opts); });
+    return;
+  }
+  var ix = cxIndex(), P = {groups:{},rows:{},q:'',lim:120,perYear:false,off:{},chassis:true,years:true,link:true,open:{}};
+  (opts.groups||[]).forEach(function(id){ P.groups[id] = 1; }); (opts.rows||[]).forEach(function(id){ P.rows[id] = 1; });
+  function gRecs(){
+    var out = ix.groups.filter(function(g){ return P.groups[g.ident]; }).map(function(g){ return g.rec; });
+    var nm = val('cxp-newname'); if(nm) out.push({name:nm,url:val('cxp-newurl'),members:0,isNew:true});
+    return out;
+  }
+  var h = '<div class="fbg-modal-title" id="cxp-title">Attach to cars</div>'
+    +'<div class="fbg-modal-sub">Pick the group, tick the cars, press Attach. Each car goes on its chassis template and on a template for every model year. Nothing is saved until you press Attach.</div>'
+    +'<div class="fbg-sect">Group</div><div id="cxp-groups"></div>'
+    +'<div class="fbg-modal-row2"><select class="fbg-modal-input" id="cxp-gadd"'+ctlAttr('x','')+'></select><span style="display:flex;gap:6px"><input class="fbg-modal-input" id="cxp-newname" placeholder="or a new group: name"/><input class="fbg-modal-input" id="cxp-newurl" placeholder="link (optional)"/></span></div>'
+    +'<div class="fbg-sect" style="margin-top:12px">Cars</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:6px"><input class="fbg-modal-input" id="cxp-q" placeholder="Search the catalog: car, chassis, engine code, year..." autocomplete="off" style="flex:1" data-autofocus/><button type="button" class="fbg-gbtn" data-p="clear">Clear ticks</button></div>'
+    +'<div id="cxp-sugg"></div><div class="cx-scroll" id="cxp-list"></div>'
+    +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 8px;font-size:var(--t-sm);color:#ccc">'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked id="cxp-ch"'+chkAttr()+'/>Chassis template</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked id="cxp-yr"'+chkAttr()+'/>A template for every model year</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="cxp-py"'+chkAttr()+'/>Choose years per car</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked id="cxp-link"'+chkAttr()+'/>Link year templates to the chassis</label></div>'
+    +'<div id="cxp-years"></div><div class="cx-sum" id="cxp-sum"></div>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-p="cancel">Cancel</button><button class="fbg-modal-save" data-p="go" id="cxp-go">Attach</button></div>';
   var ov = showModal(h,null,true);
-  function state(){
-    var s = {groups:[],chassis:{},years:{}};
-    ov.querySelectorAll('[data-mg]').forEach(function(c){ if(c.checked){ var g = ix.groups.filter(function(x){ return x.ident===c.dataset.mg; })[0]; if(g) s.groups.push(g.rec); } });
-    var nm = val('fbg-cxm-newname'); if(nm) s.groups.push({name:nm,url:val('fbg-cxm-newurl'),members:0,isNew:true});
-    ov.querySelectorAll('[data-mch]').forEach(function(c){ if(c.checked) s.chassis[c.dataset.mch] = 1; });
-    ov.querySelectorAll('[data-my]').forEach(function(c){ if(c.checked){ var p = c.dataset.my.split('|'); (s.years[p[0]] = s.years[p[0]]||[]).push(+p[1]); } });
+  function renderGroups(){
+    var ids = Object.keys(P.groups), el = $('cxp-groups');
+    el.innerHTML = ids.length ? ids.map(function(id){ var g = ix.groups.filter(function(x){ return x.ident===id; })[0]; if(!g) return ''; return '<label class="cx-row g" style="cursor:pointer"><input type="checkbox" checked data-g="'+esc(id)+'"'+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(g.rec.name)+'</b> <span class="cx-dim">'+(g.rec.members>0?fbgFmt(g.rec.members)+' members &middot; ':'')+plural(g.tpls.length,'template')+' already</span></span></label>'; }).join('') : '<div class="cx-dim" style="padding:4px 0">Choose a group below, or type a new one.</div>';
+    var rest = ix.groups.filter(function(g){ return !P.groups[g.ident]; }).sort(function(a,b){ return String(a.rec.name).localeCompare(String(b.rec.name)); });
+    $('cxp-gadd').innerHTML = '<option value="">'+(ids.length?'+ Add another saved group...':'Choose a saved group...')+'</option>'+rest.map(function(g){ return '<option value="'+esc(g.ident)+'">'+esc(g.rec.name)+'</option>'; }).join('');
+    var gr = gRecs(), t = $('cxp-title'); if(t) t.textContent = gr.length===1 ? 'Attach "'+gr[0].name+'" to cars' : gr.length>1 ? 'Attach '+plural(gr.length,'group')+' to cars' : 'Attach a group to cars';
+  }
+  function rowChip(r){
+    var ids = Object.keys(P.groups); if(!ids.length) return '';
+    var n = ids.filter(function(id){ return r.gset[id]; }).length;
+    return n===ids.length ? '<span class="cx-tag ok">already on</span>' : n ? '<span class="cx-tag rel">on '+n+' of '+ids.length+'</span>' : '';
+  }
+  function renderList(){
+    var q = P.q.trim().toLowerCase(), rows = ix.rows.filter(function(r){ return !q || cxRowMatch(r,q); }), shown = rows.slice(0,P.lim), grp = {}, order = [];
+    shown.forEach(function(r){ var k = r.make+' '+r.model; if(!grp[k]){ grp[k] = []; order.push(k); } grp[k].push(r); });
+    var o = '';
+    order.forEach(function(k){
+      var g = grp[k], allOn = g.every(function(r){ return P.rows[r.id]; });
+      o += '<div class="cx-mh"><input type="checkbox" data-hm="'+esc(k)+'"'+(allOn?' checked':'')+chkAttr()+'/><span>'+esc(k)+'</span><span class="cx-dim" style="font-weight:400;font-size:var(--t-sm)">'+g.length+' chassis</span></div>';
+      g.forEach(function(r){ o += '<label class="cx-row"><input type="checkbox" data-r="'+esc(r.id)+'"'+(P.rows[r.id]?' checked':'')+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(r.chassis)+'</b> <span class="cx-dim">'+esc(r.span)+' &middot; '+esc(Object.keys(r.engines).slice(0,3).join(', '))+'</span></span>'+rowChip(r)+'</label>'; });
+    });
+    if(rows.length>shown.length) o += '<div style="padding:8px 0"><button type="button" class="fbg-gbtn" data-p="more">Show more ('+(rows.length-shown.length)+' left)</button></div>';
+    $('cxp-list').innerHTML = o || '<div class="cx-dim" style="padding:10px 0">No cars match.</div>';
+    // suggestions from the group's own name
+    var gr = gRecs().filter(function(x){ return !x.isNew || x.name; }), sg = gr.length ? cxSuggest(ix,gr).filter(function(id){ return !P.rows[id]; }) : [], el = $('cxp-sugg');
+    el.innerHTML = sg.length ? '<div class="cx-sum" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>Looks like this group is for: <b>'+esc(sg.slice(0,5).map(function(id){ return cxRowLabel(ix.byId[id]); }).join(', '))+(sg.length>5?' +'+(sg.length-5)+' more':'')+'</b></span><button type="button" class="fbg-gbtn paste" data-p="sugg">Tick '+plural(sg.length,'suggested car')+'</button></div>' : '';
+    el._sg = sg;
+  }
+  function renderYears(){
+    var el = $('cxp-years'); if(!P.perYear){ el.innerHTML = ''; return; }
+    var rows = Object.keys(P.rows).map(function(k){ return ix.byId[k]; }).filter(Boolean);
+    el.innerHTML = rows.length ? '<div class="cx-scroll" style="max-height:24vh">'+rows.map(function(r){
+      return '<div class="cx-mrow"><b style="color:#e8eaed">'+esc(cxRowLabel(r))+'</b> <button type="button" class="fbg-gbtn" data-yall="'+esc(r.id)+'">All</button><button type="button" class="fbg-gbtn" data-ynone="'+esc(r.id)+'">None</button>'
+        +'<div class="cx-years" style="margin-left:0">'+r.ys.map(function(y){ return '<label><input type="checkbox" data-y="'+esc(r.id)+'|'+y+'"'+(P.off[r.id+'|'+y]?'':' checked')+chkAttr()+'/>'+y+'</label>'; }).join('')+'</div></div>'; }).join('')+'</div>' : '';
+  }
+  function plan(){
+    var l2 = fbgLibLoad(), gr = gRecs(), s = {newT:0,oldT:0,pairs:0,have:0,tpls:[]};
+    Object.keys(P.rows).forEach(function(k){
+      var r = ix.byId[k]; if(!r) return;
+      function count(t){ if(!t){ s.newT++; s.pairs += gr.length; return; } s.oldT++; gr.forEach(function(g){ var id = gIdent(g.url?g:{name:g.name,url:''}); var dup = (t.groups||[]).some(function(x){ return gIdent(x)===id || String(x.name||'').toLowerCase()===String(g.name||'').toLowerCase(); }); if(dup) s.have++; else s.pairs++; }); }
+      if(P.chassis) count(cxFindChassis(l2,r));
+      if(P.years) r.ys.forEach(function(y){ if(!P.perYear || !P.off[r.id+'|'+y]) count(cxFindCar(l2,y,r)); });
+    });
     return s;
   }
-  function summarize(){
-    var s = state(), l2 = fbgLibLoad(), newT = 0, oldT = 0, pairs = 0, have = 0;
-    function count(t){ if(!t){ newT++; pairs += s.groups.length; return; } oldT++; s.groups.forEach(function(g){ var id = gIdent(g.url?g:{name:g.name,url:''}); var dup = (t.groups||[]).some(function(x){ return gIdent(x)===id || String(x.name||'').toLowerCase()===String(g.name||'').toLowerCase(); }); if(dup) have++; else pairs++; }); }
-    rows.forEach(function(r,i){ if(s.chassis[i]) count(cxFindChassis(l2,r)); (s.years[i]||[]).forEach(function(y){ count(cxFindCar(l2,y,r)); }); });
-    var el = $('fbg-cxm-sum'), go = $('fbg-cxm-go'); if(!el) return;
-    el.innerHTML = '<b>'+plural(newT,'new template')+'</b> will be created, <b>'+plural(oldT,'existing template')+'</b> reused. <b>'+plural(pairs,'group placement')+'</b> will be added'+(have?' ('+have+' already there, skipped)':'')+'.'+(s.groups.length?'':' <span style="color:#E0A030">No group chosen, so only the templates are created.</span>');
-    go.textContent = newT+oldT===0 ? 'Nothing ticked' : s.groups.length ? 'Add ('+pairs+')' : 'Create '+plural(newT,'template');
-    go.disabled = (newT+oldT===0) || (pairs===0 && newT===0); go.style.opacity = go.disabled ? .5 : 1;
+  function renderSum(){
+    var s = plan(), n = Object.keys(P.rows).length, gr = gRecs(), go = $('cxp-go');
+    $('cxp-sum').innerHTML = !n ? 'Tick the cars this group belongs to.' : '<b>'+plural(n,'car')+'</b> &rarr; <b>'+plural(s.newT,'new template')+'</b> created, <b>'+plural(s.oldT,'existing template')+'</b> reused, <b>'+plural(s.pairs,'group placement')+'</b> added'+(s.have?' ('+s.have+' already there, skipped)':'')+'.'+(gr.length?'':' <span style="color:#E0A030">Choose a group first.</span>');
+    go.textContent = s.pairs ? 'Attach ('+s.pairs+')' : 'Attach'; go.disabled = !n || !gr.length || !s.pairs; go.style.opacity = go.disabled ? .5 : 1;
   }
-  ov.addEventListener('change',summarize); ov.addEventListener('input',summarize); summarize();
+  function all(){ renderGroups(); renderList(); renderYears(); renderSum(); }
+  all();
+  ov.addEventListener('input',function(e){ if(e.target.id==='cxp-q'){ P.q = e.target.value; P.lim = 120; clearTimeout(P._t); P._t = setTimeout(renderList,160); } else if(e.target.id==='cxp-newname' || e.target.id==='cxp-newurl'){ renderGroups_title(); renderSum(); } });
+  function renderGroups_title(){ var gr = gRecs(), t = $('cxp-title'); if(t) t.textContent = gr.length===1 ? 'Attach "'+gr[0].name+'" to cars' : gr.length>1 ? 'Attach '+plural(gr.length,'group')+' to cars' : 'Attach a group to cars'; }
+  ov.addEventListener('change',function(e){
+    var t = e.target, d = t.dataset||{};
+    if(d.g!==undefined){ if(!t.checked) delete P.groups[d.g]; renderGroups(); renderList(); renderSum(); }
+    else if(t.id==='cxp-gadd'){ if(t.value){ P.groups[t.value] = 1; } renderGroups(); renderList(); renderSum(); }
+    else if(d.r!==undefined){ if(t.checked) P.rows[d.r] = 1; else delete P.rows[d.r]; renderYears(); renderSum(); renderList(); }
+    else if(d.hm!==undefined){ ix.rows.forEach(function(r){ if((r.make+' '+r.model)===d.hm && (!P.q.trim() || cxRowMatch(r,P.q.trim().toLowerCase()))){ if(t.checked) P.rows[r.id] = 1; else delete P.rows[r.id]; } }); renderList(); renderYears(); renderSum(); }
+    else if(d.y!==undefined){ if(t.checked) delete P.off[d.y]; else P.off[d.y] = 1; renderSum(); }
+    else if(t.id==='cxp-ch'){ P.chassis = t.checked; renderSum(); }
+    else if(t.id==='cxp-yr'){ P.years = t.checked; renderSum(); }
+    else if(t.id==='cxp-link'){ P.link = t.checked; }
+    else if(t.id==='cxp-py'){ P.perYear = t.checked; renderYears(); renderSum(); }
+  });
   ov.addEventListener('click',function(e){
-    var b = e.target.closest('button'); if(!b) return;
-    if(b.dataset.yall!==undefined || b.dataset.ynone!==undefined){ var i = b.dataset.yall!==undefined ? b.dataset.yall : b.dataset.ynone, on = b.dataset.yall!==undefined; ov.querySelectorAll('[data-my^="'+i+'|"]').forEach(function(c){ c.checked = on; }); summarize(); return; }
-    if(b.dataset.act==='cancel'){ closeModal(); return; }
-    if(b.dataset.act!=='save' || b.disabled) return;
-    var s = state(), l3 = fbgLibLoad(), made = 0, placed = 0, linked = 0, touched = 0, link = $('fbg-cxm-link').checked;
-    rows.forEach(function(r,i){
+    var b = e.target.closest('button'); if(!b) return; var d = b.dataset||{};
+    if(d.yall!==undefined || d.ynone!==undefined){ var id = d.yall!==undefined ? d.yall : d.ynone, r = ix.byId[id]; if(r) r.ys.forEach(function(y){ if(d.yall!==undefined) delete P.off[id+'|'+y]; else P.off[id+'|'+y] = 1; }); renderYears(); renderSum(); return; }
+    if(d.p==='cancel'){ closeModal(); return; }
+    if(d.p==='clear'){ P.rows = {}; renderList(); renderYears(); renderSum(); return; }
+    if(d.p==='more'){ P.lim += 120; renderList(); return; }
+    if(d.p==='sugg'){ ($('cxp-sugg')._sg||[]).forEach(function(id){ P.rows[id] = 1; }); renderList(); renderYears(); renderSum(); return; }
+    if(d.p!=='go' || b.disabled) return;
+    var gr = gRecs(), l3 = fbgLibLoad(), made = 0, placed = 0, linked = 0, touched = 0;
+    Object.keys(P.rows).forEach(function(k){
+      var r = ix.byId[k]; if(!r) return;
       var chTpl = cxFindChassis(l3,r);
-      if(s.chassis[i]){ if(!chTpl){ chTpl = createTemplate(l3,'chassis',{make:r.make,model:r.chassis}).tpl; made++; } placed += insertGroups(chTpl,s.groups); touched++; }
-      (s.years[i]||[]).forEach(function(y){
+      if(P.chassis){ if(!chTpl){ chTpl = createTemplate(l3,'chassis',{make:r.make,model:r.chassis}).tpl; made++; } placed += insertGroups(chTpl,gr); touched++; }
+      if(P.years) r.ys.forEach(function(y){
+        if(P.perYear && P.off[r.id+'|'+y]) return;
         var car = cxFindCar(l3,y,r);
         if(!car){ car = createTemplate(l3,'car',{year:String(y),make:r.make,model:r.model}).tpl; made++; }
-        if(link && chTpl && !car.chassisId){ car.chassisId = chTpl.id; linked++; }
-        placed += insertGroups(car,s.groups); touched++;
+        if(P.link && chTpl && !car.chassisId){ car.chassisId = chTpl.id; linked++; }
+        placed += insertGroups(car,gr); touched++;
       });
     });
-    if(made || placed || linked) fbgLibSave(l3,{label:'add groups from catalog'});
+    if(made || placed || linked) fbgLibSave(l3,{label:'attach groups to cars'});
     closeModal(true); cx.selRows = {}; cx.selGroups = {};
-    fbgRenderLibrary(); fbgPopulateCarDropdowns(); paintCatalog();
-    fbgToast('Added '+plural(placed,'group placement')+' across '+plural(touched,'template')+(made?' ('+plural(made,'new template')+' created)':'')+(linked?', '+plural(linked,'link')+' to chassis':'')+'.');
+    fbgRenderLibrary(); fbgPopulateCarDropdowns(); if(activePane==='catalog') paintCatalog(); else if(activePane==='groups') renderGroupsPane(); else if(activePane==='plan' && typeof renderPlanPane==='function') renderPlanPane();
+    fbgToast('Attached: '+plural(placed,'group placement')+' on '+plural(touched,'template')+(made?' ('+plural(made,'new template')+' created)':'')+'.');
   });
 }
+function openCatalogAdd(){ openAttachPicker({groups:Object.keys(cx.selGroups),rows:Object.keys(cx.selRows)}); }
 
 /* tabs */
 function showPane(name){
