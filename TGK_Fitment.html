@@ -3415,6 +3415,12 @@ function fmRenderReference(){
     +'<button class="fm-btn"'+can(makes.length)+' onclick="fmRefCheckAll()">Check every make</button>'
     +(busy?'<span class="fm-busy" style="display:inline-flex">'+fmEsc(R.busy)+' <span id="fr-prog">'+fmEsc(R.prog)+'</span></span><button class="fm-btn" onclick="FM.ref.stop=true;this.disabled=true;this.textContent=\'Stopping...\'">Stop</button>':'')
     +'</div>'
+    +'<div class="fm-row wrap" style="margin-top:10px"><b style="font-size:13px">Build full catalog</b><input class="fm-in" id="fr-bld-makes" list="fmref-dl-make" placeholder="Makes, comma separated: Audi, Volkswagen, BMW, Porsche" value="'+fmEsc(R.bm!=null?R.bm:(R.make||''))+'" oninput="FM.ref.bm=this.value" style="min-width:320px;max-width:420px">'
+    +'<select class="fm-in fm-csel" id="fr-bld-conf"><option value="high">Save high confidence only</option><option value="medium">Save high + medium</option></select>'
+    +'<label class="fm-cl"><input type="checkbox" id="fr-bld-re"> also re-check models already in the catalog</label>'
+    +'<button class="fm-btn primary"'+can(true)+' onclick="fmRefBuild()">Build</button>'
+    +(V.some(function(v){return v.active===false;})?'<button class="fm-btn"'+can(true)+' onclick="fmRefShowHidden('+(R.make?fmJs(R.make):"''")+','+(R.make&&R.model?fmJs(R.model):"''")+')">Show hidden'+(R.make?' ('+fmEsc(R.make+(R.model?' '+R.model:''))+')':' (all)')+' on website</button>':'')
+    +'</div>'
     +'<div class="fm-row wrap" style="margin-top:10px"><b style="font-size:13px">Export</b><select class="fm-in fm-csel" id="fr-exp-scope"><option value="all">Whole catalog</option>'+(R.make?'<option value="make">'+fmEsc(R.make)+' only</option>':'')+'</select>'
     +'<label class="fm-cl"><input type="checkbox" id="fr-exp-year" checked> one row per year</label>'
     +'<button class="fm-btn" onclick="fmRefExport(\'csv\')">CSV</button><button class="fm-btn" onclick="fmRefExport(\'xlsx\')">Excel</button>'
@@ -3440,7 +3446,7 @@ function fmRenderReference(){
       +'<table class="fm-tbl"><thead><tr><th>Chassis</th><th>Engine</th><th>Engine code</th><th>Years</th><th>Platform</th><th>Fitment rows</th><th></th></tr></thead><tbody>';
     keys.forEach(function(k){var g=ch[k].sort(function(a,b){return a.year_from-b.year_from||String(a.engine).localeCompare(String(b.engine));});
       h+='<tr class="fm-grprow"><td colspan="7"><b>'+fmEsc(k)+'</b> <span class="fm-tdim">'+fmRefSpan(g)+(fmRefUniq(g.map(function(v){return v.platform;})).length===1?' &middot; platform '+fmEsc(g[0].platform):'')+' &middot; '+g.length+' variant'+(g.length!==1?'s':'')+'</span></td></tr>';
-      g.forEach(function(v){h+='<tr class="'+(v.active===false?'dim':'')+'"><td class="fm-tdim">'+fmEsc(v.chassis||'')+'</td><td>'+(v.engine?fmEsc(v.engine):'<span class="fm-bad">missing</span>')+'</td><td>'+(v.engine_code?fmEsc(v.engine_code):'<span class="fm-tdim">-</span>')+'</td><td>'+fmYears(v)+'</td><td>'+fmEsc(v.platform||'')+'</td><td>'+(use[v.id]||0)+'</td>'
+      g.forEach(function(v){h+='<tr class="'+(v.active===false?'dim':'')+'"><td class="fm-tdim">'+fmEsc(v.chassis||'')+'</td><td>'+(v.engine?fmEsc(v.engine):'<span class="fm-bad">missing</span>')+(v.active===false?' <span class="fr-badge fr-same" title="Not in the website vehicle picker yet">hidden</span>':'')+'</td><td>'+(v.engine_code?fmEsc(v.engine_code):'<span class="fm-tdim">-</span>')+'</td><td>'+fmYears(v)+'</td><td>'+fmEsc(v.platform||'')+'</td><td>'+(use[v.id]||0)+'</td>'
         +'<td><button class="fm-link" onclick="FM.vq='+fmJs(R.model).replace(/"/g,'&quot;')+';FM.vmk='+fmJs(R.make).replace(/"/g,'&quot;')+';FM.tab=\'vehicles\';fmRender()">edit in catalog</button></td></tr>';});});
     return h+'</tbody></table></div></div>';
   }
@@ -3633,32 +3639,85 @@ function fmRefReviewHtml(){
   return h+'</tbody></table></div>';
 }
 window.fmRefPick=function(id,on){var p=(FM.ref.props||[]).filter(function(x){return x.id===id;})[0];if(p){p.pick=on;fmRender();}};
-window.fmRefApply=function(){
-  var R=FM.ref,sel=(R.props||[]).filter(function(p){return p.pick&&p.status!=='same';});if(!sel.length)return;
-  var news=sel.filter(function(p){return p.status==='new';}),upds=sel.filter(function(p){return p.status==='update';});
+async function fmRefWrite(news,upds,active){
   var have={};FM.vehicles.forEach(function(v){have[fmVKey(v)]=1;});
-  var recs=[],skipped=0;
+  var recs=[],skipped=0,added=0,changed=0;
   news.forEach(function(p){
     var rec={make:p.make,model:p.model,year_from:p.year_from,year_to:p.year_to,engine:p.engine,chassis:p.chassis,platform:p.platform||((p.chassis+' '+p.engine).trim()||null)};
     if(p.engine_code)rec.engine_code=p.engine_code;
+    if(active===false)rec.active=false;
     if(have[fmVKey(rec)]){skipped++;return;}have[fmVKey(rec)]=1;recs.push(rec);});
+  for(var i=0;i<recs.length;i+=100){var r=await fmReq('fit_vehicles',{method:'POST',body:JSON.stringify(recs.slice(i,i+100))});FM.vehicles=FM.vehicles.concat(r||[]);added+=(r||[]).length;}
+  FM.vehicles.sort(function(a,b){return (a.make+a.model+a.year_from).localeCompare(b.make+b.model+b.year_from);});
+  for(var j=0;j<upds.length;j++){var p=upds[j],v=p.cur,patch={};
+    if(p.chg.years){patch.year_from=p.year_from;patch.year_to=p.year_to;}
+    if(p.chg.engine_code)patch.engine_code=p.engine_code;if(p.chg.platform)patch.platform=p.platform;if(p.chg.chassis)patch.chassis=p.chassis;if(p.chg.engine)patch.engine=p.engine;
+    if(!Object.keys(patch).length||!v)continue;
+    var twin=null;if('year_from' in patch||'chassis' in patch||'engine' in patch){var nv=Object.assign({},v,patch);twin=FM.vehicles.filter(function(x){return x.id!==v.id&&fmVKey(x)===fmVKey(nv);})[0];}
+    if(twin){skipped++;continue;}
+    await fmReq('fit_vehicles?id=eq.'+v.id,{method:'PATCH',body:JSON.stringify(patch)});Object.assign(v,patch);
+    if(!FM.noExtras&&('engine_code' in patch))await fmReq('fitments?vehicle_id=eq.'+v.id,{method:'PATCH',body:JSON.stringify({engine_code:patch.engine_code})});
+    if('chassis' in patch||'engine' in patch){var tx={engine:v.engine,chassis:v.chassis,submodel:((v.chassis||'')+' '+(v.engine||'')).trim()||null};await fmReq('fitments?vehicle_id=eq.'+v.id,{method:'PATCH',body:JSON.stringify(tx)});FM.fits.forEach(function(f){if(f.vehicle_id===v.id)Object.assign(f,tx);});}
+    changed++;}
+  return {added:added,changed:changed,skipped:skipped};
+}
+window.fmRefApply=function(){
+  var R=FM.ref,sel=(R.props||[]).filter(function(p){return p.pick&&p.status!=='same';});if(!sel.length)return;
+  var news=sel.filter(function(p){return p.status==='new';}),upds=sel.filter(function(p){return p.status==='update';});
   fmDo(async function(){
-    var added=0,changed=0;
-    for(var i=0;i<recs.length;i+=100){var r=await fmReq('fit_vehicles',{method:'POST',body:JSON.stringify(recs.slice(i,i+100))});FM.vehicles=FM.vehicles.concat(r||[]);added+=(r||[]).length;}
-    FM.vehicles.sort(function(a,b){return (a.make+a.model+a.year_from).localeCompare(b.make+b.model+b.year_from);});
-    for(var j=0;j<upds.length;j++){var p=upds[j],v=p.cur,patch={};
-      if(p.chg.years){patch.year_from=p.year_from;patch.year_to=p.year_to;}
-      if(p.chg.engine_code)patch.engine_code=p.engine_code;if(p.chg.platform)patch.platform=p.platform;if(p.chg.chassis)patch.chassis=p.chassis;if(p.chg.engine)patch.engine=p.engine;
-      if(!Object.keys(patch).length||!v)continue;
-      var twin=null;if('year_from' in patch||'chassis' in patch||'engine' in patch){var nv=Object.assign({},v,patch);twin=FM.vehicles.filter(function(x){return x.id!==v.id&&fmVKey(x)===fmVKey(nv);})[0];}
-      if(twin){skipped++;continue;}
-      await fmReq('fit_vehicles?id=eq.'+v.id,{method:'PATCH',body:JSON.stringify(patch)});Object.assign(v,patch);
-      if(!FM.noExtras&&('engine_code' in patch))await fmReq('fitments?vehicle_id=eq.'+v.id,{method:'PATCH',body:JSON.stringify({engine_code:patch.engine_code})});
-      if('chassis' in patch||'engine' in patch){var tx={engine:v.engine,chassis:v.chassis,submodel:((v.chassis||'')+' '+(v.engine||'')).trim()||null};await fmReq('fitments?vehicle_id=eq.'+v.id,{method:'PATCH',body:JSON.stringify(tx)});FM.fits.forEach(function(f){if(f.vehicle_id===v.id)Object.assign(f,tx);});}
-      changed++;}
+    var o=await fmRefWrite(news,upds,true);
     var done={};sel.forEach(function(p){done[p.id]=1;});R.props=R.props.filter(function(p){return !done[p.id];});if(!R.props.length)R.props=null;
-    fmToast('Saved: '+added+' vehicle'+(added!==1?'s':'')+' added, '+changed+' updated'+(skipped?' ('+skipped+' skipped - already in the catalog)':'')+'. Undo is available.');
+    fmToast('Saved: '+o.added+' vehicle'+(o.added!==1?'s':'')+' added, '+o.changed+' updated'+(o.skipped?' ('+o.skipped+' skipped - already in the catalog)':'')+'. Undo is available.');
   });
+};
+
+// ---------- bulk build: many makes at once. New rows are saved HIDDEN (not in the website picker) until you show them ----------
+var _fmBuildChain=Promise.resolve();
+function fmRefBuildSave(rows,make,model,minConf){
+  var ok=function(p){return p.confidence==='high'||(minConf==='medium'&&p.confidence==='medium');};
+  var news=rows.filter(function(p){return p.status==='new'&&ok(p);}),upds=rows.filter(function(p){return p.status==='update'&&p.safe&&ok(p);});
+  var keep=rows.filter(function(p){return p.status!=='same'&&!(news.indexOf(p)>=0||upds.indexOf(p)>=0);});
+  _fmBuildChain=_fmBuildChain.then(function(){return fmDo(async function(){
+    var o=await fmRefWrite(news,upds,false);FM.ref.built.added+=o.added;FM.ref.built.filled+=o.changed;
+    fmToast('Built '+make+' '+model+': '+o.added+' added'+(o.changed?', '+o.changed+' filled in':'')+' (hidden until you show them)');
+  });});
+  FM.ref.props=(FM.ref.props||[]).filter(function(p){return !(fmNorm(p.make)===fmNorm(make)&&fmNorm(p.model)===fmNorm(model));}).concat(keep);
+  if(!FM.ref.props.length)FM.ref.props=null;
+  return _fmBuildChain;
+}
+FM.ref.built={added:0,filled:0};
+window.fmRefBuild=async function(){
+  var R=FM.ref;if(R.busy){fmToast('An AI check is already running',true);return;}
+  var raw=((document.getElementById('fr-bld-makes')||{}).value||''),minConf=(document.getElementById('fr-bld-conf')||{}).value||'high',redo=!!(document.getElementById('fr-bld-re')||{}).checked;
+  var makes=fmRefUniq(raw.split(/[,;\n]+/).map(function(x){return fmRefCanon('make',x);}).filter(Boolean));
+  if(!makes.length){fmToast('Type the makes to build, separated by commas',true);return;}
+  if(!confirm('Build the catalog for: '+makes.join(', ')+'?\n\nStep 1 searches for every model each make sold from '+FM_REF_FROM+' to '+new Date().getFullYear()+' (one AI search per make).\nStep 2 researches every model\'s chassis and engines (one AI search per model, often 30-80 per make). This uses real AI credit, so try ONE make first to see the cost.\n\nConfident new rows ('+(minConf==='medium'?'high and medium':'high')+' confidence) are saved HIDDEN - they do not appear in the website vehicle picker until you show them. Everything else waits in the review list. You can Stop at any time and run it again later to carry on.'))return;
+  R.busy='Building';R.stop=false;R.log=[];R.built={added:0,filled:0};R.prog='';fmRender();
+  var total=0,done=0;
+  var upd=function(t){R.prog=done+'/'+total+(t?' - '+t:'');var e=document.getElementById('fr-prog');if(e)e.textContent=R.prog;};
+  for(var i=0;i<makes.length&&!R.stop;i++){
+    var mk=makes[i],models=[];
+    R.prog='finding '+mk+' models';upd('finding '+mk+' models');
+    try{var d=await fmRefDiscover(mk);models=d.models.map(function(m){return m.model;});}catch(e){R.log.push(mk+' (model list): '+(e.message||e));}
+    if(redo)fmRefUniq(FM.vehicles.filter(function(v){return v.make===mk;}).map(function(v){return v.model;})).slice(0,80).forEach(function(m){models.push(m);});
+    models=fmRefUniq(models);total+=models.length;upd(mk);
+    await fmPool(models,2,async function(md){
+      if(R.stop)return;
+      try{var res=await fmRefResearch(mk,md);fmRefClassify(res.rows,mk,md);R.src[mk+'|'+md]=res.urls;await fmRefBuildSave(res.rows,mk,md,minConf);}
+      catch(e){R.log.push(mk+' '+md+': '+(e.message||e));}
+      done++;upd(mk+' '+md);
+    });
+    fmRefStamp(mk);
+  }
+  await _fmBuildChain;R.busy='';R.prog='';fmRender();
+  fmToast((R.stop?'Stopped. ':'Build finished. ')+R.built.added+' vehicles added (hidden), '+R.built.filled+' filled in'+(R.log.length?', '+R.log.length+' checks failed':'')+'. Review the rest below, then show the good ones on the website.');
+};
+window.fmRefShowHidden=function(make,model){
+  var ids=FM.vehicles.filter(function(v){return v.active===false&&(!make||v.make===make)&&(!model||v.model===model);}).map(function(v){return v.id;});
+  if(!ids.length)return;
+  if(!confirm('Show '+ids.length+' hidden vehicle'+(ids.length!==1?'s':'')+(make?' for '+make+(model?' '+model:''):'')+' in the website vehicle picker?\n\nOnly do this once you have checked them. Undo is available.'))return;
+  fmDo(async function(){for(var i=0;i<ids.length;i+=150)await fmReq('fit_vehicles?id=in.('+ids.slice(i,i+150).join(',')+')',{method:'PATCH',body:JSON.stringify({active:true})});
+    var m={};ids.forEach(function(x){m[x]=1;});FM.vehicles.forEach(function(v){if(m[v.id])v.active=true;});fmToast('Now showing '+ids.length+' vehicle'+(ids.length!==1?'s':'')+' on the website');});
 };
 
 // ===================== 4. export =====================
