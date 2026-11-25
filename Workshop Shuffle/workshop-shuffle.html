@@ -247,6 +247,10 @@ body.touch [data-act=remain] .lb{display:none}body.touch [data-act=remain]::befo
 
 .brand .demo{margin-top:.35rem;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--yellow)}
 .linkbtn{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--chalk);text-decoration:underline;cursor:pointer}
+
+.dlg .fbrow{display:flex;gap:.2rem;justify-content:center;margin:.9rem 0 .5rem}
+.dlg .fbstar{background:none;border:0;font-size:2.6rem;line-height:1;color:#555a61;cursor:pointer;padding:0 .15rem;transition:transform .08s,color .08s}
+.dlg .fbstar.on{color:var(--yellow)}.dlg .fbstar:hover{transform:scale(1.15)}
 </style>
 </head>
 <body>
@@ -9988,7 +9992,7 @@ function startLevel(idx,mode){
   $('#hLevel').textContent=`${L.id}. ${L.name}`+(mode==='time'?' · Time Challenge':mode==='free'?' · Free Organization':'');
   buildTabs();refreshHud();
   const tip=$('#tip');
-  if(L.id===1){tip.style.display='block';tip.textContent='Drag a tool to lift it. Turn it with Q / E or the mouse wheel until it matches an outline, then let go.';}
+  if(L.id===1){tip.style.display='block';tip.textContent=document.body.classList.contains('touch')?'Hold a tool with one finger. Turn it with ⟲ ⟳ (hold to keep turning), a two-finger twist, or tap a second finger for a quarter turn. Let go over the outline.':'Drag a tool to lift it. Turn it with Q / E or the mouse wheel until it matches an outline, then let go.';}
   else tip.style.display='none';
   toast(`Level ${L.id}: ${L.name}`,'');
   if(mode==='time')toast(`Beat the clock: ${fmt(L.par)}`,'bad');
@@ -10105,7 +10109,7 @@ function land(t,kind,strong){
   if(kind==='seat'){Snd.seat(t.def);}else if(kind==='foam'){Snd.foam();Snd.clink(.5);}else if(kind==='wrong'){Snd.buzz();t.wob=Settings.reduce?0:.09;}else Snd.bench(t.def.wt);
 }
 function dropHeld(){
-  const t=G.held;if(!t)return;G.held=null;const r=evalDrop(t);t.ghost.visible=false;
+  const t=G.held;if(!t)return;G.held=null;G.dragPid=null;G.rot2=null;const r=evalDrop(t);t.ghost.visible=false;
   if(G.roam){$('#tip').style.display='none';G.lastOver='';}
   if(r.kind==='seat'){
     const c=r.c;c.filled=t;t.where={t:'tray',d:r.D.i,lx:c.x,lz:c.z,phi:c.rot,seat:c};
@@ -10113,7 +10117,7 @@ function dropHeld(){
     moveTool(t,w,{dur:.22,done:()=>{t.state='idle';land(t,'seat');scoreAway(t);onSeated();}});
   }else if(r.kind==='loose'){
     moveTool(t,{t:'tray',d:r.D.i,lx:r.x,lz:r.z,phi:t.phi},{dur:.2,done:()=>{t.state='idle';land(t,'foam');}});
-    if(r.near)toast('Close. Rotate with Q / E until the outline lines up.','');
+    if(r.near)toast(document.body.classList.contains('touch')?'Close. Turn it with ⟲ ⟳ (hold to keep turning) or twist two fingers.':'Close. Rotate with Q / E until the outline lines up.','');
   }else if(r.kind==='bench'){
     moveTool(t,{t:'bench',zn:r.zn,x:r.x,z:r.z,phi:t.phi},{dur:.2,done:()=>{t.state='idle';land(t,'bench');if(G.roam&&r.away)scoreAway(t);refreshHud();}});
   }else if(r.kind==='wrong'){
@@ -10207,6 +10211,7 @@ function showResults(win,r){
   $('#hud').classList.remove('on');
   const ui=$('#ui');ui.innerHTML=`<div class="screen panel-screen">${html}</div>`;
   if(win&&r.stars){const sp=[...ui.querySelectorAll('#starRow span')];sp.forEach((s,i)=>{if(i<r.stars)setTimeout(()=>{s.classList.add('on');Snd.star(i);},Settings.reduce?0:350+i*350);});}
+  if(DEMO&&win&&r&&r.L&&(r.L.id===DEMO_SHOPS+100||r.L.id===DEMO_FOAM)&&!SAVE.fbDone)setTimeout(demoFeedback,1800);
 }
 
 /* ============================================================
@@ -10356,7 +10361,7 @@ function scrCredits(){
   <p>Workshop Shuffle. A Three.js workshop scene with procedural tool models and synthesized sound.</p>
   <p style="color:var(--dim)">Cars: original low-poly designs made for this game, built in code. Garage props, two-post lift model and concrete textures supplied by the game’s owner; the printed name on the lift was replaced.</p>
   <p style="color:var(--dim)">Built with three.js (MIT licence) and the meshoptimizer decoder (MIT licence). Fonts: Big Shoulders Display by Patric King and Barlow Semi Condensed by Jeremy Tribby, both under the SIL Open Font License 1.1. Everything the game needs is inside this one file; it makes no network requests.</p>
-  <div class="hd">Controls</div><p>Drag a tool to lift it. Q / E or the mouse wheel rotates it. Click a drawer front or tab to open it. Esc pauses. In the tidy-up shop: WASD walks (Shift runs), drag (or press L for mouse-look) to look around, click a tool to pick it up, click a glowing shelf, bin or foam tray to put it away. Q / E or the wheel rotates, Tab cycles what you carry, Space grabs or places, F fires the pickup magnet. Completing stations earns three abilities: Insight (1) lights up a set, Assemble (2) pulls a set into your hands, Auto-shelve (3) puts away everything you carry. Stand by a lift column and press G to raise or lower it. Finish the set on a car's ticket and the customer pays and drives off. Small tools hide under lowered cars. A hidden key in each shop level opens the locked parts crate by the garage doors. Clicking a glowing station stashes every carried item that belongs there.</p>
+  <div class="hd">Controls</div><p>Drag a tool to lift it. Q / E or the mouse wheel rotates it. On a touch screen, hold the tool with one finger and tap ⟲ ⟳ (hold to keep turning), twist two fingers, or tap with a second finger for a quarter turn. Click a drawer front or tab to open it. Esc pauses. In the tidy-up shop: WASD walks (Shift runs), drag (or press L for mouse-look) to look around, click a tool to pick it up, click a glowing shelf, bin or foam tray to put it away. Q / E or the wheel rotates, Tab cycles what you carry, Space grabs or places, F fires the pickup magnet. Completing stations earns three abilities: Insight (1) lights up a set, Assemble (2) pulls a set into your hands, Auto-shelve (3) puts away everything you carry. Stand by a lift column and press G to raise or lower it. Finish the set on a car's ticket and the customer pays and drives off. Small tools hide under lowered cars. A hidden key in each shop level opens the locked parts crate by the garage doors. Clicking a glowing station stashes every carried item that belongs there.</p>
   <div class="hd">What is in this build</div><p>Eight shop levels with a different layout in each, a free roam shop, daily and weekly jobs, The Big Job, 30 foam toolbox levels, an upgrade shop, achievements, statistics, saving and a full settings menu. Shops have fillable pegboards, a magnetic rail, a size-ordered socket rail, labeled parts bins, customer jobs with their own cart at each bay, spills to wipe up, cars that drive in and out, and a short tutorial on level 1.</p>
   </div></div></div>`;
 }
@@ -10375,15 +10380,30 @@ const keys={};
 function setupInput(){
   const st=$('#stage');
   st.addEventListener('pointerdown',e=>{
-    Snd.init();setPointer(e);if(G.fp&&G.mode==='play'&&!G.paused&&!G.ended){fpPointerDown(e);return;}if(G.mode!=='play'||G.paused||G.ended)return;if(e.button>0)return;
+    Snd.init();
+    /* a second finger while a tool is held: it never moves or drops the tool, it turns it (twist, or a quick tap for a quarter turn) */
+    if(!G.fp&&G.held&&G.dragPid!=null&&e.pointerId!==G.dragPid){G.rot2={id:e.pointerId,x:e.clientX,y:e.clientY,t:e.timeStamp,twist:false,ang:Math.atan2(e.clientY-G.dragPy,e.clientX-G.dragPx)};try{st.setPointerCapture(e.pointerId);}catch(_){}return;}
+    setPointer(e);if(G.fp&&G.mode==='play'&&!G.paused&&!G.ended){fpPointerDown(e);return;}if(G.mode!=='play'||G.paused||G.ended)return;if(e.button>0)return;
     const t=pickTool();
-    if(t){try{st.setPointerCapture(e.pointerId);}catch(_){}grab(t);return;}
+    if(t){try{st.setPointerCapture(e.pointerId);}catch(_){}grab(t);G.dragPid=e.pointerId;G.dragPx=e.clientX;G.dragPy=e.clientY;G.rot2=null;return;}
     const di=pickDrawer();if(di>=0)toggleDrawer(di);
   });
-  window.addEventListener('pointermove',e=>{setPointer(e);if(G.fp)fpPointerMove(e);});
-  window.addEventListener('pointerup',e=>{G.pan=null;if(G.fp)fpPointerUp(e);else if(G.held)dropHeld();});
-  window.addEventListener('pointercancel',()=>{if(G.held&&!G.fp)dropHeld();G.fpd=null;});
+  window.addEventListener('pointermove',e=>{
+    if(!G.fp&&G.dragPid!=null){
+      if(e.pointerId===G.dragPid){G.dragPx=e.clientX;G.dragPy=e.clientY;setPointer(e);}
+      else if(G.rot2&&e.pointerId===G.rot2.id){const R2=G.rot2,a=Math.atan2(e.clientY-G.dragPy,e.clientX-G.dragPx);let d=a-R2.ang;if(d>Math.PI)d-=2*Math.PI;if(d<-Math.PI)d+=2*Math.PI;R2.ang=a;if(Math.hypot(e.clientX-R2.x,e.clientY-R2.y)>14)R2.twist=true;if(R2.twist&&G.held&&G.held.state==='held')G.held.tphi+=d*Settings.rot;}
+      return;}
+    setPointer(e);if(G.fp)fpPointerMove(e);});
+  window.addEventListener('pointerup',e=>{
+    if(!G.fp&&G.dragPid!=null&&e.pointerId!==G.dragPid){const R2=G.rot2;if(R2&&R2.id===e.pointerId){if(!R2.twist&&e.timeStamp-R2.t<600&&G.held)rotateHeld(Math.PI/2);G.rot2=null;}return;}
+    G.pan=null;if(G.fp)fpPointerUp(e);else if(G.held)dropHeld();else{G.dragPid=null;G.rot2=null;}});
+  window.addEventListener('pointercancel',e=>{
+    if(!G.fp&&G.dragPid!=null&&e.pointerId!==G.dragPid){if(G.rot2&&G.rot2.id===e.pointerId)G.rot2=null;return;}
+    if(G.held&&!G.fp)dropHeld();G.dragPid=null;G.rot2=null;G.fpd=null;});
   st.addEventListener('wheel',e=>{if(G.held){e.preventDefault();rotateHeld(Math.sign(e.deltaY)*(Math.PI/12)*Settings.rot);}},{passive:false});
+  document.querySelectorAll('.ctrl .rot').forEach(bt=>{const left=bt.dataset.act==='rotL',key=left?'q':'e';let tm=0;const stop=()=>{clearTimeout(tm);keys[key]=false;};
+    bt.addEventListener('pointerdown',()=>{bt._ptr=performance.now();rotateHeld((left?-1:1)*Math.PI/12*Settings.rot);clearTimeout(tm);tm=setTimeout(()=>{keys[key]=true;},320);});
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>bt.addEventListener(ev,stop));});
   st.addEventListener('contextmenu',e=>e.preventDefault());
   window.addEventListener('keydown',e=>{
     keys[e.key.toLowerCase()]=true;
@@ -10416,9 +10436,24 @@ function togglePause(){
 function startFrom(idx,mode){startLevel(idx,mode);}
 /* the browser's own confirm() is blocked when the game is embedded, so confirmations are drawn by the game */
 /* free demo: shop levels 1 to 3 and foam levels 1 to 6; everything else points to the full game */
-const DEMO=false,DEMO_SHOPS=3,DEMO_FOAM=6,BUY_URL='';
+const DEMO=false,DEMO_SHOPS=3,DEMO_FOAM=6,BUY_URL='',FEEDBACK_URL='';
 function demoBlock(){if(!DEMO)return false;
   askConfirm('The full game has all eight shops, daily and weekly jobs, The Big Job, your own shop and every foam toolbox level.'+(BUY_URL?'':' You can find the full version on the game’s page.'),BUY_URL?'Get the full game':'OK',()=>{if(BUY_URL){try{window.open(BUY_URL,'_blank');}catch(e){}}},'Full game only','Keep playing the demo');return true;}
+
+/* demo only: a one-tap star rating after the last demo level. The rating stays on the player's device unless they choose "Tell me more". */
+function demoFeedback(){
+  if(!DEMO||SAVE.fbDone||(SAVE.fbSkip||0)>=2||document.querySelector('.dlg'))return;
+  const d=document.createElement('div');d.className='dlg';
+  d.innerHTML=`<div class="box" role="dialog" aria-modal="true"><h3>How was the demo?</h3><p>Tap a star. It takes a second and it really helps.</p><div class="fbrow">${[1,2,3,4,5].map(n=>`<button class="fbstar" data-r="${n}" aria-label="${n} of 5">★</button>`).join('')}</div><div class="row"><button class="btn" data-skip>Not now</button></div></div>`;
+  const close=()=>{d.remove();document.removeEventListener('keydown',esc,true);},skip=()=>{SAVE.fbSkip=(SAVE.fbSkip||0)+1;persist();close();},esc=e=>{if(e.key==='Escape'){e.stopPropagation();skip();}};
+  const stars=[...d.querySelectorAll('.fbstar')],light=n=>stars.forEach((b,i)=>b.classList.toggle('on',i<n));
+  stars.forEach(b=>{b.onmouseenter=()=>light(+b.dataset.r);b.onfocus=()=>light(+b.dataset.r);b.onclick=()=>{const r=+b.dataset.r;SAVE.fbDone=1;SAVE.fbRating=r;persist();thanks(r);};});
+  d.querySelector('.fbrow').onmouseleave=()=>light(0);
+  d.querySelector('[data-skip]').onclick=skip;
+  const thanks=r=>{d.querySelector('.box').innerHTML=`<h3>Thank you!</h3><p>${r>=4?'Glad you enjoyed it.':'Thanks for being honest.'}${FEEDBACK_URL?' Want to say what you liked, or what felt off?':''}</p><div class="row">${FEEDBACK_URL?'<button class="btn" data-fb>Tell me more</button>':''}${BUY_URL?'<button class="btn red" data-buy>Get the full game</button>':''}<button class="btn" data-close>Close</button></div>`;
+    const q=a=>d.querySelector(a);if(q('[data-fb]'))q('[data-fb]').onclick=()=>{try{window.open(FEEDBACK_URL.replace('{rating}',r),'_blank');}catch(e){}};if(q('[data-buy]'))q('[data-buy]').onclick=()=>{try{window.open(BUY_URL,'_blank');}catch(e){}};q('[data-close]').onclick=close;};
+  document.addEventListener('keydown',esc,true);document.body.appendChild(d);
+}
 function askConfirm(msg,yes,cb,title,no){
   const old=document.querySelector('.dlg');if(old)old.remove();
   const d=document.createElement('div');d.className='dlg';
@@ -10472,8 +10507,8 @@ function onClick(e){
     case 'weekly':startTidy(weeklyLevel(),'career');break;
     case 'big':startTidy(bigLevel(),'career');break;
     case 'remain':G.showRemain=!G.showRemain;$('#remain').style.display=G.showRemain?'block':'none';if(G.showRemain)renderRemain();break;
-    case 'rotL':rotateHeld(-Math.PI/12*Settings.rot);break;
-    case 'rotR':rotateHeld(Math.PI/12*Settings.rot);break;
+    case 'rotL':if(performance.now()-(b._ptr||0)<700)break;rotateHeld(-Math.PI/12*Settings.rot);break;
+    case 'rotR':if(performance.now()-(b._ptr||0)<700)break;rotateHeld(Math.PI/12*Settings.rot);break;
     case 'fs':try{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen();}catch(_){toast('Fullscreen isn’t available here.','bad');}break;
   }
 }
