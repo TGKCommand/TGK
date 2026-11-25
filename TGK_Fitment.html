@@ -3516,7 +3516,8 @@ async function fmRefResearch(make,model){
     'Use web search to verify. Prefer the manufacturer and well-known reference sites.',
     'Rules:',
     '- One row per (chassis, engine variant). year_from / year_to = first and last model year that engine was sold in that chassis. If markets differ, use the widest range and say so in note.',
-    '- chassis = the generation / chassis code people use (e.g. B9, F30, 992, 95B, 8V, Mk7). platform = the maker platform or architecture code (e.g. MQB, MLB Evo, CLAR) or "" if unsure.',
+    '- chassis = the generation / chassis code people use (e.g. B9, F30, 992, 95B, 8V, Mk7). platform = ONLY the short maker platform code (e.g. MQB, MLB Evo, CLAR, PL46) - never a sentence, never the car name or generation text - or "" if unsure.',
+    '- chassis = ONLY the short code (e.g. C6, 4F, B9) - no words like "VW Group" or "Typ". note = at most 12 words and never repeats the engine, years or code (use "" if nothing useful).',
     '- engine = size and type in short form (e.g. 2.0T, 3.0T, 2.9TT, 5.2 V10). engine_code = the maker engine code (e.g. CNCD). NEVER guess a code: use "" when you are not sure.',
     '- If it is still in production at the end of the range, set year_to to '+Y.to+' and ongoing to true.',
     '- confidence: "high" = confirmed by the maker or two sources, "medium" = one good source, "low" = unsure.',
@@ -3664,9 +3665,7 @@ async function fmRefWrite(news,upds,active){
   var have={};FM.vehicles.forEach(function(v){have[fmVKey(v)]=1;});
   var recs=[],skipped=0,added=0,changed=0;
   news.forEach(function(p){
-    var rec={make:p.make,model:p.model,year_from:p.year_from,year_to:p.year_to,engine:p.engine,chassis:p.chassis,platform:p.platform||((p.chassis+' '+p.engine).trim()||null)};
-    if(p.engine_code)rec.engine_code=p.engine_code;
-    if(active===false)rec.active=false;
+    var rec={make:p.make,model:p.model,year_from:p.year_from,year_to:p.year_to,engine:p.engine,chassis:p.chassis,platform:p.platform||((p.chassis+' '+p.engine).trim()||null),engine_code:p.engine_code||null,active:active!==false};
     if(have[fmVKey(rec)]){skipped++;return;}have[fmVKey(rec)]=1;recs.push(rec);});
   for(var i=0;i<recs.length;i+=100){var r=await fmReq('fit_vehicles',{method:'POST',body:JSON.stringify(recs.slice(i,i+100))});FM.vehicles=FM.vehicles.concat(r||[]);added+=(r||[]).length;}
   FM.vehicles.sort(function(a,b){return (a.make+a.model+a.year_from).localeCompare(b.make+b.model+b.year_from);});
