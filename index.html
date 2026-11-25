@@ -15047,19 +15047,21 @@ function openAttachPicker(opts){
   }
   var h = '<div class="fbg-modal-title" id="cxp-title">Attach to cars</div>'
     +'<div class="fbg-modal-sub">Pick the group, tick the cars, press Attach. Each car goes on its chassis template and on a template for every model year. Nothing is saved until you press Attach.</div>'
-    +'<div class="fbg-sect">Group</div><div id="cxp-groups"></div>'
+    +'<div id="cxp-body" style="flex:1 1 auto;min-height:0;overflow:auto;padding-right:6px"><div class="fbg-sect">Group</div><div id="cxp-groups"></div>'
     +'<div class="fbg-modal-row2"><select class="fbg-modal-input" id="cxp-gadd"'+ctlAttr('x','')+'></select><span style="display:flex;gap:6px"><input class="fbg-modal-input" id="cxp-newname" placeholder="or a new group: name"/><input class="fbg-modal-input" id="cxp-newurl" placeholder="link (optional)"/></span></div>'
     +'<div class="fbg-sect" style="margin-top:12px">Cars</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:6px"><input class="fbg-modal-input" id="cxp-q" placeholder="Search the catalog: car, chassis, engine code, year..." autocomplete="off" style="flex:1" data-autofocus/><button type="button" class="fbg-gbtn" data-p="clear">Clear ticks</button></div>'
-    +'<div id="cxp-sugg"></div><div class="cx-scroll" id="cxp-list"></div>'
+    +'<div id="cxp-sugg"></div><div class="cx-scroll" id="cxp-list" style="max-height:max(190px,calc(100vh - 500px))"></div>'
     +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 8px;font-size:var(--t-sm);color:#ccc">'
     +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked id="cxp-ch"'+chkAttr()+'/>Chassis template</label>'
     +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked id="cxp-yr"'+chkAttr()+'/>A template for every model year</label>'
     +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="cxp-py"'+chkAttr()+'/>Choose years per car</label>'
     +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked id="cxp-link"'+chkAttr()+'/>Link year templates to the chassis</label></div>'
-    +'<div id="cxp-years"></div><div class="cx-sum" id="cxp-sum"></div>'
-    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-p="cancel">Cancel</button><button class="fbg-modal-save" data-p="go" id="cxp-go">Attach</button></div>';
+    +'<div id="cxp-years"></div></div>'
+    +'<div id="cxp-foot" style="flex:none;padding-top:8px"><div class="cx-sum" id="cxp-sum"></div>'
+    +'<div class="fbg-modal-btns"><button class="fbg-modal-cancel" data-p="cancel">Cancel</button><button class="fbg-modal-save" data-p="go" id="cxp-go">Attach</button></div></div>';
   var ov = showModal(h,null,true);
+  var mdl = ov.querySelector('.fbg-modal'); if(mdl){ mdl.style.maxHeight = '92vh'; mdl.style.display = 'flex'; mdl.style.flexDirection = 'column'; mdl.style.overflow = 'hidden'; }
   function renderGroups(){
     var ids = Object.keys(P.groups), el = $('cxp-groups');
     el.innerHTML = ids.length ? ids.map(function(id){ var g = ix.groups.filter(function(x){ return x.ident===id; })[0]; if(!g) return ''; return '<label class="cx-row g" style="cursor:pointer"><input type="checkbox" checked data-g="'+esc(id)+'"'+chkAttr()+'/><span class="sp"><b style="color:#e8eaed">'+esc(g.rec.name)+'</b> <span class="cx-dim">'+(g.rec.members>0?fbgFmt(g.rec.members)+' members &middot; ':'')+plural(g.tpls.length,'template')+' already</span></span></label>'; }).join('') : '<div class="cx-dim" style="padding:4px 0">Choose a group below, or type a new one.</div>';
@@ -15085,13 +15087,13 @@ function openAttachPicker(opts){
     $('cxp-list').innerHTML = o || '<div class="cx-dim" style="padding:10px 0">No cars match.</div>';
     // suggestions from the group's own name
     var gr = gRecs().filter(function(x){ return !x.isNew || x.name; }), sg = gr.length ? cxSuggest(ix,gr).filter(function(id){ return !P.rows[id]; }) : [], el = $('cxp-sugg');
-    el.innerHTML = sg.length ? '<div class="cx-sum" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>Looks like this group is for: <b>'+esc(sg.slice(0,5).map(function(id){ return cxRowLabel(ix.byId[id]); }).join(', '))+(sg.length>5?' +'+(sg.length-5)+' more':'')+'</b></span><button type="button" class="fbg-gbtn paste" data-p="sugg">Tick '+plural(sg.length,'suggested car')+'</button></div>' : '';
+    el.innerHTML = sg.length ? '<div class="cx-sum" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 10px;margin-bottom:6px"><span style="flex:1;min-width:220px">Looks like this group is for: <b>'+esc(sg.slice(0,3).map(function(id){ return cxRowLabel(ix.byId[id]); }).join(', '))+(sg.length>3?' +'+(sg.length-3)+' more':'')+'</b></span><button type="button" class="fbg-gbtn paste" data-p="sugg">Tick '+plural(sg.length,'suggested car')+'</button></div>' : '';
     el._sg = sg;
   }
   function renderYears(){
     var el = $('cxp-years'); if(!P.perYear){ el.innerHTML = ''; return; }
     var rows = Object.keys(P.rows).map(function(k){ return ix.byId[k]; }).filter(Boolean);
-    el.innerHTML = rows.length ? '<div class="cx-scroll" style="max-height:24vh">'+rows.map(function(r){
+    el.innerHTML = rows.length ? '<div class="cx-scroll" style="max-height:20vh">'+rows.map(function(r){
       return '<div class="cx-mrow"><b style="color:#e8eaed">'+esc(cxRowLabel(r))+'</b> <button type="button" class="fbg-gbtn" data-yall="'+esc(r.id)+'">All</button><button type="button" class="fbg-gbtn" data-ynone="'+esc(r.id)+'">None</button>'
         +'<div class="cx-years" style="margin-left:0">'+r.ys.map(function(y){ return '<label><input type="checkbox" data-y="'+esc(r.id)+'|'+y+'"'+(P.off[r.id+'|'+y]?'':' checked')+chkAttr()+'/>'+y+'</label>'; }).join('')+'</div></div>'; }).join('')+'</div>' : '';
   }
