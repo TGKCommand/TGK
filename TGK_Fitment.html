@@ -3374,8 +3374,24 @@ window.fmEditRowOpen=fmEditRowOpen;window.fmEditRowCancel=fmEditRowCancel;window
 
 // ===================== 3. Reference tab =====================
 var FM_REF_FROM=1980;
+/* the model years the AI is allowed to look at (saved in this browser) */
+function fmRefYears(){
+  var cur=new Date().getFullYear(),R=FM.ref||{},f=parseInt(R.yf,10),t=parseInt(R.yt,10);
+  if(!(f>=1900&&f<=cur+2))f=FM_REF_FROM;if(!(t>=f&&t<=cur+2))t=Math.max(f,Math.min(cur,cur+2));
+  return {from:f,to:t,custom:!(f===FM_REF_FROM&&t===cur)};
+}
+window.fmRefYearSet=function(which,val){
+  var R=FM.ref,cur=new Date().getFullYear(),n=parseInt(val,10);
+  if(!(n>=1900&&n<=cur+2)){fmToast('Enter a year between 1900 and '+(cur+2),true);setTimeout(fmRender,0);return;}
+  if(which==='yf')R.yf=n;else R.yt=n;
+  var Y=fmRefYears();if(R.yf>R.yt){fmToast('From year cannot be after the To year',true);if(which==='yf')R.yf=R.yt;else R.yt=R.yf;}
+  try{localStorage.setItem('tgk_fm_ref_years',JSON.stringify({yf:R.yf,yt:R.yt}));}catch(e){}
+  setTimeout(fmRender,0);
+};
+window.fmRefYearPreset=function(from,to){var R=FM.ref;R.yf=from;R.yt=to;try{localStorage.setItem('tgk_fm_ref_years',JSON.stringify({yf:from,yt:to}));}catch(e){}setTimeout(fmRender,0);};
 FM.ref={make:'',model:'',q:'',props:null,src:{},unm:{},newModels:null,busy:'',prog:'',stop:false,log:[],showSame:false,last:{}};
 try{FM.ref.last=JSON.parse(localStorage.getItem('tgk_fm_ref_last')||'{}')||{};}catch(e){}
+try{var _yy=JSON.parse(localStorage.getItem('tgk_fm_ref_years')||'null');if(_yy){FM.ref.yf=_yy.yf;FM.ref.yt=_yy.yt;}}catch(e){}
 function fmNorm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
 function fmRefCanon(field,val,make){
   val=String(val||'').trim();if(!val)return '';
@@ -3408,6 +3424,10 @@ function fmRenderReference(){
     +'<input class="fm-in" id="fmref-model" list="fmref-dl-model" placeholder="Model (e.g. Macan)" value="'+fmEsc(R.model)+'" onchange="fmRefSet(\'model\',this.value)" style="max-width:190px"><datalist id="fmref-dl-model">'+opt(models)+'</datalist>'
     +'<input class="fm-in" placeholder="Search all: model, chassis, engine, code, year..." value="'+fmEsc(R.q)+'" onchange="fmRefSet(\'q\',this.value)" style="max-width:340px">'
     +'<button class="fm-btn" onclick="fmRefSet(\'all\')">Clear</button></div>'
+    +'<div class="fm-row wrap" style="margin-top:10px"><b style="font-size:13px">Model years for AI</b>'
+    +'<input class="fm-in fm-csel" type="number" id="fr-yf" value="'+fmRefYears().from+'" style="width:92px" onchange="fmRefYearSet(\'yf\',this.value)"> to <input class="fm-in fm-csel" type="number" id="fr-yt" value="'+fmRefYears().to+'" style="width:92px" onchange="fmRefYearSet(\'yt\',this.value)">'
+    +'<button class="fm-link" onclick="fmRefYearPreset('+FM_REF_FROM+','+cur+')">All ('+FM_REF_FROM+'-'+cur+')</button><button class="fm-link" onclick="fmRefYearPreset('+(cur-9)+','+cur+')">Last 10 years</button><button class="fm-link" onclick="fmRefYearPreset('+(cur-3)+','+(cur+1)+')">New (last 3 years)</button>'
+    +'<span class="fm-tdim" style="font-size:12.5px">The AI only looks at these model years, and new rows are saved with years inside this range.</span></div>'
     +'<div class="fm-row wrap" style="margin-top:10px"><b style="font-size:13px">AI research</b>'
     +'<button class="fm-btn primary"'+can(R.make&&R.model)+' onclick="fmRefResearchOne()">Research '+fmEsc((R.make+' '+R.model).trim()||'a model')+'</button>'
     +'<button class="fm-btn"'+can(R.make)+' onclick="fmRefFindModels()">Find new '+fmEsc(R.make||'make')+' models</button>'
@@ -3490,15 +3510,15 @@ function fmRefCatalogLines(make,model){
   return FM.vehicles.filter(function(v){return fmNorm(v.make)===fmNorm(make)&&(!model||fmNorm(v.model)===fmNorm(model));}).slice(0,80).map(function(v){return '- '+v.make+' '+v.model+' | chassis '+(v.chassis||'?')+' | engine '+(v.engine||'?')+' | code '+(v.engine_code||'?')+' | '+v.year_from+'-'+v.year_to;}).join('\n');
 }
 async function fmRefResearch(make,model){
-  var cur=new Date().getFullYear(),ex=fmRefCatalogLines(make,model);
+  var Y=fmRefYears(),cur=Y.to,ex=fmRefCatalogLines(make,model);
   var prompt=['You are an automotive fitment researcher for TGK Motorsport, which makes performance parts for European cars.',
-    'Task: list every generation / chassis and every individual ENGINE variant of the '+make+' '+model+' sold anywhere in the world, model years '+FM_REF_FROM+' to '+cur+' (include the '+(cur+1)+' model year if already on sale).',
+    'Task: list every generation / chassis and every individual ENGINE variant of the '+make+' '+model+' sold anywhere in the world, model years '+Y.from+' to '+Y.to+' ONLY. Ignore any model year outside that range and do not list a row that has no model year inside it.',
     'Use web search to verify. Prefer the manufacturer and well-known reference sites.',
     'Rules:',
     '- One row per (chassis, engine variant). year_from / year_to = first and last model year that engine was sold in that chassis. If markets differ, use the widest range and say so in note.',
     '- chassis = the generation / chassis code people use (e.g. B9, F30, 992, 95B, 8V, Mk7). platform = the maker platform or architecture code (e.g. MQB, MLB Evo, CLAR) or "" if unsure.',
     '- engine = size and type in short form (e.g. 2.0T, 3.0T, 2.9TT, 5.2 V10). engine_code = the maker engine code (e.g. CNCD). NEVER guess a code: use "" when you are not sure.',
-    '- If it is still in production set year_to to '+cur+' and ongoing to true.',
+    '- If it is still in production at the end of the range, set year_to to '+Y.to+' and ongoing to true.',
     '- confidence: "high" = confirmed by the maker or two sources, "medium" = one good source, "low" = unsure.',
     ex?'Our catalog already holds these rows. When something is the same thing, reuse EXACTLY our spelling of chassis and engine:\n'+ex:'Our catalog has nothing for this model yet.',
     'Reply with JSON only, no other text: {"rows":[{"chassis":"","platform":"","engine":"","engine_code":"","year_from":0,"year_to":0,"ongoing":false,"confidence":"high","note":""}]}'].join('\n');
@@ -3507,8 +3527,8 @@ async function fmRefResearch(make,model){
   var seen={},rows=[];
   j.rows.forEach(function(r){
     var yf=parseInt(r.year_from,10),yt=parseInt(r.year_to,10);
-    if(!(yf>1900)||!(yt>=yf)||yt<FM_REF_FROM||yf>cur+1)return;
-    yf=Math.max(yf,FM_REF_FROM);yt=Math.min(yt,cur+1);
+    if(!(yf>1900)||!(yt>=yf)||yt<Y.from||yf>Y.to)return;
+    yf=Math.max(yf,Y.from);yt=Math.min(yt,Y.to);
     var o={make:make,model:model,chassis:String(r.chassis||'').trim(),platform:String(r.platform||'').trim(),engine:String(r.engine||'').trim(),engine_code:String(r.engine_code||'').trim(),year_from:yf,year_to:yt,ongoing:!!r.ongoing,confidence:/^(high|medium|low)$/.test(r.confidence)?r.confidence:'low',note:String(r.note||'').trim()};
     if(!o.chassis&&!o.engine)return;
     var k=[fmNorm(o.chassis),fmNorm(o.engine),yf,yt].join('|');if(seen[k])return;seen[k]=1;rows.push(o);
@@ -3516,8 +3536,8 @@ async function fmRefResearch(make,model){
   return {rows:rows,urls:out.urls};
 }
 async function fmRefDiscover(make){
-  var cur=new Date().getFullYear(),have=fmRefUniq(FM.vehicles.filter(function(v){return fmNorm(v.make)===fmNorm(make);}).map(function(v){return v.model;}));
-  var prompt=['List every model line that '+make+' has sold anywhere in the world from '+FM_REF_FROM+' to '+cur+', including models launched in the last two years and any announced for '+(cur+1)+'. Use web search.',
+  var Y=fmRefYears(),cur=Y.to,have=fmRefUniq(FM.vehicles.filter(function(v){return fmNorm(v.make)===fmNorm(make);}).map(function(v){return v.model;}));
+  var prompt=['List every model line that '+make+' has sold anywhere in the world from '+Y.from+' to '+Y.to+' (only models with at least one model year inside that range). Use web search.',
     'One entry per model name (not per trim or engine). Give the first and last model year (last = '+cur+' if still on sale).',
     have.length?'Our catalog already has these models, reuse this exact spelling when it is the same model: '+have.join(', ')+'.':'',
     'Reply with JSON only: {"models":[{"model":"","first_year":0,"last_year":0,"note":""}]}'].join('\n');
@@ -3539,7 +3559,8 @@ function fmRefClassify(rows,make,model){
     var e=ex.filter(function(v){return v.year_from<=r.year_to&&v.year_to>=r.year_from;})[0]||ex[0];
     if(e){
       used[e.id]=1;r.cur=e;
-      if(e.year_from!==r.year_from||e.year_to!==r.year_to){r.chg.years=[e.year_from+'-'+e.year_to,r.year_from+'-'+r.year_to];r.safe=false;}
+      var W=fmRefYears(),ny=(r.year_from<e.year_from||(r.year_from>e.year_from&&e.year_from>=W.from))?r.year_from:e.year_from,nt=(r.year_to>e.year_to||(r.year_to<e.year_to&&e.year_to<=W.to))?r.year_to:e.year_to;
+      if(ny!==e.year_from||nt!==e.year_to){r.chg.years=[e.year_from+'-'+e.year_to,ny+'-'+nt];r.yf2=ny;r.yt2=nt;r.safe=false;}
       if(r.engine_code){if(!e.engine_code)r.chg.engine_code=['',r.engine_code];else if(fmNorm(e.engine_code)!==fmNorm(r.engine_code)){r.chg.engine_code=[e.engine_code,r.engine_code];r.safe=false;}}
       if(r.platform&&!e.platform)r.chg.platform=['',r.platform];
       r.status=Object.keys(r.chg).length?'update':'same';
@@ -3553,7 +3574,7 @@ function fmRefClassify(rows,make,model){
     if(r.status==='new'&&!r.platform)r.platform=inherit[fmNorm(r.chassis)]||'';
     r.pick=(r.status==='new'&&r.confidence!=='low')||(r.status==='update'&&r.safe&&r.confidence!=='low');
   });
-  return cat.filter(function(v){return !used[v.id];}).length;
+  var W2=fmRefYears();return cat.filter(function(v){return !used[v.id]&&v.year_to>=W2.from&&v.year_from<=W2.to;}).length;
 }
 function fmRefAddProps(make,model,res){
   var R=FM.ref;
@@ -3586,15 +3607,15 @@ window.fmRefFindModels=function(){
   fmRefRun('Looking for new '+mk+' models',[{name:mk,run:async function(){var res=await fmRefDiscover(mk);R.newModels={make:mk,list:res.models,urls:res.urls};fmRefStamp(mk);}}]);
 };
 function fmRefCheckTasks(mk){
-  var cur=new Date().getFullYear(),tasks=[];
-  var by={};FM.vehicles.filter(function(v){return v.make===mk&&v.active!==false;}).forEach(function(v){by[v.model]=Math.max(by[v.model]||0,v.year_to);});
-  Object.keys(by).filter(function(m){return by[m]>=cur-2;}).slice(0,30).forEach(function(m){tasks.push({name:mk+' '+m,run:async function(){var res=await fmRefResearch(mk,m);fmRefAddProps(mk,m,res);}});});
+  var cur=new Date().getFullYear(),tasks=[],Y=fmRefYears();
+  var by={},lo={};FM.vehicles.filter(function(v){return v.make===mk;}).forEach(function(v){by[v.model]=Math.max(by[v.model]||0,v.year_to);lo[v.model]=Math.min(lo[v.model]||9999,v.year_from);});
+  Object.keys(by).filter(function(m){return Y.custom?(by[m]>=Y.from&&lo[m]<=Y.to):by[m]>=cur-2;}).slice(0,40).forEach(function(m){tasks.push({name:mk+' '+m,run:async function(){var res=await fmRefResearch(mk,m);fmRefAddProps(mk,m,res);}});});
   tasks.push({name:mk+' new models',run:async function(){var res=await fmRefDiscover(mk);if(res.models.length){var R=FM.ref;var old=(R.newModels&&R.newModels.make===mk)?R.newModels.list:[];R.newModels={make:mk,list:res.models.concat(old.filter(function(o){return !res.models.some(function(n){return fmNorm(n.model)===fmNorm(o.model);});})),urls:res.urls};}fmRefStamp(mk);}});
   return tasks;
 }
 window.fmRefCheckMake=function(){
   var R=FM.ref;if(!R.make)return;var t=fmRefCheckTasks(R.make);
-  if(!confirm('Check '+R.make+' for updates?\n\nThis runs about '+t.length+' AI web searches (a few minutes): every '+R.make+' model still on sale or ended in the last 2 years, plus a search for brand new models.\n\nNothing is saved until you approve it.'))return;
+  if(!confirm('Check '+R.make+' for updates?\n\nThis runs about '+t.length+' AI web searches (a few minutes) for model years '+fmRefYears().from+'-'+fmRefYears().to+': '+(fmRefYears().custom?'every '+R.make+' model with years in that range':'every '+R.make+' model still on sale or ended in the last 2 years')+', plus a search for brand new models.\n\nNothing is saved until you approve it.'))return;
   fmRefRun('Checking '+R.make,t);
 };
 window.fmRefCheckAll=function(){
@@ -3650,7 +3671,7 @@ async function fmRefWrite(news,upds,active){
   for(var i=0;i<recs.length;i+=100){var r=await fmReq('fit_vehicles',{method:'POST',body:JSON.stringify(recs.slice(i,i+100))});FM.vehicles=FM.vehicles.concat(r||[]);added+=(r||[]).length;}
   FM.vehicles.sort(function(a,b){return (a.make+a.model+a.year_from).localeCompare(b.make+b.model+b.year_from);});
   for(var j=0;j<upds.length;j++){var p=upds[j],v=p.cur,patch={};
-    if(p.chg.years){patch.year_from=p.year_from;patch.year_to=p.year_to;}
+    if(p.chg.years){patch.year_from=p.yf2||p.year_from;patch.year_to=p.yt2||p.year_to;}
     if(p.chg.engine_code)patch.engine_code=p.engine_code;if(p.chg.platform)patch.platform=p.platform;if(p.chg.chassis)patch.chassis=p.chassis;if(p.chg.engine)patch.engine=p.engine;
     if(!Object.keys(patch).length||!v)continue;
     var twin=null;if('year_from' in patch||'chassis' in patch||'engine' in patch){var nv=Object.assign({},v,patch);twin=FM.vehicles.filter(function(x){return x.id!==v.id&&fmVKey(x)===fmVKey(nv);})[0];}
@@ -3691,7 +3712,7 @@ window.fmRefBuild=async function(){
   var raw=((document.getElementById('fr-bld-makes')||{}).value||''),minConf=(document.getElementById('fr-bld-conf')||{}).value||'high',redo=!!(document.getElementById('fr-bld-re')||{}).checked;
   var makes=fmRefUniq(raw.split(/[,;\n]+/).map(function(x){return fmRefCanon('make',x);}).filter(Boolean));
   if(!makes.length){fmToast('Type the makes to build, separated by commas',true);return;}
-  if(!confirm('Build the catalog for: '+makes.join(', ')+'?\n\nStep 1 searches for every model each make sold from '+FM_REF_FROM+' to '+new Date().getFullYear()+' (one AI search per make).\nStep 2 researches every model\'s chassis and engines (one AI search per model, often 30-80 per make). This uses real AI credit, so try ONE make first to see the cost.\n\nConfident new rows ('+(minConf==='medium'?'high and medium':'high')+' confidence) are saved HIDDEN - they do not appear in the website vehicle picker until you show them. Everything else waits in the review list. You can Stop at any time and run it again later to carry on.'))return;
+  if(!confirm('Build the catalog for: '+makes.join(', ')+'?\n\nStep 1 searches for every model each make sold with model years '+fmRefYears().from+' to '+fmRefYears().to+' (one AI search per make).\nStep 2 researches every model\'s chassis and engines (one AI search per model, often 30-80 per make). This uses real AI credit, so try ONE make first to see the cost.\n\nConfident new rows ('+(minConf==='medium'?'high and medium':'high')+' confidence) are saved HIDDEN - they do not appear in the website vehicle picker until you show them. Everything else waits in the review list. You can Stop at any time and run it again later to carry on.'))return;
   R.busy='Building';R.stop=false;R.log=[];R.built={added:0,filled:0};R.prog='';fmRender();
   var total=0,done=0;
   var upd=function(t){R.prog=done+'/'+total+(t?' - '+t:'');var e=document.getElementById('fr-prog');if(e)e.textContent=R.prog;};
