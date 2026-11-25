@@ -3380,6 +3380,7 @@ window.fmEditRowOpen=fmEditRowOpen;window.fmEditRowCancel=fmEditRowCancel;window
 
 // ===================== 3. Reference tab =====================
 var FM_REF_FROM=1980;
+var FM_RID=0;function fmRowId(){FM_RID++;return 'r'+Date.now().toString(36)+'_'+FM_RID;}   /* one unique id per review row, across every model and every run */
 /* the model years the AI is allowed to look at (saved in this browser) */
 function fmRefYears(){
   var cur=new Date().getFullYear(),R=FM.ref||{},f=parseInt(R.yf,10),t=parseInt(R.yt,10);
@@ -3562,7 +3563,7 @@ function fmRefClassify(rows,make,model){
   var key=function(x){return fmNorm(x.chassis)+'|'+fmNorm(x.engine);};
   var inherit={};cat.forEach(function(v){if(v.platform&&v.chassis)inherit[fmNorm(v.chassis)]=v.platform;});
   rows.forEach(function(r,i){
-    r.id='r'+Date.now().toString(36)+i;r.status='new';r.cur=null;r.chg={};r.safe=true;
+    r.id=fmRowId();r.status='new';r.cur=null;r.chg={};r.safe=true;
     var ex=cat.filter(function(v){return !used[v.id]&&key(v)===key(r);});
     var e=ex.filter(function(v){return v.year_from<=r.year_to&&v.year_to>=r.year_from;})[0]||ex[0];
     if(e){
@@ -3654,7 +3655,7 @@ function fmRefReviewHtml(){
   var shownAll=P.filter(function(p){return R.showSame||p.status!=='same';}),lim=R.revLimit||150,shown=shownAll.slice(0,lim),picked=P.filter(function(p){return p.pick&&p.status!=='same';}).length;
   var h='<div class="fm-card fr-review"><div class="fm-cardh"><b>AI results to review</b><span class="fm-tdim">'+nNew+' new &middot; '+nUpd+' changed &middot; '+nSame+' already match</span><span class="fm-cardbtns">'
     +'<button class="fm-btn primary"'+(picked&&!R.busy?'':' disabled')+' onclick="fmRefApply()">Review &amp; save ticked ('+picked+')</button>'
-    +'<button class="fm-link" onclick="FM.ref.props.forEach(function(p){if(p.status===\'new\')p.pick=true});fmRender()">Tick all new</button><button class="fm-link" onclick="FM.ref.props.forEach(function(p){p.pick=false});fmRender()">Tick none</button>'
+    +'<button class="fm-link" title="Ticks new rows that have no flags" onclick="FM.ref.props.forEach(function(p){if(p.status===\'new\'&&!(p.flags&&p.flags.length))p.pick=true});fmRender()">Tick all clean new</button><button class="fm-link" title="Also ticks the rows with flags - check them first" onclick="FM.ref.props.forEach(function(p){if(p.status===\'new\')p.pick=true});fmRender()">Tick flagged too</button><button class="fm-link" onclick="FM.ref.props.forEach(function(p){p.pick=false});fmRender()">Tick none</button>'
     +'<label class="fm-cl"><input type="checkbox"'+(R.showSame?' checked':'')+' onchange="FM.ref.showSame=this.checked;fmRender()"> show matches</label><button class="fm-link danger" onclick="FM.ref.props=null;fmRender()">Dismiss all</button></span></div>'
     +'<div class="fm-msg small" style="margin-bottom:8px">AI research is a starting point, not a source of truth. Check anything marked medium or low, and look at the sources before saving. Changing years here updates the vehicle catalog only, not the fitment rows already on products.</div>';
   var groups={};shown.forEach(function(p){(groups[p.make+'|'+p.model]=groups[p.make+'|'+p.model]||[]).push(p);});
@@ -4070,7 +4071,7 @@ function fmRefFinish(make,query,plan,rows,naming,urls){
     rows=out;
   }
   var grp=fmNorm(make)+'|'+fmNorm(query),byModel={},unm={};
-  rows.forEach(function(r,i){r.group=grp;r.make=make;r.id='r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+i;(byModel[r.model]=byModel[r.model]||[]).push(r);});
+  rows.forEach(function(r){r.group=grp;r.make=make;(byModel[r.model]=byModel[r.model]||[]).push(r);});
   Object.keys(byModel).forEach(function(m){unm[m]=fmRefClassify(byModel[m],make,m);});
   // same car already in the catalog under a different model name?
   rows.forEach(function(r){
@@ -4078,7 +4079,7 @@ function fmRefFinish(make,query,plan,rows,naming,urls){
     var d=FM.vehicles.filter(function(v){return fmNorm(v.make)===fmNorm(make)&&fmNorm(v.model)!==fmNorm(r.model)&&fmNorm(v.chassis)===fmNorm(r.chassis)&&fmNorm(v.engine)===fmNorm(r.engine)&&v.year_from<=r.year_to&&v.year_to>=r.year_from;})[0];
     if(d)r.flags.push('possible duplicate of existing "'+d.model+'"');
   });
-  rows.forEach(function(r){if(r.flags.length)r.pick=false;});
+  rows.forEach(function(r){r.id=fmRowId();if(r.flags.length)r.pick=false;});   // ids are set last, so classification can never overwrite them with duplicates
   return {rows:rows,urls:urls||[],unm:unm};
 }
 function fmRefAddProps(make,query,res){
